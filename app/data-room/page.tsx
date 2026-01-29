@@ -1510,77 +1510,119 @@ export default function DataRoomPage() {
             }
 
             const trimmedPenalty = penaltyStr.trim()
+            
+            // Skip vague penalties that can't be calculated
+            if (/Penalty as per.*Act/i.test(trimmedPenalty) && !trimmedPenalty.match(/Rs\.?\s*[\d,]+/i)) {
+              return 'Refer to Act'
+            }
 
-            // Extract daily rate from penalty string
-            const dailyRateMatch = trimmedPenalty.match(/(?:₹)?[\d,]+(?:\.[\d]+)?\/day/i)
-            if (dailyRateMatch) {
-              const rateStr = dailyRateMatch[0].replace(/₹/gi, '').replace(/\/day/gi, '').replace(/,/g, '')
-              const dailyRate = parseFloat(rateStr)
-              if (!isNaN(dailyRate) && dailyRate > 0) {
-                let calculatedPenalty = dailyRate * daysDelayed
-                
-                const maxMatch = trimmedPenalty.match(/max\s*(?:₹)?[\d,]+(?:\.[\d]+)?/i)
-                if (maxMatch) {
-                  const maxStr = maxMatch[0].replace(/max\s*(?:₹)?/gi, '').replace(/,/g, '')
-                  const maxAmount = parseFloat(maxStr)
-                  if (!isNaN(maxAmount) && maxAmount > 0) {
-                    calculatedPenalty = Math.min(calculatedPenalty, maxAmount)
+            // Extract daily rate - handle multiple formats:
+            // "Rs. 50 per day", "Rs.50/day", "₹50 per day", "50/day"
+            const dailyRatePatterns = [
+              /(?:Rs\.?\s*|₹\s*)([\d,]+(?:\.\d+)?)\s*(?:per\s*day|\/day)/i,  // Rs. 50 per day, Rs.50/day, ₹50 per day
+              /([\d,]+(?:\.\d+)?)\s*(?:per\s*day|\/day)/i,                     // 50 per day, 50/day
+            ]
+            
+            for (const pattern of dailyRatePatterns) {
+              const match = trimmedPenalty.match(pattern)
+              if (match) {
+                const dailyRate = parseFloat(match[1].replace(/,/g, ''))
+                if (!isNaN(dailyRate) && dailyRate > 0) {
+                  let calculatedPenalty = dailyRate * daysDelayed
+                  
+                  // Check for max/cap: "up to max Rs. 2000", "max Rs. 2000", "upto Rs. 2000"
+                  const maxPatterns = [
+                    /(?:up\s*to\s*)?max\.?\s*(?:Rs\.?\s*|₹\s*)([\d,]+)/i,
+                    /(?:up\s*to|upto)\s*(?:Rs\.?\s*|₹\s*)([\d,]+)/i,
+                  ]
+                  for (const maxPattern of maxPatterns) {
+                    const maxMatch = trimmedPenalty.match(maxPattern)
+                    if (maxMatch) {
+                      const maxAmount = parseFloat(maxMatch[1].replace(/,/g, ''))
+                      if (!isNaN(maxAmount) && maxAmount > 0) {
+                        calculatedPenalty = Math.min(calculatedPenalty, maxAmount)
+                        break
+                      }
+                    }
                   }
+                  
+                  return `₹${Math.round(calculatedPenalty).toLocaleString('en-IN')}`
                 }
-                
-                return `₹${calculatedPenalty.toLocaleString('en-IN')}`
+              }
+            }
+
+            // Handle "Rs. 100 per day" standalone (like MGT-7A)
+            const standaloneDaily = trimmedPenalty.match(/^(?:Rs\.?\s*|₹\s*)([\d,]+)\s*per\s*day\.?$/i)
+            if (standaloneDaily) {
+              const dailyRate = parseFloat(standaloneDaily[1].replace(/,/g, ''))
+              if (!isNaN(dailyRate) && dailyRate > 0) {
+                return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+              }
+            }
+
+            // Handle Late fee patterns: "Late fee Rs. 50/day"
+            const lateFeeMatch = trimmedPenalty.match(/Late\s*fee\s*(?:Rs\.?\s*|₹\s*)([\d,]+)(?:\s*(?:per\s*day|\/day))?/i)
+            if (lateFeeMatch) {
+              const dailyRate = parseFloat(lateFeeMatch[1].replace(/,/g, ''))
+              if (!isNaN(dailyRate) && dailyRate > 0) {
+                return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+              }
+            }
+
+            // Handle fixed amounts: "Rs. 100 per day + Rs. 5 Lakh max"
+            const fixedMaxMatch = trimmedPenalty.match(/(?:Rs\.?\s*|₹\s*)([\d,]+)\s*per\s*day.*?(?:Rs\.?\s*|₹\s*)([\d.]+)\s*(?:Lakh|L)\s*max/i)
+            if (fixedMaxMatch) {
+              const dailyRate = parseFloat(fixedMaxMatch[1].replace(/,/g, ''))
+              let maxAmount = parseFloat(fixedMaxMatch[2].replace(/,/g, ''))
+              if (fixedMaxMatch[0].toLowerCase().includes('lakh')) {
+                maxAmount *= 100000
+              }
+              if (!isNaN(dailyRate) && dailyRate > 0) {
+                const calculated = Math.min(dailyRate * daysDelayed, maxAmount)
+                return `₹${Math.round(calculated).toLocaleString('en-IN')}`
               }
             }
 
             // Check for explicit fixed penalty amounts
             const fixedKeywords = /(?:fixed|one-time|one time|flat|lump)/i
             if (fixedKeywords.test(trimmedPenalty)) {
-              let fixedMatch = trimmedPenalty.match(/₹[\d,]+(?:\.[\d]+)?/i)
-              if (!fixedMatch) {
-                const plainNumberMatch = trimmedPenalty.match(/[\d,]+(?:\.[\d]+)?/i)
-                if (plainNumberMatch) {
-                  const amount = plainNumberMatch[0].replace(/,/g, '')
-                  const numAmount = parseFloat(amount)
-                  if (!isNaN(numAmount) && numAmount > 0) {
-                    return `₹${numAmount.toLocaleString('en-IN')}`
-                  }
+              const fixedMatch = trimmedPenalty.match(/(?:Rs\.?\s*|₹\s*)([\d,]+)/i)
+              if (fixedMatch) {
+                const amount = parseFloat(fixedMatch[1].replace(/,/g, ''))
+                if (!isNaN(amount) && amount > 0) {
+                  return `₹${Math.round(amount).toLocaleString('en-IN')}`
                 }
-              } else {
-                return fixedMatch[0]
               }
             }
 
-            // If penalty is just a plain number, treat it as daily rate when there's a delay
-            const plainNumberMatch = trimmedPenalty.match(/^[\d,]+(?:\.[\d]+)?$/i)
-            if (plainNumberMatch && !trimmedPenalty.includes('/day') && !trimmedPenalty.includes('Interest') && !trimmedPenalty.includes('+')) {
-              const amount = plainNumberMatch[0].replace(/,/g, '')
-              const numAmount = parseFloat(amount)
-              if (!isNaN(numAmount) && numAmount > 0) {
-                const calculatedPenalty = numAmount * daysDelayed
-                return `₹${calculatedPenalty.toLocaleString('en-IN')}`
+            // If penalty is just a plain number, treat it as daily rate
+            const plainNumberMatch = trimmedPenalty.match(/^[\d,]+(?:\.\d+)?$/i)
+            if (plainNumberMatch) {
+              const amount = parseFloat(plainNumberMatch[0].replace(/,/g, ''))
+              if (!isNaN(amount) && amount > 0) {
+                return `₹${Math.round(amount * daysDelayed).toLocaleString('en-IN')}`
               }
             }
 
-            // Check for fixed penalty amounts with ₹ symbol
-            let fixedMatch = trimmedPenalty.match(/₹[\d,]+(?:\.[\d]+)?(?!\/day|per)/i)
-            if (fixedMatch && !trimmedPenalty.includes('/day') && !trimmedPenalty.includes('Interest') && !trimmedPenalty.includes('+')) {
-              const rateStr = fixedMatch[0].replace(/₹/gi, '').replace(/,/g, '')
-              const dailyRate = parseFloat(rateStr)
-              if (!isNaN(dailyRate) && dailyRate > 0) {
-                const calculatedPenalty = dailyRate * daysDelayed
-                return `₹${calculatedPenalty.toLocaleString('en-IN')}`
+            // Interest-based penalties need principal amount
+            if (/Interest\s*@?\s*[\d.]+%/i.test(trimmedPenalty)) {
+              return 'Interest-based (needs tax amount)'
+            }
+
+            // Complex penalty with multiple components
+            if (trimmedPenalty.includes('+') || trimmedPenalty.includes(';')) {
+              // Try to extract at least the daily component
+              const dailyComponent = trimmedPenalty.match(/(?:Rs\.?\s*|₹\s*)([\d,]+)\s*(?:per\s*day|\/day)/i)
+              if (dailyComponent) {
+                const dailyRate = parseFloat(dailyComponent[1].replace(/,/g, ''))
+                if (!isNaN(dailyRate) && dailyRate > 0) {
+                  return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}+`
+                }
               }
+              return 'Complex (multiple components)'
             }
 
-            if (trimmedPenalty.includes('Interest') || trimmedPenalty.includes('+ Interest')) {
-              return 'Cannot calculate - Insufficient information'
-            }
-
-            if (trimmedPenalty.includes('+') && !trimmedPenalty.includes('/day')) {
-              return 'Cannot calculate - Complex penalty structure'
-            }
-
-            return 'Cannot calculate - Insufficient information'
+            return 'Cannot calculate'
           }
 
           // Calculate total penalties
