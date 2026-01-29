@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import CircuitBackground from '@/components/CircuitBackground'
 import { verifyCIN, verifyDIN, type CINDirectorData, type DINDirectorData } from '@/lib/api/cin-din'
 import { 
   detectEntity, 
@@ -65,6 +64,7 @@ export default function OnboardingPage() {
   const [showAddDirector, setShowAddDirector] = useState(false)
   const [entityDetection, setEntityDetection] = useState<any>(null)
   const [isCINVerified, setIsCINVerified] = useState(false)
+  const [currentStep, setCurrentStep] = useState(1) // 1 = Company Details, 2 = Documents
 
   const [formData, setFormData] = useState({
     companyName: '',
@@ -335,6 +335,19 @@ export default function OnboardingPage() {
   }
 
 
+  // Format date for display (shows month name)
+  const formatDateForDisplay = (dateStr: string): string => {
+    if (!dateStr) return ''
+    try {
+      const date = new Date(dateStr)
+      if (isNaN(date.getTime())) return dateStr
+      return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    } catch {
+      return dateStr
+    }
+  }
+
+  // Format date for database (YYYY-MM-DD)
   const formatDate = (dateStr: string): string => {
     if (!dateStr) return ''
     try {
@@ -575,9 +588,6 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-primary-dark relative overflow-hidden">
-      {/* Circuit Board Background */}
-      <CircuitBackground />
-
       {/* Content */}
       <div className="relative z-10 container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-4xl">
         {/* Header */}
@@ -634,23 +644,84 @@ export default function OnboardingPage() {
         {/* Form Card */}
         <form onSubmit={handleSubmit} className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 backdrop-blur-sm">
           <div className="space-y-4 sm:space-y-6">
-            {/* Company Name */}
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                Company Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="companyName"
-                value={formData.companyName}
-                onChange={handleInputChange}
-                placeholder="Enter company name"
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
-              />
-              {errors.companyName && (
-                <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.companyName}</p>
-              )}
+            {/* Step Indicator */}
+            <div className="flex items-center justify-center gap-2 mb-4 sm:mb-6">
+              <div className={`flex items-center gap-2 ${currentStep === 1 ? 'text-primary-orange' : 'text-gray-400'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 1 ? 'bg-primary-orange text-white' : 'bg-gray-800 text-gray-400'}`}>
+                  1
+                </div>
+                <span className="text-xs sm:text-sm font-medium">Company Details</span>
+              </div>
+              <div className="w-8 sm:w-12 h-0.5 bg-gray-700"></div>
+              <div className={`flex items-center gap-2 ${currentStep === 2 ? 'text-primary-orange' : 'text-gray-400'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 2 ? 'bg-primary-orange text-white' : 'bg-gray-800 text-gray-400'}`}>
+                  2
+                </div>
+                <span className="text-xs sm:text-sm font-medium">Documents</span>
+              </div>
             </div>
+
+            {currentStep === 1 ? (
+              <>
+                {/* CIN Number - MOVED TO TOP */}
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                    CIN Number <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      name="cinNumber"
+                      value={formData.cinNumber}
+                      onChange={handleInputChange}
+                      placeholder="Enter CIN number"
+                      className="flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCINVerification}
+                      disabled={isVerifyingCIN || !formData.cinNumber.trim()}
+                      className="px-4 sm:px-6 py-2 sm:py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap"
+                    >
+                      {isVerifyingCIN ? (
+                        <>
+                          <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Verifying...
+                        </>
+                      ) : (
+                        <>
+                          <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                            <polyline points="22 4 12 14.01 9 11.01" />
+                          </svg>
+                          <span className="hidden sm:inline">Verify CIN</span>
+                          <span className="sm:hidden">Verify</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  {errors.cinNumber && (
+                    <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.cinNumber}</p>
+                  )}
+                </div>
+
+                {/* Company Name */}
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                    Company Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="companyName"
+                    value={formData.companyName}
+                    onChange={handleInputChange}
+                    placeholder="Enter company name"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                  />
+                  {errors.companyName && (
+                    <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.companyName}</p>
+                  )}
+                </div>
 
             {/* Company Type */}
             <div>
@@ -689,64 +760,22 @@ export default function OnboardingPage() {
               )}
             </div>
 
-            {/* PAN Number and CIN Number */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                  PAN Number <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
-                </label>
-                <input
-                  type="text"
-                  name="panNumber"
-                  value={formData.panNumber}
-                  onChange={handleInputChange}
-                  placeholder="ABCDE1234F"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
-                />
-                {errors.panNumber && (
-                  <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.panNumber}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                  CIN Number <span className="text-red-500">*</span>
-                </label>
-                <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="text"
-                  name="cinNumber"
-                  value={formData.cinNumber}
-                  onChange={handleInputChange}
-                  placeholder="Enter CIN number"
-                    className="flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
-                />
-                  <button
-                    type="button"
-                    onClick={handleCINVerification}
-                    disabled={isVerifyingCIN || !formData.cinNumber.trim()}
-                    className="px-4 sm:px-6 py-2 sm:py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap"
-                  >
-                    {isVerifyingCIN ? (
-                      <>
-                        <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Verifying...
-                      </>
-                    ) : (
-                      <>
-                        <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                          <polyline points="22 4 12 14.01 9 11.01" />
-                        </svg>
-                        <span className="hidden sm:inline">Verify CIN</span>
-                        <span className="sm:hidden">Verify</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                {errors.cinNumber && (
-                  <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.cinNumber}</p>
-                )}
-              </div>
+            {/* PAN Number */}
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                PAN Number <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                name="panNumber"
+                value={formData.panNumber}
+                onChange={handleInputChange}
+                placeholder="ABCDE1234F"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+              />
+              {errors.panNumber && (
+                <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.panNumber}</p>
+              )}
             </div>
 
             {/* Industry */}
@@ -855,13 +884,42 @@ export default function OnboardingPage() {
               <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                 Date of Incorporation <span className="text-red-500">*</span>
               </label>
-              <input
-                type="date"
-                name="dateOfIncorporation"
-                value={formData.dateOfIncorporation}
-                onChange={handleInputChange}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  readOnly
+                  value={formData.dateOfIncorporation ? formatDateForDisplay(formData.dateOfIncorporation) : ''}
+                  onClick={() => {
+                    const dateInput = document.getElementById('dateOfIncorporation-hidden') as HTMLInputElement
+                    if (dateInput) {
+                      try {
+                        dateInput.showPicker?.()
+                      } catch {
+                        dateInput.click()
+                      }
+                    }
+                  }}
+                  placeholder="Select date"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors cursor-pointer pr-10"
+                />
+                <input
+                  type="date"
+                  id="dateOfIncorporation-hidden"
+                  name="dateOfIncorporation"
+                  value={formData.dateOfIncorporation}
+                  onChange={handleInputChange}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  style={{ pointerEvents: 'auto' }}
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                </div>
+              </div>
               {errors.dateOfIncorporation && (
                 <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.dateOfIncorporation}</p>
               )}
@@ -965,8 +1023,7 @@ export default function OnboardingPage() {
                   name="phoneNumber"
                   value={formData.phoneNumber}
                   onChange={handleInputChange}
-                  placeholder="+91 98765 43210"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                 />
                 {errors.phoneNumber && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.phoneNumber}</p>
@@ -1123,7 +1180,7 @@ export default function OnboardingPage() {
                             )}
                             {director.dob && (
                               <div className="break-words">
-                                <span className="text-gray-500">DOB:</span> {director.dob}
+                                <span className="text-gray-500">DOB:</span> {formatDateForDisplay(director.dob)}
                               </div>
                             )}
                             {director.pan && (
@@ -1193,13 +1250,16 @@ export default function OnboardingPage() {
               )}
             </div>
 
-            {/* Document Uploads */}
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2 sm:mb-3">
-                Required Documents <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
-              </label>
-              <div className="space-y-3 sm:space-y-4">
-                {DOCUMENT_TYPES.map((docType) => (
+              </>
+            ) : (
+              <>
+                {/* Document Uploads - Step 2 */}
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2 sm:mb-3">
+                    Required Documents <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
+                  </label>
+                  <div className="space-y-3 sm:space-y-4">
+                    {DOCUMENT_TYPES.map((docType) => (
                   <div key={docType}>
                     <label className="block text-xs sm:text-sm text-gray-400 mb-1.5 sm:mb-2">
                       {docType}
@@ -1309,32 +1369,106 @@ export default function OnboardingPage() {
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Submit Buttons */}
             <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-4 pt-4 sm:pt-6 border-t border-gray-800">
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-sm sm:text-base"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Creating...
-                  </>
-                ) : (
-                  'Create Company'
-                )}
-              </button>
+              {currentStep === 1 ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => router.back()}
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-sm sm:text-base"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      // Validate step 1 fields
+                      const newErrors: Record<string, string> = {}
+                      if (!formData.companyName.trim()) {
+                        newErrors.companyName = 'Company name is required'
+                      }
+                      if (!formData.companyType) {
+                        newErrors.companyType = 'Please select a company type'
+                      }
+                      if (!formData.cinNumber.trim()) {
+                        newErrors.cinNumber = 'CIN number is required'
+                      }
+                      if (!formData.industry) {
+                        newErrors.industry = 'Please select an industry'
+                      }
+                      if (!formData.dateOfIncorporation) {
+                        newErrors.dateOfIncorporation = 'Date of incorporation is required'
+                      }
+                      if (formData.industryCategories.length === 0) {
+                        newErrors.industryCategories = 'Please select at least one industry category'
+                      }
+                      if (formData.industryCategories.includes('Other') && !formData.otherIndustryCategory.trim()) {
+                        newErrors.otherIndustryCategory = 'Please specify industry category'
+                      }
+                      if (!formData.address.trim()) {
+                        newErrors.address = 'Address is required'
+                      }
+                      if (!formData.city.trim()) {
+                        newErrors.city = 'City is required'
+                      }
+                      if (!formData.state.trim()) {
+                        newErrors.state = 'State is required'
+                      }
+                      if (!formData.pinCode.trim()) {
+                        newErrors.pinCode = 'PIN code is required'
+                      }
+
+                      setErrors(newErrors)
+                      if (Object.keys(newErrors).length === 0) {
+                        setCurrentStep(2)
+                      }
+                    }}
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+                  >
+                    Update and Next
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(1)}
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-sm sm:text-base"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => router.back()}
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-sm sm:text-base"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Creating...
+                      </>
+                    ) : (
+                      'Create Company'
+                    )}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </form>

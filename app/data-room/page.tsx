@@ -285,7 +285,7 @@ export default function DataRoomPage() {
             companyName: company.name,
             type: company.type.toUpperCase(),
             regDate: new Date(company.incorporation_date).toLocaleDateString('en-US', {
-              month: 'short',
+              month: 'long',
               day: 'numeric',
               year: 'numeric'
             }),
@@ -328,6 +328,163 @@ export default function DataRoomPage() {
   const [selectedDirectorId, setSelectedDirectorId] = useState<string | null>(null)
 
   const [activeTab, setActiveTab] = useState('overview')
+  
+  // GST Integration States
+  const [gstStep, setGstStep] = useState<'connect' | 'otp' | 'dashboard'>('connect')
+  const [gstCredentials, setGstCredentials] = useState({ gstin: '', gstUsername: '' })
+  const [gstOtp, setGstOtp] = useState('')
+  const [isGstLoading, setIsGstLoading] = useState(false)
+  const [gstAuthToken, setGstAuthToken] = useState<string | null>(null)
+  const [gstError, setGstError] = useState<string | null>(null)
+  const [gstData, setGstData] = useState<any>(null)
+  const [selectedGstPeriod, setSelectedGstPeriod] = useState('012026')
+  const [gstActiveSection, setGstActiveSection] = useState<'overview' | 'gstr1' | 'gstr2a' | 'gstr2b' | 'gstr3b' | 'ledger'>('overview')
+
+  // Notices States
+  const [noticesFilter, setNoticesFilter] = useState<'all' | 'pending' | 'responded' | 'resolved'>('all')
+  const [noticesTypeFilter, setNoticesTypeFilter] = useState<string>('all')
+  const [selectedNotice, setSelectedNotice] = useState<any>(null)
+  const [noticeResponse, setNoticeResponse] = useState('')
+  const [isSubmittingResponse, setIsSubmittingResponse] = useState(false)
+  const [isAddNoticeModalOpen, setIsAddNoticeModalOpen] = useState(false)
+  const [newNoticeForm, setNewNoticeForm] = useState({
+    type: 'Income Tax',
+    subType: '',
+    section: '',
+    subject: '',
+    issuedBy: '',
+    issuedDate: new Date().toISOString().split('T')[0],
+    dueDate: '',
+    priority: 'medium',
+    description: '',
+    documents: [] as string[]
+  })
+  const [newDocument, setNewDocument] = useState('')
+  const [isSubmittingNotice, setIsSubmittingNotice] = useState(false)
+
+  // Demo Notices Data - Now stateful so we can add to it
+  const [demoNotices, setDemoNotices] = useState([
+    {
+      id: 'NOT-2026-001',
+      type: 'Income Tax',
+      subType: 'Scrutiny Notice',
+      section: 'Section 143(2)',
+      subject: 'Selection for Scrutiny Assessment - AY 2024-25',
+      issuedBy: 'Income Tax Department',
+      issuedDate: '2026-01-15',
+      dueDate: '2026-02-15',
+      status: 'pending',
+      priority: 'high',
+      description: 'Your return for Assessment Year 2024-25 has been selected for scrutiny assessment. You are required to furnish the details/documents as specified.',
+      documents: ['ITR Filed', 'Form 26AS', 'Bank Statements'],
+      timeline: [
+        { date: '2026-01-15', action: 'Notice Received', by: 'System' },
+        { date: '2026-01-16', action: 'Assigned to CA', by: 'Admin' }
+      ]
+    },
+    {
+      id: 'NOT-2026-002',
+      type: 'GST',
+      subType: 'Show Cause Notice',
+      section: 'Section 73',
+      subject: 'Mismatch in GSTR-1 and GSTR-3B for FY 2024-25',
+      issuedBy: 'GST Department',
+      issuedDate: '2026-01-10',
+      dueDate: '2026-01-25',
+      status: 'responded',
+      priority: 'high',
+      description: 'Discrepancy noticed between outward supplies declared in GSTR-1 and tax paid in GSTR-3B. Please provide clarification with supporting documents.',
+      documents: ['GSTR-1 Returns', 'GSTR-3B Returns', 'Reconciliation Statement'],
+      timeline: [
+        { date: '2026-01-10', action: 'Notice Received', by: 'System' },
+        { date: '2026-01-12', action: 'Response Drafted', by: 'Accounts Team' },
+        { date: '2026-01-14', action: 'Response Submitted', by: 'CA' }
+      ]
+    },
+    {
+      id: 'NOT-2026-003',
+      type: 'MCA/RoC',
+      subType: 'Compliance Notice',
+      section: 'Section 92',
+      subject: 'Non-filing of Annual Return (MGT-7)',
+      issuedBy: 'Registrar of Companies',
+      issuedDate: '2026-01-05',
+      dueDate: '2026-01-20',
+      status: 'resolved',
+      priority: 'medium',
+      description: 'It has been observed that the company has not filed the Annual Return in Form MGT-7 for the financial year 2024-25.',
+      documents: ['MGT-7 Filed', 'Board Resolution'],
+      timeline: [
+        { date: '2026-01-05', action: 'Notice Received', by: 'System' },
+        { date: '2026-01-08', action: 'MGT-7 Filed', by: 'CS' },
+        { date: '2026-01-10', action: 'Compliance Completed', by: 'System' }
+      ]
+    },
+    {
+      id: 'NOT-2025-004',
+      type: 'Labour Law',
+      subType: 'Inspection Notice',
+      section: 'EPF Act',
+      subject: 'EPF Compliance Inspection Scheduled',
+      issuedBy: 'EPFO',
+      issuedDate: '2025-12-20',
+      dueDate: '2026-01-10',
+      status: 'resolved',
+      priority: 'medium',
+      description: 'An inspection under the EPF & MP Act, 1952 has been scheduled for your establishment. Please keep all relevant records ready.',
+      documents: ['EPF Returns', 'Wage Register', 'Attendance Records'],
+      timeline: [
+        { date: '2025-12-20', action: 'Notice Received', by: 'System' },
+        { date: '2025-12-25', action: 'Documents Prepared', by: 'HR' },
+        { date: '2026-01-10', action: 'Inspection Completed', by: 'EPFO Officer' },
+        { date: '2026-01-12', action: 'No Discrepancy Found', by: 'System' }
+      ]
+    },
+    {
+      id: 'NOT-2025-005',
+      type: 'Income Tax',
+      subType: 'Demand Notice',
+      section: 'Section 156',
+      subject: 'Outstanding Tax Demand - AY 2023-24',
+      issuedBy: 'Income Tax Department',
+      issuedDate: '2025-12-01',
+      dueDate: '2025-12-30',
+      status: 'pending',
+      priority: 'critical',
+      description: 'An outstanding tax demand of ₹2,45,000 is pending against your PAN for Assessment Year 2023-24. Please pay the amount or file rectification.',
+      documents: ['Demand Notice', 'Computation Sheet'],
+      timeline: [
+        { date: '2025-12-01', action: 'Notice Received', by: 'System' },
+        { date: '2025-12-05', action: 'Under Review by CA', by: 'CA' }
+      ]
+    },
+    {
+      id: 'NOT-2025-006',
+      type: 'GST',
+      subType: 'Registration Notice',
+      section: 'Section 29',
+      subject: 'Show Cause for GST Registration Cancellation',
+      issuedBy: 'GST Department',
+      issuedDate: '2025-11-15',
+      dueDate: '2025-11-30',
+      status: 'resolved',
+      priority: 'critical',
+      description: 'Non-filing of returns for consecutive 6 months. Show cause why GST registration should not be cancelled.',
+      documents: ['All GSTR-3B Filed', 'Reply to SCN'],
+      timeline: [
+        { date: '2025-11-15', action: 'Notice Received', by: 'System' },
+        { date: '2025-11-18', action: 'Filed Pending Returns', by: 'Accounts' },
+        { date: '2025-11-20', action: 'Reply Submitted', by: 'CA' },
+        { date: '2025-11-28', action: 'Registration Restored', by: 'GST Dept' }
+      ]
+    }
+  ])
+
+  const filteredNotices = demoNotices.filter(notice => {
+    const matchesStatus = noticesFilter === 'all' || notice.status === noticesFilter
+    const matchesType = noticesTypeFilter === 'all' || notice.type === noticesTypeFilter
+    return matchesStatus && matchesType
+  })
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
   const [isFolderDropdownOpen, setIsFolderDropdownOpen] = useState(false)
@@ -366,6 +523,7 @@ export default function DataRoomPage() {
   // Fallback defaults in case the database templates are empty
   const DEFAULT_FOLDERS = [
     'Constitutional Documents',
+    'Financials and licenses',
     'Taxation & GST Compliance',
     'Regulatory & MCA Filings',
   ]
@@ -373,33 +531,79 @@ export default function DataRoomPage() {
   const DEFAULT_DOCUMENTS: Record<string, string[]> = {
     'Constitutional Documents': [
       'Certificate of Incorporation',
-    'MOA (Memorandum of Association)',
-    'AOA (Articles of Association)',
+      'MOA (Memorandum of Association)',
+      'AOA (Articles of Association)',
       'Rental Deed',
       'DIN Certificate',
+    ],
+    'Financials and licenses': [
       'PAN',
       'TAN',
     ],
     'Taxation & GST Compliance': [
-    'GST Returns',
-    'Income Tax Returns',
+      'GST Returns',
+      'Income Tax Returns',
     ],
     'Regulatory & MCA Filings': [
-    'Annual Returns',
-    'Board Minutes',
-  ]
+      'Annual Returns',
+      'Board Minutes',
+    ]
   }
 
+  // Merge database templates with defaults to ensure all folders are present
   const documentFolders = documentTemplates.length > 0 
-    ? Array.from(new Set(documentTemplates.map(t => t.folder_name)))
+    ? Array.from(new Set([
+        ...DEFAULT_FOLDERS, // Always include default folders
+        ...documentTemplates.map(t => t.folder_name)
+      ]))
     : DEFAULT_FOLDERS
 
+  // Merge database templates with defaults
   const predefinedDocuments = documentTemplates.length > 0
-    ? documentTemplates.reduce((acc, template) => {
-        if (!acc[template.folder_name]) acc[template.folder_name] = []
-        acc[template.folder_name].push(template.document_name)
-        return acc
-      }, {} as Record<string, string[]>)
+    ? (() => {
+        // Start with defaults (ensures PAN and TAN are in Financials and licenses)
+        const merged = { ...DEFAULT_DOCUMENTS }
+        
+        // Add/override with database templates, but move PAN and TAN to correct folder
+        documentTemplates.forEach(template => {
+          const docName = template.document_name
+          const folderName = template.folder_name
+          
+          // PAN and TAN should always be in "Financials and licenses"
+          if (docName === 'PAN' || docName === 'TAN') {
+            // Remove from any other folder
+            Object.keys(merged).forEach(folder => {
+              if (folder !== 'Financials and licenses') {
+                merged[folder] = merged[folder].filter((d: string) => d !== docName)
+              }
+            })
+            // Add to Financials and licenses
+            if (!merged['Financials and licenses']) {
+              merged['Financials and licenses'] = []
+            }
+            if (!merged['Financials and licenses'].includes(docName)) {
+              merged['Financials and licenses'].push(docName)
+            }
+          } else {
+            // For other documents, add to their specified folder
+            if (!merged[folderName]) {
+              merged[folderName] = []
+            }
+            if (!merged[folderName].includes(docName)) {
+              merged[folderName].push(docName)
+            }
+          }
+        })
+        
+        // Ensure PAN and TAN are removed from Constitutional Documents
+        if (merged['Constitutional Documents']) {
+          merged['Constitutional Documents'] = merged['Constitutional Documents'].filter(
+            (d: string) => d !== 'PAN' && d !== 'TAN'
+          )
+        }
+        
+        return merged
+      })()
     : DEFAULT_DOCUMENTS
 
   const handleView = async (filePath: string) => {
@@ -700,6 +904,18 @@ export default function DataRoomPage() {
     }
   }
 
+  // Helper function to format date with full month name
+  const formatDateForDisplay = (dateStr: string): string => {
+    if (!dateStr) return ''
+    try {
+      const date = new Date(dateStr)
+      if (isNaN(date.getTime())) return dateStr
+      return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    } catch {
+      return dateStr
+    }
+  }
+
   // Refresh requirements
   const refreshRequirements = async () => {
     if (!currentCompany) return
@@ -798,6 +1014,7 @@ export default function DataRoomPage() {
       <div className="relative z-10 container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Company Selector */}
         <div className="mb-4 sm:mb-6">
+          <h2 className="text-gray-400 text-sm font-medium mb-2 sm:mb-3">My companies</h2>
           <CompanySelector
             companies={companies}
             currentCompany={currentCompany}
@@ -936,6 +1153,30 @@ export default function DataRoomPage() {
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
             <span className="text-sm sm:text-base">Notices <span className="text-gray-500 text-xs">(Soon)</span></span>
+          </button>
+          <button
+            onClick={() => setActiveTab('gst')}
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+              activeTab === 'gst'
+                ? 'border-primary-orange bg-primary-orange/20 text-white'
+                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+            }`}
+          >
+            <svg
+              width="16"
+              height="16"
+              className="sm:w-[18px] sm:h-[18px]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+              <line x1="1" y1="10" x2="23" y2="10" />
+            </svg>
+            <span className="text-sm sm:text-base">GST <span className="text-gray-500 text-xs">(Soon)</span></span>
           </button>
         </div>
 
@@ -1121,7 +1362,7 @@ export default function DataRoomPage() {
                                   {director.dob && (
                                     <div className="p-3 bg-gray-800 rounded-lg">
                                       <div className="text-xs text-gray-500 mb-1">Date of Birth</div>
-                                      <div className="text-white text-sm sm:text-base">{director.dob}</div>
+                                      <div className="text-white text-sm sm:text-base">{formatDateForDisplay(director.dob)}</div>
                                     </div>
                                   )}
                                   {director.email && (
@@ -2322,11 +2563,11 @@ export default function DataRoomPage() {
                       ) : (
                         <>
                           <svg width="14" height="14" className="sm:w-4 sm:h-4 hidden sm:inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                            <polyline points="14 2 14 8 20 8" />
-                            <line x1="16" y1="13" x2="8" y2="13" />
-                            <line x1="16" y1="17" x2="8" y2="17" />
-                          </svg>
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
                           <span className="hidden sm:inline">Export PDF Report</span>
                           <span className="sm:hidden">Export PDF</span>
                         </>
@@ -2360,7 +2601,7 @@ export default function DataRoomPage() {
                         <span className="sm:hidden">Overdue CSV</span>
                       </button>
                     )}
-                  </div>
+              </div>
                   {isGeneratingEnhancedPDF && (
                     <div className="mt-4 p-4 bg-primary-orange/10 border border-primary-orange/30 rounded-lg">
                       <div className="flex items-center gap-3">
@@ -2379,9 +2620,9 @@ export default function DataRoomPage() {
                       </div>
                       <div className="mt-2 text-xs text-gray-400">
                         This may take a few moments as we research legal sections and analyze business impact...
-                      </div>
-                    </div>
-                  )}
+            </div>
+          </div>
+        )}
                 </div>
                 <p className="text-gray-400 text-sm sm:text-base">Comprehensive compliance analytics and insights</p>
               </div>
@@ -2764,27 +3005,1516 @@ export default function DataRoomPage() {
         })()}
 
         {activeTab === 'notices' && (
-          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-12">
-            <div className="flex flex-col items-center justify-center py-16">
-              <div className="w-20 h-20 bg-primary-orange/20 rounded-full flex items-center justify-center mb-6">
-                <svg
-                  width="40"
-                  height="40"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-primary-orange"
-                >
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-light text-white mb-1">Government Notices</h2>
+                <p className="text-gray-400">Track and respond to regulatory notices from various departments</p>
               </div>
-              <h2 className="text-2xl font-light text-white mb-2">Notices</h2>
-              <p className="text-gray-400 text-lg">Coming Soon</p>
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Status Filter */}
+                <select
+                  value={noticesFilter}
+                  onChange={(e) => setNoticesFilter(e.target.value as any)}
+                  className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange"
+                >
+                  <option value="all">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="responded">Responded</option>
+                  <option value="resolved">Resolved</option>
+                </select>
+                {/* Type Filter */}
+                <select
+                  value={noticesTypeFilter}
+                  onChange={(e) => setNoticesTypeFilter(e.target.value)}
+                  className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange"
+                >
+                  <option value="all">All Types</option>
+                  <option value="Income Tax">Income Tax</option>
+                  <option value="GST">GST</option>
+                  <option value="MCA/RoC">MCA/RoC</option>
+                  <option value="Labour Law">Labour Law</option>
+                </select>
+                <button 
+                  onClick={() => setIsAddNoticeModalOpen(true)}
+                  className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2 text-sm"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                  Add Notice
+                </button>
+              </div>
             </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-light text-white">{demoNotices.filter(n => n.status === 'pending').length}</p>
+                    <p className="text-gray-400 text-xs">Pending Response</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EAB308" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-light text-white">{demoNotices.filter(n => n.status === 'responded').length}</p>
+                    <p className="text-gray-400 text-xs">Awaiting Decision</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                      <polyline points="22 4 12 14.01 9 11.01" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-light text-white">{demoNotices.filter(n => n.status === 'resolved').length}</p>
+                    <p className="text-gray-400 text-xs">Resolved</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A855F7" strokeWidth="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-light text-white">{demoNotices.length}</p>
+                    <p className="text-gray-400 text-xs">Total Notices</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Main Content - List and Detail View */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Notices List */}
+              <div className="lg:col-span-1 space-y-3">
+                <p className="text-gray-400 text-sm mb-2">{filteredNotices.length} notices found</p>
+                {filteredNotices.map((notice) => (
+                  <div
+                    key={notice.id}
+                    onClick={() => setSelectedNotice(notice)}
+                    className={`bg-primary-dark-card border rounded-xl p-4 cursor-pointer transition-all hover:border-primary-orange/50 ${
+                      selectedNotice?.id === notice.id ? 'border-primary-orange' : 'border-gray-800'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                          notice.type === 'Income Tax' ? 'bg-blue-500/20 text-blue-400' :
+                          notice.type === 'GST' ? 'bg-green-500/20 text-green-400' :
+                          notice.type === 'MCA/RoC' ? 'bg-purple-500/20 text-purple-400' :
+                          'bg-orange-500/20 text-orange-400'
+                        }`}>
+                          {notice.type}
+                        </span>
+                        {notice.priority === 'critical' && (
+                          <span className="px-2 py-0.5 bg-red-500/20 text-red-400 rounded text-xs">Critical</span>
+                        )}
+                      </div>
+                      <span className={`px-2 py-0.5 rounded text-xs ${
+                        notice.status === 'pending' ? 'bg-red-500/20 text-red-400' :
+                        notice.status === 'responded' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-green-500/20 text-green-400'
+                      }`}>
+                        {notice.status.charAt(0).toUpperCase() + notice.status.slice(1)}
+                      </span>
+                    </div>
+                    <h4 className="text-white text-sm font-medium mb-1 line-clamp-2">{notice.subject}</h4>
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>{notice.id}</span>
+                      <span>Due: {new Date(notice.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Notice Detail */}
+              <div className="lg:col-span-2">
+                {selectedNotice ? (
+                  <div className="bg-primary-dark-card border border-gray-800 rounded-2xl overflow-hidden">
+                    {/* Detail Header */}
+                    <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-6 border-b border-gray-800">
+                      <div className="flex items-start justify-between gap-4 mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                            selectedNotice.type === 'Income Tax' ? 'bg-blue-500/20' :
+                            selectedNotice.type === 'GST' ? 'bg-green-500/20' :
+                            selectedNotice.type === 'MCA/RoC' ? 'bg-purple-500/20' :
+                            'bg-orange-500/20'
+                          }`}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={
+                              selectedNotice.type === 'Income Tax' ? '#3B82F6' :
+                              selectedNotice.type === 'GST' ? '#22C55E' :
+                              selectedNotice.type === 'MCA/RoC' ? '#A855F7' :
+                              '#F97316'
+                            } strokeWidth="2">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                              <polyline points="14 2 14 8 20 8" />
+                              <line x1="16" y1="13" x2="8" y2="13" />
+                              <line x1="16" y1="17" x2="8" y2="17" />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 text-sm">{selectedNotice.id}</p>
+                            <h3 className="text-white text-lg font-medium">{selectedNotice.subType}</h3>
+                          </div>
+                        </div>
+                        <span className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                          selectedNotice.status === 'pending' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                          selectedNotice.status === 'responded' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                          'bg-green-500/20 text-green-400 border border-green-500/30'
+                        }`}>
+                          {selectedNotice.status.charAt(0).toUpperCase() + selectedNotice.status.slice(1)}
+                        </span>
+                      </div>
+                      <h2 className="text-white text-xl mb-2">{selectedNotice.subject}</h2>
+                      <div className="flex flex-wrap items-center gap-4 text-sm">
+                        <span className="text-gray-400">
+                          <span className="text-gray-500">Section:</span> {selectedNotice.section}
+                        </span>
+                        <span className="text-gray-400">
+                          <span className="text-gray-500">Issued:</span> {new Date(selectedNotice.issuedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </span>
+                        <span className={`${new Date(selectedNotice.dueDate) < new Date() && selectedNotice.status === 'pending' ? 'text-red-400' : 'text-gray-400'}`}>
+                          <span className="text-gray-500">Due:</span> {new Date(selectedNotice.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Detail Body */}
+                    <div className="p-6 space-y-6">
+                      {/* Description */}
+                      <div>
+                        <h4 className="text-gray-400 text-sm font-medium mb-2">Notice Description</h4>
+                        <p className="text-white text-sm leading-relaxed bg-gray-900/50 p-4 rounded-lg">
+                          {selectedNotice.description}
+                        </p>
+                      </div>
+
+                      {/* Required Documents */}
+                      <div>
+                        <h4 className="text-gray-400 text-sm font-medium mb-2">Required Documents</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedNotice.documents.map((doc: string, idx: number) => (
+                            <span key={idx} className="px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg text-sm flex items-center gap-2">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                              </svg>
+                              {doc}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Timeline */}
+                      <div>
+                        <h4 className="text-gray-400 text-sm font-medium mb-3">Activity Timeline</h4>
+                        <div className="space-y-3">
+                          {selectedNotice.timeline.map((event: any, idx: number) => (
+                            <div key={idx} className="flex items-start gap-3">
+                              <div className="flex flex-col items-center">
+                                <div className={`w-3 h-3 rounded-full ${idx === 0 ? 'bg-primary-orange' : 'bg-gray-600'}`}></div>
+                                {idx < selectedNotice.timeline.length - 1 && (
+                                  <div className="w-0.5 h-8 bg-gray-700"></div>
+                                )}
+                              </div>
+                              <div className="flex-1 pb-2">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-white text-sm">{event.action}</p>
+                                  <span className="text-gray-500 text-xs">{new Date(event.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                                </div>
+                                <p className="text-gray-500 text-xs">by {event.by}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Response Section (only for pending notices) */}
+                      {selectedNotice.status === 'pending' && (
+                        <div className="border-t border-gray-800 pt-6">
+                          <h4 className="text-gray-400 text-sm font-medium mb-3">Submit Response</h4>
+                          <textarea
+                            value={noticeResponse}
+                            onChange={(e) => setNoticeResponse(e.target.value)}
+                            placeholder="Enter your response or remarks..."
+                            rows={4}
+                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors resize-none"
+                          />
+                          <div className="flex items-center justify-between mt-4">
+                            <button className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                              </svg>
+                              Attach Documents
+                            </button>
+                            <button
+                              onClick={async () => {
+                                setIsSubmittingResponse(true)
+                                await new Promise(resolve => setTimeout(resolve, 1500))
+                                setSelectedNotice({ ...selectedNotice, status: 'responded', timeline: [...selectedNotice.timeline, { date: new Date().toISOString().split('T')[0], action: 'Response Submitted', by: 'You' }] })
+                                setNoticeResponse('')
+                                setIsSubmittingResponse(false)
+                              }}
+                              disabled={isSubmittingResponse || !noticeResponse.trim()}
+                              className="px-6 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isSubmittingResponse ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                  Submitting...
+                                </>
+                              ) : (
+                                <>
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <line x1="22" y1="2" x2="11" y2="13" />
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                                  </svg>
+                                  Submit Response
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Actions for responded/resolved notices */}
+                      {selectedNotice.status !== 'pending' && (
+                        <div className="border-t border-gray-800 pt-6 flex items-center gap-3">
+                          <button className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="7 10 12 15 17 10" />
+                              <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            Download Notice
+                          </button>
+                          <button className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                              <polyline points="14 2 14 8 20 8" />
+                            </svg>
+                            View Response
+                          </button>
+                          {selectedNotice.status === 'responded' && (
+                            <button className="px-4 py-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors flex items-center gap-2 text-sm">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                <polyline points="22 4 12 14.01 9 11.01" />
+                              </svg>
+                              Mark as Resolved
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-primary-dark-card border border-gray-800 rounded-2xl h-full flex flex-col items-center justify-center py-20">
+                    <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mb-6">
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="1.5">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                      </svg>
+                    </div>
+                    <h3 className="text-white text-lg font-medium mb-2">Select a Notice</h3>
+                    <p className="text-gray-400 text-sm">Click on a notice from the list to view details</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Notice Modal */}
+        {isAddNoticeModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+              {/* Modal Header */}
+              <div className="sticky top-0 bg-primary-dark-card border-b border-gray-800 p-6 flex items-center justify-between z-10">
+                <div>
+                  <h2 className="text-2xl font-light text-white mb-1">Add New Notice</h2>
+                  <p className="text-gray-400 text-sm">Enter the details of the government notice received</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsAddNoticeModalOpen(false)
+                    setNewNoticeForm({
+                      type: 'Income Tax',
+                      subType: '',
+                      section: '',
+                      subject: '',
+                      issuedBy: '',
+                      issuedDate: new Date().toISOString().split('T')[0],
+                      dueDate: '',
+                      priority: 'medium',
+                      description: '',
+                      documents: []
+                    })
+                    setNewDocument('')
+                  }}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-6">
+                {/* Notice Type */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Notice Type <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={newNoticeForm.type}
+                      onChange={(e) => setNewNoticeForm({ ...newNoticeForm, type: e.target.value })}
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    >
+                      <option value="Income Tax">Income Tax</option>
+                      <option value="GST">GST</option>
+                      <option value="MCA/RoC">MCA/RoC</option>
+                      <option value="Labour Law">Labour Law</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Sub Type <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newNoticeForm.subType}
+                      onChange={(e) => setNewNoticeForm({ ...newNoticeForm, subType: e.target.value })}
+                      placeholder="e.g., Scrutiny Notice, Show Cause Notice"
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    />
+                  </div>
+                </div>
+
+                {/* Section & Subject */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Section/Act <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newNoticeForm.section}
+                      onChange={(e) => setNewNoticeForm({ ...newNoticeForm, section: e.target.value })}
+                      placeholder="e.g., Section 143(2), Section 73"
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Priority
+                    </label>
+                    <select
+                      value={newNoticeForm.priority}
+                      onChange={(e) => setNewNoticeForm({ ...newNoticeForm, priority: e.target.value })}
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Subject */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Subject <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newNoticeForm.subject}
+                    onChange={(e) => setNewNoticeForm({ ...newNoticeForm, subject: e.target.value })}
+                    placeholder="Enter the notice subject/title"
+                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                  />
+                </div>
+
+                {/* Issued By & Dates */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Issued By <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newNoticeForm.issuedBy}
+                      onChange={(e) => setNewNoticeForm({ ...newNoticeForm, issuedBy: e.target.value })}
+                      placeholder="e.g., Income Tax Department"
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Issued Date <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        readOnly
+                        value={newNoticeForm.issuedDate ? formatDateForDisplay(newNoticeForm.issuedDate) : ''}
+                        onClick={() => {
+                          const dateInput = document.getElementById('issuedDate-hidden') as HTMLInputElement
+                          if (dateInput) {
+                            try {
+                              dateInput.showPicker?.()
+                            } catch {
+                              dateInput.click()
+                            }
+                          }
+                        }}
+                        placeholder="Select date"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors cursor-pointer pr-10"
+                      />
+                      <input
+                        type="date"
+                        id="issuedDate-hidden"
+                        value={newNoticeForm.issuedDate}
+                        onChange={(e) => setNewNoticeForm({ ...newNoticeForm, issuedDate: e.target.value })}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        style={{ pointerEvents: 'auto' }}
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                          <line x1="16" y1="2" x2="16" y2="6" />
+                          <line x1="8" y1="2" x2="8" y2="6" />
+                          <line x1="3" y1="10" x2="21" y2="10" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Due Date <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        readOnly
+                        value={newNoticeForm.dueDate ? formatDateForDisplay(newNoticeForm.dueDate) : ''}
+                        onClick={() => {
+                          const dateInput = document.getElementById('dueDate-hidden') as HTMLInputElement
+                          if (dateInput) {
+                            try {
+                              dateInput.showPicker?.()
+                            } catch {
+                              dateInput.click()
+                            }
+                          }
+                        }}
+                        placeholder="Select date"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors cursor-pointer pr-10"
+                      />
+                      <input
+                        type="date"
+                        id="dueDate-hidden"
+                        value={newNoticeForm.dueDate}
+                        onChange={(e) => setNewNoticeForm({ ...newNoticeForm, dueDate: e.target.value })}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        style={{ pointerEvents: 'auto' }}
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                          <line x1="16" y1="2" x2="16" y2="6" />
+                          <line x1="8" y1="2" x2="8" y2="6" />
+                          <line x1="3" y1="10" x2="21" y2="10" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Description <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={newNoticeForm.description}
+                    onChange={(e) => setNewNoticeForm({ ...newNoticeForm, description: e.target.value })}
+                    placeholder="Enter the full notice description and requirements..."
+                    rows={5}
+                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors resize-none"
+                  />
+                </div>
+
+                {/* Required Documents */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Required Documents
+                  </label>
+                  <div className="space-y-3">
+                    {/* Existing Documents */}
+                    {newNoticeForm.documents.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {newNoticeForm.documents.map((doc, idx) => (
+                          <span key={idx} className="px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg text-sm flex items-center gap-2">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                              <polyline points="14 2 14 8 20 8" />
+                            </svg>
+                            {doc}
+                            <button
+                              onClick={() => {
+                                setNewNoticeForm({
+                                  ...newNoticeForm,
+                                  documents: newNoticeForm.documents.filter((_, i) => i !== idx)
+                                })
+                              }}
+                              className="ml-1 hover:text-red-400 transition-colors"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add Document Input */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newDocument}
+                        onChange={(e) => setNewDocument(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' && newDocument.trim()) {
+                            setNewNoticeForm({
+                              ...newNoticeForm,
+                              documents: [...newNoticeForm.documents, newDocument.trim()]
+                            })
+                            setNewDocument('')
+                          }
+                        }}
+                        placeholder="Enter document name and press Enter"
+                        className="flex-1 px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      />
+                      <button
+                        onClick={() => {
+                          if (newDocument.trim()) {
+                            setNewNoticeForm({
+                              ...newNoticeForm,
+                              documents: [...newNoticeForm.documents, newDocument.trim()]
+                            })
+                            setNewDocument('')
+                          }
+                        }}
+                        className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 5v14M5 12h14" />
+                        </svg>
+                        Add
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form Actions */}
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-800">
+                  <button
+                    onClick={() => {
+                      setIsAddNoticeModalOpen(false)
+                      setNewNoticeForm({
+                        type: 'Income Tax',
+                        subType: '',
+                        section: '',
+                        subject: '',
+                        issuedBy: '',
+                        issuedDate: new Date().toISOString().split('T')[0],
+                        dueDate: '',
+                        priority: 'medium',
+                        description: '',
+                        documents: []
+                      })
+                      setNewDocument('')
+                    }}
+                    className="px-6 py-2.5 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      // Validation
+                      if (!newNoticeForm.type || !newNoticeForm.subType || !newNoticeForm.section || 
+                          !newNoticeForm.subject || !newNoticeForm.issuedBy || !newNoticeForm.issuedDate || 
+                          !newNoticeForm.dueDate || !newNoticeForm.description) {
+                        alert('Please fill in all required fields')
+                        return
+                      }
+
+                      setIsSubmittingNotice(true)
+                      
+                      // Simulate API call
+                      await new Promise(resolve => setTimeout(resolve, 1500))
+
+                      // Generate notice ID
+                      const noticeId = `NOT-${new Date().getFullYear()}-${String(demoNotices.length + 1).padStart(3, '0')}`
+
+                      // Create new notice
+                      const newNotice = {
+                        id: noticeId,
+                        type: newNoticeForm.type,
+                        subType: newNoticeForm.subType,
+                        section: newNoticeForm.section,
+                        subject: newNoticeForm.subject,
+                        issuedBy: newNoticeForm.issuedBy,
+                        issuedDate: newNoticeForm.issuedDate,
+                        dueDate: newNoticeForm.dueDate,
+                        status: 'pending',
+                        priority: newNoticeForm.priority,
+                        description: newNoticeForm.description,
+                        documents: newNoticeForm.documents,
+                        timeline: [
+                          { date: newNoticeForm.issuedDate, action: 'Notice Received', by: 'You' }
+                        ]
+                      }
+
+                      // Add to notices list
+                      setDemoNotices([newNotice, ...demoNotices])
+                      
+                      // Select the new notice
+                      setSelectedNotice(newNotice)
+
+                      // Reset form and close modal
+                      setNewNoticeForm({
+                        type: 'Income Tax',
+                        subType: '',
+                        section: '',
+                        subject: '',
+                        issuedBy: '',
+                        issuedDate: new Date().toISOString().split('T')[0],
+                        dueDate: '',
+                        priority: 'medium',
+                        description: '',
+                        documents: []
+                      })
+                      setNewDocument('')
+                      setIsAddNoticeModalOpen(false)
+                      setIsSubmittingNotice(false)
+                    }}
+                    disabled={isSubmittingNotice}
+                    className="px-6 py-2.5 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {isSubmittingNotice ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Adding...
+                      </>
+                    ) : (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                          <polyline points="22 4 12 14.01 9 11.01" />
+                        </svg>
+                        Add Notice
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'gst' && (
+          <div className="space-y-6">
+            {/* GST Integration Flow */}
+            {gstStep === 'connect' && (
+              <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-8">
+                <div className="max-w-lg mx-auto">
+                  {/* Header */}
+                  <div className="text-center mb-8">
+                    <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/20">
+                      <span className="text-3xl font-bold text-white">GST</span>
+                    </div>
+                    <h2 className="text-2xl font-light text-white mb-2">Connect Your GST Account</h2>
+                    <p className="text-gray-400">Link your GST portal credentials to fetch returns automatically</p>
+                  </div>
+
+                  {/* Progress Steps */}
+                  <div className="flex items-center justify-center gap-4 mb-8">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-primary-orange rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
+                      <span className="text-white text-sm">Connect</span>
+                    </div>
+                    <div className="h-px w-12 bg-gray-700"></div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-gray-400 text-sm font-bold">2</div>
+                      <span className="text-gray-400 text-sm">Verify OTP</span>
+                    </div>
+                    <div className="h-px w-12 bg-gray-700"></div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-gray-400 text-sm font-bold">3</div>
+                      <span className="text-gray-400 text-sm">Dashboard</span>
+                    </div>
+                  </div>
+
+                  {/* Form */}
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        GSTIN <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={gstCredentials.gstin}
+                        onChange={(e) => setGstCredentials({ ...gstCredentials, gstin: e.target.value.toUpperCase() })}
+                        placeholder="Enter your 15-digit GSTIN"
+                        maxLength={15}
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors font-mono tracking-wider"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">Example: 27AQOPD9471C3ZM</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        GST Portal Username <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={gstCredentials.gstUsername}
+                        onChange={(e) => setGstCredentials({ ...gstCredentials, gstUsername: e.target.value })}
+                        placeholder="Enter your GST portal username"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      />
+                    </div>
+
+                    {gstError && (
+                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400 text-sm">
+                        {gstError}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={async () => {
+                        if (!gstCredentials.gstin || !gstCredentials.gstUsername) {
+                          setGstError('Please enter both GSTIN and Username')
+                          return
+                        }
+                        if (gstCredentials.gstin.length !== 15) {
+                          setGstError('GSTIN must be exactly 15 characters')
+                          return
+                        }
+                        setGstError(null)
+                        setIsGstLoading(true)
+                        // Simulate API call to send OTP
+                        await new Promise(resolve => setTimeout(resolve, 1500))
+                        setIsGstLoading(false)
+                        setGstStep('otp')
+                      }}
+                      disabled={isGstLoading}
+                      className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-green-500/20"
+                    >
+                      {isGstLoading ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Sending OTP...
+                        </>
+                      ) : (
+                        <>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M22 2L11 13" />
+                            <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+                          </svg>
+                          Send OTP
+                        </>
+                      )}
+                    </button>
+
+                    <p className="text-center text-xs text-gray-500">
+                      By connecting, you agree to share your GST data securely with Finnovate
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {gstStep === 'otp' && (
+              <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-8">
+                <div className="max-w-lg mx-auto">
+                  {/* Header */}
+                  <div className="text-center mb-8">
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/20">
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                    </div>
+                    <h2 className="text-2xl font-light text-white mb-2">Verify OTP</h2>
+                    <p className="text-gray-400">Enter the OTP sent to your registered mobile number</p>
+                  </div>
+
+                  {/* Progress Steps */}
+                  <div className="flex items-center justify-center gap-4 mb-8">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      </div>
+                      <span className="text-green-400 text-sm">Connect</span>
+                    </div>
+                    <div className="h-px w-12 bg-green-500"></div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-primary-orange rounded-full flex items-center justify-center text-white text-sm font-bold">2</div>
+                      <span className="text-white text-sm">Verify OTP</span>
+                    </div>
+                    <div className="h-px w-12 bg-gray-700"></div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-gray-400 text-sm font-bold">3</div>
+                      <span className="text-gray-400 text-sm">Dashboard</span>
+                    </div>
+                  </div>
+
+                  {/* OTP Info */}
+                  <div className="bg-gray-900/50 rounded-lg p-4 mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                        <span className="text-green-400 font-bold text-sm">GST</span>
+                      </div>
+                      <div>
+                        <p className="text-white font-medium">{gstCredentials.gstin}</p>
+                        <p className="text-gray-400 text-sm">{gstCredentials.gstUsername}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* OTP Input */}
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Enter OTP <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={gstOtp}
+                        onChange={(e) => setGstOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="Enter 6-digit OTP"
+                        maxLength={6}
+                        className="w-full px-4 py-4 bg-gray-900 border border-gray-700 rounded-lg text-white text-center text-2xl font-mono tracking-[0.5em] placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      />
+                      <p className="mt-2 text-center text-xs text-gray-500">
+                        OTP expires in <span className="text-primary-orange">5:00</span> minutes
+                      </p>
+                    </div>
+
+                    {gstError && (
+                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400 text-sm">
+                        {gstError}
+                      </div>
+                    )}
+
+                    <div className="flex gap-4">
+                      <button
+                        onClick={() => {
+                          setGstStep('connect')
+                          setGstOtp('')
+                          setGstError(null)
+                        }}
+                        className="flex-1 py-4 bg-gray-800 text-gray-300 rounded-lg font-medium hover:bg-gray-700 transition-colors"
+                      >
+                        Back
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (gstOtp.length !== 6) {
+                            setGstError('Please enter a valid 6-digit OTP')
+                            return
+                          }
+                          setGstError(null)
+                          setIsGstLoading(true)
+                          // Simulate API authentication
+                          await new Promise(resolve => setTimeout(resolve, 2000))
+                          setGstAuthToken('demo_auth_token_' + Date.now())
+                          // Load mock GST data
+                          setGstData({
+                            gstin: gstCredentials.gstin,
+                            tradeName: currentCompany?.name || 'Demo Company',
+                            legalName: currentCompany?.name || 'Demo Company Pvt Ltd',
+                            status: 'Active',
+                            gstr1: {
+                              filed: true,
+                              filedDate: '2026-01-11',
+                              period: '122025',
+                              totalInvoices: 156,
+                              totalValue: 4523150.00,
+                              igst: 287650.00,
+                              cgst: 143825.00,
+                              sgst: 143825.00,
+                              cess: 0
+                            },
+                            gstr3b: {
+                              filed: true,
+                              filedDate: '2026-01-20',
+                              period: '122025',
+                              totalLiability: 575300.00,
+                              itcClaimed: 412500.00,
+                              taxPaid: 162800.00
+                            },
+                            cashBalance: {
+                              igst: 125180.00,
+                              cgst: 62590.00,
+                              sgst: 62590.00,
+                              cess: 0
+                            },
+                            itcBalance: {
+                              igst: 312500.00,
+                              cgst: 156250.00,
+                              sgst: 156250.00,
+                              cess: 0
+                            }
+                          })
+                          setIsGstLoading(false)
+                          setGstStep('dashboard')
+                        }}
+                        disabled={isGstLoading || gstOtp.length !== 6}
+                        className="flex-1 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-green-500/20"
+                      >
+                        {isGstLoading ? (
+                          <>
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Verifying...
+                          </>
+                        ) : (
+                          <>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                              <polyline points="22 4 12 14.01 9 11.01" />
+                            </svg>
+                            Verify & Connect
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <button className="w-full text-center text-sm text-primary-orange hover:text-primary-orange/80 transition-colors">
+                      Didn't receive OTP? Resend
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {gstStep === 'dashboard' && gstData && (
+              <div className="space-y-6">
+                {/* GST Dashboard Header */}
+                <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-6">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-500/20">
+                        <span className="text-xl font-bold text-white">GST</span>
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-light text-white">{gstData.tradeName}</h2>
+                        <p className="text-gray-400 font-mono">{gstData.gstin}</p>
+                        <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs">
+                          <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+                          {gstData.status}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <select
+                        value={selectedGstPeriod}
+                        onChange={(e) => setSelectedGstPeriod(e.target.value)}
+                        className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                      >
+                        <option value="012026">January 2026</option>
+                        <option value="122025">December 2025</option>
+                        <option value="112025">November 2025</option>
+                        <option value="102025">October 2025</option>
+                      </select>
+                      <button
+                        onClick={() => {
+                          setGstStep('connect')
+                          setGstAuthToken(null)
+                          setGstData(null)
+                          setGstCredentials({ gstin: '', gstUsername: '' })
+                          setGstOtp('')
+                        }}
+                        className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                      >
+                        Disconnect
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Navigation Tabs */}
+                <div className="flex flex-wrap gap-2 overflow-x-auto pb-2">
+                  {[
+                    { id: 'overview', label: 'Overview', icon: '📊' },
+                    { id: 'gstr1', label: 'GSTR-1', icon: '📤' },
+                    { id: 'gstr2a', label: 'GSTR-2A', icon: '📥' },
+                    { id: 'gstr2b', label: 'GSTR-2B', icon: '📋' },
+                    { id: 'gstr3b', label: 'GSTR-3B', icon: '📝' },
+                    { id: 'ledger', label: 'Ledger', icon: '💰' }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setGstActiveSection(tab.id as any)}
+                      className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap ${
+                        gstActiveSection === tab.id
+                          ? 'bg-primary-orange text-white'
+                          : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                      }`}
+                    >
+                      <span>{tab.icon}</span>
+                      <span>{tab.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Overview Section */}
+                {gstActiveSection === 'overview' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Cash Balance Card */}
+                    <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2">
+                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+                            <line x1="1" y1="10" x2="23" y2="10" />
+                          </svg>
+                        </div>
+                        <span className="text-gray-400 text-sm">Cash Balance</span>
+                      </div>
+                      <p className="text-2xl font-light text-white mb-2">
+                        ₹{(gstData.cashBalance.igst + gstData.cashBalance.cgst + gstData.cashBalance.sgst).toLocaleString('en-IN')}
+                      </p>
+                      <div className="text-xs text-gray-500 space-y-1">
+                        <div className="flex justify-between"><span>IGST</span><span>₹{gstData.cashBalance.igst.toLocaleString('en-IN')}</span></div>
+                        <div className="flex justify-between"><span>CGST</span><span>₹{gstData.cashBalance.cgst.toLocaleString('en-IN')}</span></div>
+                        <div className="flex justify-between"><span>SGST</span><span>₹{gstData.cashBalance.sgst.toLocaleString('en-IN')}</span></div>
+                      </div>
+                    </div>
+
+                    {/* ITC Balance Card */}
+                    <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                          </svg>
+                        </div>
+                        <span className="text-gray-400 text-sm">ITC Balance</span>
+                      </div>
+                      <p className="text-2xl font-light text-white mb-2">
+                        ₹{(gstData.itcBalance.igst + gstData.itcBalance.cgst + gstData.itcBalance.sgst).toLocaleString('en-IN')}
+                      </p>
+                      <div className="text-xs text-gray-500 space-y-1">
+                        <div className="flex justify-between"><span>IGST</span><span>₹{gstData.itcBalance.igst.toLocaleString('en-IN')}</span></div>
+                        <div className="flex justify-between"><span>CGST</span><span>₹{gstData.itcBalance.cgst.toLocaleString('en-IN')}</span></div>
+                        <div className="flex justify-between"><span>SGST</span><span>₹{gstData.itcBalance.sgst.toLocaleString('en-IN')}</span></div>
+                      </div>
+                    </div>
+
+                    {/* GSTR-1 Status Card */}
+                    <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A855F7" strokeWidth="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <line x1="16" y1="13" x2="8" y2="13" />
+                            <line x1="16" y1="17" x2="8" y2="17" />
+                          </svg>
+                        </div>
+                        <span className="text-gray-400 text-sm">GSTR-1 (Dec 2025)</span>
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`px-2 py-0.5 rounded text-xs ${gstData.gstr1.filed ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                          {gstData.gstr1.filed ? 'Filed' : 'Pending'}
+                        </span>
+                        <span className="text-gray-500 text-xs">{gstData.gstr1.filedDate}</span>
+                      </div>
+                      <p className="text-lg font-light text-white">₹{gstData.gstr1.totalValue.toLocaleString('en-IN')}</p>
+                      <p className="text-xs text-gray-500">{gstData.gstr1.totalInvoices} invoices</p>
+                    </div>
+
+                    {/* GSTR-3B Status Card */}
+                    <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2">
+                            <path d="M9 11l3 3L22 4" />
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                          </svg>
+                        </div>
+                        <span className="text-gray-400 text-sm">GSTR-3B (Dec 2025)</span>
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`px-2 py-0.5 rounded text-xs ${gstData.gstr3b.filed ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                          {gstData.gstr3b.filed ? 'Filed' : 'Pending'}
+                        </span>
+                        <span className="text-gray-500 text-xs">{gstData.gstr3b.filedDate}</span>
+                      </div>
+                      <p className="text-lg font-light text-white">₹{gstData.gstr3b.taxPaid.toLocaleString('en-IN')}</p>
+                      <p className="text-xs text-gray-500">Tax paid</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* GSTR-1 Section */}
+                {gstActiveSection === 'gstr1' && (
+                  <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-xl font-light text-white">GSTR-1 - Outward Supplies</h3>
+                        <p className="text-gray-400 text-sm">Return period: December 2025</p>
+                      </div>
+                      <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm">Filed on {gstData.gstr1.filedDate}</span>
+                    </div>
+
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                      <div className="bg-gray-900/50 rounded-lg p-4">
+                        <p className="text-gray-400 text-xs mb-1">Total Value</p>
+                        <p className="text-white text-lg font-light">₹{gstData.gstr1.totalValue.toLocaleString('en-IN')}</p>
+                      </div>
+                      <div className="bg-gray-900/50 rounded-lg p-4">
+                        <p className="text-gray-400 text-xs mb-1">IGST</p>
+                        <p className="text-white text-lg font-light">₹{gstData.gstr1.igst.toLocaleString('en-IN')}</p>
+                      </div>
+                      <div className="bg-gray-900/50 rounded-lg p-4">
+                        <p className="text-gray-400 text-xs mb-1">CGST</p>
+                        <p className="text-white text-lg font-light">₹{gstData.gstr1.cgst.toLocaleString('en-IN')}</p>
+                      </div>
+                      <div className="bg-gray-900/50 rounded-lg p-4">
+                        <p className="text-gray-400 text-xs mb-1">SGST</p>
+                        <p className="text-white text-lg font-light">₹{gstData.gstr1.sgst.toLocaleString('en-IN')}</p>
+                      </div>
+                      <div className="bg-gray-900/50 rounded-lg p-4">
+                        <p className="text-gray-400 text-xs mb-1">Invoices</p>
+                        <p className="text-white text-lg font-light">{gstData.gstr1.totalInvoices}</p>
+                      </div>
+                    </div>
+
+                    {/* Sample Invoice Table */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-800">
+                            <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Invoice No</th>
+                            <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Date</th>
+                            <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Customer GSTIN</th>
+                            <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">Value</th>
+                            <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">Tax</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            { inv: 'INV-2025-001', date: '05-12-2025', ctin: '29AABCU9603R1ZJ', val: 125000, tax: 22500 },
+                            { inv: 'INV-2025-002', date: '08-12-2025', ctin: '27AAACR5055K1Z7', val: 85000, tax: 15300 },
+                            { inv: 'INV-2025-003', date: '12-12-2025', ctin: '33AADCB2230M1ZE', val: 210000, tax: 37800 },
+                            { inv: 'INV-2025-004', date: '18-12-2025', ctin: '07AAHCS0973B1ZL', val: 56000, tax: 10080 },
+                            { inv: 'INV-2025-005', date: '25-12-2025', ctin: '19AAECI3797E1ZO', val: 175000, tax: 31500 }
+                          ].map((row, idx) => (
+                            <tr key={idx} className="border-b border-gray-800/50 hover:bg-gray-900/30">
+                              <td className="py-3 px-4 text-white font-mono text-sm">{row.inv}</td>
+                              <td className="py-3 px-4 text-gray-300 text-sm">{row.date}</td>
+                              <td className="py-3 px-4 text-gray-300 font-mono text-sm">{row.ctin}</td>
+                              <td className="py-3 px-4 text-white text-sm text-right">₹{row.val.toLocaleString('en-IN')}</td>
+                              <td className="py-3 px-4 text-green-400 text-sm text-right">₹{row.tax.toLocaleString('en-IN')}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* GSTR-2A Section */}
+                {gstActiveSection === 'gstr2a' && (
+                  <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-xl font-light text-white">GSTR-2A - Auto-drafted Inward Supplies</h3>
+                        <p className="text-gray-400 text-sm">Return period: December 2025</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                      <div className="bg-gray-900/50 rounded-lg p-4">
+                        <p className="text-gray-400 text-xs mb-1">Total ITC Available</p>
+                        <p className="text-white text-lg font-light">₹412,500</p>
+                      </div>
+                      <div className="bg-gray-900/50 rounded-lg p-4">
+                        <p className="text-gray-400 text-xs mb-1">B2B Invoices</p>
+                        <p className="text-white text-lg font-light">89</p>
+                      </div>
+                      <div className="bg-gray-900/50 rounded-lg p-4">
+                        <p className="text-gray-400 text-xs mb-1">Credit Notes</p>
+                        <p className="text-white text-lg font-light">12</p>
+                      </div>
+                      <div className="bg-gray-900/50 rounded-lg p-4">
+                        <p className="text-gray-400 text-xs mb-1">Amendments</p>
+                        <p className="text-white text-lg font-light">3</p>
+                      </div>
+                    </div>
+
+                    {/* Sample Table */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-800">
+                            <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Supplier GSTIN</th>
+                            <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Trade Name</th>
+                            <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Invoice</th>
+                            <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">Taxable Value</th>
+                            <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">ITC</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {[
+                            { gstin: '29AABCU9603R1ZJ', name: 'ABC Traders', inv: 'ST/001', val: 85000, itc: 15300 },
+                            { gstin: '27AAACR5055K1Z7', name: 'XYZ Supplies', inv: 'INV-789', val: 125000, itc: 22500 },
+                            { gstin: '33AADCB2230M1ZE', name: 'Tech Solutions', inv: 'TS-456', val: 65000, itc: 11700 }
+                          ].map((row, idx) => (
+                            <tr key={idx} className="border-b border-gray-800/50 hover:bg-gray-900/30">
+                              <td className="py-3 px-4 text-gray-300 font-mono text-sm">{row.gstin}</td>
+                              <td className="py-3 px-4 text-white text-sm">{row.name}</td>
+                              <td className="py-3 px-4 text-gray-300 text-sm">{row.inv}</td>
+                              <td className="py-3 px-4 text-white text-sm text-right">₹{row.val.toLocaleString('en-IN')}</td>
+                              <td className="py-3 px-4 text-green-400 text-sm text-right">₹{row.itc.toLocaleString('en-IN')}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* GSTR-2B Section */}
+                {gstActiveSection === 'gstr2b' && (
+                  <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-xl font-light text-white">GSTR-2B - ITC Statement</h3>
+                        <p className="text-gray-400 text-sm">Return period: December 2025</p>
+                      </div>
+                      <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm">Generated on 14-01-2026</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                      {/* ITC Available */}
+                      <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-6">
+                        <h4 className="text-green-400 font-medium mb-4">ITC Available</h4>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-gray-400 text-xs mb-1">IGST</p>
+                            <p className="text-white text-lg">₹156,250</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 text-xs mb-1">CGST</p>
+                            <p className="text-white text-lg">₹128,125</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 text-xs mb-1">SGST</p>
+                            <p className="text-white text-lg">₹128,125</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 text-xs mb-1">Total</p>
+                            <p className="text-green-400 text-lg font-medium">₹412,500</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ITC Not Available */}
+                      <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6">
+                        <h4 className="text-red-400 font-medium mb-4">ITC Not Available</h4>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-gray-400 text-xs mb-1">IGST</p>
+                            <p className="text-white text-lg">₹12,500</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 text-xs mb-1">CGST</p>
+                            <p className="text-white text-lg">₹6,250</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 text-xs mb-1">SGST</p>
+                            <p className="text-white text-lg">₹6,250</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-400 text-xs mb-1">Total</p>
+                            <p className="text-red-400 text-lg font-medium">₹25,000</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* GSTR-3B Section */}
+                {gstActiveSection === 'gstr3b' && (
+                  <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-xl font-light text-white">GSTR-3B - Summary Return</h3>
+                        <p className="text-gray-400 text-sm">Return period: December 2025</p>
+                      </div>
+                      <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm">Filed on {gstData.gstr3b.filedDate}</span>
+                    </div>
+
+                    {/* Summary */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                      <div className="bg-gray-900/50 rounded-xl p-6">
+                        <h4 className="text-gray-400 text-sm mb-4">Tax Liability</h4>
+                        <p className="text-3xl font-light text-white mb-2">₹{gstData.gstr3b.totalLiability.toLocaleString('en-IN')}</p>
+                        <div className="text-xs text-gray-500 space-y-1">
+                          <div className="flex justify-between"><span>IGST</span><span>₹287,650</span></div>
+                          <div className="flex justify-between"><span>CGST</span><span>₹143,825</span></div>
+                          <div className="flex justify-between"><span>SGST</span><span>₹143,825</span></div>
+                        </div>
+                      </div>
+
+                      <div className="bg-gray-900/50 rounded-xl p-6">
+                        <h4 className="text-gray-400 text-sm mb-4">ITC Claimed</h4>
+                        <p className="text-3xl font-light text-green-400 mb-2">₹{gstData.gstr3b.itcClaimed.toLocaleString('en-IN')}</p>
+                        <div className="text-xs text-gray-500 space-y-1">
+                          <div className="flex justify-between"><span>IGST</span><span>₹206,250</span></div>
+                          <div className="flex justify-between"><span>CGST</span><span>₹103,125</span></div>
+                          <div className="flex justify-between"><span>SGST</span><span>₹103,125</span></div>
+                        </div>
+                      </div>
+
+                      <div className="bg-primary-orange/10 border border-primary-orange/30 rounded-xl p-6">
+                        <h4 className="text-gray-400 text-sm mb-4">Tax Paid</h4>
+                        <p className="text-3xl font-light text-primary-orange mb-2">₹{gstData.gstr3b.taxPaid.toLocaleString('en-IN')}</p>
+                        <div className="text-xs text-gray-500 space-y-1">
+                          <div className="flex justify-between"><span>Cash</span><span>₹81,400</span></div>
+                          <div className="flex justify-between"><span>ITC</span><span>₹81,400</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Ledger Section */}
+                {gstActiveSection === 'ledger' && (
+                  <div className="space-y-6">
+                    {/* Cash Ledger */}
+                    <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-6">
+                      <h3 className="text-xl font-light text-white mb-6">Cash Ledger</h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-gray-800">
+                              <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Date</th>
+                              <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Description</th>
+                              <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Ref No</th>
+                              <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">Credit</th>
+                              <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">Debit</th>
+                              <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">Balance</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[
+                              { date: '01-12-2025', desc: 'Opening Balance', ref: '-', cr: 0, dr: 0, bal: 185360 },
+                              { date: '05-12-2025', desc: 'Cash Deposit', ref: 'DC1205250001', cr: 100000, dr: 0, bal: 285360 },
+                              { date: '20-12-2025', desc: 'GSTR-3B Payment', ref: 'DC2012250002', cr: 0, dr: 35000, bal: 250360 }
+                            ].map((row, idx) => (
+                              <tr key={idx} className="border-b border-gray-800/50 hover:bg-gray-900/30">
+                                <td className="py-3 px-4 text-gray-300 text-sm">{row.date}</td>
+                                <td className="py-3 px-4 text-white text-sm">{row.desc}</td>
+                                <td className="py-3 px-4 text-gray-400 font-mono text-sm">{row.ref}</td>
+                                <td className="py-3 px-4 text-green-400 text-sm text-right">{row.cr > 0 ? `₹${row.cr.toLocaleString('en-IN')}` : '-'}</td>
+                                <td className="py-3 px-4 text-red-400 text-sm text-right">{row.dr > 0 ? `₹${row.dr.toLocaleString('en-IN')}` : '-'}</td>
+                                <td className="py-3 px-4 text-white text-sm text-right font-medium">₹{row.bal.toLocaleString('en-IN')}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* ITC Ledger */}
+                    <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-6">
+                      <h3 className="text-xl font-light text-white mb-6">ITC Ledger</h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-gray-800">
+                              <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Date</th>
+                              <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Description</th>
+                              <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Return Period</th>
+                              <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">Credit</th>
+                              <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">Debit</th>
+                              <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">Balance</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[
+                              { date: '01-12-2025', desc: 'Opening Balance', period: '-', cr: 0, dr: 0, bal: 525000 },
+                              { date: '11-12-2025', desc: 'ITC from GSTR-3B', period: '112025', cr: 100000, dr: 0, bal: 625000 },
+                              { date: '20-12-2025', desc: 'ITC Utilization', period: '122025', cr: 0, dr: 81400, bal: 543600 }
+                            ].map((row, idx) => (
+                              <tr key={idx} className="border-b border-gray-800/50 hover:bg-gray-900/30">
+                                <td className="py-3 px-4 text-gray-300 text-sm">{row.date}</td>
+                                <td className="py-3 px-4 text-white text-sm">{row.desc}</td>
+                                <td className="py-3 px-4 text-gray-400 text-sm">{row.period}</td>
+                                <td className="py-3 px-4 text-green-400 text-sm text-right">{row.cr > 0 ? `₹${row.cr.toLocaleString('en-IN')}` : '-'}</td>
+                                <td className="py-3 px-4 text-red-400 text-sm text-right">{row.dr > 0 ? `₹${row.dr.toLocaleString('en-IN')}` : '-'}</td>
+                                <td className="py-3 px-4 text-white text-sm text-right font-medium">₹{row.bal.toLocaleString('en-IN')}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -3819,7 +5549,7 @@ export default function DataRoomPage() {
                           </th>
                             <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                               TYPE
-                            </th>
+                          </th>
                           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                             STATUS
                           </th>
@@ -4496,7 +6226,21 @@ export default function DataRoomPage() {
                     const docFY = getFinancialYear(doc.registration_date)
                     return docFY === selectedFY
                   })
-                  const uploadedDocs = filteredVaultDocs.filter(d => d.folder_name === folderName)
+                  
+                  // Filter uploaded docs by folder, but move PAN and TAN to Financials and licenses
+                  let uploadedDocs = filteredVaultDocs.filter(d => {
+                    if (folderName === 'Financials and licenses') {
+                      // Include PAN and TAN from any folder
+                      return d.folder_name === folderName || 
+                             (d.document_type === 'PAN' || d.document_type === 'TAN')
+                    } else {
+                      // Exclude PAN and TAN from other folders
+                      return d.folder_name === folderName && 
+                             d.document_type !== 'PAN' && 
+                             d.document_type !== 'TAN'
+                    }
+                  })
+                  
                   const predefinedNames = predefinedDocuments[folderName] || []
                   
                   // Combine predefined and uploaded docs
@@ -4514,6 +6258,7 @@ export default function DataRoomPage() {
                   })
 
                   const iconColor = folderName === 'Constitutional Documents' ? 'bg-primary-orange' : 
+                                   folderName === 'Financials and licenses' ? 'bg-purple-500' :
                                    folderName === 'Taxation & GST Compliance' ? 'bg-green-500' : 'bg-blue-500'
                   
                   return (
@@ -4568,7 +6313,7 @@ export default function DataRoomPage() {
                                 </span>
                                 {doc.status === 'uploaded' && (
                                   <div className="text-gray-500 text-xs mt-1 break-words">
-                                    {doc.expiry_date ? `Expires: ${new Date(doc.expiry_date).toLocaleDateString()}` : 'No expiry date'}
+                                    {doc.expiry_date ? `Expires: ${formatDateForDisplay(doc.expiry_date)}` : 'No expiry date'}
                                     {doc.frequency && ` • ${doc.frequency.toUpperCase()}`}
                       </div>
                                 )}

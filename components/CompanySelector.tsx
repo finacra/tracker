@@ -53,11 +53,11 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
           </svg>
         </div>
         <div className="flex-1 text-left min-w-0">
+          <div className="text-gray-400 text-xs sm:text-sm mb-0.5 sm:mb-0">
+            {currentCompany ? `${currentCompany.type} — ${currentCompany.year}` : 'No company selected'}
+          </div>
           <div className="text-white text-base sm:text-2xl font-light break-words leading-tight">
             {currentCompany ? currentCompany.name : 'Select Company'}
-          </div>
-          <div className="text-gray-400 text-xs sm:text-sm mt-0.5 sm:mt-0">
-            {currentCompany ? `${currentCompany.type} — ${currentCompany.year}` : 'No company selected'}
           </div>
         </div>
         <svg
@@ -124,10 +124,10 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-white font-medium text-sm sm:text-base break-words">{company.name}</div>
-                    <div className="text-gray-400 text-xs sm:text-sm">
+                    <div className="text-gray-400 text-xs sm:text-sm mb-0.5">
                       {company.type} — {company.year}
                     </div>
+                    <div className="text-white font-medium text-sm sm:text-base break-words">{company.name}</div>
                   </div>
                   {currentCompany && company.id === currentCompany.id && (
                     <div className="w-2 h-2 bg-primary-orange rounded-full flex-shrink-0"></div>

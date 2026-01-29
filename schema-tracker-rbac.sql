@@ -556,19 +556,62 @@ BEGIN
   -- Match companies based on criteria
   -- If template specifies criteria, company must match. If template doesn't specify, match all.
   -- Use case-insensitive matching for entity types and industries
+  -- Also handles short company types from onboarding ("private", "llp", "ngo", "partnership", "sole")
   RETURN QUERY
   SELECT c.id
   FROM public.companies c
   WHERE 
-    -- Entity type match: if template has entity types specified, company type must match (case-insensitive)
-    -- Also handle variations like "ngo" matching "NGO / Section 8"
+    -- Entity type match: if template has entity types specified, company type must match
     (
       v_template.entity_types IS NULL 
       OR array_length(v_template.entity_types, 1) IS NULL 
       OR (c.type IS NOT NULL AND (
         -- Direct case-insensitive match
         LOWER(TRIM(c.type)) = ANY(SELECT LOWER(TRIM(unnest(v_template.entity_types))))
-        -- Handle "ngo" matching "NGO / Section 8" variations (more flexible)
+        
+        -- Handle short "private" value matching "Private Limited Company" templates
+        OR (LOWER(TRIM(c.type)) = 'private' AND EXISTS (
+          SELECT 1 FROM unnest(v_template.entity_types) AS t 
+          WHERE LOWER(t) LIKE '%private%limited%' OR LOWER(t) LIKE '%private%company%'
+        ))
+        
+        -- Handle short "partnership" value matching "Partnership Firm" templates
+        OR (LOWER(TRIM(c.type)) = 'partnership' AND EXISTS (
+          SELECT 1 FROM unnest(v_template.entity_types) AS t 
+          WHERE LOWER(t) LIKE '%partnership%'
+        ))
+        
+        -- Handle short "llp" value matching "LLP" or "Limited Liability Partnership" templates
+        OR (LOWER(TRIM(c.type)) = 'llp' AND EXISTS (
+          SELECT 1 FROM unnest(v_template.entity_types) AS t 
+          WHERE LOWER(t) LIKE '%llp%' OR LOWER(t) LIKE '%limited liability partnership%'
+        ))
+        
+        -- Handle short "ngo" value matching "NGO / Section 8", "Trust / Society / Sec 8" templates
+        OR (LOWER(TRIM(c.type)) = 'ngo' AND EXISTS (
+          SELECT 1 FROM unnest(v_template.entity_types) AS t 
+          WHERE LOWER(t) LIKE '%ngo%' OR LOWER(t) LIKE '%section%8%' OR LOWER(t) LIKE '%society%' OR LOWER(t) LIKE '%trust%'
+        ))
+        
+        -- Handle short "sole" value matching "Sole Proprietorship" templates
+        OR (LOWER(TRIM(c.type)) = 'sole' AND EXISTS (
+          SELECT 1 FROM unnest(v_template.entity_types) AS t 
+          WHERE LOWER(t) LIKE '%sole%' OR LOWER(t) LIKE '%proprietor%'
+        ))
+        
+        -- Handle full "private limited" company type
+        OR (LOWER(c.type) LIKE '%private%' AND LOWER(c.type) LIKE '%limited%' AND EXISTS (
+          SELECT 1 FROM unnest(v_template.entity_types) AS t 
+          WHERE LOWER(t) LIKE '%private%' AND LOWER(t) LIKE '%limited%'
+        ))
+        
+        -- Handle full "public limited" company type
+        OR (LOWER(c.type) LIKE '%public%' AND LOWER(c.type) LIKE '%limited%' AND EXISTS (
+          SELECT 1 FROM unnest(v_template.entity_types) AS t 
+          WHERE LOWER(t) LIKE '%public%' AND LOWER(t) LIKE '%limited%'
+        ))
+        
+        -- Handle "ngo" variations (full form)
         OR (LOWER(c.type) LIKE '%ngo%' AND EXISTS (
           SELECT 1 FROM unnest(v_template.entity_types) AS t 
           WHERE LOWER(t) LIKE '%ngo%' OR LOWER(t) LIKE '%section%'
@@ -577,17 +620,8 @@ BEGIN
           SELECT 1 FROM unnest(v_template.entity_types) AS t 
           WHERE LOWER(t) LIKE '%section%' OR LOWER(t) LIKE '%ngo%'
         ))
-        -- Handle "private limited" variations
-        OR (LOWER(c.type) LIKE '%private%' AND LOWER(c.type) LIKE '%limited%' AND EXISTS (
-          SELECT 1 FROM unnest(v_template.entity_types) AS t 
-          WHERE LOWER(t) LIKE '%private%' AND LOWER(t) LIKE '%limited%'
-        ))
-        -- Handle "public limited" variations
-        OR (LOWER(c.type) LIKE '%public%' AND LOWER(c.type) LIKE '%limited%' AND EXISTS (
-          SELECT 1 FROM unnest(v_template.entity_types) AS t 
-          WHERE LOWER(t) LIKE '%public%' AND LOWER(t) LIKE '%limited%'
-        ))
-        -- Handle "llp" variations
+        
+        -- Handle "llp" variations (full form)
         OR (LOWER(c.type) LIKE '%llp%' AND EXISTS (
           SELECT 1 FROM unnest(v_template.entity_types) AS t 
           WHERE LOWER(t) LIKE '%llp%'

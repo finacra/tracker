@@ -154,6 +154,27 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
 
     const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
 
+    // Auto-update overdue statuses before fetching
+    // This ensures any requirements past their due date are marked as 'overdue'
+    try {
+      if (companyId) {
+        const { error: updateError } = await adminSupabase.rpc('update_company_overdue_statuses', { p_company_id: companyId })
+        if (updateError) {
+          console.error('[getRegulatoryRequirements] Error updating overdue statuses:', updateError)
+          // Continue anyway - don't fail the whole request
+        }
+      } else if (isSuperadmin) {
+        const { error: updateError } = await adminSupabase.rpc('update_overdue_statuses')
+        if (updateError) {
+          console.error('[getRegulatoryRequirements] Error updating overdue statuses:', updateError)
+          // Continue anyway - don't fail the whole request
+        }
+      }
+    } catch (updateErr) {
+      console.error('[getRegulatoryRequirements] Exception updating overdue statuses:', updateErr)
+      // Continue anyway - don't fail the whole request
+    }
+
     let query = adminSupabase
       .from('regulatory_requirements')
       .select('*')
@@ -1281,5 +1302,90 @@ export async function getTemplateDetails(templateId: string): Promise<{ success:
   } catch (error: any) {
     console.error('Error in getTemplateDetails:', error)
     return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Apply all active compliance templates to matching companies
+ * This creates/updates regulatory_requirements for all matching companies
+ */
+export async function applyAllTemplates(): Promise<{ success: boolean; applied_count: number; template_count: number; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      return { success: false, applied_count: 0, template_count: 0, error: 'Not authenticated' }
+    }
+
+    const adminSupabase = createAdminClient()
+    
+    // Check if user is superadmin
+    const { data: superadminRoles } = await adminSupabase
+      .from('user_roles')
+      .select('role, company_id')
+      .eq('user_id', user.id)
+      .eq('role', 'superadmin')
+
+    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+
+    if (!isSuperadmin) {
+      return { success: false, applied_count: 0, template_count: 0, error: 'Only superadmins can apply templates' }
+    }
+
+    // Get all active templates
+    const { data: templates, error: templatesError } = await adminSupabase
+      .from('compliance_templates')
+      .select('id, requirement')
+      .eq('is_active', true)
+
+    if (templatesError) {
+      console.error('[applyAllTemplates] Error fetching templates:', templatesError)
+      return { success: false, applied_count: 0, template_count: 0, error: templatesError.message }
+    }
+
+    if (!templates || templates.length === 0) {
+      return { success: true, applied_count: 0, template_count: 0, error: 'No active templates found' }
+    }
+
+    console.log(`[applyAllTemplates] Found ${templates.length} active templates to apply`)
+
+    let totalApplied = 0
+    let successCount = 0
+    let errorCount = 0
+
+    // Apply each template
+    for (const template of templates) {
+      try {
+        const { data: appliedCount, error: applyError } = await adminSupabase.rpc('apply_template_to_companies', {
+          p_template_id: template.id
+        })
+
+        if (applyError) {
+          console.error(`[applyAllTemplates] Error applying template "${template.requirement}":`, applyError)
+          errorCount++
+        } else {
+          const count = appliedCount || 0
+          totalApplied += count
+          successCount++
+          console.log(`[applyAllTemplates] Applied template "${template.requirement}": ${count} requirements`)
+        }
+      } catch (err) {
+        console.error(`[applyAllTemplates] Exception applying template "${template.requirement}":`, err)
+        errorCount++
+      }
+    }
+
+    console.log(`[applyAllTemplates] Completed: ${successCount} templates applied, ${errorCount} errors, ${totalApplied} total requirements`)
+
+    return {
+      success: errorCount === 0,
+      applied_count: totalApplied,
+      template_count: successCount,
+      error: errorCount > 0 ? `${errorCount} templates failed to apply` : undefined
+    }
+  } catch (error: any) {
+    console.error('Error in applyAllTemplates:', error)
+    return { success: false, applied_count: 0, template_count: 0, error: error.message }
   }
 }

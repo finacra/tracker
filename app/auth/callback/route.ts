@@ -4,12 +4,6 @@ import { createClient } from '@/utils/supabase/server'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  // if "next" is in param, use it as the redirect URL
-  let next = searchParams.get('next') ?? '/onboarding'
-  if (!next.startsWith('/')) {
-    // if "next" is not a relative URL, use the default
-    next = '/onboarding'
-  }
   
   if (code) {
     const supabase = await createClient()
@@ -21,6 +15,34 @@ export async function GET(request: Request) {
     }
     
     if (data.session) {
+      // Check if user has companies (owned or via user_roles)
+      const { data: ownedCompanies } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('user_id', data.session.user.id)
+        .limit(1)
+      
+      const { data: userRoles } = await supabase
+        .from('user_roles')
+        .select('company_id')
+        .eq('user_id', data.session.user.id)
+        .not('company_id', 'is', null)
+        .limit(1)
+      
+      const hasCompanies = (ownedCompanies && ownedCompanies.length > 0) || (userRoles && userRoles.length > 0)
+      
+      // Determine redirect destination based on whether user has companies
+      let next = hasCompanies ? '/data-room' : '/onboarding'
+      
+      // If "next" is explicitly provided in params, use it (but still check companies first)
+      const explicitNext = searchParams.get('next')
+      if (explicitNext && explicitNext.startsWith('/')) {
+        // Only use explicit next if user doesn't have companies (to allow onboarding for new companies)
+        if (!hasCompanies) {
+          next = explicitNext
+        }
+      }
+      
       // Create redirect response
       const forwardedHost = request.headers.get('x-forwarded-host')
       const isLocalEnv = process.env.NODE_ENV === 'development'
@@ -33,6 +55,8 @@ export async function GET(request: Request) {
       } else {
         redirectUrl = `${origin}${next}`
       }
+      
+      console.log(`[AUTH CALLBACK] User ${data.session.user.id} has companies: ${hasCompanies}, redirecting to: ${next}`)
       
       // Create redirect response - cookies are already set by Supabase client
       const redirectResponse = NextResponse.redirect(redirectUrl)

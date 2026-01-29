@@ -346,7 +346,7 @@ export async function getCompanyDocuments(companyId: string) {
     
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      throw new Error('Unauthorized')
+      return { success: false, documents: [], error: 'Unauthorized' }
     }
 
     console.log('Fetching documents for company:', companyId)
@@ -364,7 +364,7 @@ export async function getCompanyDocuments(companyId: string) {
       if (error.code === 'PGRST106' || error.message?.includes('does not exist')) {
         return { success: true, documents: [], warning: 'Storage table not found' }
       }
-      throw new Error(`Failed to fetch documents: ${error.message}`)
+      return { success: false, documents: [], error: `Failed to fetch documents: ${error.message}` }
     }
 
     return { success: true, documents: data || [] }

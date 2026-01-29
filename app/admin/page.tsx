@@ -6,7 +6,7 @@ import Header from '@/components/Header'
 import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/utils/supabase/client'
-import { getRegulatoryRequirements, getCompanyUserRoles, getUserRole, getComplianceTemplates, createComplianceTemplate, updateComplianceTemplate, deleteComplianceTemplate, getTemplateDetails, type ComplianceTemplate } from '@/app/data-room/actions'
+import { getRegulatoryRequirements, getCompanyUserRoles, getUserRole, getComplianceTemplates, createComplianceTemplate, updateComplianceTemplate, deleteComplianceTemplate, getTemplateDetails, applyAllTemplates, type ComplianceTemplate } from '@/app/data-room/actions'
 import { useUserRole } from '@/hooks/useUserRole'
 import { 
   FIXED_COSTS, 
@@ -50,6 +50,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'companies' | 'compliances' | 'users' | 'templates' | 'financials'>('overview')
   const [templates, setTemplates] = useState<ComplianceTemplate[]>([])
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
+  const [isApplyingTemplates, setIsApplyingTemplates] = useState(false)
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<ComplianceTemplate | null>(null)
   const [templateForm, setTemplateForm] = useState({
@@ -502,36 +503,73 @@ export default function AdminPage() {
                 <h2 className="text-2xl font-light text-white mb-2">Compliance Templates</h2>
                 <p className="text-gray-400">Create templates that automatically apply to matching companies</p>
               </div>
-              <button
-                onClick={() => {
-                  setTemplateForm({
-                    category: '',
-                    requirement: '',
-                    description: '',
-                    compliance_type: 'one-time',
-                    entity_types: [],
-                    industries: [],
-                    industry_categories: [],
-                    penalty: '',
-                    is_critical: false,
-                    financial_year: '',
-                    due_date_offset: undefined,
-                    due_month: undefined,
-                    due_day: undefined,
-                    due_date: '',
-                    is_active: true
-                  })
-                  setEditingTemplate(null)
-                  setIsTemplateModalOpen(true)
-                }}
-                className="bg-primary-orange text-white px-6 py-3 rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2 font-medium"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                Add Template
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={async () => {
+                    setIsApplyingTemplates(true)
+                    try {
+                      const result = await applyAllTemplates()
+                      if (result.success) {
+                        alert(`Successfully applied ${result.template_count} templates! Created/updated ${result.applied_count} requirements.`)
+                      } else {
+                        alert(`Error: ${result.error || 'Failed to apply templates'}`)
+                      }
+                    } catch (err) {
+                      console.error('Error applying templates:', err)
+                      alert('Error applying templates')
+                    } finally {
+                      setIsApplyingTemplates(false)
+                    }
+                  }}
+                  disabled={isApplyingTemplates}
+                  className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isApplyingTemplates ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Applying...
+                    </>
+                  ) : (
+                    <>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                        <polyline points="22 4 12 14.01 9 11.01" />
+                      </svg>
+                      Apply All Templates
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setTemplateForm({
+                      category: '',
+                      requirement: '',
+                      description: '',
+                      compliance_type: 'one-time',
+                      entity_types: [],
+                      industries: [],
+                      industry_categories: [],
+                      penalty: '',
+                      is_critical: false,
+                      financial_year: '',
+                      due_date_offset: undefined,
+                      due_month: undefined,
+                      due_day: undefined,
+                      due_date: '',
+                      is_active: true
+                    })
+                    setEditingTemplate(null)
+                    setIsTemplateModalOpen(true)
+                  }}
+                  className="bg-primary-orange text-white px-6 py-3 rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2 font-medium"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Add Template
+                </button>
+              </div>
             </div>
 
             {/* Templates List */}
@@ -576,16 +614,34 @@ export default function AdminPage() {
                               </span>
                             </td>
                             <td className="px-6 py-4 text-gray-300 text-sm">
-                              {template.entity_types.slice(0, 2).join(', ')}
-                              {template.entity_types.length > 2 && ` +${template.entity_types.length - 2}`}
+                              {template.entity_types && template.entity_types.length > 0 ? (
+                                <>
+                                  {template.entity_types.slice(0, 2).join(', ')}
+                                  {template.entity_types.length > 2 && ` +${template.entity_types.length - 2}`}
+                                </>
+                              ) : (
+                                <span className="text-gray-500">All entities</span>
+                              )}
                             </td>
                             <td className="px-6 py-4 text-gray-300 text-sm">
-                              {template.industries.slice(0, 2).join(', ')}
-                              {template.industries.length > 2 && ` +${template.industries.length - 2}`}
+                              {template.industries && template.industries.length > 0 ? (
+                                <>
+                                  {template.industries.slice(0, 2).join(', ')}
+                                  {template.industries.length > 2 && ` +${template.industries.length - 2}`}
+                                </>
+                              ) : (
+                                <span className="text-gray-500">All industries</span>
+                              )}
                             </td>
                             <td className="px-6 py-4 text-gray-300 text-sm">
-                              {template.industry_categories.slice(0, 2).join(', ')}
-                              {template.industry_categories.length > 2 && ` +${template.industry_categories.length - 2}`}
+                              {template.industry_categories && template.industry_categories.length > 0 ? (
+                                <>
+                                  {template.industry_categories.slice(0, 2).join(', ')}
+                                  {template.industry_categories.length > 2 && ` +${template.industry_categories.length - 2}`}
+                                </>
+                              ) : (
+                                <span className="text-gray-500">All categories</span>
+                              )}
                             </td>
                             <td className="px-6 py-4 text-gray-300">{template.matching_companies_count || 0}</td>
                             <td className="px-6 py-4">
