@@ -1509,40 +1509,61 @@ export default function DataRoomPage() {
               return '-'
             }
 
-            const trimmedPenalty = penaltyStr.trim()
+            // Step 1: Normalize input
+            const normalizedPenalty = penaltyStr
+              .trim()
+              .replace(/\s+/g, ' ')           // Normalize multiple spaces
+              .replace(/\u00A0/g, ' ')         // Replace non-breaking spaces
+              .replace(/['']/g, "'")           // Normalize quotes
+              .replace(/[""]/g, '"')           // Normalize double quotes
             
-            // Skip vague penalties that can't be calculated
-            if (/Penalty as per.*Act/i.test(trimmedPenalty) && !trimmedPenalty.match(/Rs\.?\s*[\d,]+/i)) {
+            // Step 2: Skip vague penalties that can't be calculated
+            if (/^Penalty as per.*Act\.?$/i.test(normalizedPenalty)) {
               return 'Refer to Act'
             }
 
-            // Extract daily rate - handle multiple formats:
-            // "Rs. 50 per day", "Rs.50/day", "₹50 per day", "50/day"
-            const dailyRatePatterns = [
-              /(?:Rs\.?\s*|₹\s*)([\d,]+(?:\.\d+)?)\s*(?:per\s*day|\/day)/i,  // Rs. 50 per day, Rs.50/day, ₹50 per day
-              /([\d,]+(?:\.\d+)?)\s*(?:per\s*day|\/day)/i,                     // 50 per day, 50/day
+            // Step 3: FIRST try to extract daily rate from the BEGINNING of the string
+            // This handles: "Rs. 50 per day (Rs. 20 for NIL return)." 
+            // and "Rs. 200 per day u/s 234E; Penalty u/s 271H"
+            const dailyRateMatch = normalizedPenalty.match(/^Rs\.?\s*([\d,]+)\s*per\s*day/i)
+            if (dailyRateMatch) {
+              const dailyRate = parseFloat(dailyRateMatch[1].replace(/,/g, ''))
+              if (!isNaN(dailyRate) && dailyRate > 0) {
+                let calculatedPenalty = dailyRate * daysDelayed
+                
+                // Check for max cap anywhere in the string
+                const maxMatch = normalizedPenalty.match(/(?:up\s*to\s*)?max\.?\s*Rs\.?\s*([\d,]+)/i)
+                if (maxMatch) {
+                  const maxAmount = parseFloat(maxMatch[1].replace(/,/g, ''))
+                  if (!isNaN(maxAmount) && maxAmount > 0) {
+                    calculatedPenalty = Math.min(calculatedPenalty, maxAmount)
+                  }
+                }
+                
+                return `₹${Math.round(calculatedPenalty).toLocaleString('en-IN')}`
+              }
+            }
+
+            // Step 4: Try other daily rate formats anywhere in string
+            // Handles: "Late fee Rs. 50/day", "₹50 per day"
+            const otherDailyPatterns = [
+              /(?:Rs\.?\s*|₹\s*)([\d,]+)\s*(?:per\s*day|\/day)/i,
+              /([\d,]+)\s*(?:per\s*day|\/day)/i,
             ]
             
-            for (const pattern of dailyRatePatterns) {
-              const match = trimmedPenalty.match(pattern)
+            for (const pattern of otherDailyPatterns) {
+              const match = normalizedPenalty.match(pattern)
               if (match) {
                 const dailyRate = parseFloat(match[1].replace(/,/g, ''))
                 if (!isNaN(dailyRate) && dailyRate > 0) {
                   let calculatedPenalty = dailyRate * daysDelayed
                   
-                  // Check for max/cap: "up to max Rs. 2000", "max Rs. 2000", "upto Rs. 2000"
-                  const maxPatterns = [
-                    /(?:up\s*to\s*)?max\.?\s*(?:Rs\.?\s*|₹\s*)([\d,]+)/i,
-                    /(?:up\s*to|upto)\s*(?:Rs\.?\s*|₹\s*)([\d,]+)/i,
-                  ]
-                  for (const maxPattern of maxPatterns) {
-                    const maxMatch = trimmedPenalty.match(maxPattern)
-                    if (maxMatch) {
-                      const maxAmount = parseFloat(maxMatch[1].replace(/,/g, ''))
-                      if (!isNaN(maxAmount) && maxAmount > 0) {
-                        calculatedPenalty = Math.min(calculatedPenalty, maxAmount)
-                        break
-                      }
+                  // Check for max cap
+                  const maxMatch = normalizedPenalty.match(/(?:up\s*to\s*)?max\.?\s*Rs\.?\s*([\d,]+)/i)
+                  if (maxMatch) {
+                    const maxAmount = parseFloat(maxMatch[1].replace(/,/g, ''))
+                    if (!isNaN(maxAmount) && maxAmount > 0) {
+                      calculatedPenalty = Math.min(calculatedPenalty, maxAmount)
                     }
                   }
                   
@@ -1551,8 +1572,8 @@ export default function DataRoomPage() {
               }
             }
 
-            // Handle "Rs. 100 per day" standalone (like MGT-7A)
-            const standaloneDaily = trimmedPenalty.match(/^(?:Rs\.?\s*|₹\s*)([\d,]+)\s*per\s*day\.?$/i)
+            // Step 5: Handle "Rs. 100 per day." standalone
+            const standaloneDaily = normalizedPenalty.match(/^(?:Rs\.?\s*|₹\s*)([\d,]+)\s*per\s*day\.?$/i)
             if (standaloneDaily) {
               const dailyRate = parseFloat(standaloneDaily[1].replace(/,/g, ''))
               if (!isNaN(dailyRate) && dailyRate > 0) {
@@ -1560,8 +1581,8 @@ export default function DataRoomPage() {
               }
             }
 
-            // Handle Late fee patterns: "Late fee Rs. 50/day"
-            const lateFeeMatch = trimmedPenalty.match(/Late\s*fee\s*(?:Rs\.?\s*|₹\s*)([\d,]+)(?:\s*(?:per\s*day|\/day))?/i)
+            // Step 6: Handle Late fee patterns
+            const lateFeeMatch = normalizedPenalty.match(/Late\s*fee\s*(?:Rs\.?\s*|₹\s*)([\d,]+)/i)
             if (lateFeeMatch) {
               const dailyRate = parseFloat(lateFeeMatch[1].replace(/,/g, ''))
               if (!isNaN(dailyRate) && dailyRate > 0) {
@@ -1569,24 +1590,21 @@ export default function DataRoomPage() {
               }
             }
 
-            // Handle fixed amounts: "Rs. 100 per day + Rs. 5 Lakh max"
-            const fixedMaxMatch = trimmedPenalty.match(/(?:Rs\.?\s*|₹\s*)([\d,]+)\s*per\s*day.*?(?:Rs\.?\s*|₹\s*)([\d.]+)\s*(?:Lakh|L)\s*max/i)
-            if (fixedMaxMatch) {
-              const dailyRate = parseFloat(fixedMaxMatch[1].replace(/,/g, ''))
-              let maxAmount = parseFloat(fixedMaxMatch[2].replace(/,/g, ''))
-              if (fixedMaxMatch[0].toLowerCase().includes('lakh')) {
-                maxAmount *= 100000
-              }
+            // Step 7: Handle fixed amounts with Lakh max
+            const lakhMaxMatch = normalizedPenalty.match(/Rs\.?\s*([\d,]+)\s*per\s*day.*?Rs\.?\s*([\d.]+)\s*(?:Lakh|L)\s*max/i)
+            if (lakhMaxMatch) {
+              const dailyRate = parseFloat(lakhMaxMatch[1].replace(/,/g, ''))
+              let maxAmount = parseFloat(lakhMaxMatch[2].replace(/,/g, '')) * 100000
               if (!isNaN(dailyRate) && dailyRate > 0) {
                 const calculated = Math.min(dailyRate * daysDelayed, maxAmount)
                 return `₹${Math.round(calculated).toLocaleString('en-IN')}`
               }
             }
 
-            // Check for explicit fixed penalty amounts
+            // Step 8: Check for fixed penalty amounts
             const fixedKeywords = /(?:fixed|one-time|one time|flat|lump)/i
-            if (fixedKeywords.test(trimmedPenalty)) {
-              const fixedMatch = trimmedPenalty.match(/(?:Rs\.?\s*|₹\s*)([\d,]+)/i)
+            if (fixedKeywords.test(normalizedPenalty)) {
+              const fixedMatch = normalizedPenalty.match(/(?:Rs\.?\s*|₹\s*)([\d,]+)/i)
               if (fixedMatch) {
                 const amount = parseFloat(fixedMatch[1].replace(/,/g, ''))
                 if (!isNaN(amount) && amount > 0) {
@@ -1595,8 +1613,8 @@ export default function DataRoomPage() {
               }
             }
 
-            // If penalty is just a plain number, treat it as daily rate
-            const plainNumberMatch = trimmedPenalty.match(/^[\d,]+(?:\.\d+)?$/i)
+            // Step 9: Plain number as daily rate
+            const plainNumberMatch = normalizedPenalty.match(/^[\d,]+(?:\.\d+)?$/)
             if (plainNumberMatch) {
               const amount = parseFloat(plainNumberMatch[0].replace(/,/g, ''))
               if (!isNaN(amount) && amount > 0) {
@@ -1604,22 +1622,14 @@ export default function DataRoomPage() {
               }
             }
 
-            // Interest-based penalties need principal amount
-            if (/Interest\s*@?\s*[\d.]+%/i.test(trimmedPenalty)) {
+            // Step 10: Interest-based penalties (cannot calculate without principal)
+            if (/Interest\s*@?\s*[\d.]+%/i.test(normalizedPenalty)) {
               return 'Interest-based (needs tax amount)'
             }
 
-            // Complex penalty with multiple components
-            if (trimmedPenalty.includes('+') || trimmedPenalty.includes(';')) {
-              // Try to extract at least the daily component
-              const dailyComponent = trimmedPenalty.match(/(?:Rs\.?\s*|₹\s*)([\d,]+)\s*(?:per\s*day|\/day)/i)
-              if (dailyComponent) {
-                const dailyRate = parseFloat(dailyComponent[1].replace(/,/g, ''))
-                if (!isNaN(dailyRate) && dailyRate > 0) {
-                  return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}+`
-                }
-              }
-              return 'Complex (multiple components)'
+            // Step 11: Vague "as per Act" references
+            if (/as per.*Act/i.test(normalizedPenalty)) {
+              return 'Refer to Act'
             }
 
             return 'Cannot calculate'
