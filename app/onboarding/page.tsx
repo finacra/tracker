@@ -1,0 +1,1344 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import CircuitBackground from '@/components/CircuitBackground'
+import { verifyCIN, verifyDIN, type CINDirectorData, type DINDirectorData } from '@/lib/api/cin-din'
+import { 
+  detectEntity, 
+  mapEntitySubTypeToFormValue, 
+  mapIndustryToFormValue, 
+  mapIndustryToCategories 
+} from '@/lib/utils/entity-detection'
+import { useAuth } from '@/hooks/useAuth'
+import { createClient } from '@/utils/supabase/client'
+import { completeOnboarding } from './actions'
+
+const DOCUMENT_TYPES = [
+  'Certificate of Incorporation',
+  'MOA (Memorandum of Association)',
+  'AOA (Articles of Association)',
+  'Rental Deed',
+  'DIN Certificate',
+  'PAN',
+  'TAN',
+]
+
+const INDUSTRY_CATEGORIES = [
+  'Startups & MSMEs',
+  'Large Enterprises',
+  'NGOs & Section 8 Companies',
+  'Healthcare & Education',
+  'Real Estate & Construction',
+  'IT & Technology Services',
+  'Retail & Manufacturing',
+  'Other',
+]
+
+interface Director {
+  id: string
+  firstName: string
+  lastName: string
+  middleName: string
+  din: string
+  designation: string
+  dob: string
+  pan?: string
+  email?: string
+  mobile?: string
+  verified: boolean
+  source: 'cin' | 'din' | 'manual'
+}
+
+export default function OnboardingPage() {
+  const router = useRouter()
+  const { user, loading } = useAuth()
+  const supabase = createClient()
+  
+  // All hooks must be called before any conditional returns
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isVerifyingCIN, setIsVerifyingCIN] = useState(false)
+  const [isVerifyingDIN, setIsVerifyingDIN] = useState<string | null>(null)
+  const [directors, setDirectors] = useState<Director[]>([])
+  const [newDirectorDIN, setNewDirectorDIN] = useState('')
+  const [showAddDirector, setShowAddDirector] = useState(false)
+  const [entityDetection, setEntityDetection] = useState<any>(null)
+  const [isCINVerified, setIsCINVerified] = useState(false)
+
+  const [formData, setFormData] = useState({
+    companyName: '',
+    companyType: '',
+    panNumber: '',
+    cinNumber: '',
+    industry: '',
+    address: '',
+    city: '',
+    state: '',
+    pinCode: '',
+    phoneNumber: '',
+    email: '',
+    landline: '',
+    other: '',
+    dateOfIncorporation: '',
+    industryCategories: [] as string[],
+    otherIndustryCategory: '',
+    documents: {} as Record<string, File | null>,
+  })
+
+  // Redirect to login if not authenticated
+  // Allow users to access onboarding even if they have companies (to create new companies)
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/')
+      return
+    }
+    // Removed redirect for users with existing companies - they should be able to create new companies
+  }, [user, loading, router])
+
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+        <div className="text-white text-lg">Loading...</div>
+      </div>
+    )
+  }
+
+  // Don't render if not authenticated (will redirect)
+  if (!user) {
+    return null
+  }
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: '' }))
+    }
+  }
+
+  const handleCINVerification = async () => {
+    if (!formData.cinNumber.trim()) {
+      setErrors((prev) => ({ ...prev, cinNumber: 'Please enter CIN number' }))
+      return
+    }
+
+    setIsVerifyingCIN(true)
+    setErrors((prev) => ({ ...prev, cinNumber: '' }))
+
+    const result = await verifyCIN(formData.cinNumber.trim())
+    
+    if (!result.success) {
+      setErrors((prev) => ({ ...prev, cinNumber: result.error }))
+      setIsVerifyingCIN(false)
+      return
+    }
+
+    const response = result.data
+    console.log('CIN Response received:', JSON.stringify(response, null, 2))
+    
+    if (!response.data?.data?.companyData) {
+      setErrors((prev) => ({ ...prev, cinNumber: 'No company data found in response' }))
+      setIsVerifyingCIN(false)
+      return
+    }
+
+    const companyData = response.data.data.companyData
+    const directorData = response.data.data.directorData || []
+    
+    console.log('Company Data:', companyData)
+    console.log('Director Data:', directorData)
+
+    // Use entity detection system
+    const detection = detectEntity(companyData, true)
+    setEntityDetection(detection)
+    setIsCINVerified(true)
+    
+    console.log('Entity Detection Result:', detection)
+    
+    // Map to form values
+    const formCompanyType = mapEntitySubTypeToFormValue(detection.entitySubType)
+    const formIndustry = mapIndustryToFormValue(detection.industryPrimary)
+    const formCategories = mapIndustryToCategories(detection.industryPrimary, detection.entitySubType)
+    
+    const cin = companyData.cin || formData.cinNumber
+    
+    // Parse address to extract city, state, PIN
+    const address = companyData.registeredaddress || companyData.mcamdscompanyaddress || ''
+    const { city, state, pinCode } = parseAddress(address)
+    
+    // Check for phone/mobile in company data
+    const phoneNumber = (companyData as any).mobileNumber || 
+                       (companyData as any).phoneNumber || 
+                       (companyData as any).contactNumber || 
+                       ''
+    
+    setFormData((prev) => ({
+      ...prev,
+      companyName: companyData.company || prev.companyName,
+      companyType: formCompanyType || prev.companyType,
+      industry: formIndustry || prev.industry,
+      dateOfIncorporation: formatDate(companyData.dateOfIncorporation) || prev.dateOfIncorporation,
+      address: address || prev.address,
+      city: city || prev.city,
+      state: state || prev.state,
+      pinCode: pinCode || prev.pinCode,
+      phoneNumber: phoneNumber || prev.phoneNumber,
+      email: companyData.emailAddress || prev.email,
+      cinNumber: cin,
+      // Auto-select detected industry categories
+      industryCategories: formCategories.length > 0 
+        ? formCategories
+        : prev.industryCategories,
+    }))
+
+    // Add directors from CIN response
+    if (directorData.length > 0) {
+      const cinDirectors: Director[] = directorData.map((dir, index) => {
+        console.log('Processing director:', dir)
+        return {
+          id: `cin-${Date.now()}-${index}`,
+          firstName: dir.firstName || (dir as any).FirstName || '',
+          lastName: dir.lastName || (dir as any).LastName || '',
+          middleName: dir.middleName || (dir as any).MiddleName || '',
+          din: dir.din || (dir as any).DIN || dir.dinOrPAN || (dir as any).DINOrPAN || '',
+          designation: dir.designation || (dir as any).Designation || '',
+          dob: formatDate(dir.dob || (dir as any).DOB) || '',
+          verified: false, // Will be verified using DIN
+          source: 'cin' as const,
+        }
+      })
+      console.log('Created Directors:', cinDirectors)
+      setDirectors(cinDirectors)
+    }
+
+    setIsVerifyingCIN(false)
+  }
+
+  const handleDINVerification = async (directorId: string, din: string) => {
+    if (!din.trim()) {
+      return
+    }
+
+    setIsVerifyingDIN(directorId)
+    setErrors((prev) => ({ ...prev, [`director_${directorId}`]: '' }))
+
+    const result = await verifyDIN(din.trim())
+    
+    if (!result.success) {
+      setErrors((prev) => ({
+        ...prev,
+        [`director_${directorId}`]: result.error,
+      }))
+      setIsVerifyingDIN(null)
+      return
+    }
+
+    const response = result.data
+    if (!response.data?.directorData || response.data.directorData.length === 0) {
+      setErrors((prev) => ({
+        ...prev,
+        [`director_${directorId}`]: 'No director data found in response',
+      }))
+      setIsVerifyingDIN(null)
+      return
+    }
+
+    const dinData = response.data.directorData[0]
+
+    // Update director with verified information
+    setDirectors((prev) =>
+      prev.map((dir) =>
+        dir.id === directorId
+          ? {
+              ...dir,
+              firstName: dinData.firstName || dir.firstName,
+              lastName: dinData.lastName || dir.lastName,
+              middleName: dinData.middleName || dir.middleName,
+              dob: formatDate(dinData.dob) || dir.dob,
+              pan: dinData.pan || dir.pan,
+              email: dinData.emailAddress || dir.email,
+              mobile: dinData.mobileNumber || dir.mobile,
+              verified: true,
+              source: dir.source === 'cin' ? 'cin' : 'din',
+            }
+          : dir
+      )
+    )
+
+    setIsVerifyingDIN(null)
+  }
+
+  const handleAddDirectorByDIN = async () => {
+    if (!newDirectorDIN.trim()) {
+      setErrors((prev) => ({ ...prev, newDirectorDIN: 'Please enter DIN number' }))
+      return
+    }
+
+    const directorId = `din-${Date.now()}`
+    const din = newDirectorDIN.trim()
+
+    setIsVerifyingDIN(directorId)
+    setErrors((prev) => ({ ...prev, newDirectorDIN: '' }))
+
+    const result = await verifyDIN(din)
+    
+    if (!result.success) {
+      setErrors((prev) => ({
+        ...prev,
+        newDirectorDIN: result.error,
+      }))
+      setIsVerifyingDIN(null)
+      return
+    }
+
+    const response = result.data
+    if (!response.data?.directorData || response.data.directorData.length === 0) {
+      setErrors((prev) => ({
+        ...prev,
+        newDirectorDIN: 'No director data found for this DIN',
+      }))
+      setIsVerifyingDIN(null)
+      return
+    }
+
+    const dinData = response.data.directorData[0]
+
+    // Add director with verified information
+    const newDirector: Director = {
+      id: directorId,
+      firstName: dinData.firstName || '',
+      lastName: dinData.lastName || '',
+      middleName: dinData.middleName || '',
+      din: din,
+      designation: '',
+      dob: formatDate(dinData.dob) || '',
+      pan: dinData.pan || '',
+      email: dinData.emailAddress || '',
+      mobile: dinData.mobileNumber || '',
+      verified: true,
+      source: 'din',
+    }
+
+    setDirectors((prev) => [...prev, newDirector])
+    setNewDirectorDIN('')
+    setShowAddDirector(false)
+    setIsVerifyingDIN(null)
+  }
+
+  const handleRemoveDirector = (directorId: string) => {
+    setDirectors((prev) => prev.filter((dir) => dir.id !== directorId))
+  }
+
+
+  const formatDate = (dateStr: string): string => {
+    if (!dateStr) return ''
+    try {
+      // Handle MM/DD/YYYY format (e.g., "03/03/2025")
+      if (dateStr.includes('/')) {
+        const parts = dateStr.split('/')
+        if (parts.length === 3) {
+          const [month, day, year] = parts
+          // Return as YYYY-MM-DD for date input
+          return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+        }
+      }
+      
+      // Handle other formats
+      const date = new Date(dateStr)
+      if (isNaN(date.getTime())) return ''
+      return date.toISOString().split('T')[0]
+    } catch {
+      return ''
+    }
+  }
+
+  const parseAddress = (address: string): { city: string; state: string; pinCode: string } => {
+    if (!address) return { city: '', state: '', pinCode: '' }
+    
+    // Try to extract PIN code (6 digits at the end)
+    const pinMatch = address.match(/\b(\d{6})\b(?!.*\d)/)
+    const pinCode = pinMatch ? pinMatch[1] : ''
+    
+    // Split by comma and clean up
+    const parts = address.split(',').map(p => p.trim()).filter(p => p.length > 0)
+    
+    let city = ''
+    let state = ''
+    
+    // Common Indian states list
+    const indianStates = [
+      'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+      'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+      'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+      'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+      'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+      'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Puducherry', 'Chandigarh'
+    ]
+    
+    // Find state (usually one of the last parts before country/PIN)
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const part = parts[i]
+      // Check if it's a known state
+      const matchedState = indianStates.find(s => 
+        part.toLowerCase().includes(s.toLowerCase()) || 
+        s.toLowerCase().includes(part.toLowerCase())
+      )
+      if (matchedState) {
+        state = matchedState
+        // City is usually the part before state
+        if (i > 0) {
+          // Take the part before state, but skip if it's "India" or similar
+          const cityCandidate = parts[i - 1]
+          if (cityCandidate && !cityCandidate.toLowerCase().includes('india') && 
+              !cityCandidate.toLowerCase().includes('h.o') && 
+              !cityCandidate.toLowerCase().includes('head office')) {
+            city = cityCandidate.replace(/H\.o/i, '').trim()
+          }
+        }
+        break
+      }
+    }
+    
+    // If state not found but we have parts, try to infer
+    if (!state && parts.length > 0) {
+      // Look for state-like patterns (capitalized words)
+      for (let i = parts.length - 2; i >= 0; i--) {
+        const part = parts[i]
+        if (part && part.length > 2 && /^[A-Z]/.test(part)) {
+          // Check if it matches a state
+          const matchedState = indianStates.find(s => 
+            part.toLowerCase() === s.toLowerCase() ||
+            part.toLowerCase().includes(s.toLowerCase().split(' ')[0])
+          )
+          if (matchedState) {
+            state = matchedState
+            if (i > 0) {
+              city = parts[i - 1].replace(/H\.o/i, '').trim()
+            }
+            break
+          }
+        }
+      }
+    }
+    
+    // Clean up city name (remove common suffixes)
+    if (city) {
+      city = city.replace(/\s*H\.o\.?\s*/i, '').trim()
+      city = city.replace(/\s*Head\s*Office\s*/i, '').trim()
+    }
+    
+    console.log('Parsed Address:', { address, city, state, pinCode })
+    
+    return { city, state, pinCode }
+  }
+
+  const handleFileChange = (documentType: string, file: File | null) => {
+    setFormData((prev) => ({
+      ...prev,
+      documents: { ...prev.documents, [documentType]: file },
+    }))
+    if (errors[`document_${documentType}`]) {
+      setErrors((prev) => ({ ...prev, [`document_${documentType}`]: '' }))
+    }
+  }
+
+  const handleIndustryCategoryChange = (category: string) => {
+    setFormData((prev) => {
+      const isCurrentlySelected = prev.industryCategories.includes(category)
+      const categories = isCurrentlySelected
+        ? prev.industryCategories.filter((c) => c !== category)
+        : [...prev.industryCategories, category]
+      
+      // Clear otherIndustryCategory if "Other" is being unselected
+      const otherIndustryCategory = category === 'Other' && isCurrentlySelected
+        ? ''
+        : prev.otherIndustryCategory
+      
+      return { ...prev, industryCategories: categories, otherIndustryCategory }
+    })
+  }
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+
+    if (!formData.companyName.trim()) {
+      newErrors.companyName = 'Company name is required'
+    }
+    if (!formData.companyType) {
+      newErrors.companyType = 'Please select a company type'
+    }
+    // PAN number is now optional
+    if (formData.panNumber.trim() && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber.trim().toUpperCase())) {
+      // Basic PAN validation if entered
+      newErrors.panNumber = 'Invalid PAN format (e.g., ABCDE1234F)'
+    }
+    if (!formData.cinNumber.trim()) {
+      newErrors.cinNumber = 'CIN number is required'
+    }
+    if (!formData.industry) {
+      newErrors.industry = 'Please select an industry'
+    }
+    if (!formData.address.trim()) {
+      newErrors.address = 'Address is required'
+    }
+    if (!formData.city.trim()) {
+      newErrors.city = 'City is required'
+    }
+    if (!formData.state.trim()) {
+      newErrors.state = 'State is required'
+    }
+    if (!formData.pinCode.trim()) {
+      newErrors.pinCode = 'PIN code is required'
+    }
+    // Phone number is now optional
+    if (formData.phoneNumber.trim() && !/^[0-9+\s-]{10,15}$/.test(formData.phoneNumber.trim())) {
+      newErrors.phoneNumber = 'Invalid phone number format'
+    }
+    if (!formData.dateOfIncorporation) {
+      newErrors.dateOfIncorporation = 'Date of incorporation is required'
+    }
+    if (formData.industryCategories.length === 0) {
+      newErrors.industryCategories = 'Please select at least one industry category'
+    }
+    if (formData.industryCategories.includes('Other') && !formData.otherIndustryCategory.trim()) {
+      newErrors.otherIndustryCategory = 'Please specify the industry category'
+    }
+
+    // Required documents are now optional - removing document check
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!validateForm()) {
+      return
+    }
+
+    setIsSubmitting(true)
+    const supabase = createClient()
+    
+    try {
+      // 1. Upload files to Storage first
+      const uploadedDocuments: Array<{ type: string; path: string; name: string }> = []
+      
+      const uploadPromises = Object.entries(formData.documents)
+        .filter(([_, file]) => file !== null)
+        .map(async ([docType, file]) => {
+          const fileObj = file as File
+          const fileExt = fileObj.name.split('.').pop()
+          const fileName = `${docType.replace(/\s+/g, '_')}_${Date.now()}.${fileExt}`
+          // Temporary path, we'll update it or keep it simple. 
+          // Best practice is user_id/timestamp/filename
+          const filePath = `${user?.id}/${Date.now()}/${fileName}`
+
+          const { error: uploadError } = await supabase.storage
+            .from('company-documents')
+            .upload(filePath, fileObj)
+
+          if (uploadError) throw uploadError
+          
+          uploadedDocuments.push({
+            type: docType,
+            path: filePath,
+            name: fileObj.name
+          })
+        })
+
+      await Promise.all(uploadPromises)
+
+      // 2. Call the Server Action with Service Role privileges
+      const result = await completeOnboarding({
+        ...formData,
+        companyStage: entityDetection?.companyStage,
+        confidenceScore: entityDetection?.confidenceScore,
+        documents: uploadedDocuments
+      }, directors)
+
+      if (result.success) {
+      // Redirect to data room page
+      router.push('/data-room')
+      }
+    } catch (error: any) {
+      console.error('Error submitting form:', error)
+      alert('Failed to complete onboarding: ' + error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-primary-dark relative overflow-hidden">
+      {/* Circuit Board Background */}
+      <CircuitBackground />
+
+      {/* Content */}
+      <div className="relative z-10 container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-4xl">
+        {/* Header */}
+        <div className="mb-4 sm:mb-8">
+          <div className="flex items-center gap-2 sm:gap-4 mb-3 sm:mb-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-orange rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-primary-orange/30 flex-shrink-0">
+              <svg
+                width="20"
+                height="20"
+                className="sm:w-6 sm:h-6"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21Z"
+                  stroke="white"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M9 7H15"
+                  stroke="white"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M9 12H15"
+                  stroke="white"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M9 17H13"
+                  stroke="white"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-light text-white">Create New Company</h1>
+              <p className="text-gray-400 text-xs sm:text-sm mt-1">
+                Add another company to your account
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Form Card */}
+        <form onSubmit={handleSubmit} className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 backdrop-blur-sm">
+          <div className="space-y-4 sm:space-y-6">
+            {/* Company Name */}
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                Company Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="companyName"
+                value={formData.companyName}
+                onChange={handleInputChange}
+                placeholder="Enter company name"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+              />
+              {errors.companyName && (
+                <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.companyName}</p>
+              )}
+            </div>
+
+            {/* Company Type */}
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                Company Type <span className="text-red-500">*</span>
+                {isCINVerified && (
+                  <span className="ml-2 text-[10px] sm:text-xs text-primary-orange flex items-center gap-1">
+                    <svg width="10" height="10" className="sm:w-3 sm:h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 16v-4" />
+                      <path d="M12 8h.01" />
+                    </svg>
+                    Detected from MCA records
+                  </span>
+                )}
+              </label>
+              <select
+                name="companyType"
+                value={formData.companyType}
+                onChange={handleInputChange}
+                disabled={isCINVerified}
+                className={`w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors appearance-none ${
+                  isCINVerified ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                }`}
+              >
+                <option value="">Select company type</option>
+                <option value="private">Private Limited</option>
+                <option value="public">Public Limited</option>
+                <option value="llp">LLP (Limited Liability Partnership)</option>
+                <option value="partnership">Partnership</option>
+                <option value="sole">Sole Proprietorship</option>
+                <option value="ngo">NGO / Section 8</option>
+              </select>
+              {errors.companyType && (
+                <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.companyType}</p>
+              )}
+            </div>
+
+            {/* PAN Number and CIN Number */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                  PAN Number <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  name="panNumber"
+                  value={formData.panNumber}
+                  onChange={handleInputChange}
+                  placeholder="ABCDE1234F"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                />
+                {errors.panNumber && (
+                  <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.panNumber}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                  CIN Number <span className="text-red-500">*</span>
+                </label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  name="cinNumber"
+                  value={formData.cinNumber}
+                  onChange={handleInputChange}
+                  placeholder="Enter CIN number"
+                    className="flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                />
+                  <button
+                    type="button"
+                    onClick={handleCINVerification}
+                    disabled={isVerifyingCIN || !formData.cinNumber.trim()}
+                    className="px-4 sm:px-6 py-2 sm:py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap"
+                  >
+                    {isVerifyingCIN ? (
+                      <>
+                        <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Verifying...
+                      </>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                          <polyline points="22 4 12 14.01 9 11.01" />
+                        </svg>
+                        <span className="hidden sm:inline">Verify CIN</span>
+                        <span className="sm:hidden">Verify</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                {errors.cinNumber && (
+                  <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.cinNumber}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Industry */}
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                Industry <span className="text-red-500">*</span>
+                {isCINVerified && (
+                  <span className="ml-2 text-[10px] sm:text-xs text-primary-orange flex items-center gap-1">
+                    <svg width="10" height="10" className="sm:w-3 sm:h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 16v-4" />
+                      <path d="M12 8h.01" />
+                    </svg>
+                    Detected from MCA records
+                  </span>
+                )}
+              </label>
+              <select
+                name="industry"
+                value={formData.industry}
+                onChange={handleInputChange}
+                disabled={isCINVerified}
+                className={`w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors appearance-none ${
+                  isCINVerified ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                }`}
+              >
+                <option value="">Select industry</option>
+                <option value="technology">Technology</option>
+                <option value="finance">Finance</option>
+                <option value="healthcare">Healthcare</option>
+                <option value="education">Education</option>
+                <option value="retail">Retail</option>
+                <option value="manufacturing">Manufacturing</option>
+                <option value="real-estate">Real Estate</option>
+                <option value="consulting">Consulting</option>
+                <option value="other">Other</option>
+              </select>
+              {errors.industry && (
+                <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.industry}</p>
+              )}
+            </div>
+
+            {/* Industry Categories */}
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2 sm:mb-3">
+                Category of Industry <span className="text-red-500">*</span>
+                {isCINVerified && (
+                  <span className="ml-2 text-[10px] sm:text-xs text-primary-orange flex items-center gap-1">
+                    <svg width="10" height="10" className="sm:w-3 sm:h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 16v-4" />
+                      <path d="M12 8h.01" />
+                    </svg>
+                    Detected from MCA records
+                  </span>
+                )}
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                {INDUSTRY_CATEGORIES.map((category) => (
+                  <label
+                    key={category}
+                    className={`flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gray-900 border border-gray-700 rounded-lg transition-colors ${
+                      isCINVerified 
+                        ? 'opacity-60 cursor-not-allowed' 
+                        : 'cursor-pointer hover:border-primary-orange/50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.industryCategories.includes(category)}
+                      onChange={() => handleIndustryCategoryChange(category)}
+                      disabled={isCINVerified}
+                      className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2 disabled:cursor-not-allowed flex-shrink-0"
+                    />
+                    <span className="text-gray-300 text-xs sm:text-sm break-words">{category}</span>
+                  </label>
+                ))}
+              </div>
+              {errors.industryCategories && (
+                <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.industryCategories}</p>
+              )}
+              
+              {/* Other Industry Category Text Input */}
+              {formData.industryCategories.includes('Other') && (
+                <div className="mt-3 sm:mt-4">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                    Specify Industry Category <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="otherIndustryCategory"
+                    value={formData.otherIndustryCategory}
+                    onChange={handleInputChange}
+                    placeholder="Enter industry category"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                  />
+                  {errors.otherIndustryCategory && (
+                    <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.otherIndustryCategory}</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Date of Incorporation */}
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                Date of Incorporation <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                name="dateOfIncorporation"
+                value={formData.dateOfIncorporation}
+                onChange={handleInputChange}
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+              />
+              {errors.dateOfIncorporation && (
+                <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.dateOfIncorporation}</p>
+              )}
+            </div>
+
+            {/* Address */}
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                Address <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                name="address"
+                value={formData.address}
+                onChange={handleInputChange}
+                placeholder="Enter complete address"
+                rows={3}
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors resize-y"
+              />
+              {errors.address && (
+                <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.address}</p>
+              )}
+            </div>
+
+            {/* City, State, PIN Code */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                  City <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  placeholder="City"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                />
+                {errors.city && (
+                  <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.city}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                  State <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="state"
+                  value={formData.state}
+                  onChange={handleInputChange}
+                  placeholder="State"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                />
+                {errors.state && (
+                  <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.state}</p>
+                )}
+              </div>
+              <div className="sm:col-span-2 md:col-span-1">
+                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                  PIN Code <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="pinCode"
+                  value={formData.pinCode}
+                  onChange={handleInputChange}
+                  placeholder="PIN code"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                />
+                {errors.pinCode && (
+                  <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.pinCode}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Company Stage (Read-only info) */}
+            {entityDetection && (
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                  Company Stage
+                </label>
+                <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <span className="text-white text-sm sm:text-base">{entityDetection.companyStage}</span>
+                    <span className="text-[10px] sm:text-xs text-primary-orange bg-primary-orange/20 px-2 py-0.5 rounded w-fit">
+                      {entityDetection.confidenceScore} Confidence
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Phone Number, Email, and Landline */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                  Phone Number <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
+                </label>
+                <input
+                  type="tel"
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={handleInputChange}
+                  placeholder="+91 98765 43210"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                />
+                {errors.phoneNumber && (
+                  <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.phoneNumber}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="company@example.com"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                />
+                {errors.email && (
+                  <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.email}</p>
+                )}
+              </div>
+              <div className="sm:col-span-2 md:col-span-1">
+                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                  Landline
+                </label>
+                <input
+                  type="tel"
+                  name="landline"
+                  value={formData.landline}
+                  onChange={handleInputChange}
+                  placeholder="Enter landline number"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* Other Field */}
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                Other
+              </label>
+              <input
+                type="text"
+                name="other"
+                value={formData.other}
+                onChange={handleInputChange}
+                placeholder="Enter any other information"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+              />
+            </div>
+
+            {/* Directors Section */}
+            <div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
+                <label className="block text-xs sm:text-sm font-medium text-gray-300">
+                  Directors
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowAddDirector(!showAddDirector)}
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 bg-primary-orange/20 border border-primary-orange text-primary-orange rounded-lg hover:bg-primary-orange/30 transition-colors text-xs sm:text-sm flex items-center justify-center gap-2 w-full sm:w-auto"
+                >
+                  <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  <span className="hidden sm:inline">Add Director by DIN</span>
+                  <span className="sm:hidden">Add Director</span>
+                </button>
+              </div>
+
+              {/* Add Director by DIN */}
+              {showAddDirector && (
+                <div className="mb-4 p-3 sm:p-4 bg-gray-900 border border-gray-700 rounded-lg">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      value={newDirectorDIN}
+                      onChange={(e) => {
+                        setNewDirectorDIN(e.target.value)
+                        setErrors((prev) => ({ ...prev, newDirectorDIN: '' }))
+                      }}
+                      placeholder="Enter DIN number"
+                      className="flex-1 px-3 sm:px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddDirectorByDIN}
+                      disabled={!newDirectorDIN.trim()}
+                      className="px-3 sm:px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                    >
+                      Verify & Add
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddDirector(false)
+                        setNewDirectorDIN('')
+                      }}
+                      className="px-3 sm:px-4 py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors text-sm sm:text-base"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {errors.newDirectorDIN && (
+                    <p className="mt-2 text-xs sm:text-sm text-red-400">{errors.newDirectorDIN}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Directors List */}
+              {directors.length > 0 ? (
+                <div className="space-y-2 sm:space-y-3">
+                  {directors.map((director) => (
+                    <div
+                      key={director.id}
+                      className={`p-3 sm:p-4 bg-gray-900 border rounded-lg ${
+                        director.verified
+                          ? 'border-green-500/50 bg-green-500/5'
+                          : 'border-gray-700'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2 sm:mb-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <h4 className="text-white font-medium text-sm sm:text-base break-words">
+                              {director.firstName} {director.middleName} {director.lastName}
+                            </h4>
+                            {director.verified && (
+                              <span className="px-1.5 sm:px-2 py-0.5 bg-green-500/20 text-green-400 text-[10px] sm:text-xs rounded flex items-center gap-1 flex-shrink-0">
+                                <svg width="10" height="10" className="sm:w-3 sm:h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                  <polyline points="22 4 12 14.01 9 11.01" />
+                                </svg>
+                                Verified
+                              </span>
+                            )}
+                            {director.source === 'cin' && !director.verified && (
+                              <span className="px-1.5 sm:px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-[10px] sm:text-xs rounded flex-shrink-0">
+                                From CIN
+                              </span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-400">
+                            {director.din && (
+                              <div className="break-words">
+                                <span className="text-gray-500">DIN:</span> {director.din}
+                              </div>
+                            )}
+                            {director.designation && (
+                              <div className="break-words">
+                                <span className="text-gray-500">Designation:</span> {director.designation}
+                              </div>
+                            )}
+                            {director.dob && (
+                              <div className="break-words">
+                                <span className="text-gray-500">DOB:</span> {director.dob}
+                              </div>
+                            )}
+                            {director.pan && (
+                              <div className="break-words">
+                                <span className="text-gray-500">PAN:</span> {director.pan}
+                              </div>
+                            )}
+                            {director.email && (
+                              <div className="break-words">
+                                <span className="text-gray-500">Email:</span> {director.email}
+                              </div>
+                            )}
+                            {director.mobile && (
+                              <div className="break-words">
+                                <span className="text-gray-500">Mobile:</span> {director.mobile}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 sm:ml-4 flex-shrink-0">
+                          {director.source === 'cin' && !director.verified && director.din && (
+                            <button
+                              type="button"
+                              onClick={() => handleDINVerification(director.id, director.din)}
+                              disabled={isVerifyingDIN === director.id}
+                              className="px-2 sm:px-3 py-1 sm:py-1.5 bg-primary-orange/20 border border-primary-orange text-primary-orange rounded text-xs sm:text-sm hover:bg-primary-orange/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                            >
+                              {isVerifyingDIN === director.id ? (
+                                <>
+                                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 border-2 border-primary-orange border-t-transparent rounded-full animate-spin"></div>
+                                  <span className="hidden sm:inline">Verifying...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <svg width="12" height="12" className="sm:w-[14px] sm:h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                    <polyline points="22 4 12 14.01 9 11.01" />
+                                  </svg>
+                                  <span className="hidden sm:inline">Verify DIN</span>
+                                  <span className="sm:hidden">Verify</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveDirector(director.id)}
+                            className="p-1 sm:p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
+                          >
+                            <svg width="16" height="16" className="sm:w-[18px] sm:h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M18 6L6 18M6 6L18 18" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                      {errors[`director_${director.id}`] && (
+                        <p className="mt-2 text-xs sm:text-sm text-red-400">{errors[`director_${director.id}`]}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 sm:p-6 bg-gray-900 border border-gray-700 rounded-lg text-center text-gray-400">
+                  <p className="text-sm sm:text-base">No directors added yet.</p>
+                  <p className="text-xs sm:text-sm mt-1">Verify CIN to auto-add directors or add manually using DIN.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Document Uploads */}
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2 sm:mb-3">
+                Required Documents <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
+              </label>
+              <div className="space-y-3 sm:space-y-4">
+                {DOCUMENT_TYPES.map((docType) => (
+                  <div key={docType}>
+                    <label className="block text-xs sm:text-sm text-gray-400 mb-1.5 sm:mb-2">
+                      {docType}
+                    </label>
+                    <div className="flex items-center gap-2 sm:gap-4">
+                      <label className="flex-1 cursor-pointer min-w-0">
+                        <input
+                          type="file"
+                          onChange={(e) =>
+                            handleFileChange(docType, e.target.files?.[0] || null)
+                          }
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          className="hidden"
+                        />
+                        <div
+                          className={`px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border rounded-lg transition-colors flex items-center justify-between ${
+                            formData.documents[docType]
+                              ? 'border-primary-orange text-primary-orange'
+                              : 'border-gray-700 text-gray-400 hover:border-primary-orange'
+                          }`}
+                        >
+                          <span className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+                            {formData.documents[docType] ? (
+                              <>
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  className="sm:w-4 sm:h-4 flex-shrink-0 text-primary-orange"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                >
+                                  <path
+                                    d="M9 12L11 14L15 10"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                  <path
+                                    d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                                <span className="text-white text-xs sm:text-sm truncate">
+                                  {formData.documents[docType]?.name}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-xs sm:text-sm">Choose file</span>
+                            )}
+                          </span>
+                          {formData.documents[docType] ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handleFileChange(docType, null)
+                              }}
+                              className="text-red-400 hover:text-red-300 transition-colors flex-shrink-0 ml-2"
+                            >
+                              <svg
+                                width="16"
+                                height="16"
+                                className="sm:w-[18px] sm:h-[18px]"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                              >
+                                <path
+                                  d="M18 6L6 18M6 6L18 18"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            </button>
+                          ) : (
+                            <svg
+                              width="16"
+                              height="16"
+                              className="sm:w-5 sm:h-5 flex-shrink-0 text-gray-500"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                            >
+                              <path
+                                d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d="M14 2V8H20"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Submit Buttons */}
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-4 pt-4 sm:pt-6 border-t border-gray-800">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-sm sm:text-base"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Creating...
+                  </>
+                ) : (
+                  'Create Company'
+                )}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
