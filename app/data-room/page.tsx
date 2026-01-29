@@ -226,7 +226,6 @@ export default function DataRoomPage() {
     }
 
     console.log('[fetchCompanies] useEffect setup complete, calling fetchCompanies...')
-    fetchCompanies()
 
     async function fetchTemplates() {
       const result = await getDocumentTemplates()
@@ -235,6 +234,7 @@ export default function DataRoomPage() {
       }
     }
 
+    // Run both in parallel
     fetchCompanies()
     fetchTemplates()
   }, [user, supabase, authLoading])

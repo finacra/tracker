@@ -154,25 +154,20 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
 
     const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
 
-    // Auto-update overdue statuses before fetching
-    // This ensures any requirements past their due date are marked as 'overdue'
-    try {
-      if (companyId) {
-        const { error: updateError } = await adminSupabase.rpc('update_company_overdue_statuses', { p_company_id: companyId })
-        if (updateError) {
-          console.error('[getRegulatoryRequirements] Error updating overdue statuses:', updateError)
-          // Continue anyway - don't fail the whole request
-        }
-      } else if (isSuperadmin) {
-        const { error: updateError } = await adminSupabase.rpc('update_overdue_statuses')
-        if (updateError) {
-          console.error('[getRegulatoryRequirements] Error updating overdue statuses:', updateError)
-          // Continue anyway - don't fail the whole request
-        }
-      }
-    } catch (updateErr) {
-      console.error('[getRegulatoryRequirements] Exception updating overdue statuses:', updateErr)
-      // Continue anyway - don't fail the whole request
+    // Fire-and-forget: Update overdue statuses in background (don't wait for it)
+    // This ensures the page loads fast while statuses are updated asynchronously
+    if (companyId) {
+      Promise.resolve(adminSupabase.rpc('update_company_overdue_statuses', { p_company_id: companyId }))
+        .then(({ error }) => {
+          if (error) console.error('[getRegulatoryRequirements] Background update overdue error:', error)
+        })
+        .catch(err => console.error('[getRegulatoryRequirements] Background update exception:', err))
+    } else if (isSuperadmin) {
+      Promise.resolve(adminSupabase.rpc('update_overdue_statuses'))
+        .then(({ error }) => {
+          if (error) console.error('[getRegulatoryRequirements] Background update overdue error:', error)
+        })
+        .catch(err => console.error('[getRegulatoryRequirements] Background update exception:', err))
     }
 
     let query = adminSupabase
