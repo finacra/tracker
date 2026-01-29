@@ -261,23 +261,23 @@ export default function DataRoomPage() {
       if (!currentCompany) return
 
       setIsLoading(true)
+      const startTime = performance.now()
+      console.log('[fetchDetails] Starting fetch for company:', currentCompany.id)
+      
       try {
-        // Fetch company details
-        const { data: company, error: companyError } = await supabase
-          .from('companies')
-          .select('*')
-          .eq('id', currentCompany.id)
-          .single()
+        // Fetch company details, directors, and documents IN PARALLEL
+        const [companyResult, directorsResult] = await Promise.all([
+          supabase.from('companies').select('*').eq('id', currentCompany.id).single(),
+          supabase.from('directors').select('*').eq('company_id', currentCompany.id)
+        ])
 
-        if (companyError) throw companyError
+        console.log('[fetchDetails] Parallel fetch completed in', Math.round(performance.now() - startTime), 'ms')
 
-        // Fetch directors
-        const { data: directors, error: directorsError } = await supabase
-          .from('directors')
-          .select('*')
-          .eq('company_id', currentCompany.id)
+        if (companyResult.error) throw companyResult.error
+        if (directorsResult.error) throw directorsResult.error
 
-        if (directorsError) throw directorsError
+        const company = companyResult.data
+        const directors = directorsResult.data
 
         // Map to EntityDetails structure
         if (company) {
@@ -313,8 +313,10 @@ export default function DataRoomPage() {
           setEntityDetails(mappedDetails)
         }
 
-        // Fetch vault documents
-        await fetchVaultDocuments()
+        // Fetch vault documents in background (don't block UI)
+        fetchVaultDocuments()
+        
+        console.log('[fetchDetails] Total time:', Math.round(performance.now() - startTime), 'ms')
       } catch (err) {
         console.error('Error fetching entity details:', err)
       } finally {
@@ -874,8 +876,13 @@ export default function DataRoomPage() {
       }
 
       setIsLoadingRequirements(true)
+      const startTime = performance.now()
+      console.log('[fetchRequirements] Starting fetch for company:', currentCompany.id)
+      
       try {
         const result = await getRegulatoryRequirements(currentCompany.id)
+        console.log('[fetchRequirements] Completed in', Math.round(performance.now() - startTime), 'ms')
+        
         if (result.success && result.requirements) {
           setRegulatoryRequirements(result.requirements)
         } else {
@@ -891,7 +898,7 @@ export default function DataRoomPage() {
     }
 
     fetchRequirements()
-  }, [currentCompany, activeTab])
+  }, [currentCompany]) // Removed activeTab - no need to re-fetch on tab change
 
   // Helper function to format date for display
   const formatDate = (dateStr: string): string => {

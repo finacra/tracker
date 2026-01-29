@@ -134,9 +134,13 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
   requirements?: RegulatoryRequirement[]
   error?: string
 }> {
+  const startTime = Date.now()
+  console.log('[getRegulatoryRequirements] START - companyId:', companyId)
+  
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
+    console.log('[getRegulatoryRequirements] Auth check:', Date.now() - startTime, 'ms')
     
     if (!user) {
       return { success: false, error: 'Not authenticated' }
@@ -151,6 +155,8 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
       .select('role, company_id')
       .eq('user_id', user.id)
       .eq('role', 'superadmin')
+    
+    console.log('[getRegulatoryRequirements] Superadmin check:', Date.now() - startTime, 'ms')
 
     const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
 
@@ -186,13 +192,14 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
     }
 
     const { data, error } = await query.order('due_date', { ascending: true })
+    console.log('[getRegulatoryRequirements] Query completed:', Date.now() - startTime, 'ms')
 
     if (error) {
       console.error('[getRegulatoryRequirements] Error fetching requirements:', error)
       return { success: false, error: error.message }
     }
 
-    console.log(`[getRegulatoryRequirements] Fetched ${data?.length || 0} requirements for company ${companyId || 'all'}`)
+    console.log(`[getRegulatoryRequirements] Fetched ${data?.length || 0} requirements for company ${companyId || 'all'} in ${Date.now() - startTime}ms`)
     if (data && data.length > 0) {
       console.log('[getRegulatoryRequirements] Sample requirement:', {
         id: data[0].id,
