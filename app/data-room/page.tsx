@@ -1575,7 +1575,7 @@ export default function DataRoomPage() {
               return 'Interest-based (needs tax amount)'
             }
 
-            // Extract max cap if present
+            // Extract max cap if present (check BEFORE extracting daily rate)
             let maxCap: number | null = null
             const maxMatch = penalty.match(/(?:up\s*to\s*)?max\.?\s*Rs\.?\s*([\d,]+)/i)
             if (maxMatch) {
@@ -1587,7 +1587,9 @@ export default function DataRoomPage() {
               maxCap = parseFloat(lakhMatch[1].replace(/,/g, '')) * 100000
             }
 
-            // Extract daily rate from text
+            // Extract daily rate from text - regex should match even with extra text after "per day"
+            // This handles: "Rs. 200 per day u/s 234E", "Rs. 50 per day (Rs. 20 for NIL)", etc.
+            // The regex will match "Rs. 200 per day" even if followed by "u/s 234E" or other text
             const dailyMatch = penalty.match(/Rs\.?\s*([\d,]+)\s*per\s*day/i)
             if (dailyMatch) {
               const dailyRate = parseFloat(dailyMatch[1].replace(/,/g, ''))
