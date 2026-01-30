@@ -1601,11 +1601,27 @@ export default function DataRoomPage() {
                 return `₹${Math.round(calculated).toLocaleString('en-IN')}`
               }
             }
+            
+            // Handle "50/day (NIL: 20/day)" - extract the first number (main rate)
+            const nilRateMatch = penalty.match(/(\d+)\/day\s*\([^)]*NIL[^)]*\)/i)
+            if (nilRateMatch) {
+              const dailyRate = parseFloat(nilRateMatch[1].replace(/,/g, ''))
+              if (!isNaN(dailyRate) && dailyRate > 0) {
+                let calculated = dailyRate * daysDelayed
+                if (maxCap !== null && maxCap > 0) {
+                  calculated = Math.min(calculated, maxCap)
+                }
+                return `₹${Math.round(calculated).toLocaleString('en-IN')}`
+              }
+            }
 
-            // Try alternate formats
+            // Try alternate formats - handle "50/day", "200/day", etc.
             const altMatch = penalty.match(/Rs\.?\s*([\d,]+)\s*\/\s*day/i) || 
                             penalty.match(/₹\s*([\d,]+)\s*(?:per\s*day|\/day)/i) ||
-                            penalty.match(/(\d+)\s*per\s*day/i)
+                            penalty.match(/(\d+)\s*per\s*day/i) ||
+                            // Handle "50/day" format (without Rs.)
+                            penalty.match(/^(\d+)\/day/i) ||
+                            penalty.match(/(\d+)\/day/i)
             if (altMatch) {
               const dailyRate = parseFloat(altMatch[1].replace(/,/g, ''))
               if (!isNaN(dailyRate) && dailyRate > 0) {
@@ -1614,6 +1630,37 @@ export default function DataRoomPage() {
                   calculated = Math.min(calculated, maxCap)
                 }
                 return `₹${Math.round(calculated).toLocaleString('en-IN')}`
+              }
+            }
+            
+            // Handle "200/day + 10000-100000" - extract daily rate before the +
+            const dailyWithRangeMatch = penalty.match(/(\d+)\/day\s*\+\s*[\d-]+/i)
+            if (dailyWithRangeMatch) {
+              const dailyRate = parseFloat(dailyWithRangeMatch[1].replace(/,/g, ''))
+              if (!isNaN(dailyRate) && dailyRate > 0) {
+                return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+              }
+            }
+            
+            // Handle "2%/month + 5/day" - extract daily rate after the +
+            const interestPlusDailyMatch = penalty.match(/[\d.]+%[^+]*\+\s*(\d+)\/day/i)
+            if (interestPlusDailyMatch) {
+              const dailyRate = parseFloat(interestPlusDailyMatch[1].replace(/,/g, ''))
+              if (!isNaN(dailyRate) && dailyRate > 0) {
+                return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+              }
+            }
+            
+            // Handle range formats like "25000-300000" - extract minimum
+            const rangeMatch = penalty.match(/(\d+)\s*-\s*(\d+)/)
+            if (rangeMatch && !penalty.includes('%')) {  // Not percentage ranges
+              const minAmount = parseFloat(rangeMatch[1].replace(/,/g, ''))
+              if (!isNaN(minAmount) && minAmount > 0) {
+                // If it's a range without "per day", treat as fixed minimum
+                // But if it's part of a daily rate pattern, we already handled it above
+                if (!penalty.includes('/day') && !penalty.includes('per day')) {
+                  return `₹${Math.round(minAmount).toLocaleString('en-IN')} (minimum)`
+                }
               }
             }
 
@@ -5049,10 +5096,14 @@ export default function DataRoomPage() {
                     // ============================================
 
                     // Extract daily rate from penalty string (e.g., "₹100/day", "100/day")
-                    const dailyRateMatch = penalty.match(/(?:₹)?[\d,]+(?:\.[\d]+)?\/day/i)
+                    // Handle "50/day (NIL: 20/day)" - extract first number
+                    let dailyRateMatch = penalty.match(/(\d+)\/day\s*\([^)]*NIL[^)]*\)/i)
+                    if (!dailyRateMatch) {
+                      dailyRateMatch = penalty.match(/(?:₹)?[\d,]+(?:\.[\d]+)?\/day/i)
+                    }
                     if (dailyRateMatch) {
-                      const rateStr = dailyRateMatch[0].replace(/₹/gi, '').replace(/\/day/gi, '').replace(/,/g, '')
-                      const dailyRate = parseFloat(rateStr)
+                      const rateStr = dailyRateMatch[1] || dailyRateMatch[0].replace(/₹/gi, '').replace(/\/day/gi, '').replace(/,/g, '')
+                      const dailyRate = parseFloat(rateStr.replace(/,/g, ''))
                       if (!isNaN(dailyRate) && dailyRate > 0) {
                         let calculatedPenalty = dailyRate * daysDelayed
                         
@@ -5067,6 +5118,33 @@ export default function DataRoomPage() {
                         }
                         
                         return `₹${calculatedPenalty.toLocaleString('en-IN')}`
+                      }
+                    }
+                    
+                    // Handle "200/day + 10000-100000" - extract daily rate before the +
+                    const dailyWithRangeMatch = penalty.match(/(\d+)\/day\s*\+\s*[\d-]+/i)
+                    if (dailyWithRangeMatch) {
+                      const dailyRate = parseFloat(dailyWithRangeMatch[1].replace(/,/g, ''))
+                      if (!isNaN(dailyRate) && dailyRate > 0) {
+                        return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+                      }
+                    }
+                    
+                    // Handle "2%/month + 5/day" - extract daily rate after the +
+                    const interestPlusDailyMatch = penalty.match(/[\d.]+%[^+]*\+\s*(\d+)\/day/i)
+                    if (interestPlusDailyMatch) {
+                      const dailyRate = parseFloat(interestPlusDailyMatch[1].replace(/,/g, ''))
+                      if (!isNaN(dailyRate) && dailyRate > 0) {
+                        return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+                      }
+                    }
+                    
+                    // Handle range formats like "25000-300000" - extract minimum
+                    const rangeMatch = penalty.match(/(\d+)\s*-\s*(\d+)/)
+                    if (rangeMatch && !penalty.includes('%') && !penalty.includes('/day')) {
+                      const minAmount = parseFloat(rangeMatch[1].replace(/,/g, ''))
+                      if (!isNaN(minAmount) && minAmount > 0) {
+                        return `₹${Math.round(minAmount).toLocaleString('en-IN')} (minimum)`
                       }
                     }
 
