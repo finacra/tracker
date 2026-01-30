@@ -705,23 +705,23 @@ export default function OnboardingPage() {
                   )}
                 </div>
 
-                {/* Company Name */}
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                    Company Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="companyName"
-                    value={formData.companyName}
-                    onChange={handleInputChange}
-                    placeholder="Enter company name"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
-                  />
-                  {errors.companyName && (
-                    <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.companyName}</p>
-                  )}
-                </div>
+            {/* Company Name */}
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                Company Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="companyName"
+                value={formData.companyName}
+                onChange={handleInputChange}
+                placeholder="Enter company name"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+              />
+              {errors.companyName && (
+                <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.companyName}</p>
+              )}
+            </div>
 
             {/* Company Type */}
             <div>
@@ -761,21 +761,21 @@ export default function OnboardingPage() {
             </div>
 
             {/* PAN Number */}
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                PAN Number <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
-              </label>
-              <input
-                type="text"
-                name="panNumber"
-                value={formData.panNumber}
-                onChange={handleInputChange}
-                placeholder="ABCDE1234F"
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
-              />
-              {errors.panNumber && (
-                <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.panNumber}</p>
-              )}
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                  PAN Number <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  name="panNumber"
+                  value={formData.panNumber}
+                  onChange={handleInputChange}
+                  placeholder="ABCDE1234F"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                />
+                {errors.panNumber && (
+                  <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.panNumber}</p>
+                )}
             </div>
 
             {/* Industry */}
@@ -902,12 +902,12 @@ export default function OnboardingPage() {
                   placeholder="Select date"
                   className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors cursor-pointer pr-10"
                 />
-                <input
-                  type="date"
+              <input
+                type="date"
                   id="dateOfIncorporation-hidden"
-                  name="dateOfIncorporation"
-                  value={formData.dateOfIncorporation}
-                  onChange={handleInputChange}
+                name="dateOfIncorporation"
+                value={formData.dateOfIncorporation}
+                onChange={handleInputChange}
                   className="absolute inset-0 opacity-0 cursor-pointer"
                   style={{ pointerEvents: 'auto' }}
                 />
@@ -1254,12 +1254,12 @@ export default function OnboardingPage() {
             ) : (
               <>
                 {/* Document Uploads - Step 2 */}
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2 sm:mb-3">
-                    Required Documents <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
-                  </label>
-                  <div className="space-y-3 sm:space-y-4">
-                    {DOCUMENT_TYPES.map((docType) => (
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2 sm:mb-3">
+                Required Documents <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
+              </label>
+              <div className="space-y-3 sm:space-y-4">
+                {DOCUMENT_TYPES.map((docType) => (
                   <div key={docType}>
                     <label className="block text-xs sm:text-sm text-gray-400 mb-1.5 sm:mb-2">
                       {docType}
@@ -1369,8 +1369,8 @@ export default function OnboardingPage() {
                     </div>
                   </div>
                 ))}
-                  </div>
-                </div>
+              </div>
+            </div>
               </>
             )}
 
@@ -1446,27 +1446,27 @@ export default function OnboardingPage() {
                   >
                     Back
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => router.back()}
-                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-sm sm:text-base"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Creating...
-                      </>
-                    ) : (
-                      'Create Company'
-                    )}
-                  </button>
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-sm sm:text-base"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Creating...
+                  </>
+                ) : (
+                  'Create Company'
+                )}
+              </button>
                 </>
               )}
             </div>

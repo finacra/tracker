@@ -539,36 +539,36 @@ export default function AdminPage() {
                     </>
                   )}
                 </button>
-                <button
-                  onClick={() => {
-                    setTemplateForm({
-                      category: '',
-                      requirement: '',
-                      description: '',
-                      compliance_type: 'one-time',
-                      entity_types: [],
-                      industries: [],
-                      industry_categories: [],
-                      penalty: '',
-                      is_critical: false,
-                      financial_year: '',
-                      due_date_offset: undefined,
-                      due_month: undefined,
-                      due_day: undefined,
-                      due_date: '',
-                      is_active: true
-                    })
-                    setEditingTemplate(null)
-                    setIsTemplateModalOpen(true)
-                  }}
-                  className="bg-primary-orange text-white px-6 py-3 rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2 font-medium"
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                  Add Template
-                </button>
+              <button
+                onClick={() => {
+                  setTemplateForm({
+                    category: '',
+                    requirement: '',
+                    description: '',
+                    compliance_type: 'one-time',
+                    entity_types: [],
+                    industries: [],
+                    industry_categories: [],
+                    penalty: '',
+                    is_critical: false,
+                    financial_year: '',
+                    due_date_offset: undefined,
+                    due_month: undefined,
+                    due_day: undefined,
+                    due_date: '',
+                    is_active: true
+                  })
+                  setEditingTemplate(null)
+                  setIsTemplateModalOpen(true)
+                }}
+                className="bg-primary-orange text-white px-6 py-3 rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2 font-medium"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Add Template
+              </button>
               </div>
             </div>
 
@@ -616,8 +616,8 @@ export default function AdminPage() {
                             <td className="px-6 py-4 text-gray-300 text-sm">
                               {template.entity_types && template.entity_types.length > 0 ? (
                                 <>
-                                  {template.entity_types.slice(0, 2).join(', ')}
-                                  {template.entity_types.length > 2 && ` +${template.entity_types.length - 2}`}
+                              {template.entity_types.slice(0, 2).join(', ')}
+                              {template.entity_types.length > 2 && ` +${template.entity_types.length - 2}`}
                                 </>
                               ) : (
                                 <span className="text-gray-500">All entities</span>
@@ -626,8 +626,8 @@ export default function AdminPage() {
                             <td className="px-6 py-4 text-gray-300 text-sm">
                               {template.industries && template.industries.length > 0 ? (
                                 <>
-                                  {template.industries.slice(0, 2).join(', ')}
-                                  {template.industries.length > 2 && ` +${template.industries.length - 2}`}
+                              {template.industries.slice(0, 2).join(', ')}
+                              {template.industries.length > 2 && ` +${template.industries.length - 2}`}
                                 </>
                               ) : (
                                 <span className="text-gray-500">All industries</span>
@@ -636,8 +636,8 @@ export default function AdminPage() {
                             <td className="px-6 py-4 text-gray-300 text-sm">
                               {template.industry_categories && template.industry_categories.length > 0 ? (
                                 <>
-                                  {template.industry_categories.slice(0, 2).join(', ')}
-                                  {template.industry_categories.length > 2 && ` +${template.industry_categories.length - 2}`}
+                              {template.industry_categories.slice(0, 2).join(', ')}
+                              {template.industry_categories.length > 2 && ` +${template.industry_categories.length - 2}`}
                                 </>
                               ) : (
                                 <span className="text-gray-500">All categories</span>
