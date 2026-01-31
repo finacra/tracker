@@ -1,17 +1,71 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
+import { getNotifications, markNotificationsRead, markAllNotificationsRead, type Notification } from '@/app/data-room/actions'
 
 export default function Header() {
   const [showNotifications, setShowNotifications] = useState(false)
   const [isSuperadmin, setIsSuperadmin] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false)
   const { user, signOut } = useAuth()
   const router = useRouter()
   const supabase = createClient()
+
+  // Fetch notifications
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return
+    
+    setIsLoadingNotifications(true)
+    try {
+      const result = await getNotifications({ limit: 20 })
+      if (result.success) {
+        setNotifications(result.notifications || [])
+        setUnreadCount(result.unreadCount || 0)
+      }
+    } catch (err) {
+      console.error('[Header] Error fetching notifications:', err)
+    } finally {
+      setIsLoadingNotifications(false)
+    }
+  }, [user])
+
+  // Fetch notifications on mount and periodically
+  useEffect(() => {
+    if (user) {
+      fetchNotifications()
+      // Poll every 30 seconds
+      const interval = setInterval(fetchNotifications, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [user, fetchNotifications])
+
+  // Mark notification as read
+  const handleMarkRead = async (notificationId: string) => {
+    const result = await markNotificationsRead(notificationId)
+    if (result.success) {
+      setNotifications(prev => 
+        prev.map(n => n.id === notificationId ? { ...n, is_read: true, read_at: new Date().toISOString() } : n)
+      )
+      setUnreadCount(prev => Math.max(0, prev - 1))
+    }
+  }
+
+  // Mark all as read
+  const handleMarkAllRead = async () => {
+    const result = await markAllNotificationsRead()
+    if (result.success) {
+      setNotifications(prev => 
+        prev.map(n => ({ ...n, is_read: true, read_at: new Date().toISOString() }))
+      )
+      setUnreadCount(0)
+    }
+  }
 
   // Check if user is superadmin with retry logic and comprehensive logging
   useEffect(() => {
@@ -200,25 +254,159 @@ export default function Header() {
           {/* Right Side - Notifications, Hamburger Menu, and Profile */}
           <div className="flex items-center gap-2 sm:gap-4">
             {/* Notifications (Desktop Only) */}
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="hidden md:block relative p-1.5 sm:p-2 text-gray-400 hover:text-white transition-colors"
-            >
-              <svg
-                width="18"
-                height="18"
-                className="sm:w-5 sm:h-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            <div className="relative hidden md:block">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-1.5 sm:p-2 text-gray-400 hover:text-white transition-colors"
               >
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
-            </button>
+                <svg
+                  width="18"
+                  height="18"
+                  className="sm:w-5 sm:h-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                {/* Unread Badge */}
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notifications Dropdown */}
+              {showNotifications && (
+                <>
+                  {/* Backdrop */}
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setShowNotifications(false)} 
+                  />
+                  {/* Dropdown */}
+                  <div className="absolute right-0 top-full mt-2 w-80 max-h-96 bg-primary-dark-card border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+                      <h3 className="text-white font-medium">Notifications</h3>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={handleMarkAllRead}
+                          className="text-xs text-primary-orange hover:text-orange-400 transition-colors"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Notification List */}
+                    <div className="max-h-72 overflow-y-auto">
+                      {isLoadingNotifications ? (
+                        <div className="p-4 text-center text-gray-400">
+                          <div className="animate-spin w-6 h-6 border-2 border-primary-orange border-t-transparent rounded-full mx-auto"></div>
+                        </div>
+                      ) : notifications.length === 0 ? (
+                        <div className="p-6 text-center text-gray-400">
+                          <svg className="w-12 h-12 mx-auto mb-2 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                          </svg>
+                          <p className="text-sm">No notifications yet</p>
+                        </div>
+                      ) : (
+                        notifications.map((notification) => (
+                          <div
+                            key={notification.id}
+                            onClick={() => {
+                              if (!notification.is_read) handleMarkRead(notification.id)
+                              if (notification.requirement_id) {
+                                router.push('/data-room')
+                                setShowNotifications(false)
+                              }
+                            }}
+                            className={`px-4 py-3 border-b border-gray-800 cursor-pointer transition-colors ${
+                              notification.is_read 
+                                ? 'bg-transparent hover:bg-gray-800/50' 
+                                : 'bg-primary-orange/5 hover:bg-primary-orange/10'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              {/* Icon based on type */}
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                notification.type === 'missing_docs' 
+                                  ? 'bg-yellow-500/20 text-yellow-400'
+                                  : notification.type === 'status_change'
+                                  ? 'bg-blue-500/20 text-blue-400'
+                                  : notification.type === 'overdue'
+                                  ? 'bg-red-500/20 text-red-400'
+                                  : 'bg-gray-700 text-gray-400'
+                              }`}>
+                                {notification.type === 'missing_docs' ? (
+                                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <path d="M12 9v4" />
+                                    <path d="M12 17h.01" />
+                                  </svg>
+                                ) : notification.type === 'status_change' ? (
+                                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="9 11 12 14 22 4" />
+                                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                                  </svg>
+                                ) : (
+                                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm font-medium ${notification.is_read ? 'text-gray-300' : 'text-white'}`}>
+                                  {notification.title}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
+                                  {notification.message}
+                                </p>
+                                <p className="text-[10px] text-gray-500 mt-1">
+                                  {new Date(notification.created_at).toLocaleString('en-GB', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </p>
+                              </div>
+                              {/* Unread indicator */}
+                              {!notification.is_read && (
+                                <div className="w-2 h-2 bg-primary-orange rounded-full flex-shrink-0 mt-1.5"></div>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Footer */}
+                    {notifications.length > 0 && (
+                      <div className="px-4 py-2 border-t border-gray-700">
+                        <button
+                          onClick={() => {
+                            router.push('/data-room')
+                            setShowNotifications(false)
+                          }}
+                          className="w-full text-center text-sm text-primary-orange hover:text-orange-400 transition-colors"
+                        >
+                          View all in Data Room
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Hamburger Menu Button (Mobile Only) */}
             <button

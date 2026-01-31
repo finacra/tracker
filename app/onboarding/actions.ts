@@ -214,6 +214,13 @@ export async function uploadDocument(
     frequency: string
     filePath: string
     fileName: string
+    // New period metadata fields
+    periodType?: 'one-time' | 'monthly' | 'quarterly' | 'annual'
+    periodFinancialYear?: string
+    periodKey?: string
+    periodStart?: string
+    periodEnd?: string
+    requirementId?: string
   }
 ) {
   const supabase = await createClient()
@@ -240,7 +247,14 @@ export async function uploadDocument(
       frequency: data.frequency,
       file_path: data.filePath,
       file_name: data.fileName,
-      embedding: embedding.length > 0 ? embedding : null
+      embedding: embedding.length > 0 ? embedding : null,
+      // Period metadata
+      period_type: data.periodType || null,
+      period_financial_year: data.periodFinancialYear || null,
+      period_key: data.periodKey || null,
+      period_start: data.periodStart || null,
+      period_end: data.periodEnd || null,
+      requirement_id: data.requirementId || null
     })
     .select()
     .single()
@@ -257,7 +271,7 @@ export async function uploadDocument(
     )
   }
 
-  return { success: true }
+  return { success: true, documentId: insertedDoc?.id }
 }
 
 export async function getDownloadUrl(filePath: string) {

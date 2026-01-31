@@ -13,8 +13,16 @@ export interface RegulatoryRequirement {
   status: 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed'
   due_date: string
   penalty: string | null
+  penalty_config: Record<string, unknown> | null
+  penalty_base_amount: number | null
   is_critical: boolean
   financial_year: string | null
+  compliance_type: 'one-time' | 'monthly' | 'quarterly' | 'annual' | null
+  filed_on: string | null
+  filed_by: string | null
+  status_reason: string | null
+  required_documents: string[]
+  possible_legal_action: string | null
   created_at: string
   updated_at: string
   created_by: string | null
@@ -308,14 +316,48 @@ export async function updateRequirement(
 }
 
 /**
- * Update requirement status
+ * Calculate period key from date and compliance type
+ */
+function calculatePeriodKey(complianceType: string | null, date: string | Date): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  const year = d.getFullYear()
+  const month = d.getMonth() + 1 // 1-indexed
+  
+  // Calculate FY year (April start)
+  const fyYear = month >= 4 ? year : year - 1
+
+  switch (complianceType) {
+    case 'monthly':
+      return `${year}-${month.toString().padStart(2, '0')}`
+    
+    case 'quarterly': {
+      // Q1: Apr-Jun, Q2: Jul-Sep, Q3: Oct-Dec, Q4: Jan-Mar
+      let quarter: number
+      if (month >= 4 && month <= 6) quarter = 1
+      else if (month >= 7 && month <= 9) quarter = 2
+      else if (month >= 10 && month <= 12) quarter = 3
+      else quarter = 4
+      return `Q${quarter}-${fyYear}-${(fyYear + 1).toString().slice(2)}`
+    }
+    
+    case 'annual':
+      return `FY-${fyYear}-${(fyYear + 1).toString().slice(2)}`
+    
+    default:
+      // one-time: use the date itself
+      return d.toISOString().split('T')[0]
+  }
+}
+
+/**
+ * Update requirement status with document validation and notifications
  * Superadmins can update any requirement
  */
 export async function updateRequirementStatus(
   requirementId: string,
   companyId: string | null,
   newStatus: 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed'
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; actualStatus?: string; missingDocs?: string[] }> {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -327,7 +369,6 @@ export async function updateRequirementStatus(
     const adminSupabase = createAdminClient()
     
     // Check if user is superadmin (platform-level, company_id = NULL)
-    // Fetch all superadmin roles and check if any have NULL company_id
     const { data: superadminRoles } = await adminSupabase
       .from('user_roles')
       .select('role, company_id')
@@ -347,13 +388,110 @@ export async function updateRequirementStatus(
       }
     }
 
+    // Fetch the requirement to get required_documents, due_date, compliance_type
+    const { data: requirement, error: reqError } = await adminSupabase
+      .from('regulatory_requirements')
+      .select('id, company_id, requirement, required_documents, due_date, compliance_type, status')
+      .eq('id', requirementId)
+      .single()
+
+    if (reqError || !requirement) {
+      console.error('Error fetching requirement:', reqError)
+      return { success: false, error: 'Requirement not found' }
+    }
+
+    const reqCompanyId = companyId || requirement.company_id
+    let actualStatus = newStatus
+    let statusReason: string | null = null
+    let missingDocs: string[] = []
+
+    // If marking as completed, validate required documents
+    if (newStatus === 'completed') {
+      const requiredDocs = requirement.required_documents || []
+      
+      if (requiredDocs.length > 0) {
+        // Calculate period key for document matching
+        const periodKey = calculatePeriodKey(requirement.compliance_type, requirement.due_date)
+        
+        // Fetch uploaded documents for this company with matching period
+        const { data: uploadedDocs, error: docsError } = await adminSupabase
+          .from('company_documents_internal')
+          .select('document_type, period_key')
+          .eq('company_id', reqCompanyId)
+          .in('document_type', requiredDocs)
+        
+        if (docsError) {
+          console.error('Error checking documents:', docsError)
+        }
+
+        // Check which documents are missing (match by doc_type and optionally period_key)
+        const uploadedDocTypes = new Set(
+          (uploadedDocs || [])
+            .filter(doc => !doc.period_key || doc.period_key === periodKey)
+            .map(doc => doc.document_type)
+        )
+
+        missingDocs = requiredDocs.filter((docType: string) => !uploadedDocTypes.has(docType))
+
+        if (missingDocs.length > 0) {
+          // Cannot complete - set to pending with status reason
+          actualStatus = 'pending'
+          statusReason = `Missing documents: ${missingDocs.join(', ')}`
+          
+          // Send notifications to company admins
+          await notifyCompanyAdmins(
+            adminSupabase,
+            reqCompanyId,
+            'missing_docs',
+            `Compliance requires documents`,
+            `"${requirement.requirement}" cannot be completed. Missing: ${missingDocs.join(', ')}`,
+            requirementId,
+            { missing_docs: missingDocs, attempted_status: 'completed' }
+          )
+        }
+      }
+    }
+
+    // Build update data
+    const updateData: Record<string, unknown> = {
+      status: actualStatus,
+      status_reason: statusReason,
+      updated_by: user.id,
+      updated_at: new Date().toISOString()
+    }
+
+    // If actually completing, set filed_on and filed_by
+    if (actualStatus === 'completed') {
+      updateData.filed_on = new Date().toISOString().split('T')[0]
+      updateData.filed_by = user.id
+      updateData.status_reason = null
+
+      // Notify admins of successful completion
+      await notifyCompanyAdmins(
+        adminSupabase,
+        reqCompanyId,
+        'status_change',
+        `Compliance completed`,
+        `"${requirement.requirement}" has been marked as completed.`,
+        requirementId,
+        { old_status: requirement.status, new_status: 'completed' }
+      )
+    } else if (newStatus !== requirement.status) {
+      // Notify admins of other status changes
+      await notifyCompanyAdmins(
+        adminSupabase,
+        reqCompanyId,
+        'status_change',
+        `Compliance status changed`,
+        `"${requirement.requirement}" status changed from ${requirement.status} to ${actualStatus}.`,
+        requirementId,
+        { old_status: requirement.status, new_status: actualStatus, reason: statusReason }
+      )
+    }
+
     let query = adminSupabase
       .from('regulatory_requirements')
-      .update({
-        status: newStatus,
-        updated_by: user.id,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', requirementId)
 
     // Non-superadmins must match company_id
@@ -368,10 +506,63 @@ export async function updateRequirementStatus(
       return { success: false, error: error.message }
     }
 
-    return { success: true }
+    return { 
+      success: true, 
+      actualStatus,
+      missingDocs: missingDocs.length > 0 ? missingDocs : undefined
+    }
   } catch (error: any) {
     console.error('Error in updateRequirementStatus:', error)
     return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Helper: Notify all company admins
+ */
+async function notifyCompanyAdmins(
+  adminSupabase: ReturnType<typeof createAdminClient>,
+  companyId: string,
+  type: 'status_change' | 'missing_docs' | 'upcoming_deadline' | 'overdue' | 'document_uploaded' | 'team_update',
+  title: string,
+  message: string,
+  requirementId?: string,
+  metadata?: Record<string, unknown>
+) {
+  try {
+    // Get company admin user IDs
+    const { data: adminUsers, error: adminError } = await adminSupabase
+      .from('user_roles')
+      .select('user_id')
+      .eq('company_id', companyId)
+      .in('role', ['admin', 'superadmin'])
+
+    if (adminError || !adminUsers || adminUsers.length === 0) {
+      console.log('[notifyCompanyAdmins] No admins found or error:', adminError)
+      return
+    }
+
+    // Create notifications for each admin
+    const notifications = adminUsers.map(admin => ({
+      company_id: companyId,
+      user_id: admin.user_id,
+      type,
+      title,
+      message,
+      requirement_id: requirementId || null,
+      metadata: metadata ? JSON.stringify(metadata) : null,
+      is_read: false
+    }))
+
+    const { error: insertError } = await adminSupabase
+      .from('company_notifications')
+      .insert(notifications)
+
+    if (insertError) {
+      console.error('[notifyCompanyAdmins] Error inserting notifications:', insertError)
+    }
+  } catch (err) {
+    console.error('[notifyCompanyAdmins] Exception:', err)
   }
 }
 
@@ -1389,5 +1580,330 @@ export async function applyAllTemplates(): Promise<{ success: boolean; applied_c
   } catch (error: any) {
     console.error('Error in applyAllTemplates:', error)
     return { success: false, applied_count: 0, template_count: 0, error: error.message }
+  }
+}
+
+// ============================================
+// NOTIFICATION ACTIONS
+// ============================================
+
+export interface Notification {
+  id: string
+  company_id: string
+  user_id: string
+  type: 'status_change' | 'missing_docs' | 'upcoming_deadline' | 'overdue' | 'document_uploaded' | 'team_update'
+  title: string
+  message: string
+  requirement_id: string | null
+  document_id: string | null
+  is_read: boolean
+  read_at: string | null
+  created_at: string
+  metadata: Record<string, unknown> | null
+}
+
+/**
+ * Get notifications for current user
+ */
+export async function getNotifications(
+  options: { unreadOnly?: boolean; limit?: number } = {}
+): Promise<{ success: boolean; notifications?: Notification[]; unreadCount?: number; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      return { success: false, error: 'Not authenticated' }
+    }
+
+    const adminSupabase = createAdminClient()
+    
+    let query = adminSupabase
+      .from('company_notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+
+    if (options.unreadOnly) {
+      query = query.eq('is_read', false)
+    }
+
+    if (options.limit) {
+      query = query.limit(options.limit)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error fetching notifications:', error)
+      return { success: false, error: error.message }
+    }
+
+    // Get unread count
+    const { count } = await adminSupabase
+      .from('company_notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false)
+
+    return { 
+      success: true, 
+      notifications: data || [],
+      unreadCount: count || 0
+    }
+  } catch (error: any) {
+    console.error('Error in getNotifications:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Mark notification(s) as read
+ */
+export async function markNotificationsRead(
+  notificationIds: string | string[]
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      return { success: false, error: 'Not authenticated' }
+    }
+
+    const adminSupabase = createAdminClient()
+    const ids = Array.isArray(notificationIds) ? notificationIds : [notificationIds]
+
+    const { error } = await adminSupabase
+      .from('company_notifications')
+      .update({ 
+        is_read: true, 
+        read_at: new Date().toISOString() 
+      })
+      .eq('user_id', user.id)
+      .in('id', ids)
+
+    if (error) {
+      console.error('Error marking notifications read:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error in markNotificationsRead:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Mark all notifications as read for current user
+ */
+export async function markAllNotificationsRead(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      return { success: false, error: 'Not authenticated' }
+    }
+
+    const adminSupabase = createAdminClient()
+
+    const { error } = await adminSupabase
+      .from('company_notifications')
+      .update({ 
+        is_read: true, 
+        read_at: new Date().toISOString() 
+      })
+      .eq('user_id', user.id)
+      .eq('is_read', false)
+
+    if (error) {
+      console.error('Error marking all notifications read:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error in markAllNotificationsRead:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+// ============================================
+// COMPANY FINANCIALS ACTIONS
+// ============================================
+
+export interface CompanyFinancials {
+  id: string
+  company_id: string
+  financial_year: string
+  turnover: number | null
+  tax_due: number | null
+  pf_contribution: number | null
+  esi_contribution: number | null
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * Get company financials for a specific FY or all FYs
+ */
+export async function getCompanyFinancials(
+  companyId: string,
+  financialYear?: string
+): Promise<{ success: boolean; financials?: CompanyFinancials[]; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      return { success: false, error: 'Not authenticated' }
+    }
+
+    const adminSupabase = createAdminClient()
+    
+    let query = adminSupabase
+      .from('company_financials')
+      .select('*')
+      .eq('company_id', companyId)
+      .order('financial_year', { ascending: false })
+
+    if (financialYear) {
+      query = query.eq('financial_year', financialYear)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error fetching company financials:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, financials: data || [] }
+  } catch (error: any) {
+    console.error('Error in getCompanyFinancials:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Upsert company financials for a specific FY
+ */
+export async function upsertCompanyFinancials(
+  companyId: string,
+  financialYear: string,
+  data: {
+    turnover?: number | null
+    tax_due?: number | null
+    pf_contribution?: number | null
+    esi_contribution?: number | null
+  }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      return { success: false, error: 'Not authenticated' }
+    }
+
+    // Check permissions
+    const canEdit = await canUserEdit(companyId)
+    if (!canEdit) {
+      return { success: false, error: 'You do not have permission to edit company financials' }
+    }
+
+    const adminSupabase = createAdminClient()
+
+    const { error } = await adminSupabase
+      .from('company_financials')
+      .upsert({
+        company_id: companyId,
+        financial_year: financialYear,
+        turnover: data.turnover ?? null,
+        tax_due: data.tax_due ?? null,
+        pf_contribution: data.pf_contribution ?? null,
+        esi_contribution: data.esi_contribution ?? null,
+        updated_by: user.id,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'company_id,financial_year'
+      })
+
+    if (error) {
+      console.error('Error upserting company financials:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error in upsertCompanyFinancials:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Update requirement base amount (for interest/percentage penalties)
+ */
+export async function updateRequirementBaseAmount(
+  requirementId: string,
+  companyId: string | null,
+  baseAmount: number
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      return { success: false, error: 'Not authenticated' }
+    }
+
+    const adminSupabase = createAdminClient()
+    
+    // Check if user is superadmin
+    const { data: superadminRoles } = await adminSupabase
+      .from('user_roles')
+      .select('role, company_id')
+      .eq('user_id', user.id)
+      .eq('role', 'superadmin')
+
+    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+
+    // Check permissions
+    if (!isSuperadmin) {
+      if (!companyId) {
+        return { success: false, error: 'Company ID required for non-superadmin users' }
+      }
+      const canEdit = await canUserEdit(companyId)
+      if (!canEdit) {
+        return { success: false, error: 'You do not have permission to edit requirements' }
+      }
+    }
+
+    let query = adminSupabase
+      .from('regulatory_requirements')
+      .update({
+        penalty_base_amount: baseAmount,
+        updated_by: user.id,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', requirementId)
+
+    if (!isSuperadmin && companyId) {
+      query = query.eq('company_id', companyId)
+    }
+
+    const { error } = await query
+
+    if (error) {
+      console.error('Error updating requirement base amount:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error in updateRequirementBaseAmount:', error)
+    return { success: false, error: error.message }
   }
 }

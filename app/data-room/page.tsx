@@ -518,6 +518,11 @@ export default function DataRoomPage() {
     externalPassword: '',
     frequency: 'annually', // Default frequency
     file: null as File | null,
+    // Period metadata for tracker integration
+    periodType: '' as '' | 'one-time' | 'monthly' | 'quarterly' | 'annual',
+    periodFinancialYear: '',
+    periodKey: '',
+    requirementId: '', // If uploading from tracker context
   })
 
   const [isUploading, setIsUploading] = useState(false)
@@ -718,7 +723,12 @@ export default function DataRoomPage() {
         portalPassword: uploadFormData.externalPassword,
         frequency: uploadFormData.frequency,
         filePath: filePath,
-        fileName: uploadFormData.file.name
+        fileName: uploadFormData.file.name,
+        // Period metadata for tracker integration
+        periodType: uploadFormData.periodType || undefined,
+        periodFinancialYear: uploadFormData.periodFinancialYear || undefined,
+        periodKey: uploadFormData.periodKey || undefined,
+        requirementId: uploadFormData.requirementId || undefined,
       })
 
       if (result.success) {
@@ -733,6 +743,10 @@ export default function DataRoomPage() {
           externalPassword: '',
           frequency: 'annually',
           file: null,
+          periodType: '',
+          periodFinancialYear: '',
+          periodKey: '',
+          requirementId: '',
         })
         // Refresh documents list
         await fetchVaultDocuments()
@@ -1816,8 +1830,16 @@ export default function DataRoomPage() {
               status: req.status as 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed',
               due_date: req.dueDate,
               penalty: req.penalty || null,
+              penalty_config: null,
+              penalty_base_amount: null,
               is_critical: req.isCritical || false,
               financial_year: req.financial_year || null,
+              compliance_type: req.compliance_type || null,
+              filed_on: null,
+              filed_by: null,
+              status_reason: null,
+              required_documents: [],
+              possible_legal_action: null,
               created_at: '',
               updated_at: '',
               created_by: null,
@@ -5737,8 +5759,8 @@ export default function DataRoomPage() {
                           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                             REQUIREMENT
                           </th>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                              TYPE
+                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            TYPE
                           </th>
                           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                             STATUS
@@ -5746,20 +5768,26 @@ export default function DataRoomPage() {
                           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                             DUE DATE
                           </th>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
-                              DELAYED
+                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
+                            DOCUMENTS
                           </th>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+                            FILED ON
+                          </th>
+                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
                             PENALTY
                           </th>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
-                              CALC PENALTY
-                            </th>
-                            {canEdit && (
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                                ACTIONS
+                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+                            CALC PENALTY
                           </th>
-                            )}
+                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden xl:table-cell">
+                            LEGAL ACTION
+                          </th>
+                          {canEdit && (
+                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                              ACTIONS
+                            </th>
+                          )}
                         </tr>
                       </thead>
                       <tbody>
@@ -5768,7 +5796,7 @@ export default function DataRoomPage() {
                             {/* Visual Separator between categories */}
                             {groupIndex > 0 && (
                               <tr>
-                                  <td colSpan={canEdit ? 9 : 8} className="px-0 py-0">
+                                <td colSpan={canEdit ? 11 : 10} className="px-0 py-0">
                                   <div className="h-0.5 bg-gradient-to-r from-transparent via-primary-orange/50 to-transparent my-2"></div>
                                 </td>
                               </tr>
@@ -5884,42 +5912,98 @@ export default function DataRoomPage() {
                                     )}
                                 </td>
                                 <td className="px-6 py-4">
-                                  <div className="flex items-center gap-2 text-white">
-                                    <svg
-                                      width="16"
-                                      height="16"
-                                        className="w-4 h-4 flex-shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                                    >
-                                      <circle cx="12" cy="12" r="10" />
-                                      <polyline points="12 6 12 12 16 14" />
-                                    </svg>
-                                      <span className="text-sm whitespace-nowrap">{req.dueDate}</span>
-                                  </div>
-                                </td>
-                                  <td className="px-6 py-4 hidden md:table-cell">
                                   {(() => {
                                     const daysDelayed = calculateDelay(req.dueDate, req.status)
-                                    if (daysDelayed === null) {
-                                      return <div className="text-gray-500 text-sm">-</div>
-                                    }
                                     return (
-                                      <div className="text-red-400 text-sm font-medium">
-                                        {daysDelayed} {daysDelayed === 1 ? 'day' : 'days'}
+                                      <div className="flex flex-col">
+                                        <div className="flex items-center gap-2 text-white">
+                                          <svg
+                                            width="16"
+                                            height="16"
+                                            className="w-4 h-4 flex-shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                          >
+                                            <circle cx="12" cy="12" r="10" />
+                                            <polyline points="12 6 12 12 16 14" />
+                                          </svg>
+                                          <span className="text-sm whitespace-nowrap">{req.dueDate}</span>
+                                        </div>
+                                        {daysDelayed !== null && daysDelayed > 0 && (
+                                          <div className="text-red-400 text-xs mt-1 ml-6">
+                                            Delayed by {daysDelayed} {daysDelayed === 1 ? 'day' : 'days'}
+                                          </div>
+                                        )}
                                       </div>
                                     )
                                   })()}
                                 </td>
-                                  <td className="px-6 py-4 hidden lg:table-cell">
-                                    <div className="text-red-400 text-sm break-words">{req.penalty}</div>
+                                <td className="px-6 py-4 hidden md:table-cell">
+                                  {/* Documents Required Column */}
+                                  {(() => {
+                                    const requiredDocs = (req as any).required_documents || []
+                                    if (requiredDocs.length === 0) {
+                                      return <div className="text-gray-500 text-sm">-</div>
+                                    }
+                                    return (
+                                      <div className="flex flex-wrap gap-1">
+                                        {requiredDocs.slice(0, 3).map((doc: string, idx: number) => (
+                                          <span 
+                                            key={idx}
+                                            className="px-2 py-0.5 text-xs rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                                            title={doc}
+                                          >
+                                            {doc.length > 12 ? doc.substring(0, 12) + '...' : doc}
+                                          </span>
+                                        ))}
+                                        {requiredDocs.length > 3 && (
+                                          <span className="px-2 py-0.5 text-xs rounded-full bg-gray-700 text-gray-400">
+                                            +{requiredDocs.length - 3}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )
+                                  })()}
                                 </td>
-                                  <td className="px-6 py-4 hidden lg:table-cell">
+                                <td className="px-6 py-4 hidden lg:table-cell">
+                                  {/* Filed On Column */}
+                                  {(() => {
+                                    const filedOn = (req as any).filed_on
+                                    if (!filedOn) {
+                                      return <div className="text-gray-500 text-sm">-</div>
+                                    }
+                                    return (
+                                      <div className="text-green-400 text-sm">
+                                        {new Date(filedOn).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                      </div>
+                                    )
+                                  })()}
+                                </td>
+                                <td className="px-6 py-4 hidden lg:table-cell">
+                                  <div className="text-gray-300 text-sm break-words max-w-[150px]" title={req.penalty || ''}>
+                                    {req.penalty ? (req.penalty.length > 30 ? req.penalty.substring(0, 30) + '...' : req.penalty) : '-'}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 hidden lg:table-cell">
                                   {(() => {
                                     const daysDelayed = calculateDelay(req.dueDate, req.status)
                                     const calculatedPenalty = calculatePenalty(req.penalty, daysDelayed)
                                     if (calculatedPenalty === '-') {
                                       return <div className="text-gray-500 text-sm">-</div>
                                     }
-                                    if (calculatedPenalty.startsWith('Cannot calculate')) {
+                                    if (calculatedPenalty.includes('Needs')) {
+                                      return (
+                                        <button
+                                          onClick={() => {
+                                            // TODO: Open modal to add base amount
+                                            alert('Feature coming soon: Add base amount for penalty calculation')
+                                          }}
+                                          className="text-yellow-400 text-xs underline hover:text-yellow-300"
+                                          title="Click to add required amount"
+                                        >
+                                          {calculatedPenalty}
+                                        </button>
+                                      )
+                                    }
+                                    if (calculatedPenalty.startsWith('Cannot calculate') || calculatedPenalty.startsWith('Refer')) {
                                       return (
                                         <div className="text-yellow-400 text-xs max-w-xs" title={calculatedPenalty}>
                                           {calculatedPenalty}
@@ -5929,6 +6013,20 @@ export default function DataRoomPage() {
                                     return (
                                       <div className="text-red-400 text-sm font-semibold">
                                         {calculatedPenalty}
+                                      </div>
+                                    )
+                                  })()}
+                                </td>
+                                <td className="px-6 py-4 hidden xl:table-cell">
+                                  {/* Possible Legal Action Column */}
+                                  {(() => {
+                                    const legalAction = (req as any).possible_legal_action
+                                    if (!legalAction) {
+                                      return <div className="text-gray-500 text-sm">-</div>
+                                    }
+                                    return (
+                                      <div className="text-orange-400 text-xs max-w-[150px]" title={legalAction}>
+                                        {legalAction.length > 40 ? legalAction.substring(0, 40) + '...' : legalAction}
                                       </div>
                                     )
                                   })()}
