@@ -363,6 +363,21 @@ export default function DataRoomPage() {
   })
   const [newDocument, setNewDocument] = useState('')
   const [isSubmittingNotice, setIsSubmittingNotice] = useState(false)
+  
+  // Document upload from tracker
+  const [documentUploadModal, setDocumentUploadModal] = useState<{
+    isOpen: boolean
+    requirementId: string
+    requirement: string
+    category: string
+    documentName: string
+    complianceType: string
+    dueDate: string
+    financialYear: string | null
+    allRequiredDocs: string[]
+  } | null>(null)
+  const [uploadingDocument, setUploadingDocument] = useState(false)
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
 
   // Demo Notices Data - Now stateful so we can add to it
   const [demoNotices, setDemoNotices] = useState([
@@ -992,6 +1007,219 @@ export default function DataRoomPage() {
     } catch (error: any) {
       console.error('Error updating status:', error)
       alert(`Error: ${error.message}`)
+    }
+  }
+
+  // Helper function to map document name to folder based on category
+  const getFolderForDocument = (documentName: string, category: string): string => {
+    // Check if document template exists
+    const template = documentTemplates.find(t => 
+      t.document_name.toLowerCase() === documentName.toLowerCase() ||
+      documentName.toLowerCase().includes(t.document_name.toLowerCase())
+    )
+    if (template) return template.folder_name
+
+    // Map by category and document name patterns
+    const categoryMap: Record<string, string> = {
+      'GST': 'GST Returns',
+      'Income Tax': 'Income Tax Returns',
+      'RoC': 'ROC Filings',
+      'Labour Law': 'Labour Law Compliance',
+      'LLP Act': 'ROC Filings',
+      'Prof. Tax': 'Professional Tax'
+    }
+
+    // Check for specific document patterns
+    if (documentName.toLowerCase().includes('gstr') || documentName.toLowerCase().includes('gst')) {
+      return 'GST Returns'
+    }
+    if (documentName.toLowerCase().includes('form 24q') || documentName.toLowerCase().includes('form 26q') || 
+        documentName.toLowerCase().includes('tds') || documentName.toLowerCase().includes('itr')) {
+      return 'Income Tax Returns'
+    }
+    if (documentName.toLowerCase().includes('pf') || documentName.toLowerCase().includes('esi') || 
+        documentName.toLowerCase().includes('epf') || documentName.toLowerCase().includes('labour')) {
+      return 'Labour Law Compliance'
+    }
+    if (documentName.toLowerCase().includes('mgt') || documentName.toLowerCase().includes('aoc') || 
+        documentName.toLowerCase().includes('roc') || documentName.toLowerCase().includes('form 11') || 
+        documentName.toLowerCase().includes('form 8')) {
+      return 'ROC Filings'
+    }
+
+    // Default to category-based folder
+    return categoryMap[category] || 'Compliance Documents'
+  }
+
+  // Calculate period metadata for document upload
+  const calculatePeriodMetadata = (req: any) => {
+    const complianceType = req.compliance_type || 'one-time'
+    const dueDate = new Date(req.dueDate)
+    const financialYear = req.financial_year || null
+
+    let periodType: 'one-time' | 'monthly' | 'quarterly' | 'annual' = 'one-time'
+    let periodKey = ''
+    let periodStart = ''
+    let periodEnd = ''
+    let periodFinancialYear = financialYear
+
+    if (complianceType === 'monthly') {
+      periodType = 'monthly'
+      const month = dueDate.getMonth() + 1
+      const year = dueDate.getFullYear()
+      periodKey = `${year}-${String(month).padStart(2, '0')}`
+      periodStart = `${year}-${String(month).padStart(2, '0')}-01`
+      const lastDay = new Date(year, month, 0).getDate()
+      periodEnd = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    } else if (complianceType === 'quarterly') {
+      periodType = 'quarterly'
+      const month = dueDate.getMonth() + 1
+      const year = dueDate.getFullYear()
+      let quarter = 1
+      if (month >= 4 && month <= 6) quarter = 1
+      else if (month >= 7 && month <= 9) quarter = 2
+      else if (month >= 10 && month <= 12) quarter = 3
+      else quarter = 4
+      periodKey = `Q${quarter}-${year}`
+      const quarterStartMonth = (quarter - 1) * 3 + 1
+      periodStart = `${year}-${String(quarterStartMonth).padStart(2, '0')}-01`
+      const quarterEndMonth = quarter * 3
+      const lastDay = new Date(year, quarterEndMonth, 0).getDate()
+      periodEnd = `${year}-${String(quarterEndMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    } else if (complianceType === 'annual') {
+      periodType = 'annual'
+      const year = dueDate.getFullYear()
+      periodKey = `FY-${year}`
+      periodStart = `${year}-04-01`
+      periodEnd = `${year + 1}-03-31`
+      periodFinancialYear = `FY ${year}-${String(year + 1).slice(-2)}`
+    }
+
+    return { periodType, periodKey, periodStart, periodEnd, periodFinancialYear }
+  }
+
+  // Handle document upload from tracker
+  const handleTrackerDocumentUpload = async () => {
+    if (!documentUploadModal || !uploadFile || !currentCompany) return
+
+    setUploadingDocument(true)
+    try {
+      const supabase = await createClient()
+      
+      // Upload file to storage
+      const fileExt = uploadFile.name.split('.').pop()
+      const fileName = `${documentUploadModal.requirementId}-${documentUploadModal.documentName}-${Date.now()}.${fileExt}`
+      const filePath = `${currentCompany.id}/compliance/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('company-documents')
+        .upload(filePath, uploadFile)
+
+      if (uploadError) {
+        throw new Error(`Upload failed: ${uploadError.message}`)
+      }
+
+      // Get the requirement to calculate period metadata
+      const requirement = regulatoryRequirements.find(r => r.id === documentUploadModal.requirementId)
+      if (!requirement) throw new Error('Requirement not found')
+
+      const periodMeta = calculatePeriodMetadata({
+        compliance_type: requirement.compliance_type,
+        dueDate: requirement.due_date,
+        financial_year: requirement.financial_year
+      })
+
+      // Determine folder name
+      const folderName = getFolderForDocument(documentUploadModal.documentName, documentUploadModal.category)
+
+      // Save document metadata
+      try {
+        const uploadResult = await uploadDocument(currentCompany.id, {
+          folderName,
+          documentName: documentUploadModal.documentName,
+          registrationDate: undefined,
+          expiryDate: undefined,
+          isPortalRequired: false,
+          frequency: documentUploadModal.complianceType === 'one-time' ? 'annually' : 
+                     documentUploadModal.complianceType === 'monthly' ? 'monthly' :
+                     documentUploadModal.complianceType === 'quarterly' ? 'quarterly' : 'annually',
+          filePath,
+          fileName: uploadFile.name,
+          periodType: periodMeta.periodType,
+          periodFinancialYear: periodMeta.periodFinancialYear || null,
+          periodKey: periodMeta.periodKey,
+          periodStart: periodMeta.periodStart,
+          periodEnd: periodMeta.periodEnd,
+          requirementId: documentUploadModal.requirementId
+        })
+
+        if (!uploadResult.success) {
+          throw new Error('Failed to save document metadata')
+        }
+      } catch (uploadError: any) {
+        throw new Error(uploadError.message || 'Failed to upload document')
+      }
+
+      // Check if all required documents are uploaded
+      const allDocs = documentUploadModal.allRequiredDocs
+      const uploadedDocs = await getCompanyDocuments(currentCompany.id)
+      if (!uploadedDocs.success) throw new Error('Failed to check uploaded documents')
+
+      // Filter documents for this requirement by period_key and document_type
+      const requirementDocs = (uploadedDocs.documents || []).filter((doc: any) => 
+        doc.period_key === periodMeta.periodKey && 
+        allDocs.some(reqDoc => 
+          doc.document_type.toLowerCase().includes(reqDoc.toLowerCase()) ||
+          reqDoc.toLowerCase().includes(doc.document_type.toLowerCase())
+        )
+      )
+
+      const uploadedDocNames = requirementDocs.map((doc: any) => doc.document_type.toLowerCase())
+      const allRequiredUploaded = allDocs.every(doc => 
+        uploadedDocNames.some(uploaded => 
+          uploaded.includes(doc.toLowerCase()) || doc.toLowerCase().includes(uploaded)
+        )
+      )
+
+      // Update requirement status
+      let newStatus: 'pending' | 'completed' = 'pending'
+      if (allRequiredUploaded) {
+        newStatus = 'completed'
+      } else if (requirementDocs.length > 0) {
+        newStatus = 'pending'
+      }
+
+      // Update requirement status
+      const statusResult = await updateRequirementStatus(
+        documentUploadModal.requirementId,
+        currentCompany.id,
+        newStatus
+      )
+
+      if (!statusResult.success) {
+        console.error('Failed to update status:', statusResult.error)
+      }
+
+      // Refresh requirements and vault documents
+      const refreshResult = await getRegulatoryRequirements(currentCompany.id)
+      if (refreshResult.success && refreshResult.requirements) {
+        setRegulatoryRequirements(refreshResult.requirements)
+      }
+
+      const vaultResult = await getCompanyDocuments(currentCompany.id)
+      if (vaultResult.success) {
+        setVaultDocuments(vaultResult.documents || [])
+      }
+
+      // Close modal
+      setDocumentUploadModal(null)
+      setUploadFile(null)
+      alert(`Document uploaded successfully! ${allRequiredUploaded ? 'All documents uploaded - status set to completed.' : 'Status set to pending.'}`)
+    } catch (error: any) {
+      console.error('Error uploading document:', error)
+      alert(`Error: ${error.message}`)
+    } finally {
+      setUploadingDocument(false)
     }
   }
 
@@ -5976,13 +6204,37 @@ export default function DataRoomPage() {
                                     return (
                                       <div className="flex flex-wrap gap-1">
                                         {requiredDocs.slice(0, 3).map((doc: string, idx: number) => (
-                                          <span 
+                                          <button
                                             key={idx}
-                                            className="px-2 py-0.5 text-xs rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30"
-                                            title={doc}
+                                            onClick={() => {
+                                              const requirement = regulatoryRequirements.find(r => r.id === req.id)
+                                              if (requirement) {
+                                                setDocumentUploadModal({
+                                                  isOpen: true,
+                                                  requirementId: req.id,
+                                                  requirement: req.requirement,
+                                                  category: req.category,
+                                                  documentName: doc,
+                                                  complianceType: req.compliance_type || 'one-time',
+                                                  dueDate: req.dueDate,
+                                                  financialYear: req.financial_year || null,
+                                                  allRequiredDocs: requiredDocs
+                                                })
+                                              }
+                                            }}
+                                            className="group px-2 py-0.5 text-xs rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 hover:border-blue-400 transition-colors flex items-center gap-1"
+                                            title={`Click to upload ${doc}`}
                                           >
-                                            {doc.length > 12 ? doc.substring(0, 12) + '...' : doc}
-                                          </span>
+                                            <span>{doc.length > 12 ? doc.substring(0, 12) + '...' : doc}</span>
+                                            <svg 
+                                              className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" 
+                                              fill="none" 
+                                              stroke="currentColor" 
+                                              viewBox="0 0 24 24"
+                                            >
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                            </svg>
+                                          </button>
                                         ))}
                                         {requiredDocs.length > 3 && (
                                           <span className="px-2 py-0.5 text-xs rounded-full bg-gray-700 text-gray-400">
@@ -7549,6 +7801,93 @@ export default function DataRoomPage() {
           </div>
         )}
       </div>
+      {/* Document Upload Modal from Tracker */}
+      {documentUploadModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-800">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-light text-white">Upload Document</h3>
+                <button
+                  onClick={() => {
+                    setDocumentUploadModal(null)
+                    setUploadFile(null)
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Requirement</label>
+                <div className="text-white">{documentUploadModal.requirement}</div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Document to Upload</label>
+                <div className="text-blue-400 font-medium">{documentUploadModal.documentName}</div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Select File</label>
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      setUploadFile(file)
+                    }
+                  }}
+                  className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange"
+                />
+                {uploadFile && (
+                  <div className="mt-2 text-sm text-gray-400">
+                    Selected: {uploadFile.name}
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-4 border-t border-gray-800 flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setDocumentUploadModal(null)
+                    setUploadFile(null)
+                  }}
+                  disabled={uploadingDocument}
+                  className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleTrackerDocumentUpload}
+                  disabled={!uploadFile || uploadingDocument}
+                  className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {uploadingDocument ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      Upload
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
