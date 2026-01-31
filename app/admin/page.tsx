@@ -49,8 +49,10 @@ export default function AdminPage() {
   const [selectedCompany, setSelectedCompany] = useState<string>('all')
   const [activeTab, setActiveTab] = useState<'overview' | 'companies' | 'compliances' | 'users' | 'templates' | 'financials'>('overview')
   const [templates, setTemplates] = useState<ComplianceTemplate[]>([])
+  const [selectedTemplates, setSelectedTemplates] = useState<string[]>([])
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
   const [isApplyingTemplates, setIsApplyingTemplates] = useState(false)
+  const [isDeletingTemplates, setIsDeletingTemplates] = useState(false)
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<ComplianceTemplate | null>(null)
   const [templateForm, setTemplateForm] = useState({
@@ -587,6 +589,53 @@ export default function AdminPage() {
                 </svg>
                 Bulk Upload
               </button>
+              {selectedTemplates.length > 0 && (
+                <button
+                  onClick={async () => {
+                    if (!confirm(`Are you sure you want to delete ${selectedTemplates.length} template(s)? This action cannot be undone.`)) {
+                      return
+                    }
+                    setIsDeletingTemplates(true)
+                    let deletedCount = 0
+                    let errorCount = 0
+                    for (const templateId of selectedTemplates) {
+                      const result = await deleteComplianceTemplate(templateId)
+                      if (result.success) {
+                        deletedCount++
+                      } else {
+                        errorCount++
+                        console.error('Failed to delete template:', templateId, result.error)
+                      }
+                    }
+                    // Refresh templates
+                    const fetchedTemplates = await getComplianceTemplates()
+                    if (fetchedTemplates.success && fetchedTemplates.templates) {
+                      setTemplates(fetchedTemplates.templates)
+                    }
+                    setSelectedTemplates([])
+                    setIsDeletingTemplates(false)
+                    alert(`Deleted ${deletedCount} template(s)${errorCount > 0 ? `. ${errorCount} failed.` : ''}`)
+                  }}
+                  disabled={isDeletingTemplates}
+                  className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 font-medium disabled:opacity-50"
+                >
+                  {isDeletingTemplates ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                        <line x1="10" y1="11" x2="10" y2="17" />
+                        <line x1="14" y1="11" x2="14" y2="17" />
+                      </svg>
+                      Delete {selectedTemplates.length} Selected
+                    </>
+                  )}
+                </button>
+              )}
               </div>
             </div>
 
@@ -605,12 +654,26 @@ export default function AdminPage() {
                   <table className="w-full">
                     <thead className="bg-gray-900 border-b border-gray-800">
                       <tr>
+                        <th className="px-4 py-4 text-left">
+                          <input
+                            type="checkbox"
+                            checked={selectedTemplates.length === templates.length && templates.length > 0}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedTemplates(templates.map(t => t.id))
+                              } else {
+                                setSelectedTemplates([])
+                              }
+                            }}
+                            className="w-4 h-4 text-primary-orange bg-gray-900 border-gray-700 rounded focus:ring-primary-orange"
+                          />
+                        </th>
                         <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Requirement</th>
                         <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Compliance Type</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Required Docs</th>
                         <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Entity Types</th>
                         <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Industries</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Categories</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Matching Companies</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Matching</th>
                         <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
                         <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
                       </tr>
@@ -618,18 +681,52 @@ export default function AdminPage() {
                     <tbody>
                       {templates.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="px-6 py-12 text-center text-gray-400">
+                          <td colSpan={9} className="px-6 py-12 text-center text-gray-400">
                             No templates found. Create your first template to get started.
                           </td>
                         </tr>
                       ) : (
                         templates.map((template) => (
-                          <tr key={template.id} className="hover:bg-gray-900/50 transition-colors border-t border-gray-800">
+                          <tr key={template.id} className={`hover:bg-gray-900/50 transition-colors border-t border-gray-800 ${selectedTemplates.includes(template.id) ? 'bg-primary-orange/10' : ''}`}>
+                            <td className="px-4 py-4">
+                              <input
+                                type="checkbox"
+                                checked={selectedTemplates.includes(template.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedTemplates(prev => [...prev, template.id])
+                                  } else {
+                                    setSelectedTemplates(prev => prev.filter(id => id !== template.id))
+                                  }
+                                }}
+                                className="w-4 h-4 text-primary-orange bg-gray-900 border-gray-700 rounded focus:ring-primary-orange"
+                              />
+                            </td>
                             <td className="px-6 py-4 text-white font-medium">{template.requirement}</td>
                             <td className="px-6 py-4">
                               <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">
                                 {template.compliance_type.toUpperCase()}
                               </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              {template.required_documents && template.required_documents.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {template.required_documents.slice(0, 2).map((doc, idx) => (
+                                    <span 
+                                      key={idx}
+                                      className="px-2 py-0.5 text-xs rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                                      title={doc}
+                                    >
+                                      {doc.length > 15 ? doc.substring(0, 15) + '...' : doc}
+                                    </span>
+                                  ))}
+                                  {template.required_documents.length > 2 && (
+                                    <span className="text-gray-400 text-xs">+{template.required_documents.length - 2}</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-gray-500 text-sm">-</span>
+                              )}
                             </td>
                             <td className="px-6 py-4 text-gray-300 text-sm">
                               {template.entity_types && template.entity_types.length > 0 ? (
@@ -651,17 +748,7 @@ export default function AdminPage() {
                                 <span className="text-gray-500">All industries</span>
                               )}
                             </td>
-                            <td className="px-6 py-4 text-gray-300 text-sm">
-                              {template.industry_categories && template.industry_categories.length > 0 ? (
-                                <>
-                              {template.industry_categories.slice(0, 2).join(', ')}
-                              {template.industry_categories.length > 2 && ` +${template.industry_categories.length - 2}`}
-                                </>
-                              ) : (
-                                <span className="text-gray-500">All categories</span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 text-gray-300">{template.matching_companies_count || 0}</td>
+                            <td className="px-6 py-4 text-gray-300 text-center">{template.matching_companies_count || 0}</td>
                             <td className="px-6 py-4">
                               <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                                 template.is_active 

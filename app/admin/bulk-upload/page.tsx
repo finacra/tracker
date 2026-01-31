@@ -30,9 +30,10 @@ export default function BulkUploadPage() {
   const [cellErrors, setCellErrors] = useState<Map<string, string>>(new Map())
   const [isUploading, setIsUploading] = useState(false)
   const [uploadResult, setUploadResult] = useState<{ created: number; errors: string[] } | null>(null)
-  const [isClient, setIsClient] = useState(false)
   const [hotInstance, setHotInstance] = useState<any>(null)
+  const [isInitialized, setIsInitialized] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const initRef = useRef(false) // Prevent double initialization
 
   // Convert data array to CSVTemplateRow array for validation
   const dataToRows = useCallback((tableData: string[][]): CSVTemplateRow[] => {
@@ -62,7 +63,25 @@ export default function BulkUploadPage() {
   // Initialize Handsontable on client side only
   useEffect(() => {
     console.log('[BulkUpload] useEffect starting...')
-    setIsClient(true)
+    
+    // Prevent double initialization in React Strict Mode
+    if (initRef.current) {
+      console.log('[BulkUpload] Already initialized, skipping...')
+      return
+    }
+    
+    // Wait for container to be available
+    const waitForContainer = () => {
+      console.log('[BulkUpload] Waiting for container...')
+      if (!containerRef.current) {
+        console.log('[BulkUpload] Container not ready, retrying in 100ms...')
+        setTimeout(waitForContainer, 100)
+        return
+      }
+      console.log('[BulkUpload] Container found, initializing...')
+      initRef.current = true
+      initHandsontable()
+    }
     
     // Dynamic import of Handsontable
     const initHandsontable = async () => {
@@ -223,13 +242,15 @@ export default function BulkUploadPage() {
       }
       
       console.log('[BulkUpload] Initialization complete!')
+      setIsInitialized(true)
       
       } catch (error) {
         console.error('[BulkUpload] Error initializing Handsontable:', error)
       }
     }
 
-    initHandsontable()
+    // Start waiting for container
+    waitForContainer()
 
     return () => {
       if (hotInstance) {
@@ -344,52 +365,52 @@ export default function BulkUploadPage() {
   // Get non-empty row count
   const nonEmptyRowCount = data.filter(row => row.some(cell => cell && cell.trim())).length
 
-  if (!isClient) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="animate-spin w-12 h-12 border-4 border-primary-orange border-t-transparent rounded-full"></div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
-      {/* Header */}
-      <div className="bg-gray-900 border-b border-gray-700 px-6 py-4">
+    <div className="min-h-screen bg-[#f3f3f3] flex flex-col">
+      {/* Excel-style Header - Green ribbon */}
+      <div className="bg-[#217346] px-4 py-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push('/admin')}
-              className="text-gray-400 hover:text-white transition-colors"
+              className="text-white/80 hover:text-white transition-colors text-sm flex items-center gap-1"
             >
-              ← Back to Admin
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back
             </button>
-            <h1 className="text-xl font-semibold text-white">Bulk Template Upload</h1>
+            <div className="flex items-center gap-2">
+              <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M21.17 3H7.83A1.83 1.83 0 006 4.83v14.34A1.83 1.83 0 007.83 21h13.34A1.83 1.83 0 0023 19.17V4.83A1.83 1.83 0 0021.17 3zM12 17h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/>
+              </svg>
+              <h1 className="text-lg font-semibold text-white">Compliance Templates</h1>
+            </div>
             {validation && (
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+              <span className={`px-3 py-1 rounded text-xs font-medium ${
                 validation.valid
-                  ? 'bg-green-500/20 text-green-400'
-                  : 'bg-red-500/20 text-red-400'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-red-500 text-white'
               }`}>
-                {nonEmptyRowCount} rows • {validation.valid ? 'All valid' : `${validation.errors.length} errors`}
+                {nonEmptyRowCount} rows • {validation.valid ? 'Ready to upload' : `${validation.errors.length} errors`}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={downloadCSVTemplate}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors flex items-center gap-2"
+              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-sm rounded transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Download Template
+              Template
             </button>
-            <label className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors cursor-pointer flex items-center gap-2">
+            <label className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-sm rounded transition-colors cursor-pointer flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
-              Import CSV
+              Import
               <input
                 type="file"
                 accept=".csv"
@@ -400,194 +421,293 @@ export default function BulkUploadPage() {
             <button
               onClick={handleUpload}
               disabled={isUploading || !validation?.valid || nonEmptyRowCount === 0}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+              className={`px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2 ${
                 validation?.valid && nonEmptyRowCount > 0 && !isUploading
-                  ? 'bg-primary-orange hover:bg-primary-orange/90 text-white'
-                  : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                  ? 'bg-white text-[#217346] hover:bg-gray-100'
+                  : 'bg-white/30 text-white/50 cursor-not-allowed'
               }`}
             >
               {isUploading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Uploading...
+                  <div className="w-3 h-3 border-2 border-[#217346] border-t-transparent rounded-full animate-spin"></div>
+                  Saving...
                 </>
               ) : (
-                <>Upload {nonEmptyRowCount} Templates</>
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Save All
+                </>
               )}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="bg-gray-800 border-b border-gray-700 px-6 py-2 flex items-center gap-2">
-        <button
-          onClick={() => addRows(1)}
-          className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors"
-        >
-          + Add Row
-        </button>
-        <button
-          onClick={() => addRows(5)}
-          className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors"
-        >
-          + Add 5 Rows
-        </button>
+      {/* Excel-style Toolbar - Light gray ribbon */}
+      <div className="bg-[#f3f3f3] border-b border-[#d4d4d4] px-4 py-1.5 flex items-center gap-1">
+        <div className="flex items-center gap-0.5 border-r border-[#d4d4d4] pr-2 mr-2">
+          <button
+            onClick={() => addRows(1)}
+            className="px-2 py-1 hover:bg-[#e5e5e5] text-[#333] text-xs rounded transition-colors flex items-center gap-1"
+            title="Insert Row"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Row
+          </button>
+          <button
+            onClick={() => addRows(5)}
+            className="px-2 py-1 hover:bg-[#e5e5e5] text-[#333] text-xs rounded transition-colors"
+            title="Insert 5 Rows"
+          >
+            +5
+          </button>
+        </div>
         <button
           onClick={removeSelectedRows}
-          className="px-3 py-1.5 bg-gray-700 hover:bg-red-600 text-white text-sm rounded transition-colors"
+          className="px-2 py-1 hover:bg-[#e5e5e5] text-[#333] text-xs rounded transition-colors flex items-center gap-1"
+          title="Delete Selected Rows"
         >
-          Delete Selected
+          <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          Delete
         </button>
         <button
           onClick={clearAll}
-          className="px-3 py-1.5 bg-gray-700 hover:bg-red-600 text-white text-sm rounded transition-colors"
+          className="px-2 py-1 hover:bg-[#e5e5e5] text-[#333] text-xs rounded transition-colors"
+          title="Clear All Data"
         >
           Clear All
         </button>
         <div className="flex-1"></div>
-        <span className="text-gray-400 text-sm">
-          Ctrl+C/V to copy/paste • Right-click for options • Click cells for dropdowns
+        <span className="text-[#666] text-xs">
+          Ctrl+C/V • Right-click for menu • Tab to move cells
         </span>
       </div>
 
       {/* Spreadsheet Container */}
-      <div className="flex-1 relative" style={{ minHeight: 'calc(100vh - 180px)' }}>
+      <div className="flex-1 relative bg-white border border-[#d4d4d4]" style={{ minHeight: 'calc(100vh - 120px)' }}>
         <div 
           ref={containerRef} 
           className="absolute inset-0"
           style={{ overflow: 'hidden' }}
         />
+        {/* Loading overlay */}
+        {!isInitialized && (
+          <div className="absolute inset-0 bg-white flex items-center justify-center z-10">
+            <div className="text-center">
+              <div className="animate-spin w-12 h-12 border-4 border-[#217346] border-t-transparent rounded-full mx-auto mb-4"></div>
+              <p className="text-[#666]">Loading spreadsheet...</p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Error Panel */}
+      {/* Error Panel - Excel-style warning bar */}
       {validation && !validation.valid && (
-        <div className="bg-red-900/30 border-t border-red-700 p-4 max-h-40 overflow-y-auto">
-          <h3 className="text-red-400 font-medium mb-2">
-            Validation Errors ({validation.errors.length}):
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-            {validation.errors.slice(0, 20).map((error, idx) => (
-              <div key={idx} className="text-sm text-red-300 bg-red-900/30 px-2 py-1 rounded">
-                Row {error.row + 1}, {error.column}: {error.message}
+        <div className="bg-[#fff3cd] border-t border-[#ffc107] px-4 py-2">
+          <div className="flex items-center gap-2">
+            <svg className="w-5 h-5 text-[#856404]" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <span className="text-[#856404] text-sm font-medium">
+              {validation.errors.length} validation error{validation.errors.length > 1 ? 's' : ''} found
+            </span>
+            <div className="flex-1 overflow-x-auto">
+              <div className="flex gap-2">
+                {validation.errors.slice(0, 5).map((error, idx) => (
+                  <span key={idx} className="text-xs text-[#856404] bg-[#fff3cd] border border-[#ffc107] px-2 py-0.5 rounded whitespace-nowrap">
+                    Row {error.row + 1}: {error.column}
+                  </span>
+                ))}
+                {validation.errors.length > 5 && (
+                  <span className="text-xs text-[#856404]">+{validation.errors.length - 5} more</span>
+                )}
               </div>
-            ))}
-            {validation.errors.length > 20 && (
-              <div className="text-red-400 text-sm">
-                ... and {validation.errors.length - 20} more errors
-              </div>
-            )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Upload Result */}
+      {/* Upload Result - Excel-style info bar */}
       {uploadResult && (
-        <div className={`border-t p-4 ${uploadResult.errors.length > 0 ? 'bg-yellow-900/30 border-yellow-700' : 'bg-green-900/30 border-green-700'}`}>
+        <div className={`border-t px-4 py-2 ${uploadResult.errors.length > 0 ? 'bg-[#fff3cd] border-[#ffc107]' : 'bg-[#d4edda] border-[#28a745]'}`}>
           <div className="flex items-center justify-between">
-            <div>
-              <span className={uploadResult.errors.length > 0 ? 'text-yellow-400' : 'text-green-400'}>
-                Created {uploadResult.created} templates
+            <div className="flex items-center gap-2">
+              <svg className={`w-5 h-5 ${uploadResult.errors.length > 0 ? 'text-[#856404]' : 'text-[#155724]'}`} fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <span className={`text-sm font-medium ${uploadResult.errors.length > 0 ? 'text-[#856404]' : 'text-[#155724]'}`}>
+                {uploadResult.created} template{uploadResult.created !== 1 ? 's' : ''} saved successfully
               </span>
               {uploadResult.errors.length > 0 && (
-                <span className="text-yellow-300 ml-2">
-                  ({uploadResult.errors.length} warnings)
-                </span>
+                <span className="text-[#856404] text-sm">({uploadResult.errors.length} warnings)</span>
               )}
             </div>
             <button
               onClick={() => setUploadResult(null)}
-              className="text-gray-400 hover:text-white"
+              className="text-[#666] hover:text-[#333] p-1"
             >
-              ✕
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
         </div>
       )}
 
-      {/* Dark mode styles for Handsontable */}
+      {/* Excel-style styles for Handsontable */}
       <style jsx global>{`
         .handsontable {
-          font-family: inherit;
-          color: #e5e7eb;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          font-size: 12px;
+          color: #333;
         }
         .handsontable table {
           border-collapse: collapse;
         }
+        /* Cell styling - white background like Excel */
         .handsontable th,
         .handsontable td {
-          background: #111827;
-          border: 1px solid #374151;
-          color: #e5e7eb;
+          background: #fff;
+          border: 1px solid #d4d4d4;
+          color: #333;
         }
+        /* Column headers - gray like Excel */
         .handsontable th {
-          background: #1f2937;
-          color: #9ca3af;
-          font-weight: 500;
+          background: linear-gradient(180deg, #f8f8f8 0%, #e8e8e8 100%);
+          color: #333;
+          font-weight: 600;
+          font-size: 11px;
+          border-bottom: 1px solid #b4b4b4;
         }
-        .handsontable .ht_master tr th {
-          background: #1f2937;
+        /* Row headers - gray like Excel */
+        .handsontable .ht_master tr th,
+        .handsontable .ht_clone_left tr th {
+          background: linear-gradient(90deg, #f8f8f8 0%, #e8e8e8 100%);
+          color: #333;
+          font-weight: 400;
+          min-width: 50px;
         }
+        /* Hover effect */
         .handsontable tbody tr:hover td {
-          background: #1a2332;
+          background: #f5f5f5;
         }
-        .handsontable td.current,
+        /* Selection - blue like Excel */
+        .handsontable td.current {
+          background: #cce4f7 !important;
+          border: 2px solid #0078d4 !important;
+        }
         .handsontable td.area {
-          background: #1e3a5f !important;
+          background: #cce4f7 !important;
         }
+        .handsontable .wtBorder {
+          background-color: #0078d4 !important;
+        }
+        /* Invalid cells - red background */
         .handsontable .htCore td.htInvalid {
-          background: rgba(239, 68, 68, 0.3) !important;
+          background: #ffeaea !important;
+          border-color: #ff6b6b !important;
         }
+        /* Input styling - Excel blue border */
         .handsontable input,
         .handsontable textarea {
-          background: #1f2937;
-          color: #e5e7eb;
-          border: 2px solid #f97316;
+          background: #fff;
+          color: #333;
+          border: 2px solid #0078d4;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          font-size: 12px;
         }
+        /* Autocomplete arrow */
         .handsontable .htAutocompleteArrow {
-          color: #9ca3af;
+          color: #666;
         }
+        /* Dropdown and context menus */
         .htDropdownMenu,
         .htContextMenu {
-          background: #1f2937 !important;
-          border: 1px solid #374151 !important;
+          background: #fff !important;
+          border: 1px solid #d4d4d4 !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
         }
         .htDropdownMenu td,
         .htContextMenu td {
-          background: #1f2937 !important;
-          color: #e5e7eb !important;
+          background: #fff !important;
+          color: #333 !important;
+          font-size: 12px;
         }
         .htDropdownMenu td:hover,
         .htContextMenu td:hover,
         .htDropdownMenu td.current,
         .htContextMenu td.current {
-          background: #374151 !important;
+          background: #e5f3ff !important;
         }
+        /* Dimmed cells */
         .handsontable .htDimmed {
-          color: #6b7280;
+          color: #999;
         }
         .handsontable .htNoWrap {
           white-space: nowrap;
         }
+        /* Autocomplete indicator */
         .handsontable .htAutocomplete {
           position: relative;
         }
         .handsontable .htAutocomplete::after {
           content: '▼';
           position: absolute;
-          right: 8px;
+          right: 4px;
           top: 50%;
           transform: translateY(-50%);
-          font-size: 8px;
-          color: #6b7280;
+          font-size: 7px;
+          color: #666;
         }
+        /* Column resize handle */
+        .handsontable .manualColumnResizer {
+          background: #0078d4;
+        }
+        /* Corner and clone areas */
         .ht_clone_top,
         .ht_clone_left,
         .ht_clone_top_left_corner {
           z-index: 100;
         }
+        .ht_clone_top_left_corner th {
+          background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+        }
         .htMenu {
           z-index: 1000;
+        }
+        /* Alternating row colors for better readability */
+        .handsontable tbody tr:nth-child(even) td {
+          background: #fafafa;
+        }
+        .handsontable tbody tr:nth-child(even) td.current,
+        .handsontable tbody tr:nth-child(even) td.area {
+          background: #cce4f7 !important;
+        }
+        /* Required column headers - green accent */
+        .handsontable th span {
+          color: #217346;
+          font-weight: 700;
+        }
+        /* Scrollbar styling */
+        .handsontable ::-webkit-scrollbar {
+          width: 12px;
+          height: 12px;
+        }
+        .handsontable ::-webkit-scrollbar-track {
+          background: #f1f1f1;
+        }
+        .handsontable ::-webkit-scrollbar-thumb {
+          background: #c1c1c1;
+          border-radius: 6px;
+        }
+        .handsontable ::-webkit-scrollbar-thumb:hover {
+          background: #a8a8a8;
         }
       `}</style>
     </div>
