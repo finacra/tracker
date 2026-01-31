@@ -2,9 +2,6 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import dynamic from 'next/dynamic'
-import Handsontable from 'handsontable'
-import { registerAllModules } from 'handsontable/registry'
 import 'handsontable/dist/handsontable.full.min.css'
 import {
   CSVTemplateRow,
@@ -18,7 +15,6 @@ import {
   parseCSV,
   csvRowToTemplate,
   downloadCSVTemplate,
-  ParsedTemplate
 } from '@/lib/compliance/csv-template'
 import {
   validateAll,
@@ -26,15 +22,6 @@ import {
   getColumnName
 } from '@/lib/compliance/validators'
 import { bulkCreateComplianceTemplates } from '@/app/data-room/actions'
-
-// Register all Handsontable modules
-registerAllModules()
-
-// Dynamically import HotTable to avoid SSR issues
-const HotTable = dynamic(
-  () => import('@handsontable/react').then((mod) => mod.HotTable),
-  { ssr: false }
-)
 
 export default function BulkUploadPage() {
   const router = useRouter()
@@ -44,24 +31,8 @@ export default function BulkUploadPage() {
   const [isUploading, setIsUploading] = useState(false)
   const [uploadResult, setUploadResult] = useState<{ created: number; errors: string[] } | null>(null)
   const [isClient, setIsClient] = useState(false)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const hotTableRef = useRef<any>(null)
-
-  useEffect(() => {
-    setIsClient(true)
-    // Check for data in sessionStorage (passed from modal)
-    const storedData = sessionStorage.getItem('bulkUploadData')
-    if (storedData) {
-      const parsed = JSON.parse(storedData)
-      setData(parsed)
-      runValidation(parsed)
-      sessionStorage.removeItem('bulkUploadData')
-    } else {
-      // Start with empty rows if no data
-      const emptyRows = Array(10).fill(null).map(() => CSV_COLUMNS.map(() => ''))
-      setData(emptyRows)
-    }
-  }, [])
+  const [hotInstance, setHotInstance] = useState<any>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   // Convert data array to CSVTemplateRow array for validation
   const dataToRows = useCallback((tableData: string[][]): CSVTemplateRow[] => {
@@ -76,13 +47,11 @@ export default function BulkUploadPage() {
 
   // Validate all data and update cell errors
   const runValidation = useCallback((tableData: string[][]) => {
-    // Filter out completely empty rows
     const nonEmptyData = tableData.filter(row => row.some(cell => cell && cell.trim()))
     const rows = dataToRows(nonEmptyData)
     const result = validateAll(rows)
     setValidation(result)
 
-    // Build cell errors map
     const errors = new Map<string, string>()
     result.errors.forEach(error => {
       errors.set(`${error.row}-${error.columnIndex}`, error.message || 'Invalid')
@@ -90,62 +59,187 @@ export default function BulkUploadPage() {
     setCellErrors(errors)
   }, [dataToRows])
 
-  // Handle data changes in Handsontable
-  const handleAfterChange = useCallback((changes: Handsontable.CellChange[] | null, source: Handsontable.ChangeSource) => {
-    if (!changes) return
+  // Initialize Handsontable on client side only
+  useEffect(() => {
+    setIsClient(true)
     
-    // Rebuild data from hot table
-    const hot = hotTableRef.current?.hotInstance
-    if (hot) {
-      const newData = hot.getData() as string[][]
-      setData(newData)
-      runValidation(newData)
-    }
-  }, [runValidation])
+    // Dynamic import of Handsontable
+    const initHandsontable = async () => {
+      if (!containerRef.current) return
+      
+      // Import Handsontable dynamically
+      const Handsontable = (await import('handsontable')).default
+      const { registerAllModules } = await import('handsontable/registry')
+      
+      registerAllModules()
 
-  // Add empty rows
-  const addRows = useCallback((count: number = 5) => {
-    const emptyRows = Array(count).fill(null).map(() => CSV_COLUMNS.map(() => ''))
-    setData(prev => {
-      const newData = [...prev, ...emptyRows]
-      runValidation(newData)
-      return newData
-    })
-  }, [runValidation])
+      // Check for stored data
+      const storedData = sessionStorage.getItem('bulkUploadData')
+      let initialData: string[][]
+      if (storedData) {
+        initialData = JSON.parse(storedData)
+        sessionStorage.removeItem('bulkUploadData')
+      } else {
+        initialData = Array(10).fill(null).map(() => CSV_COLUMNS.map(() => ''))
+      }
+      
+      setData(initialData)
+
+      // Dropdown sources
+      const getDropdownSource = (column: keyof CSVTemplateRow): string[] | undefined => {
+        switch (column) {
+          case 'category': return [...CATEGORIES]
+          case 'compliance_type': return [...COMPLIANCE_TYPES]
+          case 'entity_types': return [...ENTITY_TYPES]
+          case 'industries': return [...INDUSTRIES]
+          case 'industry_categories': return [...INDUSTRY_CATEGORIES]
+          case 'penalty_type': return ['daily', 'flat', 'interest', 'percentage']
+          case 'is_critical':
+          case 'is_active': return ['true', 'false']
+          default: return undefined
+        }
+      }
+
+      // Column configurations
+      const columns = CSV_COLUMNS.map((col, idx) => {
+        const base: any = { data: idx }
+        
+        const dropdownColumns = ['category', 'compliance_type', 'penalty_type', 'is_critical', 'is_active']
+        const autocompleteColumns = ['entity_types', 'industries', 'industry_categories']
+        const numericColumns = ['due_date_offset', 'due_month', 'due_day', 'penalty_rate', 'penalty_cap']
+        
+        if (dropdownColumns.includes(col)) {
+          base.type = 'dropdown'
+          base.source = getDropdownSource(col)
+          base.strict = col === 'category' || col === 'compliance_type'
+        } else if (autocompleteColumns.includes(col)) {
+          base.type = 'autocomplete'
+          base.source = getDropdownSource(col)
+          base.strict = false
+        } else if (numericColumns.includes(col)) {
+          base.type = 'numeric'
+        } else if (col === 'due_date') {
+          base.type = 'date'
+          base.dateFormat = 'YYYY-MM-DD'
+        }
+        
+        return base
+      })
+
+      // Create the Handsontable instance
+      const hot = new Handsontable(containerRef.current, {
+        data: initialData,
+        rowHeaders: true,
+        colHeaders: CSV_COLUMNS.map(col => {
+          const header = CSV_COLUMN_HEADERS[col]
+          return header.replace(' *', '<span style="color:#f97316"> *</span>')
+        }),
+        columns: columns,
+        width: '100%',
+        height: '100%',
+        licenseKey: 'non-commercial-and-evaluation',
+        contextMenu: true,
+        copyPaste: true,
+        stretchH: 'all',
+        manualColumnResize: true,
+        manualRowResize: true,
+        autoColumnSize: true,
+        minSpareRows: 1,
+        colWidths: CSV_COLUMNS.map(col => {
+          if (col === 'description' || col === 'possible_legal_action') return 200
+          if (col === 'requirement' || col === 'required_documents') return 180
+          if (col === 'entity_types' || col === 'industries' || col === 'industry_categories') return 180
+          return 120
+        }),
+        afterChange: (changes, source) => {
+          if (!changes) return
+          const newData = hot.getData() as string[][]
+          setData(newData)
+          // Validate
+          const nonEmptyData = newData.filter(row => row.some(cell => cell && cell.trim()))
+          const rows = dataToRows(nonEmptyData)
+          const result = validateAll(rows)
+          setValidation(result)
+          const errors = new Map<string, string>()
+          result.errors.forEach(error => {
+            errors.set(`${error.row}-${error.columnIndex}`, error.message || 'Invalid')
+          })
+          setCellErrors(errors)
+        },
+        cells: function(row, col) {
+          const cellProperties: any = {}
+          const errorKey = `${row}-${col}`
+          // This would require re-rendering which is complex in vanilla Handsontable
+          return cellProperties
+        }
+      })
+
+      setHotInstance(hot)
+      
+      // Initial validation
+      const nonEmptyData = initialData.filter(row => row.some(cell => cell && cell.trim()))
+      if (nonEmptyData.length > 0) {
+        const rows = dataToRows(nonEmptyData)
+        const result = validateAll(rows)
+        setValidation(result)
+      }
+    }
+
+    initHandsontable()
+
+    return () => {
+      if (hotInstance) {
+        hotInstance.destroy()
+      }
+    }
+  }, [])
+
+  // Add rows
+  const addRows = useCallback((count: number = 1) => {
+    if (hotInstance) {
+      const currentRowCount = hotInstance.countRows()
+      hotInstance.alter('insert_row_below', currentRowCount - 1, count)
+    }
+  }, [hotInstance])
 
   // Remove selected rows
   const removeSelectedRows = useCallback(() => {
-    const hot = hotTableRef.current?.hotInstance
-    if (hot) {
-      const selected = hot.getSelected()
+    if (hotInstance) {
+      const selected = hotInstance.getSelected()
       if (selected) {
-        const rowsToDelete = new Set<number>()
+        const rowsToDelete: number[] = []
         selected.forEach((selection: [number, number, number, number]) => {
           const [startRow, , endRow] = selection
           for (let i = Math.min(startRow, endRow); i <= Math.max(startRow, endRow); i++) {
-            rowsToDelete.add(i)
+            if (!rowsToDelete.includes(i)) {
+              rowsToDelete.push(i)
+            }
           }
         })
-        
-        const newData = data.filter((_, idx) => !rowsToDelete.has(idx))
-        setData(newData)
-        runValidation(newData)
+        // Sort descending to delete from bottom up
+        rowsToDelete.sort((a, b) => b - a)
+        rowsToDelete.forEach(row => {
+          hotInstance.alter('remove_row', row, 1)
+        })
       }
     }
-  }, [data, runValidation])
+  }, [hotInstance])
 
-  // Clear all data
+  // Clear all
   const clearAll = useCallback(() => {
-    const emptyRows = Array(10).fill(null).map(() => CSV_COLUMNS.map(() => ''))
-    setData(emptyRows)
-    setValidation(null)
-    setCellErrors(new Map())
-  }, [])
+    if (hotInstance) {
+      const emptyData = Array(10).fill(null).map(() => CSV_COLUMNS.map(() => ''))
+      hotInstance.loadData(emptyData)
+      setData(emptyData)
+      setValidation(null)
+      setCellErrors(new Map())
+    }
+  }, [hotInstance])
 
   // Import CSV file
   const handleFileImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file || !hotInstance) return
 
     const reader = new FileReader()
     reader.onload = (event) => {
@@ -157,57 +251,21 @@ export default function BulkUploadPage() {
           return
         }
         const tableData = rows.map(row => CSV_COLUMNS.map(col => row[col]))
+        hotInstance.loadData(tableData)
         setData(tableData)
         runValidation(tableData)
       }
     }
     reader.readAsText(file)
-    e.target.value = '' // Reset input
-  }, [runValidation])
-
-  // Dropdown options for specific columns
-  const getDropdownSource = (column: keyof CSVTemplateRow): string[] | null => {
-    switch (column) {
-      case 'category':
-        return [...CATEGORIES]
-      case 'compliance_type':
-        return [...COMPLIANCE_TYPES]
-      case 'entity_types':
-        return [...ENTITY_TYPES]
-      case 'industries':
-        return [...INDUSTRIES]
-      case 'industry_categories':
-        return [...INDUSTRY_CATEGORIES]
-      case 'penalty_type':
-        return ['daily', 'flat', 'interest', 'percentage']
-      case 'is_critical':
-      case 'is_active':
-        return ['true', 'false']
-      default:
-        return null
-    }
-  }
-
-  // Get column type
-  const getColumnType = (column: keyof CSVTemplateRow): string => {
-    const dropdownColumns = ['category', 'compliance_type', 'penalty_type', 'is_critical', 'is_active']
-    if (dropdownColumns.includes(column)) return 'dropdown'
-    
-    const autocompleteColumns = ['entity_types', 'industries', 'industry_categories']
-    if (autocompleteColumns.includes(column)) return 'autocomplete'
-    
-    const numericColumns = ['due_date_offset', 'due_month', 'due_day', 'penalty_rate', 'penalty_cap']
-    if (numericColumns.includes(column)) return 'numeric'
-    
-    if (column === 'due_date') return 'date'
-    
-    return 'text'
-  }
+    e.target.value = ''
+  }, [hotInstance, runValidation])
 
   // Handle upload
   const handleUpload = useCallback(async () => {
-    // Filter out empty rows
-    const nonEmptyData = data.filter(row => row.some(cell => cell && cell.trim()))
+    if (!hotInstance) return
+    
+    const currentData = hotInstance.getData() as string[][]
+    const nonEmptyData = currentData.filter(row => row.some(cell => cell && cell.trim()))
     
     if (nonEmptyData.length === 0) {
       alert('No data to upload')
@@ -237,7 +295,7 @@ export default function BulkUploadPage() {
     } finally {
       setIsUploading(false)
     }
-  }, [data, dataToRows])
+  }, [hotInstance, dataToRows])
 
   // Get non-empty row count
   const nonEmptyRowCount = data.filter(row => row.some(cell => cell && cell.trim())).length
@@ -345,59 +403,16 @@ export default function BulkUploadPage() {
         </button>
         <div className="flex-1"></div>
         <span className="text-gray-400 text-sm">
-          Ctrl+C/V to copy/paste • Right-click for options • Click dropdown cells for options
+          Ctrl+C/V to copy/paste • Right-click for options • Click cells for dropdowns
         </span>
       </div>
 
-      {/* Spreadsheet */}
-      <div className="flex-1 overflow-hidden">
-        <HotTable
-          ref={hotTableRef}
-          data={data}
-          rowHeaders={true}
-          colHeaders={CSV_COLUMNS.map(col => {
-            const header = CSV_COLUMN_HEADERS[col]
-            return header.includes('*') ? `<span style="color:#f97316">${header}</span>` : header
-          })}
-          width="100%"
-          height="100%"
-          licenseKey="non-commercial-and-evaluation"
-          contextMenu={true}
-          copyPaste={true}
-          afterChange={handleAfterChange}
-          stretchH="all"
-          manualColumnResize={true}
-          manualRowResize={true}
-          autoColumnSize={true}
-          autoRowSize={true}
-          minSpareRows={1}
-          colWidths={CSV_COLUMNS.map(col => {
-            if (col === 'description' || col === 'possible_legal_action') return 200
-            if (col === 'requirement' || col === 'required_documents') return 180
-            if (col === 'entity_types' || col === 'industries' || col === 'industry_categories') return 180
-            return 120
-          })}
-          className="htDark"
-          cells={(row, col) => {
-            const colName = getColumnName(col)
-            if (!colName) return {}
-            
-            const cellProps: Handsontable.CellMeta = {
-              type: getColumnType(colName),
-              source: getDropdownSource(colName) || undefined,
-              strict: colName === 'category' || colName === 'compliance_type',
-              allowInvalid: true
-            }
-
-            // Check for validation errors
-            const errorKey = `${row}-${col}`
-            if (cellErrors.has(errorKey)) {
-              cellProps.className = 'htInvalid'
-              cellProps.comment = { value: cellErrors.get(errorKey) || 'Invalid' }
-            }
-
-            return cellProps
-          }}
+      {/* Spreadsheet Container */}
+      <div className="flex-1 relative" style={{ minHeight: 'calc(100vh - 180px)' }}>
+        <div 
+          ref={containerRef} 
+          className="absolute inset-0"
+          style={{ overflow: 'hidden' }}
         />
       </div>
 
@@ -446,58 +461,89 @@ export default function BulkUploadPage() {
         </div>
       )}
 
-      {/* Add custom styles for dark mode */}
+      {/* Dark mode styles for Handsontable */}
       <style jsx global>{`
-        .htDark {
-          background: #111827 !important;
-          color: #e5e7eb !important;
+        .handsontable {
+          font-family: inherit;
+          color: #e5e7eb;
         }
-        .htDark .htCore {
-          border-color: #374151 !important;
+        .handsontable table {
+          border-collapse: collapse;
         }
-        .htDark th {
-          background: #1f2937 !important;
-          color: #9ca3af !important;
-          border-color: #374151 !important;
+        .handsontable th,
+        .handsontable td {
+          background: #111827;
+          border: 1px solid #374151;
+          color: #e5e7eb;
         }
-        .htDark td {
-          background: #111827 !important;
-          border-color: #374151 !important;
+        .handsontable th {
+          background: #1f2937;
+          color: #9ca3af;
+          font-weight: 500;
         }
-        .htDark td.current {
-          background: #1f2937 !important;
+        .handsontable .ht_master tr th {
+          background: #1f2937;
         }
-        .htDark td.area {
-          background: #1f2937 !important;
+        .handsontable tbody tr:hover td {
+          background: #1a2332;
         }
-        .htDark .htInvalid {
+        .handsontable td.current,
+        .handsontable td.area {
+          background: #1e3a5f !important;
+        }
+        .handsontable .htCore td.htInvalid {
           background: rgba(239, 68, 68, 0.3) !important;
-          border-color: #ef4444 !important;
         }
-        .htDark .handsontableInput {
+        .handsontable input,
+        .handsontable textarea {
+          background: #1f2937;
+          color: #e5e7eb;
+          border: 2px solid #f97316;
+        }
+        .handsontable .htAutocompleteArrow {
+          color: #9ca3af;
+        }
+        .htDropdownMenu,
+        .htContextMenu {
+          background: #1f2937 !important;
+          border: 1px solid #374151 !important;
+        }
+        .htDropdownMenu td,
+        .htContextMenu td {
           background: #1f2937 !important;
           color: #e5e7eb !important;
-          border-color: #f97316 !important;
         }
-        .htDark .htAutocompleteArrow {
-          color: #9ca3af !important;
-        }
-        .htDark .htDropdownMenu {
-          background: #1f2937 !important;
-          border-color: #374151 !important;
-        }
-        .htDark .htDropdownMenu td {
-          background: #1f2937 !important;
-          color: #e5e7eb !important;
-        }
-        .htDark .htDropdownMenu td.current {
+        .htDropdownMenu td:hover,
+        .htContextMenu td:hover,
+        .htDropdownMenu td.current,
+        .htContextMenu td.current {
           background: #374151 !important;
         }
-        .htDark .ht_clone_top th {
-          background: #1f2937 !important;
+        .handsontable .htDimmed {
+          color: #6b7280;
         }
-        .handsontableInputHolder {
-          z-index: 9999 !important;
+        .handsontable .htNoWrap {
+          white-space: nowrap;
+        }
+        .handsontable .htAutocomplete {
+          position: relative;
+        }
+        .handsontable .htAutocomplete::after {
+          content: '▼';
+          position: absolute;
+          right: 8px;
+          top: 50%;
+          transform: translateY(-50%);
+          font-size: 8px;
+          color: #6b7280;
+        }
+        .ht_clone_top,
+        .ht_clone_left,
+        .ht_clone_top_left_corner {
+          z-index: 100;
+        }
+        .htMenu {
+          z-index: 1000;
         }
       `}</style>
     </div>
