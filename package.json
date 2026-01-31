@@ -9,11 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@handsontable/react": "^16.2.0",
     "@langchain/openai": "^1.2.3",
     "@langchain/textsplitters": "^1.0.1",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.91.1",
     "@tavily/core": "^0.3.0",
+    "handsontable": "^16.2.0",
     "jspdf": "^4.0.0",
     "langchain": "^1.2.13",
     "next": "^16.1.4",

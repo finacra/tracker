@@ -6,7 +6,9 @@ import Header from '@/components/Header'
 import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/utils/supabase/client'
-import { getRegulatoryRequirements, getCompanyUserRoles, getUserRole, getComplianceTemplates, createComplianceTemplate, updateComplianceTemplate, deleteComplianceTemplate, getTemplateDetails, applyAllTemplates, type ComplianceTemplate } from '@/app/data-room/actions'
+import { getRegulatoryRequirements, getCompanyUserRoles, getUserRole, getComplianceTemplates, createComplianceTemplate, updateComplianceTemplate, deleteComplianceTemplate, getTemplateDetails, applyAllTemplates, bulkCreateComplianceTemplates, type ComplianceTemplate } from '@/app/data-room/actions'
+import BulkTemplateUpload from '@/components/BulkTemplateUpload'
+import { ParsedTemplate } from '@/lib/compliance/csv-template'
 import { useUserRole } from '@/hooks/useUserRole'
 import { 
   FIXED_COSTS, 
@@ -52,6 +54,7 @@ export default function AdminPage() {
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
   const [isApplyingTemplates, setIsApplyingTemplates] = useState(false)
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<ComplianceTemplate | null>(null)
   const [templateForm, setTemplateForm] = useState({
     category: '',
@@ -575,6 +578,17 @@ export default function AdminPage() {
                   <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
                 Add Template
+              </button>
+              <button
+                onClick={() => setIsBulkUploadOpen(true)}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-medium"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                Bulk Upload
               </button>
               </div>
             </div>
@@ -1177,9 +1191,9 @@ export default function AdminPage() {
                     <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-lg hover:border-primary-orange/50 transition-colors cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={['IT & Technology Services', 'Healthcare', 'Education', 'Finance', 'Food Manufacturing', 'Food & Hospitality', 'Construction', 'Real Estate', 'Manufacturing', 'Retail & Trading', 'Professional Services', 'Other'].every(industry => templateForm.industries.includes(industry))}
+                        checked={['IT & Technology Services', 'Healthcare', 'Education', 'Finance', 'Food Manufacturing', 'Food & Hospitality', 'Construction', 'Real Estate', 'Manufacturing', 'Retail & Trading', 'Professional Services', 'Ecommerce', 'Other'].every(industry => templateForm.industries.includes(industry))}
                         onChange={(e) => {
-                          const allIndustries = ['IT & Technology Services', 'Healthcare', 'Education', 'Finance', 'Food Manufacturing', 'Food & Hospitality', 'Construction', 'Real Estate', 'Manufacturing', 'Retail & Trading', 'Professional Services', 'Other']
+                          const allIndustries = ['IT & Technology Services', 'Healthcare', 'Education', 'Finance', 'Food Manufacturing', 'Food & Hospitality', 'Construction', 'Real Estate', 'Manufacturing', 'Retail & Trading', 'Professional Services', 'Ecommerce', 'Other']
                           if (e.target.checked) {
                             setTemplateForm(prev => ({ ...prev, industries: allIndustries }))
                           } else {
@@ -1192,7 +1206,7 @@ export default function AdminPage() {
                     </label>
                   </div>
                   <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                    {['IT & Technology Services', 'Healthcare', 'Education', 'Finance', 'Food Manufacturing', 'Food & Hospitality', 'Construction', 'Real Estate', 'Manufacturing', 'Retail & Trading', 'Professional Services', 'Other'].map((industry) => (
+                    {['IT & Technology Services', 'Healthcare', 'Education', 'Finance', 'Food Manufacturing', 'Food & Hospitality', 'Construction', 'Real Estate', 'Manufacturing', 'Retail & Trading', 'Professional Services', 'Ecommerce', 'Other'].map((industry) => (
                       <label key={industry} className="flex items-center gap-2 p-3 bg-gray-900 border border-gray-700 rounded-lg hover:border-primary-orange/50 transition-colors cursor-pointer">
                         <input
                           type="checkbox"
@@ -1221,9 +1235,9 @@ export default function AdminPage() {
                     <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-lg hover:border-primary-orange/50 transition-colors cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={['Startups & MSMEs', 'Large Enterprises', 'NGOs & Section 8 Companies', 'Healthcare & Education', 'Real Estate & Construction', 'IT & Technology Services', 'Retail & Manufacturing', 'Other'].every(category => templateForm.industry_categories.includes(category))}
+                        checked={['Startups & MSMEs', 'Large Enterprises', 'NGOs & Section 8 Companies', 'Healthcare & Education', 'Real Estate & Construction', 'IT & Technology Services', 'Retail & Manufacturing', 'Ecommerce & D2C', 'Other'].every(category => templateForm.industry_categories.includes(category))}
                         onChange={(e) => {
-                          const allCategories = ['Startups & MSMEs', 'Large Enterprises', 'NGOs & Section 8 Companies', 'Healthcare & Education', 'Real Estate & Construction', 'IT & Technology Services', 'Retail & Manufacturing', 'Other']
+                          const allCategories = ['Startups & MSMEs', 'Large Enterprises', 'NGOs & Section 8 Companies', 'Healthcare & Education', 'Real Estate & Construction', 'IT & Technology Services', 'Retail & Manufacturing', 'Ecommerce & D2C', 'Other']
                           if (e.target.checked) {
                             setTemplateForm(prev => ({ ...prev, industry_categories: allCategories }))
                           } else {
@@ -1236,7 +1250,7 @@ export default function AdminPage() {
                     </label>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    {['Startups & MSMEs', 'Large Enterprises', 'NGOs & Section 8 Companies', 'Healthcare & Education', 'Real Estate & Construction', 'IT & Technology Services', 'Retail & Manufacturing', 'Other'].map((category) => (
+                    {['Startups & MSMEs', 'Large Enterprises', 'NGOs & Section 8 Companies', 'Healthcare & Education', 'Real Estate & Construction', 'IT & Technology Services', 'Retail & Manufacturing', 'Ecommerce & D2C', 'Other'].map((category) => (
                       <label key={category} className="flex items-center gap-2 p-3 bg-gray-900 border border-gray-700 rounded-lg hover:border-primary-orange/50 transition-colors cursor-pointer">
                         <input
                           type="checkbox"
@@ -1650,6 +1664,24 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Bulk Upload Modal */}
+        {isBulkUploadOpen && (
+          <BulkTemplateUpload
+            onUpload={async (templates: ParsedTemplate[]) => {
+              const result = await bulkCreateComplianceTemplates(templates)
+              if (result.success || result.created > 0) {
+                // Refresh templates list
+                const fetchedTemplates = await getComplianceTemplates()
+                if (fetchedTemplates.success && fetchedTemplates.templates) {
+                  setTemplates(fetchedTemplates.templates)
+                }
+              }
+              return result
+            }}
+            onClose={() => setIsBulkUploadOpen(false)}
+          />
         )}
       </div>
     </div>

@@ -1920,3 +1920,167 @@ export async function updateRequirementBaseAmount(
     return { success: false, error: error.message }
   }
 }
+
+/**
+ * Bulk create compliance templates from CSV upload
+ */
+export async function bulkCreateComplianceTemplates(
+  templates: {
+    category: string
+    requirement: string
+    description: string
+    compliance_type: 'one-time' | 'monthly' | 'quarterly' | 'annual'
+    entity_types: string[]
+    industries: string[]
+    industry_categories: string[]
+    due_date_offset: number | null
+    due_month: number | null
+    due_day: number | null
+    due_date: string | null
+    penalty: string | null
+    penalty_config: Record<string, unknown> | null
+    required_documents: string[]
+    possible_legal_action: string | null
+    is_critical: boolean
+    is_active: boolean
+  }[]
+): Promise<{ success: boolean; created: number; errors: string[] }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      return { success: false, created: 0, errors: ['Not authenticated'] }
+    }
+
+    const adminSupabase = createAdminClient()
+    
+    // Check if user is superadmin
+    const { data: superadminRoles } = await adminSupabase
+      .from('user_roles')
+      .select('role, company_id')
+      .eq('user_id', user.id)
+      .eq('role', 'superadmin')
+
+    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+
+    if (!isSuperadmin) {
+      return { success: false, created: 0, errors: ['Only superadmins can create templates'] }
+    }
+
+    let createdCount = 0
+    const errors: string[] = []
+
+    // Process templates in batches of 50
+    const batchSize = 50
+    for (let i = 0; i < templates.length; i += batchSize) {
+      const batch = templates.slice(i, i + batchSize)
+      
+      // Prepare batch for insertion
+      const insertData = batch.map((template, batchIndex) => {
+        const rowNum = i + batchIndex + 1
+        
+        // Validate required fields
+        if (!template.category || !template.requirement || !template.compliance_type) {
+          errors.push(`Row ${rowNum}: Missing required fields (category, requirement, or compliance_type)`)
+          return null
+        }
+        if (!template.entity_types || template.entity_types.length === 0) {
+          errors.push(`Row ${rowNum}: At least one entity type required`)
+          return null
+        }
+        if (!template.industries || template.industries.length === 0) {
+          errors.push(`Row ${rowNum}: At least one industry required`)
+          return null
+        }
+        if (!template.industry_categories || template.industry_categories.length === 0) {
+          errors.push(`Row ${rowNum}: At least one industry category required`)
+          return null
+        }
+
+        // Validate compliance type specific fields
+        if (template.compliance_type === 'one-time' && !template.due_date) {
+          errors.push(`Row ${rowNum}: Due date required for one-time compliance`)
+          return null
+        }
+        if (template.compliance_type === 'monthly' && template.due_date_offset === null) {
+          errors.push(`Row ${rowNum}: Due date offset required for monthly compliance`)
+          return null
+        }
+        if (template.compliance_type === 'quarterly' && (template.due_month === null || template.due_day === null)) {
+          errors.push(`Row ${rowNum}: Month and day required for quarterly compliance`)
+          return null
+        }
+        if (template.compliance_type === 'annual' && (template.due_month === null || template.due_day === null)) {
+          errors.push(`Row ${rowNum}: Month and day required for annual compliance`)
+          return null
+        }
+
+        return {
+          category: template.category,
+          requirement: template.requirement,
+          description: template.description || null,
+          compliance_type: template.compliance_type,
+          entity_types: template.entity_types,
+          industries: template.industries,
+          industry_categories: template.industry_categories,
+          penalty: template.penalty,
+          penalty_config: template.penalty_config,
+          is_critical: template.is_critical,
+          is_active: template.is_active,
+          due_date_offset: template.compliance_type === 'quarterly' && template.due_month && template.due_day 
+            ? (template.due_month - 1) * 30 + template.due_day 
+            : template.due_date_offset,
+          due_month: template.compliance_type === 'quarterly' ? template.due_month : template.due_month,
+          due_day: template.compliance_type === 'quarterly' ? template.due_day : template.due_day,
+          due_date: template.due_date && template.due_date.trim() !== '' ? template.due_date : null,
+          required_documents: template.required_documents || [],
+          possible_legal_action: template.possible_legal_action,
+          created_by: user.id,
+          updated_by: user.id
+        }
+      }).filter((t): t is NonNullable<typeof t> => t !== null)
+
+      if (insertData.length === 0) continue
+
+      // Insert batch
+      const { data: insertedTemplates, error: insertError } = await adminSupabase
+        .from('compliance_templates')
+        .insert(insertData)
+        .select('id')
+
+      if (insertError) {
+        console.error('Error inserting batch:', insertError)
+        errors.push(`Batch ${Math.floor(i / batchSize) + 1}: ${insertError.message}`)
+        continue
+      }
+
+      createdCount += insertedTemplates?.length || 0
+
+      // Apply templates to matching companies
+      if (insertedTemplates && insertedTemplates.length > 0) {
+        for (const template of insertedTemplates) {
+          try {
+            await adminSupabase.rpc('apply_template_to_companies', {
+              p_template_id: template.id
+            })
+          } catch (applyError: any) {
+            console.error('Error applying template:', applyError)
+            // Continue - template was created, just not applied
+          }
+        }
+      }
+    }
+
+    console.log(`[bulkCreateComplianceTemplates] Created ${createdCount} templates with ${errors.length} errors`)
+    
+    return { 
+      success: errors.length === 0, 
+      created: createdCount, 
+      errors 
+    }
+  } catch (error: any) {
+    console.error('Error in bulkCreateComplianceTemplates:', error)
+    return { success: false, created: 0, errors: [error.message] }
+  }
+}
