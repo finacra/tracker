@@ -692,6 +692,41 @@ export default function DataRoomPage() {
     }
   }
 
+  // Helper function to format period information for display
+  const formatPeriodInfo = (doc: any): string | null => {
+    if (!doc.period_key && !doc.period_financial_year) return null
+    
+    if (doc.period_type === 'monthly' && doc.period_key) {
+      // Format: "2025-03" -> "March 2025"
+      const [year, month] = doc.period_key.split('-')
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                         'July', 'August', 'September', 'October', 'November', 'December']
+      const monthName = monthNames[parseInt(month) - 1]
+      return `${monthName} ${year}`
+    } else if (doc.period_type === 'quarterly' && doc.period_key) {
+      // Format: "Q1-2025" -> "Q1 2025"
+      return doc.period_key.replace('-', ' ')
+    } else if (doc.period_type === 'annual' && doc.period_financial_year) {
+      // Format: "FY 2024-25"
+      return doc.period_financial_year
+    } else if (doc.period_financial_year) {
+      return doc.period_financial_year
+    }
+    
+    return null
+  }
+
+  // Helper function to get period badge color
+  const getPeriodBadgeColor = (periodType: string | null): string => {
+    if (!periodType) return 'bg-gray-700'
+    switch (periodType) {
+      case 'monthly': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+      case 'quarterly': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+      case 'annual': return 'bg-green-500/20 text-green-400 border-green-500/30'
+      default: return 'bg-gray-700'
+    }
+  }
+
   const allDocuments = vaultDocuments
     .filter(doc => {
       // If no FY selected, show all documents
@@ -973,41 +1008,6 @@ export default function DataRoomPage() {
       return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     } catch {
       return dateStr
-    }
-  }
-
-  // Helper function to format period information for display
-  const formatPeriodInfo = (doc: any): string | null => {
-    if (!doc.period_key && !doc.period_financial_year) return null
-    
-    if (doc.period_type === 'monthly' && doc.period_key) {
-      // Format: "2025-03" -> "March 2025"
-      const [year, month] = doc.period_key.split('-')
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                         'July', 'August', 'September', 'October', 'November', 'December']
-      const monthName = monthNames[parseInt(month) - 1]
-      return `${monthName} ${year}`
-    } else if (doc.period_type === 'quarterly' && doc.period_key) {
-      // Format: "Q1-2025" -> "Q1 2025"
-      return doc.period_key.replace('-', ' ')
-    } else if (doc.period_type === 'annual' && doc.period_financial_year) {
-      // Format: "FY 2024-25"
-      return doc.period_financial_year
-    } else if (doc.period_financial_year) {
-      return doc.period_financial_year
-    }
-    
-    return null
-  }
-
-  // Helper function to get period badge color
-  const getPeriodBadgeColor = (periodType: string | null): string => {
-    if (!periodType) return 'bg-gray-700'
-    switch (periodType) {
-      case 'monthly': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-      case 'quarterly': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-      case 'annual': return 'bg-green-500/20 text-green-400 border-green-500/30'
-      default: return 'bg-gray-700'
     }
   }
 
