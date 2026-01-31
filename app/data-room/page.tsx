@@ -2268,7 +2268,11 @@ export default function DataRoomPage() {
             doc.setFont('helvetica', 'normal')
             doc.setFontSize(10)
             doc.setTextColor(textGray[0], textGray[1], textGray[2])
-            doc.text('Prepared for management review (McKinsey/EY-style summary).', margin, 108, { maxWidth: contentWidth })
+            doc.text('Prepared for management review.', margin, 108, { maxWidth: contentWidth })
+            doc.text(`As of: ${coverDate}`, margin, 116, { maxWidth: contentWidth })
+            doc.text(`Scope: Overdue & pending (past due) compliances for the selected company.`, margin, 124, { maxWidth: contentWidth })
+            doc.setFontSize(9)
+            doc.text('Confidential — for internal use only.', margin, 136, { maxWidth: contentWidth })
 
             // Page break to main content
             doc.addPage()
