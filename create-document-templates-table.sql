@@ -21,6 +21,20 @@ COMMENT ON COLUMN public.document_templates_internal.folder_name IS 'Folder wher
 COMMENT ON COLUMN public.document_templates_internal.default_frequency IS 'Default frequency for this document type';
 COMMENT ON COLUMN public.document_templates_internal.category IS 'Compliance category this document belongs to';
 
+-- Add category column if it doesn't exist (for existing tables)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'document_templates_internal' 
+    AND column_name = 'category'
+  ) THEN
+    ALTER TABLE public.document_templates_internal ADD COLUMN category TEXT NULL;
+    COMMENT ON COLUMN public.document_templates_internal.category IS 'Compliance category this document belongs to';
+  END IF;
+END $$;
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_document_templates_folder ON public.document_templates_internal(folder_name);
 CREATE INDEX IF NOT EXISTS idx_document_templates_category ON public.document_templates_internal(category);
