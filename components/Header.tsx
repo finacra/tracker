@@ -13,6 +13,8 @@ export default function Header() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false)
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null)
+  const [showAllNotifications, setShowAllNotifications] = useState(false)
   const { user, signOut } = useAuth()
   const router = useRouter()
   const supabase = createClient()
@@ -324,10 +326,8 @@ export default function Header() {
                             key={notification.id}
                             onClick={() => {
                               if (!notification.is_read) handleMarkRead(notification.id)
-                              if (notification.requirement_id) {
-                                router.push('/data-room')
-                                setShowNotifications(false)
-                              }
+                              setSelectedNotification(notification)
+                              setShowNotifications(false)
                             }}
                             className={`px-4 py-3 border-b border-gray-800 cursor-pointer transition-colors ${
                               notification.is_read 
@@ -393,9 +393,14 @@ export default function Header() {
                     {notifications.length > 0 && (
                       <div className="px-4 py-2 border-t border-gray-700">
                         <button
-                          onClick={() => {
-                            router.push('/data-room')
+                          onClick={async () => {
                             setShowNotifications(false)
+                            // Fetch all notifications (no limit)
+                            const result = await getNotifications({ limit: 1000 })
+                            if (result.success) {
+                              setNotifications(result.notifications || [])
+                              setShowAllNotifications(true)
+                            }
                           }}
                           className="w-full text-center text-sm text-primary-orange hover:text-orange-400 transition-colors"
                         >
@@ -655,6 +660,263 @@ export default function Header() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Notification Detail Modal */}
+      {selectedNotification && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-800">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-light text-white">Notification Details</h3>
+                <button
+                  onClick={() => {
+                    setSelectedNotification(null)
+                    if (selectedNotification.requirement_id) {
+                      router.push('/data-room')
+                    }
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Icon and Type */}
+              <div className="flex items-center gap-3">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  selectedNotification.type === 'missing_docs' 
+                    ? 'bg-yellow-500/20 text-yellow-400'
+                    : selectedNotification.type === 'status_change'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : selectedNotification.type === 'overdue'
+                    ? 'bg-red-500/20 text-red-400'
+                    : 'bg-gray-700 text-gray-400'
+                }`}>
+                  {selectedNotification.type === 'missing_docs' ? (
+                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <path d="M12 9v4" />
+                      <path d="M12 17h.01" />
+                    </svg>
+                  ) : selectedNotification.type === 'status_change' ? (
+                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="9 11 12 14 22 4" />
+                      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                    </svg>
+                  ) : (
+                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    </svg>
+                  )}
+                </div>
+                <div>
+                  <div className="text-white font-medium">{selectedNotification.title}</div>
+                  <div className="text-gray-400 text-sm capitalize">{selectedNotification.type.replace('_', ' ')}</div>
+                </div>
+              </div>
+
+              {/* Full Message */}
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Message</label>
+                <div className="text-white bg-gray-900 rounded-lg p-4 whitespace-pre-wrap">
+                  {selectedNotification.message}
+                </div>
+              </div>
+
+              {/* Metadata */}
+              {selectedNotification.metadata && Object.keys(selectedNotification.metadata).length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-2">Details</label>
+                  <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+                    {Object.entries(selectedNotification.metadata).map(([key, value]) => (
+                      <div key={key} className="flex justify-between items-start">
+                        <span className="text-gray-400 text-sm capitalize">{key.replace(/_/g, ' ')}:</span>
+                        <span className="text-white text-sm text-right ml-4">
+                          {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Timestamp */}
+              <div className="flex items-center justify-between pt-4 border-t border-gray-800">
+                <div>
+                  <div className="text-gray-400 text-xs">Created</div>
+                  <div className="text-white text-sm">
+                    {new Date(selectedNotification.created_at).toLocaleString('en-GB', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </div>
+                </div>
+                {selectedNotification.read_at && (
+                  <div>
+                    <div className="text-gray-400 text-xs">Read</div>
+                    <div className="text-white text-sm">
+                      {new Date(selectedNotification.read_at).toLocaleString('en-GB', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-800">
+                <button
+                  onClick={() => {
+                    setSelectedNotification(null)
+                  }}
+                  className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Close
+                </button>
+                {selectedNotification.requirement_id && (
+                  <button
+                    onClick={() => {
+                      router.push('/data-room')
+                      setSelectedNotification(null)
+                    }}
+                    className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors"
+                  >
+                    View in Data Room
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View All Notifications Modal */}
+      {showAllNotifications && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+              <h3 className="text-xl font-light text-white">All Notifications</h3>
+              <div className="flex items-center gap-3">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={handleMarkAllRead}
+                    className="text-sm text-primary-orange hover:text-orange-400 transition-colors"
+                  >
+                    Mark all read
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setShowAllNotifications(false)
+                    fetchNotifications() // Refresh to get limited list back
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {isLoadingNotifications ? (
+                <div className="p-8 text-center text-gray-400">
+                  <div className="animate-spin w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full mx-auto"></div>
+                </div>
+              ) : notifications.length === 0 ? (
+                <div className="p-8 text-center text-gray-400">
+                  <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  </svg>
+                  <p className="text-lg">No notifications</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {notifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      onClick={() => {
+                        if (!notification.is_read) handleMarkRead(notification.id)
+                        setSelectedNotification(notification)
+                        setShowAllNotifications(false)
+                      }}
+                      className={`px-4 py-4 border border-gray-800 rounded-lg cursor-pointer transition-colors ${
+                        notification.is_read 
+                          ? 'bg-gray-900/50 hover:bg-gray-900' 
+                          : 'bg-primary-orange/5 hover:bg-primary-orange/10 border-primary-orange/30'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          notification.type === 'missing_docs' 
+                            ? 'bg-yellow-500/20 text-yellow-400'
+                            : notification.type === 'status_change'
+                            ? 'bg-blue-500/20 text-blue-400'
+                            : notification.type === 'overdue'
+                            ? 'bg-red-500/20 text-red-400'
+                            : 'bg-gray-700 text-gray-400'
+                        }`}>
+                          {notification.type === 'missing_docs' ? (
+                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                              <path d="M12 9v4" />
+                              <path d="M12 17h.01" />
+                            </svg>
+                          ) : notification.type === 'status_change' ? (
+                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="9 11 12 14 22 4" />
+                              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                            </svg>
+                          ) : (
+                            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className={`text-base font-medium ${notification.is_read ? 'text-gray-300' : 'text-white'}`}>
+                              {notification.title}
+                            </p>
+                            {!notification.is_read && (
+                              <div className="w-2 h-2 bg-primary-orange rounded-full flex-shrink-0"></div>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-400 mt-1 line-clamp-3">
+                            {notification.message}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-2">
+                            {new Date(notification.created_at).toLocaleString('en-GB', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </header>
   )
