@@ -6,9 +6,7 @@ import Header from '@/components/Header'
 import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/utils/supabase/client'
-import { getRegulatoryRequirements, getCompanyUserRoles, getUserRole, getComplianceTemplates, createComplianceTemplate, updateComplianceTemplate, deleteComplianceTemplate, getTemplateDetails, applyAllTemplates, bulkCreateComplianceTemplates, type ComplianceTemplate } from '@/app/data-room/actions'
-import BulkTemplateUpload from '@/components/BulkTemplateUpload'
-import { ParsedTemplate } from '@/lib/compliance/csv-template'
+import { getRegulatoryRequirements, getCompanyUserRoles, getUserRole, getComplianceTemplates, createComplianceTemplate, updateComplianceTemplate, deleteComplianceTemplate, getTemplateDetails, applyAllTemplates, type ComplianceTemplate } from '@/app/data-room/actions'
 import { useUserRole } from '@/hooks/useUserRole'
 import { 
   FIXED_COSTS, 
@@ -54,7 +52,6 @@ export default function AdminPage() {
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
   const [isApplyingTemplates, setIsApplyingTemplates] = useState(false)
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
-  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<ComplianceTemplate | null>(null)
   const [templateForm, setTemplateForm] = useState({
     category: '',
@@ -580,7 +577,7 @@ export default function AdminPage() {
                 Add Template
               </button>
               <button
-                onClick={() => setIsBulkUploadOpen(true)}
+                onClick={() => window.open('/admin/bulk-upload', '_blank')}
                 className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-medium"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1666,23 +1663,6 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Bulk Upload Modal */}
-        {isBulkUploadOpen && (
-          <BulkTemplateUpload
-            onUpload={async (templates: ParsedTemplate[]) => {
-              const result = await bulkCreateComplianceTemplates(templates)
-              if (result.success || result.created > 0) {
-                // Refresh templates list
-                const fetchedTemplates = await getComplianceTemplates()
-                if (fetchedTemplates.success && fetchedTemplates.templates) {
-                  setTemplates(fetchedTemplates.templates)
-                }
-              }
-              return result
-            }}
-            onClose={() => setIsBulkUploadOpen(false)}
-          />
-        )}
       </div>
     </div>
   )
