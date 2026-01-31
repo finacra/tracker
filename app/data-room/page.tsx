@@ -2272,7 +2272,10 @@ export default function DataRoomPage() {
             doc.text(`As of: ${coverDate}`, margin, 116, { maxWidth: contentWidth })
             doc.text(`Scope: Overdue & pending (past due) compliances for the selected company.`, margin, 124, { maxWidth: contentWidth })
             doc.setFontSize(9)
-            doc.text('Confidential — for internal use only.', margin, 136, { maxWidth: contentWidth })
+            doc.text('Prepared by: Finnovate', margin, 134, { maxWidth: contentWidth })
+            doc.text('Version: v1.0', margin, 141, { maxWidth: contentWidth })
+            doc.text('Contact: support@finnovate.ai', margin, 148, { maxWidth: contentWidth })
+            doc.text('Confidential — for internal use only.', margin, 158, { maxWidth: contentWidth })
 
             // Page break to main content
             doc.addPage()
