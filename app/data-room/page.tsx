@@ -696,16 +696,27 @@ export default function DataRoomPage() {
     .filter(doc => {
       // If no FY selected, show all documents
       if (!selectedFY) return true
-      // If document has no registration date, don't show it when FY is selected
-      if (!doc.registration_date) return false
-      const docFY = getFinancialYear(doc.registration_date)
-      return docFY === selectedFY
+      
+      // Prefer period_financial_year if available (for tracker-uploaded docs)
+      if (doc.period_financial_year) {
+        return doc.period_financial_year === selectedFY
+      }
+      
+      // Fallback to registration_date for older documents
+      if (doc.registration_date) {
+        const docFY = getFinancialYear(doc.registration_date)
+        return docFY === selectedFY
+      }
+      
+      // If no period or registration date, don't show when FY is selected
+      return false
     })
     .map(doc => ({
       id: doc.id,
       name: doc.document_type,
       category: doc.folder_name,
-      status: 'uploaded'
+      status: 'uploaded',
+      period: formatPeriodInfo(doc) || null
     }))
 
   const handleUpload = async () => {
@@ -962,6 +973,41 @@ export default function DataRoomPage() {
       return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     } catch {
       return dateStr
+    }
+  }
+
+  // Helper function to format period information for display
+  const formatPeriodInfo = (doc: any): string | null => {
+    if (!doc.period_key && !doc.period_financial_year) return null
+    
+    if (doc.period_type === 'monthly' && doc.period_key) {
+      // Format: "2025-03" -> "March 2025"
+      const [year, month] = doc.period_key.split('-')
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                         'July', 'August', 'September', 'October', 'November', 'December']
+      const monthName = monthNames[parseInt(month) - 1]
+      return `${monthName} ${year}`
+    } else if (doc.period_type === 'quarterly' && doc.period_key) {
+      // Format: "Q1-2025" -> "Q1 2025"
+      return doc.period_key.replace('-', ' ')
+    } else if (doc.period_type === 'annual' && doc.period_financial_year) {
+      // Format: "FY 2024-25"
+      return doc.period_financial_year
+    } else if (doc.period_financial_year) {
+      return doc.period_financial_year
+    }
+    
+    return null
+  }
+
+  // Helper function to get period badge color
+  const getPeriodBadgeColor = (periodType: string | null): string => {
+    if (!periodType) return 'bg-gray-700'
+    switch (periodType) {
+      case 'monthly': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+      case 'quarterly': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+      case 'annual': return 'bg-green-500/20 text-green-400 border-green-500/30'
+      default: return 'bg-gray-700'
     }
   }
 
@@ -6791,10 +6837,20 @@ export default function DataRoomPage() {
                   const filteredVaultDocs = vaultDocuments.filter(doc => {
                     // If no FY selected, show all documents
                     if (!selectedFY) return true
-                    // If document has no registration date, don't show it when FY is selected
-                    if (!doc.registration_date) return false
-                    const docFY = getFinancialYear(doc.registration_date)
-                    return docFY === selectedFY
+                    
+                    // Prefer period_financial_year if available (for tracker-uploaded docs)
+                    if (doc.period_financial_year) {
+                      return doc.period_financial_year === selectedFY
+                    }
+                    
+                    // Fallback to registration_date for older documents
+                    if (doc.registration_date) {
+                      const docFY = getFinancialYear(doc.registration_date)
+                      return docFY === selectedFY
+                    }
+                    
+                    // If no period or registration date, don't show when FY is selected
+                    return false
                   })
                   
                   // Filter uploaded docs by folder, but move PAN and TAN to Financials and licenses
@@ -6813,11 +6869,34 @@ export default function DataRoomPage() {
                   
                   const predefinedNames = predefinedDocuments[folderName] || []
                   
+                  // Group uploaded docs by document_type and period
+                  const docsByType = new Map<string, any[]>()
+                  uploadedDocs.forEach(doc => {
+                    const key = doc.document_type
+                    if (!docsByType.has(key)) {
+                      docsByType.set(key, [])
+                    }
+                    docsByType.get(key)!.push(doc)
+                  })
+                  
                   // Combine predefined and uploaded docs
                   // Map predefined names to a status
-                  const folderDocs = predefinedNames.map((name: string) => {
-                    const uploaded = uploadedDocs.find(d => d.document_type === name)
-                    return uploaded ? { ...uploaded, status: 'uploaded' } : { document_type: name, status: 'pending', id: `pending-${name}` }
+                  const folderDocs: any[] = []
+                  
+                  predefinedNames.forEach((name: string) => {
+                    const uploadedVersions = docsByType.get(name) || []
+                    if (uploadedVersions.length === 0) {
+                      // No uploaded version, show as pending
+                      folderDocs.push({ document_type: name, status: 'pending', id: `pending-${name}` })
+                    } else if (uploadedVersions.length === 1) {
+                      // Single version, show it
+                      folderDocs.push({ ...uploadedVersions[0], status: 'uploaded' })
+                    } else {
+                      // Multiple versions (different periods), show all
+                      uploadedVersions.forEach((doc, idx) => {
+                        folderDocs.push({ ...doc, status: 'uploaded', isMultipleVersion: true, versionIndex: idx })
+                      })
+                    }
                   })
 
                   // Add any uploaded docs that aren't in the predefined list
@@ -6825,6 +6904,16 @@ export default function DataRoomPage() {
                     if (!predefinedNames.includes(uploaded.document_type)) {
                       folderDocs.push({ ...uploaded, status: 'uploaded' })
                     }
+                  })
+                  
+                  // Sort by period_key if available (newest first)
+                  folderDocs.sort((a, b) => {
+                    if (a.period_key && b.period_key) {
+                      return b.period_key.localeCompare(a.period_key)
+                    }
+                    if (a.period_key) return -1
+                    if (b.period_key) return 1
+                    return 0
                   })
 
                   const iconColor = folderName === 'Constitutional Documents' ? 'bg-primary-orange' : 
@@ -6877,14 +6966,22 @@ export default function DataRoomPage() {
                           <polyline points="14 2 14 8 20 8" />
                         </svg>
                         <div className="min-w-0 flex-1">
-                                <span className={`text-white text-sm sm:text-base block break-words ${doc.status === 'pending' ? 'italic text-gray-500' : ''}`}>
-                                  {doc.document_type}
-                                  {doc.status === 'pending' && ' (Pending Upload)'}
-                                </span>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className={`text-white text-sm sm:text-base break-words ${doc.status === 'pending' ? 'italic text-gray-500' : ''}`}>
+                                    {doc.document_type}
+                                    {doc.status === 'pending' && ' (Pending Upload)'}
+                                  </span>
+                                  {doc.status === 'uploaded' && formatPeriodInfo(doc) && (
+                                    <span className={`px-2 py-0.5 text-xs rounded-full border ${getPeriodBadgeColor(doc.period_type)}`}>
+                                      {formatPeriodInfo(doc)}
+                                    </span>
+                                  )}
+                                </div>
                                 {doc.status === 'uploaded' && (
                                   <div className="text-gray-500 text-xs mt-1 break-words">
                                     {doc.expiry_date ? `Expires: ${formatDateForDisplay(doc.expiry_date)}` : 'No expiry date'}
-                                    {doc.frequency && ` • ${doc.frequency.toUpperCase()}`}
+                                    {doc.frequency && !formatPeriodInfo(doc) && ` • ${doc.frequency.toUpperCase()}`}
+                                    {doc.period_type && formatPeriodInfo(doc) && ` • ${doc.period_type.charAt(0).toUpperCase() + doc.period_type.slice(1)}`}
                       </div>
                                 )}
                       </div>
@@ -7367,7 +7464,14 @@ export default function DataRoomPage() {
                               className="w-5 h-5 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2"
                             />
                             <div className="flex-1">
-                              <div className="text-white font-medium">{doc.name}</div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-white font-medium">{doc.name}</span>
+                                {doc.period && (
+                                  <span className="px-2 py-0.5 text-xs rounded-full border bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                    {doc.period}
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-gray-400 text-sm mt-1">{doc.category}</div>
                             </div>
                           </label>
@@ -7587,7 +7691,14 @@ export default function DataRoomPage() {
                               className="w-5 h-5 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2"
                             />
                             <div className="flex-1">
-                              <div className="text-white font-medium">{doc.name}</div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-white font-medium">{doc.name}</span>
+                                {doc.period && (
+                                  <span className="px-2 py-0.5 text-xs rounded-full border bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                    {doc.period}
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-gray-400 text-sm mt-1">{doc.category}</div>
                             </div>
                           </label>
