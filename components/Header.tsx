@@ -729,21 +729,55 @@ export default function Header() {
               </div>
 
               {/* Metadata */}
-              {selectedNotification.metadata && Object.keys(selectedNotification.metadata).length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-2">Details</label>
-                  <div className="bg-gray-900 rounded-lg p-4 space-y-2">
-                    {Object.entries(selectedNotification.metadata).map(([key, value]) => (
-                      <div key={key} className="flex justify-between items-start">
-                        <span className="text-gray-400 text-sm capitalize">{key.replace(/_/g, ' ')}:</span>
-                        <span className="text-white text-sm text-right ml-4">
-                          {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
-                        </span>
-                      </div>
-                    ))}
+              {(() => {
+                let metadataObj: Record<string, unknown> | null = null
+                
+                if (selectedNotification.metadata) {
+                  // Handle if metadata is a string (parse it)
+                  if (typeof selectedNotification.metadata === 'string') {
+                    try {
+                      metadataObj = JSON.parse(selectedNotification.metadata)
+                    } catch {
+                      // If parsing fails, treat as plain text
+                      return (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-400 mb-2">Details</label>
+                          <div className="bg-gray-900 rounded-lg p-4">
+                            <p className="text-white text-sm">{selectedNotification.metadata}</p>
+                          </div>
+                        </div>
+                      )
+                    }
+                  } else if (typeof selectedNotification.metadata === 'object' && selectedNotification.metadata !== null) {
+                    metadataObj = selectedNotification.metadata as Record<string, unknown>
+                  }
+                }
+                
+                if (!metadataObj || Object.keys(metadataObj).length === 0) {
+                  return null
+                }
+                
+                return (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-2">Details</label>
+                    <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+                      {Object.entries(metadataObj).map(([key, value]) => (
+                        <div key={key} className="flex justify-between items-start gap-4">
+                          <span className="text-gray-400 text-sm capitalize flex-shrink-0">{key.replace(/_/g, ' ')}:</span>
+                          <span className="text-white text-sm text-right break-words">
+                            {value === null || value === undefined 
+                              ? 'N/A'
+                              : typeof value === 'object' 
+                                ? JSON.stringify(value, null, 2)
+                                : String(value)
+                            }
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )
+              })()}
 
               {/* Timestamp */}
               <div className="flex items-center justify-between pt-4 border-t border-gray-800">
