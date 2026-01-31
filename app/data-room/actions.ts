@@ -217,8 +217,29 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
         requirement: data[0].requirement,
         company_id: data[0].company_id,
         due_date: data[0].due_date,
-        template_id: data[0].template_id
+        template_id: data[0].template_id,
+        required_documents: data[0].required_documents,
+        required_documents_type: typeof data[0].required_documents,
+        required_documents_length: Array.isArray(data[0].required_documents) ? data[0].required_documents.length : 'not array'
       })
+      
+      // Check all requirements for required_documents
+      const withDocs = data.filter((r: any) => r.required_documents && Array.isArray(r.required_documents) && r.required_documents.length > 0)
+      const withoutDocs = data.filter((r: any) => !r.required_documents || !Array.isArray(r.required_documents) || r.required_documents.length === 0)
+      console.log(`[getRegulatoryRequirements] Requirements with docs: ${withDocs.length}, without docs: ${withoutDocs.length}`)
+      if (withDocs.length > 0) {
+        console.log('[getRegulatoryRequirements] Example with docs:', {
+          requirement: withDocs[0].requirement,
+          required_documents: withDocs[0].required_documents
+        })
+      }
+      if (withoutDocs.length > 0) {
+        console.log('[getRegulatoryRequirements] Example without docs:', {
+          requirement: withoutDocs[0].requirement,
+          required_documents: withoutDocs[0].required_documents,
+          has_field: 'required_documents' in withoutDocs[0]
+        })
+      }
     }
 
     return { success: true, requirements: data || [] }

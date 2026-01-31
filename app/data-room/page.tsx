@@ -898,6 +898,19 @@ export default function DataRoomPage() {
         console.log('[fetchRequirements] Completed in', Math.round(performance.now() - startTime), 'ms')
         
         if (result.success && result.requirements) {
+          console.log('[fetchRequirements] Setting requirements, count:', result.requirements.length)
+          // Log sample requirement with required_documents
+          if (result.requirements.length > 0) {
+            const sample = result.requirements.find((r: any) => r.requirement === 'GSTR-3B - Monthly Summary Return' || r.requirement === 'ESI Challan - Monthly ESI Payment')
+            if (sample) {
+              console.log('[fetchRequirements] Sample requirement in state:', {
+                requirement: sample.requirement,
+                required_documents: sample.required_documents,
+                type: typeof sample.required_documents,
+                isArray: Array.isArray(sample.required_documents)
+              })
+            }
+          }
           setRegulatoryRequirements(result.requirements)
         } else {
           console.error('Failed to fetch requirements:', result.error)
@@ -997,6 +1010,13 @@ export default function DataRoomPage() {
     industry: (req as any).industry,
     industry_category: (req as any).industry_category,
     compliance_type: (req as any).compliance_type,
+    required_documents: req.required_documents || [],
+    possible_legal_action: req.possible_legal_action,
+    penalty_config: req.penalty_config,
+    penalty_base_amount: req.penalty_base_amount,
+    filed_on: req.filed_on,
+    filed_by: req.filed_by,
+    status_reason: req.status_reason,
   }))
 
 
@@ -5939,8 +5959,18 @@ export default function DataRoomPage() {
                                 <td className="px-6 py-4 hidden md:table-cell">
                                   {/* Documents Required Column */}
                                   {(() => {
-                                    const requiredDocs = (req as any).required_documents || []
-                                    if (requiredDocs.length === 0) {
+                                    const requiredDocs = req.required_documents || []
+                                    // Debug logging
+                                    if (req.requirement === 'GSTR-3B - Monthly Summary Return' || req.requirement === 'ESI Challan - Monthly ESI Payment') {
+                                      console.log('[RENDER] Documents for', req.requirement, ':', {
+                                        required_documents: req.required_documents,
+                                        type: typeof req.required_documents,
+                                        isArray: Array.isArray(req.required_documents),
+                                        length: Array.isArray(req.required_documents) ? req.required_documents.length : 'N/A',
+                                        parsed: requiredDocs
+                                      })
+                                    }
+                                    if (!Array.isArray(requiredDocs) || requiredDocs.length === 0) {
                                       return <div className="text-gray-500 text-sm">-</div>
                                     }
                                     return (
