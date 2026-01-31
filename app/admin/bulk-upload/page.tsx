@@ -23,6 +23,8 @@ import {
 } from '@/lib/compliance/validators'
 import { bulkCreateComplianceTemplates } from '@/app/data-room/actions'
 
+const STORAGE_KEY = 'bulk_upload_spreadsheet_data'
+
 export default function BulkUploadPage() {
   const router = useRouter()
   const [data, setData] = useState<string[][]>([])
@@ -32,8 +34,62 @@ export default function BulkUploadPage() {
   const [uploadResult, setUploadResult] = useState<{ created: number; errors: string[] } | null>(null)
   const [hotInstance, setHotInstance] = useState<any>(null)
   const [isInitialized, setIsInitialized] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const initRef = useRef(false) // Prevent double initialization
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Save to localStorage
+  const saveToLocalStorage = useCallback((tableData: string[][]) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tableData))
+      setLastSaved(new Date())
+      setIsSaving(false)
+      console.log('[AutoSave] Data saved to localStorage')
+    } catch (error) {
+      console.error('[AutoSave] Failed to save to localStorage:', error)
+    }
+  }, [])
+
+  // Load from localStorage
+  const loadFromLocalStorage = useCallback((): string[][] | null => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved) as string[][]
+        console.log('[AutoSave] Loaded data from localStorage:', parsed.length, 'rows')
+        return parsed
+      }
+    } catch (error) {
+      console.error('[AutoSave] Failed to load from localStorage:', error)
+    }
+    return null
+  }, [])
+
+  // Clear localStorage
+  const clearLocalStorage = useCallback(() => {
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+      setLastSaved(null)
+      console.log('[AutoSave] Cleared localStorage')
+    } catch (error) {
+      console.error('[AutoSave] Failed to clear localStorage:', error)
+    }
+  }, [])
+
+  // Debounced auto-save
+  const autoSave = useCallback((tableData: string[][]) => {
+    setIsSaving(true)
+    // Clear existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+    // Save after 2 seconds of inactivity
+    saveTimeoutRef.current = setTimeout(() => {
+      saveToLocalStorage(tableData)
+    }, 2000)
+  }, [saveToLocalStorage])
 
   // Convert data array to CSVTemplateRow array for validation
   const dataToRows = useCallback((tableData: string[][]): CSVTemplateRow[] => {
@@ -112,14 +168,15 @@ export default function BulkUploadPage() {
         registerAllModules()
         console.log('[BulkUpload] Modules registered')
 
-        // Check for stored data
-        const storedData = sessionStorage.getItem('bulkUploadData')
+        // Load from localStorage or create empty data
+        const savedData = loadFromLocalStorage()
         let initialData: string[][]
-        if (storedData) {
-          initialData = JSON.parse(storedData)
-          sessionStorage.removeItem('bulkUploadData')
+        if (savedData && savedData.length > 0) {
+          initialData = savedData
+          console.log('[BulkUpload] Loaded', initialData.length, 'rows from localStorage')
         } else {
           initialData = Array(10).fill(null).map(() => CSV_COLUMNS.map(() => ''))
+          console.log('[BulkUpload] Starting with empty data')
         }
         
         console.log('[BulkUpload] Initial data rows:', initialData.length)
@@ -198,6 +255,8 @@ export default function BulkUploadPage() {
           if (!changes) return
           const newData = hot.getData() as string[][]
           setData(newData)
+          // Auto-save to localStorage (debounced)
+          autoSave(newData)
           // Validate
           const nonEmptyData = newData.filter(row => row.some(cell => cell && cell.trim()))
           const rows = dataToRows(nonEmptyData)
@@ -253,19 +312,42 @@ export default function BulkUploadPage() {
     waitForContainer()
 
     return () => {
-      if (hotInstance) {
-        hotInstance.destroy()
+      // Clear save timeout on unmount
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
       }
     }
   }, [])
+
+  // Cleanup and save on unmount
+  useEffect(() => {
+    return () => {
+      // Save current data before unmounting
+      if (hotInstance) {
+        try {
+          const currentData = hotInstance.getData() as string[][]
+          if (currentData && currentData.length > 0 && currentData.some(row => row.some(cell => cell && cell.trim()))) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentData))
+          }
+        } catch (error) {
+          console.error('[AutoSave] Failed to save on unmount:', error)
+        }
+      }
+    }
+  }, [hotInstance])
 
   // Add rows
   const addRows = useCallback((count: number = 1) => {
     if (hotInstance) {
       const currentRowCount = hotInstance.countRows()
       hotInstance.alter('insert_row_below', currentRowCount - 1, count)
+      // Trigger auto-save
+      setTimeout(() => {
+        const newData = hotInstance.getData() as string[][]
+        autoSave(newData)
+      }, 100)
     }
-  }, [hotInstance])
+  }, [hotInstance, autoSave])
 
   // Remove selected rows
   const removeSelectedRows = useCallback(() => {
@@ -286,9 +368,14 @@ export default function BulkUploadPage() {
         rowsToDelete.forEach(row => {
           hotInstance.alter('remove_row', row, 1)
         })
+        // Trigger auto-save
+        setTimeout(() => {
+          const newData = hotInstance.getData() as string[][]
+          autoSave(newData)
+        }, 100)
       }
     }
-  }, [hotInstance])
+  }, [hotInstance, autoSave])
 
   // Clear all
   const clearAll = useCallback(() => {
@@ -298,8 +385,11 @@ export default function BulkUploadPage() {
       setData(emptyData)
       setValidation(null)
       setCellErrors(new Map())
+      // Clear localStorage and save empty data
+      clearLocalStorage()
+      saveToLocalStorage(emptyData)
     }
-  }, [hotInstance])
+  }, [hotInstance, clearLocalStorage, saveToLocalStorage])
 
   // Import CSV file
   const handleFileImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -319,11 +409,13 @@ export default function BulkUploadPage() {
         hotInstance.loadData(tableData)
         setData(tableData)
         runValidation(tableData)
+        // Auto-save imported data
+        autoSave(tableData)
       }
     }
     reader.readAsText(file)
     e.target.value = ''
-  }, [hotInstance, runValidation])
+  }, [hotInstance, runValidation, autoSave])
 
   // Handle upload
   const handleUpload = useCallback(async () => {
@@ -353,6 +445,14 @@ export default function BulkUploadPage() {
       setUploadResult({ created: result.created, errors: result.errors })
       
       if (result.success) {
+        // Clear localStorage after successful upload
+        clearLocalStorage()
+        // Clear the spreadsheet
+        const emptyData = Array(10).fill(null).map(() => CSV_COLUMNS.map(() => ''))
+        hotInstance.loadData(emptyData)
+        setData(emptyData)
+        setValidation(null)
+        setCellErrors(new Map())
         alert(`Successfully created ${result.created} templates!`)
       }
     } catch (error) {
@@ -360,7 +460,7 @@ export default function BulkUploadPage() {
     } finally {
       setIsUploading(false)
     }
-  }, [hotInstance, dataToRows])
+  }, [hotInstance, dataToRows, clearLocalStorage])
 
   // Get non-empty row count
   const nonEmptyRowCount = data.filter(row => row.some(cell => cell && cell.trim())).length
@@ -393,6 +493,24 @@ export default function BulkUploadPage() {
                   : 'bg-red-500 text-white'
               }`}>
                 {nonEmptyRowCount} rows • {validation.valid ? 'Ready to upload' : `${validation.errors.length} errors`}
+              </span>
+            )}
+            {/* Auto-save indicator */}
+            {lastSaved && (
+              <span className="px-3 py-1 rounded text-xs font-medium bg-white/10 text-white/80 flex items-center gap-1.5">
+                {isSaving ? (
+                  <>
+                    <div className="w-3 h-3 border-2 border-white/50 border-t-transparent rounded-full animate-spin"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Saved {lastSaved.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                  </>
+                )}
               </span>
             )}
           </div>
