@@ -103,28 +103,74 @@ CREATE TRIGGER update_company_financials_updated_at
 -- ============================================
 -- 4. EXTEND company_documents_internal TABLE
 -- Add period metadata for per-period document matching
+-- NOTE: This table may be in 'public' schema. Adjust if needed.
 -- ============================================
-ALTER TABLE internal.company_documents_internal
-ADD COLUMN IF NOT EXISTS period_type TEXT NULL CHECK (period_type IN ('one-time', 'monthly', 'quarterly', 'annual')),
-ADD COLUMN IF NOT EXISTS period_financial_year TEXT NULL,
-ADD COLUMN IF NOT EXISTS period_key TEXT NULL,
-ADD COLUMN IF NOT EXISTS period_start DATE NULL,
-ADD COLUMN IF NOT EXISTS period_end DATE NULL,
-ADD COLUMN IF NOT EXISTS requirement_id UUID NULL;
 
-COMMENT ON COLUMN internal.company_documents_internal.period_type IS 'Type of period: one-time, monthly, quarterly, annual';
-COMMENT ON COLUMN internal.company_documents_internal.period_financial_year IS 'Financial year this document belongs to (e.g., FY 2024-25)';
-COMMENT ON COLUMN internal.company_documents_internal.period_key IS 'Period identifier (e.g., 2025-03 for March 2025, Q4-2024-25 for Q4)';
-COMMENT ON COLUMN internal.company_documents_internal.period_start IS 'Start date of the period this document covers';
-COMMENT ON COLUMN internal.company_documents_internal.period_end IS 'End date of the period this document covers';
-COMMENT ON COLUMN internal.company_documents_internal.requirement_id IS 'Link to regulatory_requirements if uploaded from tracker';
+-- Try to add columns - will succeed if table exists in public schema
+DO $$
+BEGIN
+  -- Add period_type column
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'company_documents_internal' AND column_name = 'period_type') THEN
+    ALTER TABLE public.company_documents_internal ADD COLUMN period_type TEXT NULL;
+  END IF;
+  
+  -- Add period_financial_year column
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'company_documents_internal' AND column_name = 'period_financial_year') THEN
+    ALTER TABLE public.company_documents_internal ADD COLUMN period_financial_year TEXT NULL;
+  END IF;
+  
+  -- Add period_key column
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'company_documents_internal' AND column_name = 'period_key') THEN
+    ALTER TABLE public.company_documents_internal ADD COLUMN period_key TEXT NULL;
+  END IF;
+  
+  -- Add period_start column
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'company_documents_internal' AND column_name = 'period_start') THEN
+    ALTER TABLE public.company_documents_internal ADD COLUMN period_start DATE NULL;
+  END IF;
+  
+  -- Add period_end column
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'company_documents_internal' AND column_name = 'period_end') THEN
+    ALTER TABLE public.company_documents_internal ADD COLUMN period_end DATE NULL;
+  END IF;
+  
+  -- Add requirement_id column
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'company_documents_internal' AND column_name = 'requirement_id') THEN
+    ALTER TABLE public.company_documents_internal ADD COLUMN requirement_id UUID NULL;
+  END IF;
+  
+  RAISE NOTICE 'company_documents_internal columns added successfully';
+EXCEPTION
+  WHEN undefined_table THEN
+    RAISE NOTICE 'Table company_documents_internal does not exist in public schema - skipping column additions';
+END $$;
 
--- Indexes for period matching
-CREATE INDEX IF NOT EXISTS idx_company_documents_period_type ON internal.company_documents_internal(period_type);
-CREATE INDEX IF NOT EXISTS idx_company_documents_period_key ON internal.company_documents_internal(period_key);
-CREATE INDEX IF NOT EXISTS idx_company_documents_period_fy ON internal.company_documents_internal(period_financial_year);
-CREATE INDEX IF NOT EXISTS idx_company_documents_requirement_id ON internal.company_documents_internal(requirement_id);
-CREATE INDEX IF NOT EXISTS idx_company_documents_doc_type_period ON internal.company_documents_internal(document_type, period_key);
+-- Add comments (will fail silently if table doesn't exist)
+COMMENT ON COLUMN public.company_documents_internal.period_type IS 'Type of period: one-time, monthly, quarterly, annual';
+COMMENT ON COLUMN public.company_documents_internal.period_financial_year IS 'Financial year this document belongs to (e.g., FY 2024-25)';
+COMMENT ON COLUMN public.company_documents_internal.period_key IS 'Period identifier (e.g., 2025-03 for March 2025, Q4-2024-25 for Q4)';
+COMMENT ON COLUMN public.company_documents_internal.period_start IS 'Start date of the period this document covers';
+COMMENT ON COLUMN public.company_documents_internal.period_end IS 'End date of the period this document covers';
+COMMENT ON COLUMN public.company_documents_internal.requirement_id IS 'Link to regulatory_requirements if uploaded from tracker';
+
+-- Indexes for period matching (wrapped in DO block for error handling)
+DO $$
+BEGIN
+  CREATE INDEX IF NOT EXISTS idx_company_documents_period_type ON public.company_documents_internal(period_type);
+  CREATE INDEX IF NOT EXISTS idx_company_documents_period_key ON public.company_documents_internal(period_key);
+  CREATE INDEX IF NOT EXISTS idx_company_documents_period_fy ON public.company_documents_internal(period_financial_year);
+  CREATE INDEX IF NOT EXISTS idx_company_documents_requirement_id ON public.company_documents_internal(requirement_id);
+  CREATE INDEX IF NOT EXISTS idx_company_documents_doc_type_period ON public.company_documents_internal(document_type, period_key);
+EXCEPTION
+  WHEN undefined_table THEN
+    RAISE NOTICE 'Table company_documents_internal does not exist - skipping index creation';
+END $$;
 
 -- ============================================
 -- 5. CREATE company_notifications TABLE
@@ -708,4 +754,8 @@ UPDATE public.compliance_templates
 SET penalty_config = '{"type": "per_invoice", "rate": 100, "base": "tax_amount", "min_per_invoice": 10000}'::jsonb
 WHERE penalty LIKE '%100% Tax%' AND penalty LIKE '%10000/invoice%';
 
-RAISE NOTICE 'Penalty config updates complete';
+-- Log completion (wrapped in DO block for RAISE NOTICE)
+DO $$
+BEGIN
+  RAISE NOTICE 'Penalty config updates complete';
+END $$;

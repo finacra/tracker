@@ -68,7 +68,11 @@ export default function AdminPage() {
     due_month: undefined as number | undefined,
     due_day: undefined as number | undefined,
     due_date: '',
-    is_active: true
+    is_active: true,
+    // New fields for V2
+    required_documents: [] as string[],
+    possible_legal_action: '',
+    required_documents_input: '' // Temporary input for adding documents
   })
 
   // Check if user is superadmin
@@ -556,7 +560,10 @@ export default function AdminPage() {
                     due_month: undefined,
                     due_day: undefined,
                     due_date: '',
-                    is_active: true
+                    is_active: true,
+                    required_documents: [],
+                    possible_legal_action: '',
+                    required_documents_input: ''
                   })
                   setEditingTemplate(null)
                   setIsTemplateModalOpen(true)
@@ -673,7 +680,10 @@ export default function AdminPage() {
                                       due_month: template.due_month || undefined,
                                       due_day: template.due_day || undefined,
                                       due_date: template.due_date || '',
-                                      is_active: template.is_active
+                                      is_active: template.is_active,
+                                      required_documents: (template as any).required_documents || [],
+                                      possible_legal_action: (template as any).possible_legal_action || '',
+                                      required_documents_input: ''
                                     })
                                     setIsTemplateModalOpen(true)
                                   }}
@@ -1050,7 +1060,10 @@ export default function AdminPage() {
                         due_month: undefined,
                         due_day: undefined,
                         due_date: '',
-                        is_active: true
+                        is_active: true,
+                        required_documents: [],
+                        possible_legal_action: '',
+                        required_documents_input: ''
                       })
                     }}
                     className="text-gray-400 hover:text-white transition-colors"
@@ -1408,6 +1421,86 @@ export default function AdminPage() {
                   />
                 </div>
 
+                {/* Possible Legal Action */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Possible Legal Action
+                  </label>
+                  <input
+                    type="text"
+                    value={templateForm.possible_legal_action}
+                    onChange={(e) => setTemplateForm(prev => ({ ...prev, possible_legal_action: e.target.value }))}
+                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    placeholder="e.g., Prosecution under Section 276B"
+                  />
+                </div>
+
+                {/* Required Documents */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Required Documents
+                  </label>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={templateForm.required_documents_input}
+                      onChange={(e) => setTemplateForm(prev => ({ ...prev, required_documents_input: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && templateForm.required_documents_input.trim()) {
+                          e.preventDefault()
+                          setTemplateForm(prev => ({
+                            ...prev,
+                            required_documents: [...prev.required_documents, prev.required_documents_input.trim()],
+                            required_documents_input: ''
+                          }))
+                        }
+                      }}
+                      className="flex-1 px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      placeholder="Type document name and press Enter"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (templateForm.required_documents_input.trim()) {
+                          setTemplateForm(prev => ({
+                            ...prev,
+                            required_documents: [...prev.required_documents, prev.required_documents_input.trim()],
+                            required_documents_input: ''
+                          }))
+                        }
+                      }}
+                      className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-orange-600 transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  {/* Document chips */}
+                  {templateForm.required_documents.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {templateForm.required_documents.map((doc, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1 px-3 py-1 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full text-sm"
+                        >
+                          {doc}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTemplateForm(prev => ({
+                                ...prev,
+                                required_documents: prev.required_documents.filter((_, i) => i !== idx)
+                              }))
+                            }}
+                            className="ml-1 hover:text-red-400"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {/* Is Critical */}
                 <div className="flex items-center gap-3">
                   <input
@@ -1503,7 +1596,10 @@ export default function AdminPage() {
                             due_month: undefined,
                             due_day: undefined,
                             due_date: '',
-                            is_active: true
+                            is_active: true,
+                            required_documents: [],
+                            possible_legal_action: '',
+                            required_documents_input: ''
                           })
                           alert(editingTemplate 
                             ? `Template updated successfully. Applied to ${result.applied_count || 0} companies.`
@@ -1540,7 +1636,10 @@ export default function AdminPage() {
                         due_month: undefined,
                         due_day: undefined,
                         due_date: '',
-                        is_active: true
+                        is_active: true,
+                        required_documents: [],
+                        possible_legal_action: '',
+                        required_documents_input: ''
                       })
                     }}
                     className="px-6 py-3 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors font-medium"

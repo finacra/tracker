@@ -48,6 +48,7 @@ export interface ComplianceTemplate {
   industries: string[]
   industry_categories: string[]
   penalty: string | null
+  penalty_config: Record<string, unknown> | null
   is_critical: boolean
   financial_year: string | null
   due_date_offset: number | null
@@ -55,6 +56,8 @@ export interface ComplianceTemplate {
   due_day: number | null
   due_date: string | null
   is_active: boolean
+  required_documents: string[]
+  possible_legal_action: string | null
   created_at: string
   updated_at: string
   created_by: string | null
@@ -1175,6 +1178,8 @@ export async function createComplianceTemplate(
         due_month: template.compliance_type === 'quarterly' ? template.due_month : (template.due_month || null),
         due_day: template.compliance_type === 'quarterly' ? template.due_day : (template.due_day || null),
         due_date: template.due_date && template.due_date.trim() !== '' ? template.due_date : null,
+        required_documents: (template as any).required_documents || [],
+        possible_legal_action: (template as any).possible_legal_action || null,
         created_by: user.id,
         updated_by: user.id
       })
@@ -1298,6 +1303,14 @@ export async function updateComplianceTemplate(
       updateData.due_date = template.due_date && template.due_date.trim() !== '' ? template.due_date : null
     }
     if (template.is_active !== undefined) updateData.is_active = template.is_active
+    
+    // New V2 fields
+    if ((template as any).required_documents !== undefined) {
+      updateData.required_documents = (template as any).required_documents || []
+    }
+    if ((template as any).possible_legal_action !== undefined) {
+      updateData.possible_legal_action = (template as any).possible_legal_action || null
+    }
 
     // Only update if there are actual changes (not just re-applying)
     if (Object.keys(updateData).length > 2) { // More than just updated_by and updated_at
