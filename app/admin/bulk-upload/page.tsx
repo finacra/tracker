@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks/useAuth'
 import 'handsontable/dist/handsontable.full.min.css'
 import {
   CSVTemplateRow,
@@ -23,10 +24,11 @@ import {
 } from '@/lib/compliance/validators'
 import { bulkCreateComplianceTemplates } from '@/app/data-room/actions'
 
-const STORAGE_KEY = 'bulk_upload_spreadsheet_data'
+const STORAGE_KEY_PREFIX = 'bulk_upload_spreadsheet_data'
 
 export default function BulkUploadPage() {
   const router = useRouter()
+  const { user } = useAuth()
   const [data, setData] = useState<string[][]>([])
   const [validation, setValidation] = useState<ValidationResult | null>(null)
   const [cellErrors, setCellErrors] = useState<Map<string, string>>(new Map())
@@ -40,43 +42,81 @@ export default function BulkUploadPage() {
   const initRef = useRef(false) // Prevent double initialization
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Save to localStorage
+  // Get user-specific storage key
+  const getStorageKey = useCallback(() => {
+    if (!user?.id) return null
+    return `${STORAGE_KEY_PREFIX}_${user.id}`
+  }, [user?.id])
+
+  // Save to localStorage with user ID and timestamp
   const saveToLocalStorage = useCallback((tableData: string[][]) => {
+    if (!user?.id) return
+    
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(tableData))
+      const storageKey = getStorageKey()
+      if (!storageKey) return
+      
+      const saveData = {
+        userId: user.id,
+        data: tableData,
+        savedAt: new Date().toISOString()
+      }
+      
+      localStorage.setItem(storageKey, JSON.stringify(saveData))
       setLastSaved(new Date())
       setIsSaving(false)
-      console.log('[AutoSave] Data saved to localStorage')
+      console.log('[AutoSave] Data saved to localStorage for user:', user.id)
     } catch (error) {
       console.error('[AutoSave] Failed to save to localStorage:', error)
     }
-  }, [])
+  }, [user?.id, getStorageKey])
 
-  // Load from localStorage
+  // Load from localStorage (only if user matches)
   const loadFromLocalStorage = useCallback((): string[][] | null => {
+    if (!user?.id) return null
+    
     try {
-      const saved = localStorage.getItem(STORAGE_KEY)
+      const storageKey = getStorageKey()
+      if (!storageKey) return null
+      
+      const saved = localStorage.getItem(storageKey)
       if (saved) {
-        const parsed = JSON.parse(saved) as string[][]
-        console.log('[AutoSave] Loaded data from localStorage:', parsed.length, 'rows')
-        return parsed
+        const parsed = JSON.parse(saved) as { userId: string; data: string[][]; savedAt: string }
+        
+        // Verify user ID matches
+        if (parsed.userId !== user.id) {
+          console.log('[AutoSave] User ID mismatch, clearing old data')
+          localStorage.removeItem(storageKey)
+          return null
+        }
+        
+        console.log('[AutoSave] Loaded data from localStorage:', parsed.data.length, 'rows, saved at:', parsed.savedAt)
+        if (parsed.savedAt) {
+          setLastSaved(new Date(parsed.savedAt))
+        }
+        return parsed.data
       }
     } catch (error) {
       console.error('[AutoSave] Failed to load from localStorage:', error)
     }
     return null
-  }, [])
+  }, [user?.id, getStorageKey])
 
   // Clear localStorage
   const clearLocalStorage = useCallback(() => {
+    if (!user?.id) return
+    
     try {
-      localStorage.removeItem(STORAGE_KEY)
+      const storageKey = getStorageKey()
+      if (!storageKey) return
+      
+      localStorage.removeItem(storageKey)
       setLastSaved(null)
-      console.log('[AutoSave] Cleared localStorage')
+      console.log('[AutoSave] Cleared localStorage for user:', user.id)
     } catch (error) {
       console.error('[AutoSave] Failed to clear localStorage:', error)
     }
-  }, [])
+  }, [user?.id, getStorageKey])
 
   // Debounced auto-save
   const autoSave = useCallback((tableData: string[][]) => {
@@ -118,7 +158,13 @@ export default function BulkUploadPage() {
 
   // Initialize Handsontable on client side only
   useEffect(() => {
-    console.log('[BulkUpload] useEffect starting...')
+    console.log('[BulkUpload] useEffect starting...', 'user:', user?.id)
+    
+    // Wait for user to be available
+    if (!user?.id) {
+      console.log('[BulkUpload] User not available yet, waiting...')
+      return
+    }
     
     // Prevent double initialization in React Strict Mode
     if (initRef.current) {
@@ -317,24 +363,47 @@ export default function BulkUploadPage() {
         clearTimeout(saveTimeoutRef.current)
       }
     }
-  }, [])
+  }, [user?.id, loadFromLocalStorage, dataToRows, autoSave])
+
+  // Handle user changes (sign out/sign in)
+  useEffect(() => {
+    if (!hotInstance || !user?.id) return
+    
+    // When user changes, load their saved data
+    const savedData = loadFromLocalStorage()
+    if (savedData && savedData.length > 0) {
+      hotInstance.loadData(savedData)
+      setData(savedData)
+      runValidation(savedData)
+      console.log('[AutoSave] Loaded data for user after sign in:', user.id)
+    }
+  }, [user?.id, hotInstance, loadFromLocalStorage, runValidation])
 
   // Cleanup and save on unmount
   useEffect(() => {
     return () => {
       // Save current data before unmounting
-      if (hotInstance) {
+      if (hotInstance && user?.id) {
         try {
+          const storageKey = getStorageKey()
+          if (!storageKey) return
+          
           const currentData = hotInstance.getData() as string[][]
           if (currentData && currentData.length > 0 && currentData.some(row => row.some(cell => cell && cell.trim()))) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentData))
+            const saveData = {
+              userId: user.id,
+              data: currentData,
+              savedAt: new Date().toISOString()
+            }
+            localStorage.setItem(storageKey, JSON.stringify(saveData))
+            console.log('[AutoSave] Saved on unmount for user:', user.id)
           }
         } catch (error) {
           console.error('[AutoSave] Failed to save on unmount:', error)
         }
       }
     }
-  }, [hotInstance])
+  }, [hotInstance, user?.id, getStorageKey])
 
   // Add rows
   const addRows = useCallback((count: number = 1) => {
