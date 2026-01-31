@@ -61,29 +61,50 @@ export default function BulkUploadPage() {
 
   // Initialize Handsontable on client side only
   useEffect(() => {
+    console.log('[BulkUpload] useEffect starting...')
     setIsClient(true)
     
     // Dynamic import of Handsontable
     const initHandsontable = async () => {
-      if (!containerRef.current) return
+      console.log('[BulkUpload] initHandsontable called')
+      console.log('[BulkUpload] containerRef.current:', containerRef.current)
       
-      // Import Handsontable dynamically
-      const Handsontable = (await import('handsontable')).default
-      const { registerAllModules } = await import('handsontable/registry')
-      
-      registerAllModules()
-
-      // Check for stored data
-      const storedData = sessionStorage.getItem('bulkUploadData')
-      let initialData: string[][]
-      if (storedData) {
-        initialData = JSON.parse(storedData)
-        sessionStorage.removeItem('bulkUploadData')
-      } else {
-        initialData = Array(10).fill(null).map(() => CSV_COLUMNS.map(() => ''))
+      if (!containerRef.current) {
+        console.error('[BulkUpload] Container ref is null!')
+        return
       }
       
-      setData(initialData)
+      console.log('[BulkUpload] Container dimensions:', {
+        width: containerRef.current.offsetWidth,
+        height: containerRef.current.offsetHeight,
+        clientWidth: containerRef.current.clientWidth,
+        clientHeight: containerRef.current.clientHeight
+      })
+      
+      try {
+        console.log('[BulkUpload] Importing Handsontable...')
+        // Import Handsontable dynamically
+        const Handsontable = (await import('handsontable')).default
+        console.log('[BulkUpload] Handsontable imported:', typeof Handsontable)
+        
+        const { registerAllModules } = await import('handsontable/registry')
+        console.log('[BulkUpload] registerAllModules imported')
+        
+        registerAllModules()
+        console.log('[BulkUpload] Modules registered')
+
+        // Check for stored data
+        const storedData = sessionStorage.getItem('bulkUploadData')
+        let initialData: string[][]
+        if (storedData) {
+          initialData = JSON.parse(storedData)
+          sessionStorage.removeItem('bulkUploadData')
+        } else {
+          initialData = Array(10).fill(null).map(() => CSV_COLUMNS.map(() => ''))
+        }
+        
+        console.log('[BulkUpload] Initial data rows:', initialData.length)
+        setData(initialData)
 
       // Dropdown sources
       const getDropdownSource = (column: keyof CSVTemplateRow): string[] | undefined => {
@@ -126,6 +147,9 @@ export default function BulkUploadPage() {
         return base
       })
 
+      console.log('[BulkUpload] Creating Handsontable instance...')
+      console.log('[BulkUpload] Columns configured:', columns.length)
+      
       // Create the Handsontable instance
       const hot = new Handsontable(containerRef.current, {
         data: initialData,
@@ -174,7 +198,21 @@ export default function BulkUploadPage() {
         }
       })
 
+      console.log('[BulkUpload] Handsontable instance created:', hot)
+      console.log('[BulkUpload] Instance methods available:', Object.keys(hot).slice(0, 10))
+      
       setHotInstance(hot)
+      
+      // Force render
+      setTimeout(() => {
+        console.log('[BulkUpload] Calling render...')
+        hot.render()
+        console.log('[BulkUpload] Render called, checking dimensions...')
+        console.log('[BulkUpload] Container after render:', {
+          width: containerRef.current?.offsetWidth,
+          height: containerRef.current?.offsetHeight
+        })
+      }, 100)
       
       // Initial validation
       const nonEmptyData = initialData.filter(row => row.some(cell => cell && cell.trim()))
@@ -182,6 +220,12 @@ export default function BulkUploadPage() {
         const rows = dataToRows(nonEmptyData)
         const result = validateAll(rows)
         setValidation(result)
+      }
+      
+      console.log('[BulkUpload] Initialization complete!')
+      
+      } catch (error) {
+        console.error('[BulkUpload] Error initializing Handsontable:', error)
       }
     }
 
