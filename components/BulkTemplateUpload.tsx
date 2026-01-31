@@ -221,6 +221,12 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
         return [...CATEGORIES]
       case 'compliance_type':
         return [...COMPLIANCE_TYPES]
+      case 'entity_types':
+        return [...ENTITY_TYPES]
+      case 'industries':
+        return [...INDUSTRIES]
+      case 'industry_categories':
+        return [...INDUSTRY_CATEGORIES]
       case 'penalty_type':
         return ['daily', 'flat', 'interest', 'percentage']
       case 'is_critical':
@@ -233,8 +239,13 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
 
   // Get column type
   const getColumnType = (column: keyof CSVTemplateRow): string => {
+    // Strict dropdowns for single-select columns
     const dropdownColumns = ['category', 'compliance_type', 'penalty_type', 'is_critical', 'is_active']
     if (dropdownColumns.includes(column)) return 'dropdown'
+    
+    // Autocomplete for multi-select columns (allows typing comma-separated values with suggestions)
+    const autocompleteColumns = ['entity_types', 'industries', 'industry_categories']
+    if (autocompleteColumns.includes(column)) return 'autocomplete'
     
     const numericColumns = ['due_date_offset', 'due_month', 'due_day', 'penalty_rate', 'penalty_cap']
     if (numericColumns.includes(column)) return 'numeric'
@@ -369,7 +380,7 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
           </div>
 
           {/* Handsontable Grid */}
-          <div className="flex-1 overflow-auto p-4 min-h-0">
+          <div className="overflow-auto p-4" style={{ height: '400px' }}>
             <HotTable
               ref={hotTableRef}
               data={data}
