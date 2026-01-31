@@ -7,6 +7,7 @@ import { enrichComplianceItems as enrichComplianceItemsService, type EnrichedCom
 export interface RegulatoryRequirement {
   id: string
   company_id: string
+  template_id?: string | null
   category: string
   requirement: string
   description: string | null

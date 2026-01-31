@@ -1,6 +1,7 @@
 import { RegulatoryRequirement } from '@/app/data-room/actions'
 import { searchLegalInfo, extractLegalInfo } from '@/lib/api/tavily'
-import { generateBusinessImpact, BusinessImpact } from '@/lib/api/openai'
+import { generateBatchBusinessImpact, generateBusinessImpact, type BatchImpactItem, BusinessImpact } from '@/lib/api/openai'
+import { createAdminClient } from '@/utils/supabase/admin'
 
 export interface EnrichedComplianceData {
   requirementId: string
@@ -8,6 +9,81 @@ export interface EnrichedComplianceData {
   penaltyProvision: string
   exactPenalty: string
   businessImpact: BusinessImpact
+}
+
+type LegalCacheRow = {
+  cache_key: string
+  template_id: string | null
+  query: string
+  jurisdiction: string
+  legal_section: string | null
+  penalty_provision: string | null
+  sources: string[] | null
+  answer_json: any | null
+  expires_at: string | null
+  updated_at: string
+}
+
+type UniqueComplianceKey = {
+  cacheKey: string
+  templateId: string | null
+  category: string
+  requirement: string
+}
+
+function normalizeKeyPart(s: string): string {
+  return (s || '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[^\w\s\-\/]/g, '') // keep words, spaces, dash, slash
+    .trim()
+}
+
+function buildUniqueKey(req: RegulatoryRequirement): UniqueComplianceKey {
+  const templateId = (req as any).template_id ?? null
+  if (templateId) {
+    return {
+      cacheKey: `template:${templateId}`,
+      templateId,
+      category: req.category,
+      requirement: req.requirement,
+    }
+  }
+
+  // Fallback: stable normalized key (no period/month specific bits should be in requirement anyway,
+  // but we keep it robust)
+  const category = normalizeKeyPart(req.category)
+  const requirement = normalizeKeyPart(req.requirement)
+  return {
+    cacheKey: `text:${category}|${requirement}`,
+    templateId: null,
+    category: req.category,
+    requirement: req.requirement,
+  }
+}
+
+function isExpired(expiresAt: string | null): boolean {
+  if (!expiresAt) return false
+  const t = new Date(expiresAt).getTime()
+  return Number.isFinite(t) ? t <= Date.now() : false
+}
+
+async function runWithConcurrency<T>(
+  tasks: Array<() => Promise<T>>,
+  concurrency: number
+): Promise<T[]> {
+  const results: T[] = new Array(tasks.length) as any
+  let idx = 0
+
+  const workers = Array.from({ length: Math.max(1, concurrency) }, async () => {
+    while (idx < tasks.length) {
+      const current = idx++
+      results[current] = await tasks[current]()
+    }
+  })
+
+  await Promise.all(workers)
+  return results
 }
 
 /**
@@ -230,4 +306,201 @@ export async function enrichComplianceItems(
   }
   
   return enrichedData
+}
+
+/**
+ * Optimized enrichment:
+ * - De-dupe by template_id (fallback to normalized key)
+ * - Shared cache in DB (legal_research_cache)
+ * - Hard max Tavily searches per report (default 10)
+ * - Parallel Tavily with small concurrency to avoid rate limits
+ *
+ * NOTE: Business impact is still computed per requirement for now via generateBusinessImpact.
+ * Next step will collapse it to a single batch call (see TODO openai-batch-impact).
+ */
+export async function enrichComplianceItemsOptimized(
+  requirements: RegulatoryRequirement[],
+  opts?: {
+    maxTavilySearches?: number
+    tavilyConcurrency?: number
+    cacheTtlDays?: number
+  }
+): Promise<EnrichedComplianceData[]> {
+  const maxTavilySearches = Math.max(0, opts?.maxTavilySearches ?? 10)
+  const tavilyConcurrency = Math.max(1, opts?.tavilyConcurrency ?? 3)
+  const cacheTtlDays = Math.max(1, opts?.cacheTtlDays ?? 60)
+
+  if (!requirements || requirements.length === 0) return []
+
+  const adminSupabase = createAdminClient()
+
+  // Build unique keys map
+  const keyToReqs = new Map<string, { key: UniqueComplianceKey; items: RegulatoryRequirement[] }>()
+  for (const r of requirements) {
+    const key = buildUniqueKey(r)
+    const existing = keyToReqs.get(key.cacheKey)
+    if (existing) existing.items.push(r)
+    else keyToReqs.set(key.cacheKey, { key, items: [r] })
+  }
+
+  const uniqueKeys = Array.from(keyToReqs.keys())
+
+  // Fetch cache rows for these keys
+  const { data: cacheRows, error: cacheErr } = await adminSupabase
+    .from('legal_research_cache')
+    .select('cache_key,template_id,query,jurisdiction,legal_section,penalty_provision,sources,answer_json,expires_at,updated_at')
+    .in('cache_key', uniqueKeys)
+
+  if (cacheErr) {
+    console.error('[enrichComplianceItemsOptimized] cache fetch error:', cacheErr)
+  }
+
+  const cacheByKey = new Map<string, LegalCacheRow>()
+  ;(cacheRows || []).forEach((row: any) => cacheByKey.set(row.cache_key, row as LegalCacheRow))
+
+  // Determine which keys need Tavily (miss or expired)
+  const needsFetch: Array<{ cacheKey: string; key: UniqueComplianceKey; items: RegulatoryRequirement[] }> = []
+  for (const [cacheKey, entry] of keyToReqs.entries()) {
+    const cached = cacheByKey.get(cacheKey)
+    if (!cached) {
+      needsFetch.push({ cacheKey, key: entry.key, items: entry.items })
+    } else if (isExpired(cached.expires_at)) {
+      needsFetch.push({ cacheKey, key: entry.key, items: entry.items })
+    }
+  }
+
+  // Priority score: focus Tavily on the highest-risk unique types
+  const categoryWeight: Record<string, number> = {
+    'RoC': 1.2,
+    'MCA': 1.2,
+    'GST': 1.1,
+    'Income Tax': 1.1,
+    'Labour Law': 1.05,
+  }
+  function scoreKey(items: RegulatoryRequirement[]): number {
+    let maxDelay = 0
+    let critical = false
+    let category = items[0]?.category || ''
+    for (const it of items) {
+      critical = critical || !!it.is_critical
+      const d = calculateDaysDelayed(it.due_date, it.status)
+      if (d && d > maxDelay) maxDelay = d
+    }
+    const base = maxDelay || 1
+    const w = categoryWeight[category] ?? 1
+    return base * w * (critical ? 1.5 : 1)
+  }
+
+  needsFetch.sort((a, b) => scoreKey(b.items) - scoreKey(a.items))
+  const limitedFetch = needsFetch.slice(0, maxTavilySearches)
+
+  // Perform Tavily searches (limited + parallel)
+  const fetchTasks = limitedFetch.map(({ cacheKey, key }) => async () => {
+    const legalFramework = mapCategoryToLegalFramework(key.category)
+    const query = buildSearchQuery(key.category, key.requirement, legalFramework)
+    const searchResults = await searchLegalInfo(query, 'advanced')
+    const extracted = extractLegalInfo(searchResults)
+
+    // Best-effort sources extraction
+    const sources = (searchResults?.results || [])
+      .map(r => r.url)
+      .filter(Boolean)
+      .slice(0, 5)
+
+    // Upsert to cache (service role)
+    const expiresAt = new Date(Date.now() + cacheTtlDays * 24 * 60 * 60 * 1000).toISOString()
+    const upsertRow = {
+      cache_key: cacheKey,
+      template_id: key.templateId,
+      query,
+      jurisdiction: 'IN',
+      legal_section: extracted.legalSection || null,
+      penalty_provision: extracted.penaltyProvision || null,
+      sources,
+      answer_json: searchResults as any,
+      expires_at: expiresAt,
+      updated_at: new Date().toISOString(),
+    }
+
+    const { error: upsertErr } = await adminSupabase
+      .from('legal_research_cache')
+      .upsert(upsertRow, { onConflict: 'cache_key' })
+
+    if (upsertErr) {
+      console.error('[enrichComplianceItemsOptimized] cache upsert error:', upsertErr)
+    }
+
+    return { cacheKey, row: upsertRow }
+  })
+
+  try {
+    const fetched = await runWithConcurrency(fetchTasks, tavilyConcurrency)
+    fetched.forEach(({ cacheKey, row }: any) => {
+      cacheByKey.set(cacheKey, row as any)
+    })
+  } catch (e) {
+    console.error('[enrichComplianceItemsOptimized] Tavily batch error:', e)
+  }
+
+  // Build one batch prompt per unique key (apply to all occurrences of that compliance type)
+  const batchItems: BatchImpactItem[] = []
+  for (const [cacheKey, entry] of keyToReqs.entries()) {
+    const cached = cacheByKey.get(cacheKey)
+    const legalSection =
+      cached?.legal_section ||
+      'Refer to Act/Rules'
+
+    const penaltyProvision =
+      cached?.penalty_provision ||
+      // Use a representative penalty string if present on any item
+      entry.items.find(i => i.penalty)?.penalty ||
+      'Refer to Act/Rules'
+
+    batchItems.push({
+      key: cacheKey,
+      category: entry.key.category,
+      requirement: entry.key.requirement,
+      legalSection,
+      penaltyProvision,
+    })
+  }
+
+  const batchImpactMap =
+    (await generateBatchBusinessImpact(batchItems)) || {}
+
+  // Build enriched output per requirement (fast mapping)
+  const enriched: EnrichedComplianceData[] = []
+  for (const req of requirements) {
+    const k = buildUniqueKey(req)
+    const cached = cacheByKey.get(k.cacheKey)
+
+    const legalSection =
+      cached?.legal_section ||
+      'Refer to Act / rules (cached legal section unavailable)'
+
+    const penaltyProvision =
+      cached?.penalty_provision ||
+      req.penalty ||
+      'Refer to Act / rules (cached penalty provision unavailable)'
+
+    const daysDelayed = calculateDaysDelayed(req.due_date, req.status)
+    const exactPenalty = calculateExactPenalty(req.penalty, daysDelayed)
+
+    const businessImpact =
+      batchImpactMap[k.cacheKey] || {
+        financial: 'Business impact analysis unavailable. Direct financial penalty may apply.',
+        reputation: 'Non-compliance may affect company reputation and credit rating.',
+        operations: 'May cause operational delays and additional compliance burden.',
+      }
+
+    enriched.push({
+      requirementId: req.id,
+      legalSection,
+      penaltyProvision,
+      exactPenalty,
+      businessImpact,
+    })
+  }
+
+  return enriched
 }

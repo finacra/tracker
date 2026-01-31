@@ -1,7 +1,7 @@
 'use server'
 
 import { type RegulatoryRequirement } from '@/app/data-room/actions'
-import { enrichComplianceItems as enrichComplianceItemsService } from '@/lib/services/compliance-enrichment'
+import { enrichComplianceItemsOptimized as enrichComplianceItemsService } from '@/lib/services/compliance-enrichment'
 
 // Define the type locally to avoid import issues with server actions
 export interface EnrichedComplianceData {
@@ -24,7 +24,11 @@ export async function enrichComplianceRequirements(
   requirements: RegulatoryRequirement[]
 ): Promise<EnrichedComplianceData[]> {
   try {
-    return await enrichComplianceItemsService(requirements)
+    return await enrichComplianceItemsService(requirements, {
+      maxTavilySearches: 10,
+      tavilyConcurrency: 3,
+      cacheTtlDays: 60
+    })
   } catch (error: any) {
     console.error('Error enriching compliance requirements:', error)
     // Return empty array on error - client will handle fallback

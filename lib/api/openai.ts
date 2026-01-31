@@ -31,6 +31,99 @@ export interface BusinessImpact {
   operations: string
 }
 
+export type BatchImpactItem = {
+  key: string
+  category: string
+  requirement: string
+  legalSection: string
+  penaltyProvision: string
+}
+
+/**
+ * Generate business impact analysis for many compliance items in ONE call.
+ * Returns a map by item key.
+ *
+ * Note: We request strict JSON, then parse defensively.
+ */
+export async function generateBatchBusinessImpact(
+  items: BatchImpactItem[]
+): Promise<Record<string, BusinessImpact> | null> {
+  const client = getAzureOpenAIClient()
+  if (!client) {
+    console.error('Azure OpenAI client not initialized. Check environment variables.')
+    return null
+  }
+
+  const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.2-chat'
+
+  const systemMessage =
+    'You are a senior consultant combining McKinsey and EY styles. You produce concise, structured, professional regulatory risk analysis for Indian compliances. No alarmist language. Be specific, practical, and business-focused.'
+
+  // Keep prompt bounded: pass only the essential fields.
+  // Keys are stable and must be echoed back.
+  const userPrompt =
+    `Create business impact analysis for the following non-compliance items in India.\n\n` +
+    `Return STRICT JSON ONLY (no markdown, no commentary) as an object where each key maps to:\n` +
+    `{ "financial": string, "reputation": string, "operations": string }\n\n` +
+    `Rules:\n` +
+    `- Each field 1-2 sentences, crisp, consultant tone.\n` +
+    `- If penalty is interest/percentage-based requiring turnover/tax due/principal, say "Needs amount / Refer to Act" and give operational guidance.\n` +
+    `- Do not invent section numbers; if legalSection is missing/uncertain, say "Refer to Act/Rules".\n\n` +
+    `Items:\n` +
+    items
+      .slice(0, 80) // safety cap to avoid huge prompts; report should group repeated items anyway
+      .map((it) => {
+        return JSON.stringify({
+          key: it.key,
+          category: it.category,
+          requirement: it.requirement,
+          legalSection: it.legalSection,
+          penaltyProvision: it.penaltyProvision,
+        })
+      })
+      .join('\n')
+
+  try {
+    const response = await client.chat.completions.create({
+      messages: [
+        { role: 'system', content: systemMessage },
+        { role: 'user', content: userPrompt }
+      ],
+      // Keep bounded; we want speed.
+      max_completion_tokens: 3000,
+      model: deployment
+    })
+
+    const content = response.choices[0]?.message?.content
+    if (!content) return null
+
+    // Defensive JSON parse: extract first {...} block if model adds noise.
+    const trimmed = content.trim()
+    const firstBrace = trimmed.indexOf('{')
+    const lastBrace = trimmed.lastIndexOf('}')
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) return null
+
+    const jsonText = trimmed.slice(firstBrace, lastBrace + 1)
+    const parsed = JSON.parse(jsonText) as Record<string, BusinessImpact>
+
+    // Minimal validation
+    const out: Record<string, BusinessImpact> = {}
+    for (const [k, v] of Object.entries(parsed || {})) {
+      if (!v) continue
+      out[k] = {
+        financial: (v as any).financial || 'Financial impact analysis unavailable.',
+        reputation: (v as any).reputation || 'Reputation impact analysis unavailable.',
+        operations: (v as any).operations || 'Operational impact analysis unavailable.',
+      }
+    }
+
+    return out
+  } catch (error: any) {
+    console.error('Azure OpenAI API error (batch):', error)
+    return null
+  }
+}
+
 /**
  * Generate business impact analysis for compliance non-compliance
  * @param requirement - Compliance requirement description

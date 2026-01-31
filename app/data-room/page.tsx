@@ -1272,6 +1272,7 @@ export default function DataRoomPage() {
   // Convert database requirements to display format
   const displayRequirements = regulatoryRequirements.map(req => ({
     id: req.id,
+    template_id: (req as any).template_id ?? null,
     category: req.category,
     requirement: req.requirement,
     description: req.description || '',
@@ -2114,31 +2115,62 @@ export default function DataRoomPage() {
               return delay !== null && delay > 0 && req.status !== 'completed'
             })
 
-            // Convert to RegulatoryRequirement format for enrichment
-            const nonCompliantRequirements: RegulatoryRequirement[] = nonCompliantItems.map(req => ({
-              id: req.id,
-              company_id: currentCompany?.id || '',
-              category: req.category,
-              requirement: req.requirement,
-              description: null,
-              status: req.status as 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed',
-              due_date: req.dueDate,
-              penalty: req.penalty || null,
-              penalty_config: null,
-              penalty_base_amount: null,
-              is_critical: req.isCritical || false,
-              financial_year: req.financial_year || null,
-              compliance_type: req.compliance_type || null,
-              filed_on: null,
-              filed_by: null,
-              status_reason: null,
-              required_documents: [],
-              possible_legal_action: null,
-              created_at: '',
-              updated_at: '',
-              created_by: null,
-              updated_by: null
-            }))
+            // Group repeated compliances (e.g., same template across months) to keep report fast and avoid duplicate research
+            const groupKeyFor = (req: any) => {
+              if (req.template_id) return `template:${req.template_id}`
+              return `text:${(req.category || '').toLowerCase()}|${(req.requirement || '').toLowerCase()}`
+            }
+
+            const nonCompliantGroups = new Map<
+              string,
+              { key: string; category: string; requirement: string; items: any[]; representative: any }
+            >()
+
+            nonCompliantItems.forEach((item: any) => {
+              const key = groupKeyFor(item)
+              const existing = nonCompliantGroups.get(key)
+              if (existing) {
+                existing.items.push(item)
+              } else {
+                nonCompliantGroups.set(key, {
+                  key,
+                  category: item.category,
+                  requirement: item.requirement,
+                  items: [item],
+                  representative: item,
+                })
+              }
+            })
+
+            // Convert to RegulatoryRequirement format for enrichment (ONE per unique compliance type)
+            const nonCompliantRequirements: RegulatoryRequirement[] = Array.from(nonCompliantGroups.values()).map(group => {
+              const req = group.representative
+              return {
+                id: req.id,
+                template_id: req.template_id ?? null,
+                company_id: currentCompany?.id || '',
+                category: req.category,
+                requirement: req.requirement,
+                description: null,
+                status: req.status as 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed',
+                due_date: req.dueDate,
+                penalty: req.penalty || null,
+                penalty_config: null,
+                penalty_base_amount: null,
+                is_critical: req.isCritical || false,
+                financial_year: req.financial_year || null,
+                compliance_type: req.compliance_type || null,
+                filed_on: null,
+                filed_by: null,
+                status_reason: null,
+                required_documents: [],
+                possible_legal_action: null,
+                created_at: '',
+                updated_at: '',
+                created_by: null,
+                updated_by: null
+              }
+            })
 
             // Enrich non-compliant items
             let enrichedData: EnrichedComplianceData[] = []
@@ -2172,11 +2204,11 @@ export default function DataRoomPage() {
             const sectionSpacing = 12
 
             // Colors (grayscale for PDF)
-            const primaryColor = [255, 140, 0] // Orange
-            const darkGray = [40, 40, 40]
-            const lightGray = [200, 200, 200]
-            const textGray = [100, 100, 100]
-            const redColor = [200, 0, 0] // Dark red for warnings
+            const primaryColor = [30, 58, 95] // Navy (McKinsey/EY style)
+            const darkGray = [44, 44, 44]
+            const lightGray = [210, 210, 210]
+            const textGray = [90, 90, 90]
+            const redColor = [198, 40, 40] // Muted red for highlights only
 
             // Helper function to add new page if needed
             // Reserve space for footer (20px from bottom to prevent overlap)
@@ -2215,137 +2247,32 @@ export default function DataRoomPage() {
               return lines
             }
 
-            // CRITICAL SEVERITY SUMMARY PAGE (Full Page) - Only if there are overdue items
-            if (overdue > 0 || totalPenalty > 0) {
-              // Red warning background
-              doc.setFillColor(redColor[0], redColor[1], redColor[2])
-              doc.rect(0, 0, pageWidth, pageHeight, 'F')
-              
-              // White text box for content - ensure it doesn't overlap with footer
-              const summaryBoxMargin = 20
-              const summaryBoxWidth = pageWidth - 2 * summaryBoxMargin
-              // White box should end before footer area (maxContentY + 5 for safety)
-              const summaryBoxHeight = maxContentY - summaryBoxMargin + 5
-              doc.setFillColor(255, 255, 255)
-              doc.rect(summaryBoxMargin, summaryBoxMargin, summaryBoxWidth, summaryBoxHeight, 'F')
-              
-              let summaryY = summaryBoxMargin + 25
-              const summaryMaxY = summaryBoxMargin + summaryBoxHeight - 10 // Leave 10px margin at bottom of white box
-              
-              // CRITICAL WARNING HEADER
-              doc.setTextColor(redColor[0], redColor[1], redColor[2])
-              doc.setFontSize(24)
-              doc.setFont('helvetica', 'bold')
-              doc.text('*** CRITICAL COMPLIANCE ALERT ***', pageWidth / 2, summaryY, { align: 'center' })
-              summaryY += 20
-              
-              // Company name
-              if (currentCompany) {
-                doc.setFontSize(18)
-                doc.setFont('helvetica', 'bold')
-                doc.setTextColor(0, 0, 0)
-                const companyLines = splitText(currentCompany.name.toUpperCase(), summaryBoxWidth - 20, 18)
-                companyLines.forEach((line, idx) => {
-                  doc.text(line, pageWidth / 2, summaryY + (idx * 10), { align: 'center', maxWidth: summaryBoxWidth - 20 })
-                })
-                summaryY += companyLines.length * 10 + 15
-              }
-              
-              // Severity statement
-              doc.setFontSize(16)
-              doc.setFont('helvetica', 'bold')
-              doc.setTextColor(redColor[0], redColor[1], redColor[2])
-              doc.text('IMMEDIATE ACTION REQUIRED', pageWidth / 2, summaryY, { align: 'center' })
-              summaryY += 20
-              
-              // Main severity content
-              doc.setFontSize(11)
-              doc.setFont('helvetica', 'normal')
-              doc.setTextColor(0, 0, 0)
-              
-              const severityText = [
-                `Your organization is currently facing ${overdue} overdue compliance requirement${overdue > 1 ? 's' : ''} with a total accumulated penalty of ₹${totalPenalty.toLocaleString('en-IN')}.`,
-                '',
-                'THIS IS NOT A MINOR ISSUE. Non-compliance with regulatory requirements carries severe consequences that can destroy your business:',
-                '',
-                '• FINANCIAL RUIN: Every day of delay increases your penalties. You are losing money right now. Interest compounds daily. Your total liability is growing exponentially.',
-                '',
-                '• JAIL TIME AND CRIMINAL PROSECUTION: Directors and key personnel can face imprisonment. Under the Companies Act, violations can result in imprisonment ranging from 6 months to 10 years. Under Income Tax Act, willful tax evasion can lead to 3 to 7 years in jail. Under GST Act, serious violations carry imprisonment of up to 5 years. You could go to jail. Your freedom is at risk.',
-                '',
-                '• LEGAL PROSECUTION: Regulatory authorities can initiate criminal proceedings against directors and key personnel. You could face imprisonment, hefty fines, and permanent blacklisting. Once convicted, you will have a criminal record that follows you forever.',
-                '',
-                '• BUSINESS DEATH: Non-compliance can result in your company being struck off the register. Your business will cease to exist. All assets will be frozen. You will lose everything.',
-                '',
-                '• REPUTATION DESTRUCTION: Once flagged for non-compliance, your credit rating plummets. Banks will refuse loans. Investors will flee. Business partners will terminate contracts. Your name will be tarnished permanently.',
-                '',
-                '• PERSONAL LIABILITY: Directors can be held personally liable. Your personal assets, including your home and savings, can be seized to pay penalties. Your family\'s financial security is at stake.',
-                '',
-                'TIME IS RUNNING OUT. Every passing day makes your situation worse. The longer you wait, the more you will pay. The more you delay, the higher the risk of criminal action and jail time.',
-                '',
-                'This report details every violation, every penalty, and every consequence including potential jail sentences. Read it carefully. Understand the gravity. Take immediate action.',
-                '',
-                'YOUR BUSINESS SURVIVAL AND YOUR FREEDOM DEPEND ON IT.'
-              ]
-              
-              severityText.forEach((para, idx) => {
-                // Check if we need a new page - ensure content stays within white box
-                const estimatedLines = para === '' ? 1 : Math.ceil(para.length / 60) // Rough estimate
-                const estimatedHeight = estimatedLines * 6 + 3
-                if (summaryY + estimatedHeight > summaryMaxY) {
-                  doc.addPage()
-                  doc.setFillColor(redColor[0], redColor[1], redColor[2])
-                  doc.rect(0, 0, pageWidth, pageHeight, 'F')
-                  doc.setFillColor(255, 255, 255)
-                  const newSummaryBoxHeight = maxContentY - summaryBoxMargin + 5
-                  doc.rect(summaryBoxMargin, summaryBoxMargin, summaryBoxWidth, newSummaryBoxHeight, 'F')
-                  summaryY = summaryBoxMargin + 25
-                }
-                
-                if (para === '') {
-                  summaryY += 5
-                } else {
-                  const isBold = para.includes('•') || para.includes('THIS IS NOT') || para.includes('TIME IS RUNNING') || para.includes('YOUR BUSINESS') || para.includes('JAIL TIME')
-                  if (isBold) {
-                    doc.setFont('helvetica', 'bold')
-                    doc.setTextColor(redColor[0], redColor[1], redColor[2])
-                  } else {
-                    doc.setFont('helvetica', 'normal')
-                    doc.setTextColor(0, 0, 0)
-                  }
-                  
-                  const lines = splitText(para, summaryBoxWidth - 20, 11)
-                  lines.forEach((line, lineIdx) => {
-                    // Safety check before each line - ensure it stays within white box
-                    if (summaryY + (lineIdx * 6) > summaryMaxY) {
-                      doc.addPage()
-                      doc.setFillColor(redColor[0], redColor[1], redColor[2])
-                      doc.rect(0, 0, pageWidth, pageHeight, 'F')
-                      doc.setFillColor(255, 255, 255)
-                      const newSummaryBoxHeight = maxContentY - summaryBoxMargin + 5
-                      doc.rect(summaryBoxMargin, summaryBoxMargin, summaryBoxWidth, newSummaryBoxHeight, 'F')
-                      summaryY = summaryBoxMargin + 25
-                    }
-                    doc.text(line, summaryBoxMargin + 10, summaryY + (lineIdx * 6), { maxWidth: summaryBoxWidth - 20 })
-                  })
-                  summaryY += lines.length * 6 + 3
-                  
-                  // Final safety check - ensure we haven't exceeded white box
-                  if (summaryY > summaryMaxY) {
-                    doc.addPage()
-                    doc.setFillColor(redColor[0], redColor[1], redColor[2])
-                    doc.rect(0, 0, pageWidth, pageHeight, 'F')
-                    doc.setFillColor(255, 255, 255)
-                    const newSummaryBoxHeight = maxContentY - summaryBoxMargin + 5
-                    doc.rect(summaryBoxMargin, summaryBoxMargin, summaryBoxWidth, newSummaryBoxHeight, 'F')
-                    summaryY = summaryBoxMargin + 25
-                  }
-                }
-              })
-              
-              // Add new page for rest of report
-              doc.addPage()
-              yPos = margin
-            }
+            // Cover page (professional)
+            doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
+            doc.rect(0, 0, pageWidth, 70, 'F')
+            doc.setTextColor(255, 255, 255)
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(24)
+            doc.text('Compliance Risk Report', margin, 40, { maxWidth: contentWidth })
+            doc.setFont('helvetica', 'normal')
+            doc.setFontSize(10)
+            const coverDate = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
+            doc.text(`Generated: ${coverDate}`, margin, 52)
+
+            doc.setTextColor(0, 0, 0)
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(16)
+            const companyName = currentCompany?.name || 'Company'
+            doc.text(companyName, margin, 95, { maxWidth: contentWidth })
+
+            doc.setFont('helvetica', 'normal')
+            doc.setFontSize(10)
+            doc.setTextColor(textGray[0], textGray[1], textGray[2])
+            doc.text('Prepared for management review (McKinsey/EY-style summary).', margin, 108, { maxWidth: contentWidth })
+
+            // Page break to main content
+            doc.addPage()
+            yPos = margin
 
             // Header
             doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
@@ -2634,18 +2561,19 @@ export default function DataRoomPage() {
 
             // Overdue Compliances (if any)
             if (overdueCompliances.length > 0) {
-              doc.setFillColor(255, 0, 0) // Red for overdue
+              doc.setFillColor(redColor[0], redColor[1], redColor[2]) // Muted red for overdue
               doc.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
               doc.setTextColor(255, 255, 255)
               doc.setFontSize(14)
               doc.setFont('helvetica', 'bold')
-              doc.text(`Overdue Compliances (${overdueCompliances.length})`, margin + 3, yPos + 6)
+              doc.text(`Overdue Compliances (Top 10 shown)`, margin + 3, yPos + 6)
               yPos += 15
 
               doc.setTextColor(0, 0, 0)
               doc.setFontSize(9)
               doc.setFont('helvetica', 'normal')
 
+              // To keep report generation fast, show only top 10 individual overdue items
               overdueCompliances.slice(0, 10).forEach((req, index) => {
                 checkNewPage(30)
                 const delay = calculateDelay(req.dueDate, req.status)
@@ -2777,8 +2705,10 @@ export default function DataRoomPage() {
               yPos += 8
 
               // Table rows
+              // Enrichment is computed once per unique compliance type (group representative only)
               enrichedData.forEach((enriched, index) => {
-                const req = nonCompliantItems.find(r => r.id === enriched.requirementId)
+                const group = Array.from(nonCompliantGroups.values()).find(g => g.representative.id === enriched.requirementId)
+                const req = group?.representative
                 if (!req) return
 
                 // Estimate row height before writing
