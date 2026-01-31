@@ -592,14 +592,14 @@ export default function AdminPage() {
               {selectedTemplates.length > 0 && (
                 <button
                   onClick={async () => {
-                    if (!confirm(`Are you sure you want to delete ${selectedTemplates.length} template(s)? This action cannot be undone.`)) {
+                    if (!confirm(`Are you sure you want to delete ${selectedTemplates.length} template(s) and their associated compliance requirements? This action cannot be undone.`)) {
                       return
                     }
                     setIsDeletingTemplates(true)
                     let deletedCount = 0
                     let errorCount = 0
                     for (const templateId of selectedTemplates) {
-                      const result = await deleteComplianceTemplate(templateId)
+                      const result = await deleteComplianceTemplate(templateId, true) // true = also delete requirements
                       if (result.success) {
                         deletedCount++
                       } else {
