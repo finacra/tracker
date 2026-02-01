@@ -68,7 +68,7 @@ export default function DataRoomPage() {
   const { role, canEdit, canManage, loading: roleLoading } = useUserRole(currentCompany?.id || null)
   
   // Check subscription/trial access for current company
-  const { hasAccess, accessType, isLoading: accessLoading, trialDaysRemaining, isOwner } = useCompanyAccess(currentCompany?.id || null)
+  const { hasAccess, accessType, isLoading: accessLoading, trialDaysRemaining, isOwner, ownerSubscriptionExpired } = useCompanyAccess(currentCompany?.id || null)
 
   // Fetch all companies for the selector (owned + invited)
   useEffect(() => {
@@ -258,12 +258,19 @@ export default function DataRoomPage() {
       return
     }
     
-    // If user is not owner and doesn't have access (shouldn't happen for invited users)
+    // If user is invited but owner's subscription expired
+    if (!isOwner && ownerSubscriptionExpired) {
+      console.log('[Access Check] Owner subscription expired, redirecting to contact owner page')
+      router.push(`/owner-subscription-expired?company_id=${currentCompany.id}`)
+      return
+    }
+    
+    // If user is not owner and doesn't have access for other reasons
     if (!hasAccess && !isOwner) {
       console.log('[Access Check] No access to this company')
       router.push('/subscription-required')
     }
-  }, [currentCompany, hasAccess, isOwner, accessLoading, authLoading, router])
+  }, [currentCompany, hasAccess, isOwner, ownerSubscriptionExpired, accessLoading, authLoading, router])
 
   const fetchVaultDocuments = async () => {
     if (!currentCompany) return

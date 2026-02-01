@@ -32,6 +32,7 @@ interface CompanyAccessResult {
   isOwner: boolean
   error: string | null
   subscriptionInfo: SubscriptionInfo | null
+  ownerSubscriptionExpired: boolean // For invited users when owner's subscription expires
 }
 
 /**
@@ -58,6 +59,7 @@ export function useCompanyAccess(companyId: string | null): CompanyAccessResult 
   const [isOwner, setIsOwner] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
+  const [ownerSubscriptionExpired, setOwnerSubscriptionExpired] = useState(false)
 
   useEffect(() => {
     // Reset state when companyId changes - this prevents stale state from causing incorrect redirects
@@ -134,14 +136,78 @@ export function useCompanyAccess(companyId: string | null): CompanyAccessResult 
         
         console.log('[useCompanyAccess] User role for this company:', userRole?.role || 'none')
 
-        // If user is invited member (has role but NOT owner), they always have access
-        // Invited members bypass subscription requirements
+        // If user is invited member (has role but NOT owner), check if owner has valid subscription
         if (userRole && !userIsOwner) {
-          console.log('[useCompanyAccess] User is invited member, granting access (no subscription needed)')
-          setHasAccess(true)
-          setAccessType('invited')
-          setIsLoading(false)
-          return
+          console.log('[useCompanyAccess] User is invited member, checking owner subscription')
+          
+          // Get owner's user ID from company
+          const ownerId = company?.user_id
+          
+          if (ownerId) {
+            // Check owner's subscription status
+            try {
+              const { data: ownerSubData } = await supabase
+                .rpc('check_user_subscription', { target_user_id: ownerId })
+                .single()
+              
+              const ownerSub = ownerSubData as SubscriptionRPCResponse | null
+              
+              if (ownerSub?.has_subscription) {
+                console.log('[useCompanyAccess] Owner has valid subscription, granting access to invited member')
+                setHasAccess(true)
+                setAccessType('invited')
+                setOwnerSubscriptionExpired(false)
+                setIsLoading(false)
+                return
+              } else {
+                console.log('[useCompanyAccess] Owner subscription expired, invited user cannot access')
+                setHasAccess(false)
+                setOwnerSubscriptionExpired(true)
+                setIsLoading(false)
+                return
+              }
+            } catch (err) {
+              // RPC failed, try direct query
+              console.log('[useCompanyAccess] RPC failed for owner check, trying direct query')
+              
+              const { data: ownerActiveSub } = await supabase
+                .from('subscriptions')
+                .select('id, status, is_trial, trial_ends_at, end_date')
+                .eq('user_id', ownerId)
+                .in('status', ['active', 'trial'])
+                .order('end_date', { ascending: false })
+                .limit(1)
+                .single()
+              
+              if (ownerActiveSub) {
+                const isValid = ownerActiveSub.is_trial 
+                  ? new Date(ownerActiveSub.trial_ends_at) > new Date()
+                  : new Date(ownerActiveSub.end_date) > new Date()
+                
+                if (isValid) {
+                  console.log('[useCompanyAccess] Owner has valid subscription (direct query)')
+                  setHasAccess(true)
+                  setAccessType('invited')
+                  setOwnerSubscriptionExpired(false)
+                  setIsLoading(false)
+                  return
+                }
+              }
+              
+              console.log('[useCompanyAccess] Owner subscription expired (direct query)')
+              setHasAccess(false)
+              setOwnerSubscriptionExpired(true)
+              setIsLoading(false)
+              return
+            }
+          } else {
+            // No owner found, grant access (shouldn't happen)
+            console.log('[useCompanyAccess] No owner found, granting access')
+            setHasAccess(true)
+            setAccessType('invited')
+            setIsLoading(false)
+            return
+          }
         }
 
         // 4. If user is owner, check USER's subscription (not company's)
@@ -289,6 +355,7 @@ export function useCompanyAccess(companyId: string | null): CompanyAccessResult 
     isOwner,
     error,
     subscriptionInfo,
+    ownerSubscriptionExpired,
   }
 }
 

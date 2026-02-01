@@ -43,6 +43,10 @@ export default function TeamPage() {
   const [isInviting, setIsInviting] = useState(false)
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [isRevokingTrial, setIsRevokingTrial] = useState(false)
+  const [isExtendingTrial, setIsExtendingTrial] = useState(false)
+  const [extendDays, setExtendDays] = useState(15)
+  const [isGrantingTrial, setIsGrantingTrial] = useState(false)
+  const [ownerEmail, setOwnerEmail] = useState<string | null>(null)
 
   // Get user role for current company
   const { role, canManage, isSuperadmin } = useUserRole(currentCompany?.id || null)
@@ -250,6 +254,105 @@ export default function TeamPage() {
     }
   }
 
+  const handleExtendTrial = async () => {
+    if (!currentCompany || !subscription) return
+    
+    if (extendDays < 1 || extendDays > 365) {
+      alert('Please enter a valid number of days (1-365)')
+      return
+    }
+
+    setIsExtendingTrial(true)
+    try {
+      // Calculate new trial end date
+      const currentEndDate = subscription.trial_ends_at 
+        ? new Date(subscription.trial_ends_at) 
+        : new Date()
+      
+      // If trial is expired, extend from today
+      const baseDate = currentEndDate < new Date() ? new Date() : currentEndDate
+      const newEndDate = new Date(baseDate)
+      newEndDate.setDate(newEndDate.getDate() + extendDays)
+
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({
+          status: 'trial',
+          is_trial: true,
+          trial_ends_at: newEndDate.toISOString(),
+          end_date: newEndDate.toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', subscription.id)
+
+      if (error) {
+        alert(`Failed to extend trial: ${error.message}`)
+      } else {
+        alert(`Trial extended by ${extendDays} days. New end date: ${newEndDate.toLocaleDateString()}`)
+        // Refresh subscription status
+        const sub = await getCompanySubscription(currentCompany.id)
+        setSubscription(sub)
+      }
+    } catch (err: any) {
+      alert(`Failed to extend trial: ${err.message}`)
+    } finally {
+      setIsExtendingTrial(false)
+    }
+  }
+
+  const handleGrantTrial = async () => {
+    if (!currentCompany) return
+    
+    // Get the company owner's user_id
+    const { data: company } = await supabase
+      .from('companies')
+      .select('user_id')
+      .eq('id', currentCompany.id)
+      .single()
+    
+    if (!company?.user_id) {
+      alert('Could not find company owner')
+      return
+    }
+
+    setIsGrantingTrial(true)
+    try {
+      const trialEndDate = new Date()
+      trialEndDate.setDate(trialEndDate.getDate() + extendDays)
+
+      // Create new trial subscription for the user
+      const { error } = await supabase
+        .from('subscriptions')
+        .insert({
+          user_id: company.user_id,
+          company_id: null, // User-based subscription
+          status: 'trial',
+          tier: 'starter',
+          billing_cycle: 'monthly',
+          amount: 0,
+          currency: 'INR',
+          is_trial: true,
+          trial_started_at: new Date().toISOString(),
+          trial_ends_at: trialEndDate.toISOString(),
+          start_date: new Date().toISOString(),
+          end_date: trialEndDate.toISOString(),
+        })
+
+      if (error) {
+        alert(`Failed to grant trial: ${error.message}`)
+      } else {
+        alert(`Trial granted for ${extendDays} days`)
+        // Refresh subscription status
+        const sub = await getCompanySubscription(currentCompany.id)
+        setSubscription(sub)
+      }
+    } catch (err: any) {
+      alert(`Failed to grant trial: ${err.message}`)
+    } finally {
+      setIsGrantingTrial(false)
+    }
+  }
+
   const roles = [
     { value: 'viewer' as const, label: 'Viewer - Can view compliance items' },
     { value: 'editor' as const, label: 'Editor - Can view and edit' },
@@ -450,16 +553,38 @@ export default function TeamPage() {
                   </div>
                 </div>
                 
-                {/* Revoke Trial Button */}
-                {subscription.is_trial && (
-                  <button
-                    onClick={handleRevokeTrial}
-                    disabled={isRevokingTrial}
-                    className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-medium hover:bg-red-500/30 transition-colors disabled:opacity-50"
-                  >
-                    {isRevokingTrial ? 'Revoking...' : 'Revoke Trial'}
-                  </button>
-                )}
+                {/* Trial Controls for Superadmin */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Extend Trial */}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max="365"
+                      value={extendDays}
+                      onChange={(e) => setExtendDays(parseInt(e.target.value) || 15)}
+                      className="w-16 px-2 py-1.5 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm text-center focus:outline-none focus:border-primary-orange"
+                    />
+                    <button
+                      onClick={handleExtendTrial}
+                      disabled={isExtendingTrial}
+                      className="px-3 py-1.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded-lg text-sm font-medium hover:bg-green-500/30 transition-colors disabled:opacity-50"
+                    >
+                      {isExtendingTrial ? 'Extending...' : 'Extend Days'}
+                    </button>
+                  </div>
+
+                  {/* Revoke Trial Button */}
+                  {subscription.is_trial && (
+                    <button
+                      onClick={handleRevokeTrial}
+                      disabled={isRevokingTrial}
+                      className="px-3 py-1.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-medium hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                    >
+                      {isRevokingTrial ? 'Revoking...' : 'Revoke'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -467,14 +592,36 @@ export default function TeamPage() {
           {/* No Subscription Warning - Superadmin Only */}
           {isSuperadmin && currentCompany && !subscription && !isLoading && (
             <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gray-700 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-700 rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="text-sm text-gray-400">
+                    No active subscription or trial for this company owner
+                  </div>
                 </div>
-                <div className="text-sm text-gray-400">
-                  No active subscription or trial for this company
+                
+                {/* Grant Trial Button */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={extendDays}
+                    onChange={(e) => setExtendDays(parseInt(e.target.value) || 15)}
+                    className="w-16 px-2 py-1.5 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm text-center focus:outline-none focus:border-primary-orange"
+                    placeholder="Days"
+                  />
+                  <button
+                    onClick={handleGrantTrial}
+                    disabled={isGrantingTrial}
+                    className="px-4 py-2 bg-primary-orange text-white rounded-lg text-sm font-medium hover:bg-primary-orange/90 transition-colors disabled:opacity-50"
+                  >
+                    {isGrantingTrial ? 'Granting...' : 'Grant Trial'}
+                  </button>
                 </div>
               </div>
             </div>
