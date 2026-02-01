@@ -74,25 +74,47 @@ export function useCompanyAccess(companyId: string | null): CompanyAccessResult 
         }
 
         // 2. Check if user is company owner
-        const { data: company } = await supabase
+        const { data: company, error: companyError } = await supabase
           .from('companies')
           .select('id, user_id')
           .eq('id', companyId)
           .single()
 
+        if (companyError) {
+          console.log('[useCompanyAccess] Company query error:', companyError.message)
+        }
+
         const userIsOwner = company?.user_id === user.id
         setIsOwner(userIsOwner)
+        console.log('[useCompanyAccess] Company user_id:', company?.user_id, 'Current user:', user.id, 'isOwner:', userIsOwner)
 
         // 3. Check if user has a role for this company (invited member)
-        const { data: userRole } = await supabase
+        const { data: userRole, error: roleError } = await supabase
           .from('user_roles')
           .select('id, role')
           .eq('user_id', user.id)
           .eq('company_id', companyId)
           .single()
 
+        if (roleError && roleError.code !== 'PGRST116') {
+          console.log('[useCompanyAccess] Role query error:', roleError.message)
+        }
+        
+        console.log('[useCompanyAccess] User role for this company:', userRole?.role || 'none')
+
         // If user is invited (has role but not owner), they always have access
+        // This check happens BEFORE subscription checks, so invited users bypass subscription requirements
         if (userRole && !userIsOwner) {
+          console.log('[useCompanyAccess] User is invited member, granting access')
+          setHasAccess(true)
+          setAccessType('invited')
+          setIsLoading(false)
+          return
+        }
+
+        // If user has a role (including owner with admin role), and NOT owner, treat as invited
+        if (userRole) {
+          console.log('[useCompanyAccess] User has role, treating as invited')
           setHasAccess(true)
           setAccessType('invited')
           setIsLoading(false)
@@ -101,64 +123,92 @@ export function useCompanyAccess(companyId: string | null): CompanyAccessResult 
 
         // 4. If user is owner, check subscription/trial status
         if (userIsOwner) {
-          // Check for active subscription (non-trial)
-          const { data: activeSubscription } = await supabase
-            .from('subscriptions')
-            .select('id, status, is_trial, trial_ends_at, end_date')
-            .eq('company_id', companyId)
-            .eq('is_trial', false)
-            .eq('status', 'active')
-            .gt('end_date', new Date().toISOString())
-            .single()
+          console.log('[useCompanyAccess] User is owner, checking subscription status')
+          
+          try {
+            // Check for active subscription (non-trial)
+            const { data: activeSubscription, error: subError } = await supabase
+              .from('subscriptions')
+              .select('id, status, is_trial, trial_ends_at, end_date')
+              .eq('company_id', companyId)
+              .eq('is_trial', false)
+              .eq('status', 'active')
+              .gt('end_date', new Date().toISOString())
+              .single()
 
-          if (activeSubscription) {
-            setHasAccess(true)
-            setAccessType('subscription')
-            setIsLoading(false)
-            return
-          }
-
-          // Check for active trial
-          const { data: trialSubscription } = await supabase
-            .from('subscriptions')
-            .select('id, status, is_trial, trial_ends_at')
-            .eq('company_id', companyId)
-            .eq('is_trial', true)
-            .in('status', ['active', 'trial'])
-            .single()
-
-          if (trialSubscription && trialSubscription.trial_ends_at) {
-            const trialEnd = new Date(trialSubscription.trial_ends_at)
-            const now = new Date()
-            
-            if (trialEnd > now) {
-              const diffTime = trialEnd.getTime() - now.getTime()
-              const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+            if (subError && subError.code !== 'PGRST116') {
+              // If error is not "no rows", check if it's a schema issue (406)
+              // In that case, try a simpler query without is_trial
+              console.log('[useCompanyAccess] Subscription query error:', subError.message)
               
+              // Fallback: check any active subscription without is_trial filter
+              const { data: fallbackSub } = await supabase
+                .from('subscriptions')
+                .select('id, status, end_date')
+                .eq('company_id', companyId)
+                .eq('status', 'active')
+                .gt('end_date', new Date().toISOString())
+                .single()
+              
+              if (fallbackSub) {
+                console.log('[useCompanyAccess] Found active subscription (fallback)')
+                setHasAccess(true)
+                setAccessType('subscription')
+                setIsLoading(false)
+                return
+              }
+            }
+
+            if (activeSubscription) {
+              console.log('[useCompanyAccess] Found active subscription')
               setHasAccess(true)
-              setAccessType('trial')
-              setTrialDaysRemaining(daysRemaining)
+              setAccessType('subscription')
               setIsLoading(false)
               return
             }
+
+            // Check for active trial
+            const { data: trialSubscription, error: trialError } = await supabase
+              .from('subscriptions')
+              .select('id, status, is_trial, trial_ends_at')
+              .eq('company_id', companyId)
+              .eq('is_trial', true)
+              .in('status', ['active', 'trial'])
+              .single()
+
+            if (trialError && trialError.code !== 'PGRST116') {
+              console.log('[useCompanyAccess] Trial query error:', trialError.message)
+            }
+
+            if (trialSubscription && trialSubscription.trial_ends_at) {
+              const trialEnd = new Date(trialSubscription.trial_ends_at)
+              const now = new Date()
+              
+              if (trialEnd > now) {
+                const diffTime = trialEnd.getTime() - now.getTime()
+                const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+                
+                console.log('[useCompanyAccess] Active trial, days remaining:', daysRemaining)
+                setHasAccess(true)
+                setAccessType('trial')
+                setTrialDaysRemaining(daysRemaining)
+                setIsLoading(false)
+                return
+              }
+            }
+          } catch (err) {
+            console.error('[useCompanyAccess] Error checking subscriptions:', err)
           }
 
           // Owner but no subscription or trial
+          console.log('[useCompanyAccess] Owner without active subscription/trial')
           setHasAccess(false)
           setAccessType(null)
           setIsLoading(false)
           return
         }
 
-        // User has a role for the company (invited with owner status)
-        if (userRole) {
-          setHasAccess(true)
-          setAccessType('invited')
-          setIsLoading(false)
-          return
-        }
-
-        // No access
+        // No access (shouldn't reach here for invited users)
         setHasAccess(false)
         setAccessType(null)
         setIsLoading(false)
