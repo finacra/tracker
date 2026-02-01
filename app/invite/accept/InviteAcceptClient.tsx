@@ -22,7 +22,9 @@ export default function InviteAcceptClient(props: { token?: string }) {
     if (loading) return
 
     if (!user) {
-      router.push('/')
+      // Redirect to login with returnTo parameter to preserve the invite token
+      const returnTo = `/invite/accept?token=${encodeURIComponent(props.token)}`
+      router.push(`/?returnTo=${encodeURIComponent(returnTo)}`)
       return
     }
 

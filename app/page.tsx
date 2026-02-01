@@ -1,15 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/client'
 
-export default function LoginPage() {
+function LoginPageInner() {
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'login' | 'home' | 'privacy' | 'terms'>('login')
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
+  
+  // Get returnTo from URL params for deep linking (e.g., invite acceptance)
+  const returnTo = searchParams.get('returnTo')
 
   // Force navigation using window.location with absolute URL
   const navigateTo = (path: string, e?: React.MouseEvent) => {
@@ -80,7 +84,11 @@ export default function LoginPage() {
         
         if (!isMounted) return
         
-        if (hasCompanies) {
+        // If there's a returnTo parameter, redirect there (deep linking for invites, etc.)
+        if (returnTo) {
+          console.log('🔄 [AUTH CHECK] Redirecting to returnTo:', returnTo)
+          router.push(returnTo)
+        } else if (hasCompanies) {
           console.log('🔄 [AUTH CHECK] Redirecting to /data-room')
           router.push('/data-room')
         } else {
@@ -97,15 +105,17 @@ export default function LoginPage() {
     return () => {
       isMounted = false
     }
-  }, [router, supabase])
+  }, [router, supabase, returnTo])
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
     try {
+      // Use returnTo if provided (deep linking), otherwise default to /onboarding
+      const nextPath = returnTo || '/onboarding'
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=/onboarding`,
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
         },
       })
       
@@ -475,5 +485,17 @@ export default function LoginPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <LoginPageInner />
+    </Suspense>
   )
 }
