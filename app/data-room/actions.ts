@@ -1179,7 +1179,14 @@ export async function createTeamInvitation(
       recipientEmail: normalizedEmail,
     })
 
-    await sendEmail({ to: normalizedEmail, subject, html })
+    try {
+      console.log('[createTeamInvitation] Sending email to:', normalizedEmail)
+      const emailResult = await sendEmail({ to: normalizedEmail, subject, html })
+      console.log('[createTeamInvitation] Email result:', JSON.stringify(emailResult))
+    } catch (emailError: any) {
+      console.error('[createTeamInvitation] Email send failed:', emailError?.message || emailError)
+      // Don't fail the invitation if email fails - the invite is still in DB
+    }
 
     await notifyCompanyAdmins(
       adminSupabase,
