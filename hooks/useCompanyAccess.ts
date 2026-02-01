@@ -60,6 +60,12 @@ export function useCompanyAccess(companyId: string | null): CompanyAccessResult 
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
 
   useEffect(() => {
+    // Reset state when companyId changes - this prevents stale state from causing incorrect redirects
+    if (companyId) {
+      setIsLoading(true)
+      setHasAccess(false) // Reset until we verify
+    }
+    
     async function checkAccess() {
       if (authLoading) return
       
@@ -71,13 +77,13 @@ export function useCompanyAccess(companyId: string | null): CompanyAccessResult 
       }
 
       if (!companyId) {
-        setHasAccess(false)
-        setAccessType(null)
-        setIsLoading(false)
+        // No company selected - keep loading true to prevent premature redirect
+        // The data-room checks for currentCompany before checking access
+        setIsLoading(true)
         return
       }
 
-      setIsLoading(true)
+      // setIsLoading(true) - already set above synchronously
       setError(null)
 
       try {
