@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/utils/supabase/client'
 import { getRegulatoryRequirements, getCompanyUserRoles, getUserRole, getComplianceTemplates, createComplianceTemplate, updateComplianceTemplate, deleteComplianceTemplate, getTemplateDetails, applyAllTemplates, type ComplianceTemplate } from '@/app/data-room/actions'
 import { useUserRole } from '@/hooks/useUserRole'
+import UsersManagement from '@/components/admin/UsersManagement'
 import { 
   FIXED_COSTS, 
   CAPEX_YEAR_1, 
@@ -847,10 +848,7 @@ export default function AdminPage() {
         )}
 
         {activeTab === 'users' && (
-          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-6">
-            <h2 className="text-2xl font-light text-white mb-4">User Management</h2>
-            <p className="text-gray-400">User management features coming soon...</p>
-          </div>
+          <UsersManagement supabase={supabase} companies={companies} />
         )}
 
         {activeTab === 'financials' && (
