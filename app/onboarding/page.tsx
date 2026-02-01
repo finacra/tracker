@@ -10,6 +10,7 @@ import {
   mapIndustryToCategories 
 } from '@/lib/utils/entity-detection'
 import { useAuth } from '@/hooks/useAuth'
+import { useUserSubscription } from '@/hooks/useCompanyAccess'
 import { createClient } from '@/utils/supabase/client'
 import { completeOnboarding } from './actions'
 
@@ -52,6 +53,7 @@ interface Director {
 export default function OnboardingPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
+  const { hasSubscription, companyLimit, currentCompanyCount, canCreateCompany, isLoading: subLoading } = useUserSubscription()
   const supabase = createClient()
   
   // All hooks must be called before any conditional returns
@@ -96,11 +98,11 @@ export default function OnboardingPage() {
     // Removed redirect for users with existing companies - they should be able to create new companies
   }, [user, loading, router])
 
-  // Show loading state while checking auth
-  if (loading) {
+  // Show loading state while checking auth or subscription
+  if (loading || subLoading) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="text-white text-lg">Loading...</div>
+        <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -108,6 +110,67 @@ export default function OnboardingPage() {
   // Don't render if not authenticated (will redirect)
   if (!user) {
     return null
+  }
+
+  // Check if user needs to subscribe first (no subscription at all)
+  if (!hasSubscription && currentCompanyCount === 0) {
+    return (
+      <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
+        <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-primary-orange/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-8 h-8 text-primary-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-4">Subscription Required</h1>
+          <p className="text-gray-400 mb-6">
+            You need an active subscription to create companies. Start with a free 15-day trial!
+          </p>
+          <button
+            onClick={() => router.push('/subscribe')}
+            className="w-full bg-primary-orange text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-orange/90 transition-colors"
+          >
+            Choose a Plan
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Check if user has reached company limit
+  if (hasSubscription && !canCreateCompany) {
+    return (
+      <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
+        <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-8 h-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-4">Company Limit Reached</h1>
+          <p className="text-gray-400 mb-2">
+            You've created <span className="text-white font-semibold">{currentCompanyCount}</span> of <span className="text-white font-semibold">{companyLimit}</span> companies allowed on your plan.
+          </p>
+          <p className="text-gray-500 text-sm mb-6">
+            Upgrade to a higher plan to add more companies.
+          </p>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => router.push('/subscribe')}
+              className="w-full bg-primary-orange text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-orange/90 transition-colors"
+            >
+              Upgrade Plan
+            </button>
+            <button
+              onClick={() => router.push('/data-room')}
+              className="w-full bg-gray-800 text-gray-300 px-6 py-3 rounded-lg font-medium hover:bg-gray-700 transition-colors"
+            >
+              Go to Data Room
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const handleInputChange = (

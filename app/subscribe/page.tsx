@@ -3,9 +3,9 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { useUserSubscription } from '@/hooks/useCompanyAccess'
 import { createClient } from '@/utils/supabase/client'
 import { PRICING_TIERS, getTierPricing, formatPrice, type BillingCycle } from '@/lib/pricing/tiers'
-import { createTrialSubscription } from '@/lib/subscriptions/subscription'
 import PaymentButton from '@/components/PaymentButton'
 import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
 
@@ -13,8 +13,10 @@ function SubscribePageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
+  const { hasSubscription, isTrial, trialDaysRemaining, companyLimit, currentCompanyCount, isLoading: subLoading } = useUserSubscription()
   const supabase = createClient()
   
+  // Optional company_id for context (showing company name)
   const companyId = searchParams.get('company_id')
   
   const [companyName, setCompanyName] = useState<string>('')
@@ -22,7 +24,7 @@ function SubscribePageInner() {
   const [isStartingTrial, setIsStartingTrial] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch company name
+  // Fetch company name if provided
   useEffect(() => {
     async function fetchCompany() {
       if (!companyId) return
@@ -48,9 +50,23 @@ function SubscribePageInner() {
     }
   }, [user, authLoading, router])
 
+  // If user already has subscription, redirect to data-room or onboarding
+  useEffect(() => {
+    if (!subLoading && hasSubscription && !isTrial) {
+      // User has paid subscription, redirect appropriately
+      if (companyId) {
+        router.push('/data-room')
+      } else if (currentCompanyCount > 0) {
+        router.push('/data-room')
+      } else {
+        router.push('/onboarding')
+      }
+    }
+  }, [hasSubscription, isTrial, subLoading, companyId, currentCompanyCount, router])
+
   const handleStartTrial = async () => {
-    if (!user || !companyId) {
-      setError('Missing user or company information')
+    if (!user) {
+      setError('Please sign in first')
       return
     }
 
@@ -58,14 +74,59 @@ function SubscribePageInner() {
     setError(null)
 
     try {
-      const result = await createTrialSubscription(user.id, companyId, 15)
-      
-      if (result.success) {
+      // Use the RPC function to create user trial
+      const { data, error: rpcError } = await supabase
+        .rpc('create_user_trial', { target_user_id: user.id })
+
+      if (rpcError) {
+        // Fallback: direct insert
+        console.log('RPC failed, trying direct insert:', rpcError.message)
+        
+        // Check if user already has subscription
+        const { data: existingSub } = await supabase
+          .from('subscriptions')
+          .select('id')
+          .eq('user_id', user.id)
+          .in('status', ['active', 'trial'])
+          .single()
+
+        if (existingSub) {
+          setError('You already have an active subscription or trial')
+          setIsStartingTrial(false)
+          return
+        }
+
+        // Create trial subscription
+        const trialEndDate = new Date()
+        trialEndDate.setDate(trialEndDate.getDate() + 15)
+
+        const { error: insertError } = await supabase
+          .from('subscriptions')
+          .insert({
+            user_id: user.id,
+            company_id: null, // User-based, not company-based
+            status: 'trial',
+            tier: 'starter',
+            is_trial: true,
+            trial_started_at: new Date().toISOString(),
+            trial_ends_at: trialEndDate.toISOString(),
+            start_date: new Date().toISOString(),
+            end_date: trialEndDate.toISOString(),
+          })
+
+        if (insertError) {
+          throw new Error(insertError.message)
+        }
+      }
+
+      // Success - redirect
+      if (currentCompanyCount > 0) {
         router.push('/data-room')
       } else {
-        setError(result.error || 'Failed to start trial')
+        router.push('/onboarding')
       }
     } catch (err: any) {
+      console.error('Trial creation error:', err)
       setError(err.message || 'Failed to start trial')
     } finally {
       setIsStartingTrial(false)
@@ -79,7 +140,7 @@ function SubscribePageInner() {
     { value: 'annual', label: 'Annual' },
   ]
 
-  if (authLoading) {
+  if (authLoading || subLoading) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
@@ -87,43 +148,51 @@ function SubscribePageInner() {
     )
   }
 
-  if (!companyId) {
+  // Show trial upgrade prompt if user has trial
+  if (isTrial && trialDaysRemaining > 0) {
     return (
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
-        <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-8 max-w-md text-center">
-          <h1 className="text-2xl font-light text-white mb-4">No Company Selected</h1>
-          <p className="text-gray-400 mb-6">Please create a company first to subscribe.</p>
-          <button
-            onClick={() => router.push('/onboarding')}
-            className="bg-primary-orange text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-orange/90 transition-colors"
-          >
-            Create Company
-          </button>
+      <div className="min-h-screen bg-primary-dark relative overflow-hidden">
+        <SubtleCircuitBackground />
+        
+        <div className="relative z-10 container mx-auto px-4 py-12">
+          {/* Trial Banner */}
+          <div className="max-w-2xl mx-auto mb-8">
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-6 text-center">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-xl font-semibold text-white">Trial Active</span>
+              </div>
+              <p className="text-gray-300 mb-2">
+                You have <span className="text-yellow-400 font-bold">{trialDaysRemaining} days</span> remaining in your trial.
+              </p>
+              <p className="text-gray-400 text-sm">
+                Upgrade now to continue accessing all features after your trial ends.
+              </p>
+            </div>
+          </div>
+
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">
+              Upgrade Your Plan
+            </h1>
+            <p className="text-gray-400">
+              Choose a plan to unlock unlimited access
+            </p>
+          </div>
+
+          {/* Rest of pricing content */}
+          {renderPricingContent()}
         </div>
       </div>
     )
   }
 
-  return (
-    <div className="min-h-screen bg-primary-dark relative overflow-hidden">
-      <SubtleCircuitBackground />
-      
-      <div className="relative z-10 container mx-auto px-4 py-12">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">
-            Choose Your Plan
-          </h1>
-          {companyName && (
-            <p className="text-gray-400 text-lg mb-2">
-              Subscribe for <span className="text-white font-medium">{companyName}</span>
-            </p>
-          )}
-          <p className="text-gray-500 text-sm">
-            Select a plan to unlock all features, or start with a free 15-day trial
-          </p>
-        </div>
-
+  function renderPricingContent() {
+    return (
+      <>
         {/* Error Message */}
         {error && (
           <div className="max-w-md mx-auto mb-6 bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400 text-center">
@@ -131,45 +200,8 @@ function SubscribePageInner() {
           </div>
         )}
 
-        {/* Pay Later / Trial Option */}
-        <div className="max-w-2xl mx-auto mb-12">
-          <div className="bg-gradient-to-r from-primary-orange/10 to-orange-600/10 border border-primary-orange/30 rounded-2xl p-6 text-center">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <svg className="w-6 h-6 text-primary-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-xl font-semibold text-white">Not ready to commit?</span>
-            </div>
-            <p className="text-gray-400 mb-4">
-              Start with a <span className="text-primary-orange font-semibold">15-day free trial</span> — no credit card required. 
-              You can upgrade anytime.
-            </p>
-            <button
-              onClick={handleStartTrial}
-              disabled={isStartingTrial}
-              className="bg-primary-orange text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isStartingTrial ? (
-                <span className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Starting Trial...
-                </span>
-              ) : (
-                'Start 15-Day Free Trial'
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className="flex items-center gap-4 max-w-4xl mx-auto mb-12">
-          <div className="flex-1 h-px bg-gray-800"></div>
-          <span className="text-gray-500 text-sm font-medium">OR SUBSCRIBE NOW</span>
-          <div className="flex-1 h-px bg-gray-800"></div>
-        </div>
-
         {/* Billing Cycle Selector */}
-        <div className="flex items-center justify-center gap-2 mb-8">
+        <div className="flex items-center justify-center gap-2 mb-8 flex-wrap">
           {billingCycles.map((cycle) => (
             <button
               key={cycle.value}
@@ -198,7 +230,7 @@ function SubscribePageInner() {
                 key={tier.id}
                 className={`relative rounded-2xl border-2 p-8 transition-all ${
                   tier.popular
-                    ? 'border-orange-500 bg-gradient-to-b from-gray-900 to-gray-800 scale-105 shadow-2xl shadow-orange-500/20'
+                    ? 'border-orange-500 bg-gradient-to-b from-gray-900 to-gray-800 md:scale-105 shadow-2xl shadow-orange-500/20'
                     : 'border-gray-700 bg-gray-900 hover:border-gray-600'
                 }`}
               >
@@ -248,6 +280,12 @@ function SubscribePageInner() {
                       </div>
                     )}
                   </div>
+
+                  {/* Company/User Limits */}
+                  <div className="text-xs text-gray-500 space-y-1 mb-4 border-t border-gray-800 pt-3">
+                    <div>📁 {tier.limits.companies === 'unlimited' ? 'Unlimited' : `Up to ${tier.limits.companies}`} companies</div>
+                    <div>👥 {tier.limits.users === 'unlimited' ? 'Unlimited' : `Up to ${tier.limits.users}`} team members</div>
+                  </div>
                 </div>
 
                 {/* CTA Button */}
@@ -255,7 +293,7 @@ function SubscribePageInner() {
                   tier={tier.id}
                   billingCycle={selectedBillingCycle}
                   price={selectedPricing.price}
-                  companyId={companyId}
+                  companyId={companyId || undefined}
                   className={`w-full py-3 px-6 rounded-lg font-semibold transition-all mb-6 ${
                     tier.popular
                       ? 'bg-orange-500 hover:bg-orange-600 text-white'
@@ -294,6 +332,68 @@ function SubscribePageInner() {
             )
           })}
         </div>
+      </>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-primary-dark relative overflow-hidden">
+      <SubtleCircuitBackground />
+      
+      <div className="relative z-10 container mx-auto px-4 py-12">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">
+            Choose Your Plan
+          </h1>
+          {companyName && (
+            <p className="text-gray-400 text-lg mb-2">
+              Subscribe to manage <span className="text-white font-medium">{companyName}</span>
+            </p>
+          )}
+          <p className="text-gray-500 text-sm">
+            Your subscription covers all your companies. Select a plan based on how many companies you need.
+          </p>
+        </div>
+
+        {/* Pay Later / Trial Option */}
+        <div className="max-w-2xl mx-auto mb-12">
+          <div className="bg-gradient-to-r from-primary-orange/10 to-orange-600/10 border border-primary-orange/30 rounded-2xl p-6 text-center">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <svg className="w-6 h-6 text-primary-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-xl font-semibold text-white">Not ready to commit?</span>
+            </div>
+            <p className="text-gray-400 mb-4">
+              Start with a <span className="text-primary-orange font-semibold">15-day free trial</span> — no credit card required. 
+              You can manage up to 5 companies during your trial.
+            </p>
+            <button
+              onClick={handleStartTrial}
+              disabled={isStartingTrial}
+              className="bg-primary-orange text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isStartingTrial ? (
+                <span className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Starting Trial...
+                </span>
+              ) : (
+                'Start 15-Day Free Trial'
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-4 max-w-4xl mx-auto mb-12">
+          <div className="flex-1 h-px bg-gray-800"></div>
+          <span className="text-gray-500 text-sm font-medium">OR SUBSCRIBE NOW</span>
+          <div className="flex-1 h-px bg-gray-800"></div>
+        </div>
+
+        {renderPricingContent()}
 
         {/* Skip for now link */}
         <div className="text-center mt-12">
