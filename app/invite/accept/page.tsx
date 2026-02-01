@@ -1,7 +1,14 @@
 import { Suspense } from 'react'
 import InviteAcceptClient from './InviteAcceptClient'
 
-export default function InviteAcceptPage(props: { searchParams?: { token?: string } }) {
+export default async function InviteAcceptPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ token?: string }>
+}) {
+  const params = await searchParams
+  const token = params?.token
+
   return (
     <Suspense
       fallback={
@@ -12,7 +19,7 @@ export default function InviteAcceptPage(props: { searchParams?: { token?: strin
         </div>
       }
     >
-      <InviteAcceptClient token={props.searchParams?.token} />
+      <InviteAcceptClient token={token} />
     </Suspense>
   )
 }
