@@ -19,9 +19,14 @@ export interface Subscription {
   current_period_end: string | null
   cancel_at_period_end: boolean
   cancelled_at: string | null
+  is_trial: boolean
+  trial_started_at: string | null
+  trial_ends_at: string | null
   created_at: string
   updated_at: string
 }
+
+export type CompanyAccessType = 'subscription' | 'trial' | 'invited' | 'superadmin' | null
 
 export async function getActiveSubscription(userId?: string): Promise<Subscription | null> {
   const supabase = createClient()
@@ -85,4 +90,126 @@ export function getDaysUntilExpiry(subscription: Subscription): number {
   const diffTime = endDate.getTime() - now.getTime()
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
   return diffDays
+}
+
+/**
+ * Get subscription for a specific company
+ */
+export async function getCompanySubscription(companyId: string): Promise<Subscription | null> {
+  const supabase = createClient()
+  
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('*')
+    .eq('company_id', companyId)
+    .in('status', ['active', 'trial'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  if (error || !data) {
+    return null
+  }
+
+  return data as Subscription
+}
+
+/**
+ * Check if a company has an active trial
+ */
+export async function hasActiveTrial(companyId: string): Promise<boolean> {
+  const supabase = createClient()
+  
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('id, trial_ends_at')
+    .eq('company_id', companyId)
+    .eq('is_trial', true)
+    .in('status', ['active', 'trial'])
+    .single()
+
+  if (error || !data) {
+    return false
+  }
+
+  if (!data.trial_ends_at) {
+    return false
+  }
+
+  return new Date(data.trial_ends_at) > new Date()
+}
+
+/**
+ * Get trial days remaining for a company
+ */
+export async function getTrialDaysRemaining(companyId: string): Promise<number | null> {
+  const supabase = createClient()
+  
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('trial_ends_at')
+    .eq('company_id', companyId)
+    .eq('is_trial', true)
+    .single()
+
+  if (error || !data || !data.trial_ends_at) {
+    return null
+  }
+
+  const trialEnd = new Date(data.trial_ends_at)
+  const now = new Date()
+  const diffTime = trialEnd.getTime() - now.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return diffDays
+}
+
+/**
+ * Create a trial subscription for a company
+ */
+export async function createTrialSubscription(
+  userId: string,
+  companyId: string,
+  trialDays: number = 15
+): Promise<{ success: boolean; subscriptionId?: string; error?: string }> {
+  const supabase = createClient()
+  
+  const now = new Date()
+  const trialEnd = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000)
+
+  // Check if trial already exists
+  const { data: existing } = await supabase
+    .from('subscriptions')
+    .select('id')
+    .eq('company_id', companyId)
+    .eq('is_trial', true)
+    .single()
+
+  if (existing) {
+    return { success: true, subscriptionId: existing.id }
+  }
+
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .insert({
+      user_id: userId,
+      company_id: companyId,
+      tier: 'starter',
+      billing_cycle: 'monthly',
+      amount: 0,
+      currency: 'INR',
+      status: 'trial',
+      is_trial: true,
+      trial_started_at: now.toISOString(),
+      trial_ends_at: trialEnd.toISOString(),
+      start_date: now.toISOString(),
+      end_date: trialEnd.toISOString(),
+    })
+    .select('id')
+    .single()
+
+  if (error) {
+    return { success: false, error: error.message }
+  }
+
+  return { success: true, subscriptionId: data.id }
 }

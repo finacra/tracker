@@ -574,9 +574,9 @@ export default function OnboardingPage() {
         documents: uploadedDocuments
       }, directors)
 
-      if (result.success) {
-      // Redirect to data room page
-      router.push('/data-room')
+      if (result.success && result.companyId) {
+        // Redirect to subscription page for new company
+        router.push(`/subscribe?company_id=${result.companyId}`)
       }
     } catch (error: any) {
       console.error('Error submitting form:', error)

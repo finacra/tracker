@@ -8,6 +8,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { getCompanyUserRoles, createTeamInvitation, removeTeamMember, updateTeamMemberRole } from '@/app/data-room/actions'
 import { useUserRole } from '@/hooks/useUserRole'
+import { getCompanySubscription, type Subscription } from '@/lib/subscriptions/subscription'
 
 interface Company {
   id: string
@@ -40,6 +41,8 @@ export default function TeamPage() {
   const [inviteRole, setInviteRole] = useState<'viewer' | 'editor' | 'admin'>('viewer')
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false)
   const [isInviting, setIsInviting] = useState(false)
+  const [subscription, setSubscription] = useState<Subscription | null>(null)
+  const [isRevokingTrial, setIsRevokingTrial] = useState(false)
 
   // Get user role for current company
   const { role, canManage, isSuperadmin } = useUserRole(currentCompany?.id || null)
@@ -193,6 +196,60 @@ export default function TeamPage() {
     fetchTeamMembers()
   }, [currentCompany])
 
+  // Fetch subscription status for current company (superadmin only)
+  useEffect(() => {
+    async function fetchSubscription() {
+      if (!currentCompany || !isSuperadmin) {
+        setSubscription(null)
+        return
+      }
+
+      try {
+        const sub = await getCompanySubscription(currentCompany.id)
+        setSubscription(sub)
+      } catch (error) {
+        console.error('Error fetching subscription:', error)
+        setSubscription(null)
+      }
+    }
+
+    fetchSubscription()
+  }, [currentCompany, isSuperadmin])
+
+  const handleRevokeTrial = async () => {
+    if (!currentCompany || !subscription) return
+    
+    if (!confirm('Are you sure you want to revoke the trial for this company? The owner will lose access.')) {
+      return
+    }
+
+    setIsRevokingTrial(true)
+    try {
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({
+          status: 'expired',
+          trial_ends_at: new Date().toISOString(),
+          end_date: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', subscription.id)
+
+      if (error) {
+        alert(`Failed to revoke trial: ${error.message}`)
+      } else {
+        alert('Trial revoked successfully')
+        // Refresh subscription status
+        const sub = await getCompanySubscription(currentCompany.id)
+        setSubscription(sub)
+      }
+    } catch (err: any) {
+      alert(`Failed to revoke trial: ${err.message}`)
+    } finally {
+      setIsRevokingTrial(false)
+    }
+  }
+
   const roles = [
     { value: 'viewer' as const, label: 'Viewer - Can view compliance items' },
     { value: 'editor' as const, label: 'Editor - Can view and edit' },
@@ -339,6 +396,90 @@ export default function TeamPage() {
         <h1 className="text-2xl sm:text-4xl font-light text-white mb-4 sm:mb-6">Team</h1>
 
         <div className="space-y-4 sm:space-y-6">
+          {/* Subscription Status - Superadmin Only */}
+          {isSuperadmin && currentCompany && subscription && (
+            <div className={`border rounded-xl p-4 ${
+              subscription.is_trial 
+                ? 'bg-yellow-500/10 border-yellow-500/30' 
+                : subscription.status === 'active'
+                  ? 'bg-green-500/10 border-green-500/30'
+                  : 'bg-red-500/10 border-red-500/30'
+            }`}>
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    subscription.is_trial 
+                      ? 'bg-yellow-500/20' 
+                      : subscription.status === 'active'
+                        ? 'bg-green-500/20'
+                        : 'bg-red-500/20'
+                  }`}>
+                    {subscription.is_trial ? (
+                      <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    ) : subscription.status === 'active' ? (
+                      <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-white">
+                      {subscription.is_trial ? 'Trial' : subscription.tier.charAt(0).toUpperCase() + subscription.tier.slice(1)} Plan
+                    </div>
+                    <div className={`text-xs ${
+                      subscription.is_trial ? 'text-yellow-400' : subscription.status === 'active' ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                      {subscription.is_trial && subscription.trial_ends_at ? (
+                        <>
+                          Expires: {new Date(subscription.trial_ends_at).toLocaleDateString()}
+                          {' '}
+                          ({Math.ceil((new Date(subscription.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days left)
+                        </>
+                      ) : subscription.status === 'active' ? (
+                        <>Active until {new Date(subscription.end_date).toLocaleDateString()}</>
+                      ) : (
+                        <>Expired</>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Revoke Trial Button */}
+                {subscription.is_trial && (
+                  <button
+                    onClick={handleRevokeTrial}
+                    disabled={isRevokingTrial}
+                    className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-medium hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                  >
+                    {isRevokingTrial ? 'Revoking...' : 'Revoke Trial'}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* No Subscription Warning - Superadmin Only */}
+          {isSuperadmin && currentCompany && !subscription && !isLoading && (
+            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gray-700 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="text-sm text-gray-400">
+                  No active subscription or trial for this company
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Invite Team Member - Only show if user can manage */}
           {(canManage || isSuperadmin) && (
             <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8">

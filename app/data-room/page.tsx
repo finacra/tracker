@@ -12,6 +12,7 @@ import { uploadDocument, getCompanyDocuments, getDocumentTemplates, getDownloadU
 import { getRegulatoryRequirements, updateRequirementStatus, createRequirement, deleteRequirement, updateRequirement, type RegulatoryRequirement } from '@/app/data-room/actions'
 import jsPDF from 'jspdf'
 import { useUserRole } from '@/hooks/useUserRole'
+import { useCompanyAccess } from '@/hooks/useCompanyAccess'
 import { enrichComplianceRequirements, type EnrichedComplianceData } from '@/app/data-room/actions-enrichment'
 
 interface Company {
@@ -65,6 +66,9 @@ export default function DataRoomPage() {
 
   // Get user role for current company
   const { role, canEdit, canManage, loading: roleLoading } = useUserRole(currentCompany?.id || null)
+  
+  // Check subscription/trial access for current company
+  const { hasAccess, accessType, isLoading: accessLoading, trialDaysRemaining, isOwner } = useCompanyAccess(currentCompany?.id || null)
 
   // Fetch all companies for the selector (owned + invited)
   useEffect(() => {
@@ -238,6 +242,28 @@ export default function DataRoomPage() {
     fetchCompanies()
     fetchTemplates()
   }, [user, supabase, authLoading])
+
+  // Check access when company is selected - redirect if no access
+  useEffect(() => {
+    // Wait for all loading states to complete
+    if (accessLoading || authLoading) return
+    
+    // If no company selected, don't check access yet
+    if (!currentCompany) return
+    
+    // If user is owner and doesn't have access, redirect to subscribe
+    if (isOwner && !hasAccess) {
+      console.log('[Access Check] Owner without access, redirecting to subscribe page')
+      router.push(`/subscribe?company_id=${currentCompany.id}`)
+      return
+    }
+    
+    // If user is not owner and doesn't have access (shouldn't happen for invited users)
+    if (!hasAccess && !isOwner) {
+      console.log('[Access Check] No access to this company')
+      router.push('/subscription-required')
+    }
+  }, [currentCompany, hasAccess, isOwner, accessLoading, authLoading, router])
 
   const fetchVaultDocuments = async () => {
     if (!currentCompany) return
@@ -1325,6 +1351,28 @@ export default function DataRoomPage() {
 
       {/* Header */}
       <Header />
+
+      {/* Trial Banner */}
+      {accessType === 'trial' && trialDaysRemaining !== null && currentCompany && (
+        <div className="relative z-20 bg-gradient-to-r from-primary-orange/20 to-orange-600/20 border-b border-primary-orange/30">
+          <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <svg className="w-4 h-4 text-primary-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-gray-300">
+                <span className="text-primary-orange font-semibold">{trialDaysRemaining} days</span> left in your trial
+              </span>
+            </div>
+            <button
+              onClick={() => router.push(`/subscribe?company_id=${currentCompany.id}`)}
+              className="text-xs sm:text-sm bg-primary-orange text-white px-3 py-1 rounded-lg hover:bg-primary-orange/90 transition-colors"
+            >
+              Upgrade Now
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="relative z-10 container mx-auto px-3 sm:px-4 py-4 sm:py-8">
