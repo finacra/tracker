@@ -915,16 +915,48 @@ export async function getCompanyUserRoles(companyId: string | null = null): Prom
       query = query.eq('company_id', companyId)
     }
 
+    console.log('[getCompanyUserRoles] Fetching roles for company:', companyId, 'isSuperadmin:', isSuperadmin)
     const { data, error } = await query.order('created_at', { ascending: false })
+    console.log('[getCompanyUserRoles] Found', data?.length || 0, 'roles from user_roles table')
 
     if (error) {
       console.error('Error fetching user roles:', error)
       return { success: false, error: error.message }
     }
 
+    let allRoles = data || []
+
+    // If querying for a specific company, also include the company owner if not already in user_roles
+    if (companyId) {
+      const { data: company } = await adminSupabase
+        .from('companies')
+        .select('user_id')
+        .eq('id', companyId)
+        .single()
+
+      if (company?.user_id) {
+        const ownerHasRole = allRoles.some(r => r.user_id === company.user_id)
+        if (!ownerHasRole) {
+          console.log('[getCompanyUserRoles] Adding company owner as implicit admin:', company.user_id)
+          // Add owner as implicit admin (they own the company via companies.user_id)
+          allRoles.push({
+            id: `owner-${companyId}`,
+            user_id: company.user_id,
+            company_id: companyId,
+            role: 'admin',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            is_owner: true, // Mark as owner for UI purposes
+          })
+        }
+      }
+    }
+
+    console.log('[getCompanyUserRoles] Total roles (including owner):', allRoles.length)
+
     // Fetch user details for each role
     const rolesWithUserInfo = await Promise.all(
-      (data || []).map(async (role) => {
+      allRoles.map(async (role) => {
         try {
           const { data: userData } = await adminSupabase.auth.admin.getUserById(role.user_id)
           return {
