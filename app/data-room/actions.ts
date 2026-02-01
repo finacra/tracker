@@ -1132,26 +1132,43 @@ export async function createTeamInvitation(
     }
 
     const siteUrl = getSiteUrl()
-    const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(`/invite/accept?token=${token}`)}`
+    const acceptUrl = `${siteUrl}/invite/accept?token=${token}`
 
-    const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
-      type: 'invite',
-      email: normalizedEmail,
-      options: { redirectTo },
-    } as any)
+    // Check if user already exists in the system
+    const { data: existingUsers } = await adminSupabase.auth.admin.listUsers()
+    const existingUser = existingUsers?.users?.find(
+      (u) => u.email?.toLowerCase() === normalizedEmail
+    )
 
-    if (linkError) {
-      console.error('[createTeamInvitation] generateLink error:', linkError)
-      return { success: false, error: linkError.message }
-    }
+    let actionUrl: string
 
-    const actionUrl =
-      (linkData as any)?.properties?.action_link ||
-      (linkData as any)?.action_link ||
-      null
+    if (existingUser) {
+      // User exists - just send them directly to the accept page (they can log in there)
+      actionUrl = acceptUrl
+      console.log('[createTeamInvitation] Existing user, using direct accept URL')
+    } else {
+      // New user - generate Supabase invite link
+      const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(`/invite/accept?token=${token}`)}`
 
-    if (!actionUrl) {
-      return { success: false, error: 'Failed to generate invite link' }
+      const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
+        type: 'invite',
+        email: normalizedEmail,
+        options: { redirectTo },
+      } as any)
+
+      if (linkError) {
+        console.error('[createTeamInvitation] generateLink error:', linkError)
+        return { success: false, error: linkError.message }
+      }
+
+      actionUrl =
+        (linkData as any)?.properties?.action_link ||
+        (linkData as any)?.action_link ||
+        null
+
+      if (!actionUrl) {
+        return { success: false, error: 'Failed to generate invite link' }
+      }
     }
 
     const { subject, html } = renderTeamInviteEmail({
