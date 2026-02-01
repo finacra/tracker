@@ -9,7 +9,7 @@ import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
 import { createClient } from '@/utils/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { uploadDocument, getCompanyDocuments, getDocumentTemplates, getDownloadUrl, deleteDocument } from '@/app/onboarding/actions'
-import { getRegulatoryRequirements, updateRequirementStatus, createRequirement, deleteRequirement, updateRequirement, type RegulatoryRequirement } from '@/app/data-room/actions'
+import { getRegulatoryRequirements, updateRequirementStatus, createRequirement, deleteRequirement, updateRequirement, sendDocumentsEmail, type RegulatoryRequirement } from '@/app/data-room/actions'
 import jsPDF from 'jspdf'
 import { useUserRole } from '@/hooks/useUserRole'
 import { useCompanyAccess } from '@/hooks/useCompanyAccess'
@@ -544,6 +544,7 @@ export default function DataRoomPage() {
   const [selectedFY, setSelectedFY] = useState<string>('')
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set())
   const [selectedDocumentsToSend, setSelectedDocumentsToSend] = useState<Set<string>>(new Set())
+  const [isSendingEmail, setIsSendingEmail] = useState(false)
   const [emailData, setEmailData] = useState({
     recipients: '',
     subject: 'Document Sharing - Compliance Vault',
@@ -7879,45 +7880,87 @@ export default function DataRoomPage() {
                           Cancel
                         </button>
                         <button
-                          onClick={() => {
-                            if (emailData.recipients.trim() && emailData.subject.trim() && emailData.content.trim()) {
-                              console.log('Sending email:', {
-                                recipients: emailData.recipients,
+                          onClick={async () => {
+                            if (!emailData.recipients.trim() || !emailData.subject.trim() || !emailData.content.trim()) {
+                              return
+                            }
+                            if (!currentCompany) {
+                              alert('No company selected')
+                              return
+                            }
+
+                            setIsSendingEmail(true)
+                            try {
+                              // Parse recipients (comma or semicolon separated)
+                              const recipients = emailData.recipients
+                                .split(/[,;]/)
+                                .map(e => e.trim())
+                                .filter(e => e.includes('@'))
+
+                              if (recipients.length === 0) {
+                                alert('Please enter valid email addresses')
+                                return
+                              }
+
+                              const result = await sendDocumentsEmail({
+                                companyId: currentCompany.id,
+                                companyName: currentCompany.name,
+                                documentIds: Array.from(selectedDocumentsToSend),
+                                recipients,
                                 subject: emailData.subject,
-                                content: emailData.content,
-                                documents: Array.from(selectedDocumentsToSend),
+                                message: emailData.content,
                               })
-                              // Handle send email logic here
-                              setIsEmailTemplateOpen(false)
-                              setSelectedDocumentsToSend(new Set())
-                              setEmailData({
-                                recipients: '',
-                                subject: 'Document Sharing - Compliance Vault',
-                                content: 'Please find the attached documents from our Compliance Vault.',
-                              })
+
+                              if (result.success) {
+                                alert(result.message || 'Documents sent successfully!')
+                                setIsEmailTemplateOpen(false)
+                                setSelectedDocumentsToSend(new Set())
+                                setEmailData({
+                                  recipients: '',
+                                  subject: 'Document Sharing - Compliance Vault',
+                                  content: 'Please find the attached documents from our Compliance Vault.',
+                                })
+                              } else {
+                                alert('Failed to send: ' + (result.error || 'Unknown error'))
+                              }
+                            } catch (error: any) {
+                              console.error('Error sending documents:', error)
+                              alert('Error sending documents: ' + error.message)
+                            } finally {
+                              setIsSendingEmail(false)
                             }
                           }}
                           disabled={
+                            isSendingEmail ||
                             !emailData.recipients.trim() ||
                             !emailData.subject.trim() ||
                             !emailData.content.trim()
                           }
                           className="px-6 py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                            <polyline points="22,6 12,13 2,6" />
-                          </svg>
-                          Send Email
+                          {isSendingEmail ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                                <polyline points="22,6 12,13 2,6" />
+                              </svg>
+                              Send Email
+                            </>
+                          )}
                         </button>
                       </div>
                     </div>

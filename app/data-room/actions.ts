@@ -2482,3 +2482,105 @@ export async function bulkCreateComplianceTemplates(
     return { success: false, created: 0, errors: [error.message] }
   }
 }
+
+// ============= SEND DOCUMENTS EMAIL =============
+
+import { documentShareEmail } from '@/lib/email/templates/documentShare'
+
+interface SendDocumentsEmailParams {
+  companyId: string
+  companyName: string
+  documentIds: string[]
+  recipients: string[]
+  subject: string
+  message: string
+}
+
+export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
+  try {
+    const supabase = await createClient()
+    const adminSupabase = createAdminClient()
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return { success: false, error: 'Unauthorized' }
+    }
+
+    // Check user has access to this company
+    const hasAccess = await canUserView(params.companyId)
+    if (!hasAccess) {
+      return { success: false, error: 'Access denied to this company' }
+    }
+
+    // Fetch document details
+    const { data: documents, error: docsError } = await adminSupabase
+      .from('company_documents_internal')
+      .select('*')
+      .eq('company_id', params.companyId)
+      .in('id', params.documentIds)
+
+    if (docsError || !documents || documents.length === 0) {
+      return { success: false, error: 'Failed to fetch documents' }
+    }
+
+    // Generate signed URLs for documents (7 days expiry = 604800 seconds)
+    const documentsWithUrls = await Promise.all(
+      documents.map(async (doc) => {
+        const { data: signedData, error: signError } = await adminSupabase.storage
+          .from('company-documents')
+          .createSignedUrl(doc.file_path, 604800) // 7 days
+
+        return {
+          name: doc.document_type || doc.name || 'Document',
+          category: doc.category || 'General',
+          period: doc.period || undefined,
+          url: signError ? '#' : signedData?.signedUrl || '#',
+        }
+      })
+    )
+
+    // Get sender info
+    const senderEmail = user.email || 'Unknown'
+    const senderName = user.user_metadata?.full_name || user.user_metadata?.name || senderEmail
+
+    // Send email to each recipient
+    const results = await Promise.allSettled(
+      params.recipients.map(async (recipientEmail) => {
+        const emailHtml = documentShareEmail({
+          companyName: params.companyName,
+          senderName,
+          senderEmail,
+          customMessage: params.message,
+          documents: documentsWithUrls,
+        })
+
+        return sendEmail({
+          to: recipientEmail.trim(),
+          subject: params.subject,
+          html: emailHtml,
+          replyTo: senderEmail,
+        })
+      })
+    )
+
+    // Count successes and failures
+    const succeeded = results.filter(r => r.status === 'fulfilled').length
+    const failed = results.filter(r => r.status === 'rejected').length
+
+    if (failed > 0 && succeeded === 0) {
+      return { success: false, error: 'Failed to send emails to all recipients' }
+    }
+
+    return { 
+      success: true, 
+      sent: succeeded, 
+      failed,
+      message: failed > 0 
+        ? `Sent to ${succeeded} recipients. ${failed} failed.`
+        : `Documents sent to ${succeeded} recipient${succeeded !== 1 ? 's' : ''}.`
+    }
+  } catch (error: any) {
+    console.error('Error sending documents email:', error)
+    return { success: false, error: error.message }
+  }
+}
