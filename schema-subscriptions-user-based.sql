@@ -207,6 +207,8 @@ BEGIN
     status,
     tier,
     billing_cycle,
+    amount,
+    currency,
     is_trial,
     trial_started_at,
     trial_ends_at,
@@ -218,6 +220,8 @@ BEGIN
     'trial',
     'starter',
     'monthly',  -- Default billing cycle for trials
+    0,  -- Trial is free
+    'INR',
     TRUE,
     NOW(),
     NOW() + INTERVAL '15 days',
