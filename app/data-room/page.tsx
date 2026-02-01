@@ -1344,6 +1344,30 @@ export default function DataRoomPage() {
     { value: 'admin', label: 'Admin - Full access including invites' },
   ]
 
+  // Show loading while checking access
+  if (currentCompany && accessLoading) {
+    return (
+      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-400 text-sm">Checking access...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // If owner without access, show redirect message (redirect happens via useEffect)
+  if (currentCompany && isOwner && !hasAccess && !accessLoading) {
+    return (
+      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-400 text-sm">Redirecting to subscription...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-primary-dark relative overflow-hidden">
       {/* Subtle Circuit Board Background */}
