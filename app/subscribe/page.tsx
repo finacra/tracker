@@ -107,6 +107,7 @@ function SubscribePageInner() {
             company_id: null, // User-based, not company-based
             status: 'trial',
             tier: 'starter',
+            billing_cycle: 'monthly', // Required field - trials default to monthly
             is_trial: true,
             trial_started_at: new Date().toISOString(),
             trial_ends_at: trialEndDate.toISOString(),

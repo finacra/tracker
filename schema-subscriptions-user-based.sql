@@ -206,6 +206,7 @@ BEGIN
     company_id,
     status,
     tier,
+    billing_cycle,
     is_trial,
     trial_started_at,
     trial_ends_at,
@@ -216,6 +217,7 @@ BEGIN
     NULL,  -- User-based, not company-based
     'trial',
     'starter',
+    'monthly',  -- Default billing cycle for trials
     TRUE,
     NOW(),
     NOW() + INTERVAL '15 days',
