@@ -2497,20 +2497,30 @@ interface SendDocumentsEmailParams {
 }
 
 export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
+  console.log('[sendDocumentsEmail] Starting with params:', {
+    companyId: params.companyId,
+    documentCount: params.documentIds.length,
+    recipientCount: params.recipients.length,
+  })
+  
   try {
     const supabase = await createClient()
     const adminSupabase = createAdminClient()
     
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
+      console.error('[sendDocumentsEmail] Auth error:', authError)
       return { success: false, error: 'Unauthorized' }
     }
+    console.log('[sendDocumentsEmail] User authenticated:', user.email)
 
     // Check user has access to this company
     const hasAccess = await canUserView(params.companyId)
     if (!hasAccess) {
+      console.error('[sendDocumentsEmail] Access denied for company:', params.companyId)
       return { success: false, error: 'Access denied to this company' }
     }
+    console.log('[sendDocumentsEmail] Access verified')
 
     // Fetch document details
     const { data: documents, error: docsError } = await adminSupabase
@@ -2519,8 +2529,11 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
       .eq('company_id', params.companyId)
       .in('id', params.documentIds)
 
+    console.log('[sendDocumentsEmail] Documents fetched:', documents?.length, 'Error:', docsError?.message)
+
     if (docsError || !documents || documents.length === 0) {
-      return { success: false, error: 'Failed to fetch documents' }
+      console.error('[sendDocumentsEmail] Failed to fetch documents:', docsError)
+      return { success: false, error: `Failed to fetch documents: ${docsError?.message || 'No documents found'}` }
     }
 
     // Generate signed URLs for documents (7 days expiry = 604800 seconds)
@@ -2543,9 +2556,15 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
     const senderEmail = user.email || 'Unknown'
     const senderName = user.user_metadata?.full_name || user.user_metadata?.name || senderEmail
 
+    console.log('[sendDocumentsEmail] Generated URLs for', documentsWithUrls.length, 'documents')
+    console.log('[sendDocumentsEmail] Sender:', senderName, senderEmail)
+    console.log('[sendDocumentsEmail] Recipients:', params.recipients)
+
     // Send email to each recipient
     const results = await Promise.allSettled(
       params.recipients.map(async (recipientEmail) => {
+        console.log('[sendDocumentsEmail] Sending to:', recipientEmail.trim())
+        
         const emailHtml = documentShareEmail({
           companyName: params.companyName,
           senderName,
@@ -2554,21 +2573,31 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
           documents: documentsWithUrls,
         })
 
-        return sendEmail({
+        const result = await sendEmail({
           to: recipientEmail.trim(),
           subject: params.subject,
           html: emailHtml,
           replyTo: senderEmail,
         })
+        
+        console.log('[sendDocumentsEmail] Email result for', recipientEmail.trim(), ':', result)
+        return result
       })
     )
 
     // Count successes and failures
     const succeeded = results.filter(r => r.status === 'fulfilled').length
     const failed = results.filter(r => r.status === 'rejected').length
+    
+    console.log('[sendDocumentsEmail] Results - Succeeded:', succeeded, 'Failed:', failed)
 
     if (failed > 0 && succeeded === 0) {
-      return { success: false, error: 'Failed to send emails to all recipients' }
+      // Get error details from rejected results
+      const errors = results
+        .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+        .map(r => r.reason?.message || 'Unknown error')
+      console.error('[sendDocumentsEmail] All emails failed:', errors)
+      return { success: false, error: `Failed to send emails: ${errors.join(', ')}` }
     }
 
     return { 
@@ -2580,7 +2609,7 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
         : `Documents sent to ${succeeded} recipient${succeeded !== 1 ? 's' : ''}.`
     }
   } catch (error: any) {
-    console.error('Error sending documents email:', error)
-    return { success: false, error: error.message }
+    console.error('[sendDocumentsEmail] Error:', error)
+    return { success: false, error: error.message || 'Unknown error occurred' }
   }
 }
