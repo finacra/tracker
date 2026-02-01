@@ -129,10 +129,22 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
               user.last_sign_in_at = authUser.last_sign_in_at
             }
           })
+        } else {
+          // RPC failed or returned error, set email to user ID
+          usersWithDetails.forEach(user => {
+            if (user.email === 'Loading...') {
+              user.email = user.id.substring(0, 8) + '...'
+            }
+          })
         }
       } catch (rpcError) {
         // RPC not available, use user_id as fallback
         console.log('RPC not available for user emails, using fallback')
+        usersWithDetails.forEach(user => {
+          if (user.email === 'Loading...') {
+            user.email = user.id.substring(0, 8) + '...'
+          }
+        })
       }
 
       setUsers(usersWithDetails)
@@ -312,8 +324,26 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
     )
   }
 
+  // Check if we have any emails loaded (vs just user IDs)
+  const hasEmails = users.some(u => u.email.includes('@'))
+
   return (
     <div className="space-y-6">
+      {/* Notice about email lookup */}
+      {!hasEmails && users.length > 0 && (
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 flex items-start gap-3">
+          <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div className="text-sm">
+            <p className="text-blue-300 font-medium">Email lookup not enabled</p>
+            <p className="text-blue-400/80 mt-1">
+              To display user emails instead of IDs, run the <code className="bg-blue-500/20 px-1.5 py-0.5 rounded">schema-admin-helpers.sql</code> script in your Supabase SQL Editor.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header and Filters */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -424,12 +454,21 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-primary-orange/20 rounded-full flex items-center justify-center">
                               <span className="text-primary-orange text-sm font-medium">
-                                {user.email.charAt(0).toUpperCase()}
+                                {user.email.includes('@') ? user.email.charAt(0).toUpperCase() : 'U'}
                               </span>
                             </div>
                             <div>
-                              <div className="text-white font-medium text-sm">{user.email}</div>
-                              <div className="text-gray-500 text-xs truncate max-w-[200px]">{user.id}</div>
+                              {user.email.includes('@') ? (
+                                <>
+                                  <div className="text-white font-medium text-sm">{user.email}</div>
+                                  <div className="text-gray-500 text-xs truncate max-w-[200px]">{user.id}</div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="text-white font-medium text-sm font-mono">{user.id.substring(0, 8)}...</div>
+                                  <div className="text-gray-500 text-xs">User ID (email not available)</div>
+                                </>
+                              )}
                             </div>
                           </div>
                         </td>
