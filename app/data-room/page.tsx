@@ -553,8 +553,8 @@ export default function DataRoomPage() {
   const DEFAULT_DOCUMENTS: Record<string, string[]> = {
     'Constitutional Documents': [
       'Certificate of Incorporation',
-      'MOA (Memorandum of Association)',
-      'AOA (Articles of Association)',
+    'MOA (Memorandum of Association)',
+    'AOA (Articles of Association)',
       'Rental Deed',
       'DIN Certificate',
     ],
@@ -563,13 +563,13 @@ export default function DataRoomPage() {
       'TAN',
     ],
     'Taxation & GST Compliance': [
-      'GST Returns',
-      'Income Tax Returns',
+    'GST Returns',
+    'Income Tax Returns',
     ],
     'Regulatory & MCA Filings': [
-      'Annual Returns',
-      'Board Minutes',
-    ]
+    'Annual Returns',
+    'Board Minutes',
+  ]
   }
 
   // Merge database templates with defaults to ensure all folders are present
@@ -739,8 +739,8 @@ export default function DataRoomPage() {
       
       // Fallback to registration_date for older documents
       if (doc.registration_date) {
-        const docFY = getFinancialYear(doc.registration_date)
-        return docFY === selectedFY
+      const docFY = getFinancialYear(doc.registration_date)
+      return docFY === selectedFY
       }
       
       // If no period or registration date, don't show when FY is selected
@@ -1887,7 +1887,7 @@ export default function DataRoomPage() {
             // Extract max cap if present (check BEFORE extracting daily rate)
             let maxCap: number | null = null
             const maxMatch = penalty.match(/(?:up\s*to\s*)?max\.?\s*Rs\.?\s*([\d,]+)/i)
-            if (maxMatch) {
+                if (maxMatch) {
               maxCap = parseFloat(maxMatch[1].replace(/,/g, ''))
             }
             // Also check for Lakh format: "Rs. 5 Lakh max"
@@ -1906,11 +1906,11 @@ export default function DataRoomPage() {
                 let calculated = dailyRate * daysDelayed
                 if (maxCap !== null && maxCap > 0) {
                   calculated = Math.min(calculated, maxCap)
-                }
+                  }
                 return `₹${Math.round(calculated).toLocaleString('en-IN')}`
               }
             }
-            
+
             // Handle "50/day (NIL: 20/day)" - extract the first number (main rate)
             const nilRateMatch = penalty.match(/(\d+)\/day\s*\([^)]*NIL[^)]*\)/i)
             if (nilRateMatch) {
@@ -1941,7 +1941,7 @@ export default function DataRoomPage() {
                 return `₹${Math.round(calculated).toLocaleString('en-IN')}`
               }
             }
-            
+
             // Handle "200/day + 10000-100000" - extract daily rate before the +
             const dailyWithRangeMatch = penalty.match(/(\d+)\/day\s*\+\s*[\d-]+/i)
             if (dailyWithRangeMatch) {
@@ -1959,7 +1959,7 @@ export default function DataRoomPage() {
                 return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
               }
             }
-            
+
             // Handle range formats like "25000-300000" - extract minimum
             const rangeMatch = penalty.match(/(\d+)\s*-\s*(\d+)/)
             if (rangeMatch && !penalty.includes('%')) {  // Not percentage ranges
@@ -2146,29 +2146,29 @@ export default function DataRoomPage() {
             const nonCompliantRequirements: RegulatoryRequirement[] = Array.from(nonCompliantGroups.values()).map(group => {
               const req = group.representative
               return {
-                id: req.id,
+              id: req.id,
                 template_id: req.template_id ?? null,
-                company_id: currentCompany?.id || '',
-                category: req.category,
-                requirement: req.requirement,
-                description: null,
-                status: req.status as 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed',
-                due_date: req.dueDate,
-                penalty: req.penalty || null,
+              company_id: currentCompany?.id || '',
+              category: req.category,
+              requirement: req.requirement,
+              description: null,
+              status: req.status as 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed',
+              due_date: req.dueDate,
+              penalty: req.penalty || null,
                 penalty_config: null,
                 penalty_base_amount: null,
-                is_critical: req.isCritical || false,
-                financial_year: req.financial_year || null,
+              is_critical: req.isCritical || false,
+              financial_year: req.financial_year || null,
                 compliance_type: req.compliance_type || null,
                 filed_on: null,
                 filed_by: null,
                 status_reason: null,
                 required_documents: [],
                 possible_legal_action: null,
-                created_at: '',
-                updated_at: '',
-                created_by: null,
-                updated_by: null
+              created_at: '',
+              updated_at: '',
+              created_by: null,
+              updated_by: null
               }
             })
 
@@ -2251,7 +2251,7 @@ export default function DataRoomPage() {
             doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
             doc.rect(0, 0, pageWidth, 70, 'F')
             doc.setTextColor(255, 255, 255)
-            doc.setFont('helvetica', 'bold')
+              doc.setFont('helvetica', 'bold')
             doc.setFontSize(24)
             doc.text('Compliance Risk Report', margin, 40, { maxWidth: contentWidth })
             doc.setFont('helvetica', 'normal')
@@ -2259,13 +2259,13 @@ export default function DataRoomPage() {
             const coverDate = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
             doc.text(`Generated: ${coverDate}`, margin, 52)
 
-            doc.setTextColor(0, 0, 0)
-            doc.setFont('helvetica', 'bold')
+                doc.setTextColor(0, 0, 0)
+              doc.setFont('helvetica', 'bold')
             doc.setFontSize(16)
             const companyName = currentCompany?.name || 'Company'
             doc.text(companyName, margin, 95, { maxWidth: contentWidth })
 
-            doc.setFont('helvetica', 'normal')
+              doc.setFont('helvetica', 'normal')
             doc.setFontSize(10)
             doc.setTextColor(textGray[0], textGray[1], textGray[2])
             doc.text('Prepared for management review.', margin, 108, { maxWidth: contentWidth })
@@ -2276,10 +2276,10 @@ export default function DataRoomPage() {
             doc.text('Version: v1.0', margin, 141, { maxWidth: contentWidth })
             doc.text('Contact: support@finnovate.ai', margin, 148, { maxWidth: contentWidth })
             doc.text('Confidential — for internal use only.', margin, 158, { maxWidth: contentWidth })
-
+              
             // Page break to main content
-            doc.addPage()
-            yPos = margin
+              doc.addPage()
+              yPos = margin
 
             // Header
             doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
@@ -3430,7 +3430,7 @@ export default function DataRoomPage() {
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 5v14M5 12h14" />
-                  </svg>
+                </svg>
                   Add Notice
                 </button>
               </div>
@@ -3446,7 +3446,7 @@ export default function DataRoomPage() {
                       <line x1="12" y1="8" x2="12" y2="12" />
                       <line x1="12" y1="16" x2="12.01" y2="16" />
                     </svg>
-                  </div>
+          </div>
                   <div>
                     <p className="text-2xl font-light text-white">{demoNotices.filter(n => n.status === 'pending').length}</p>
                     <p className="text-gray-400 text-xs">Pending Response</p>
@@ -5373,7 +5373,7 @@ export default function DataRoomPage() {
                         return `₹${calculatedPenalty.toLocaleString('en-IN')}`
                       }
                     }
-                    
+
                     // Handle "200/day + 10000-100000" - extract daily rate before the +
                     const dailyWithRangeMatch = penalty.match(/(\d+)\/day\s*\+\s*[\d-]+/i)
                     if (dailyWithRangeMatch) {
@@ -5415,7 +5415,7 @@ export default function DataRoomPage() {
                           }
                         }
                       } else {
-                        return fixedMatch[0]
+                      return fixedMatch[0]
                       }
                     }
 
@@ -5990,8 +5990,8 @@ export default function DataRoomPage() {
                           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                             REQUIREMENT
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            TYPE
+                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                              TYPE
                           </th>
                           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                             STATUS
@@ -5999,26 +5999,26 @@ export default function DataRoomPage() {
                           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                             DUE DATE
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
+                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
                             DOCUMENTS
                           </th>
                           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
                             FILED ON
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
                             PENALTY
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
-                            CALC PENALTY
-                          </th>
+                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+                              CALC PENALTY
+                            </th>
                           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden xl:table-cell">
                             LEGAL ACTION
                           </th>
-                          {canEdit && (
-                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                              ACTIONS
-                            </th>
-                          )}
+                            {canEdit && (
+                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                ACTIONS
+                          </th>
+                            )}
                         </tr>
                       </thead>
                       <tbody>
@@ -6147,17 +6147,17 @@ export default function DataRoomPage() {
                                     const daysDelayed = calculateDelay(req.dueDate, req.status)
                                     return (
                                       <div className="flex flex-col">
-                                        <div className="flex items-center gap-2 text-white">
-                                          <svg
-                                            width="16"
-                                            height="16"
-                                            className="w-4 h-4 flex-shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                                          >
-                                            <circle cx="12" cy="12" r="10" />
-                                            <polyline points="12 6 12 12 16 14" />
-                                          </svg>
-                                          <span className="text-sm whitespace-nowrap">{req.dueDate}</span>
-                                        </div>
+                                  <div className="flex items-center gap-2 text-white">
+                                    <svg
+                                      width="16"
+                                      height="16"
+                                        className="w-4 h-4 flex-shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                    >
+                                      <circle cx="12" cy="12" r="10" />
+                                      <polyline points="12 6 12 12 16 14" />
+                                    </svg>
+                                      <span className="text-sm whitespace-nowrap">{req.dueDate}</span>
+                                  </div>
                                         {daysDelayed !== null && daysDelayed > 0 && (
                                           <div className="text-red-400 text-xs mt-1 ml-6">
                                             Delayed by {daysDelayed} {daysDelayed === 1 ? 'day' : 'days'}
@@ -6167,7 +6167,7 @@ export default function DataRoomPage() {
                                     )
                                   })()}
                                 </td>
-                                <td className="px-6 py-4 hidden md:table-cell">
+                                  <td className="px-6 py-4 hidden md:table-cell">
                                   {/* Documents Required Column */}
                                   {(() => {
                                     const requiredDocs = req.required_documents || []
@@ -6228,7 +6228,7 @@ export default function DataRoomPage() {
                                     )
                                   })()}
                                 </td>
-                                <td className="px-6 py-4 hidden lg:table-cell">
+                                  <td className="px-6 py-4 hidden lg:table-cell">
                                   {/* Filed On Column */}
                                   {(() => {
                                     const filedOn = (req as any).filed_on
@@ -6247,7 +6247,7 @@ export default function DataRoomPage() {
                                     {req.penalty ? (req.penalty.length > 30 ? req.penalty.substring(0, 30) + '...' : req.penalty) : '-'}
                                   </div>
                                 </td>
-                                <td className="px-6 py-4 hidden lg:table-cell">
+                                  <td className="px-6 py-4 hidden lg:table-cell">
                                   {(() => {
                                     const daysDelayed = calculateDelay(req.dueDate, req.status)
                                     const calculatedPenalty = calculatePenalty(req.penalty, daysDelayed)
@@ -6782,8 +6782,8 @@ export default function DataRoomPage() {
                     
                     // Fallback to registration_date for older documents
                     if (doc.registration_date) {
-                      const docFY = getFinancialYear(doc.registration_date)
-                      return docFY === selectedFY
+                    const docFY = getFinancialYear(doc.registration_date)
+                    return docFY === selectedFY
                     }
                     
                     // If no period or registration date, don't show when FY is selected
@@ -6905,9 +6905,9 @@ export default function DataRoomPage() {
                         <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className={`text-white text-sm sm:text-base break-words ${doc.status === 'pending' ? 'italic text-gray-500' : ''}`}>
-                                    {doc.document_type}
-                                    {doc.status === 'pending' && ' (Pending Upload)'}
-                                  </span>
+                                  {doc.document_type}
+                                  {doc.status === 'pending' && ' (Pending Upload)'}
+                                </span>
                                   {doc.status === 'uploaded' && formatPeriodInfo(doc) && (
                                     <span className={`px-2 py-0.5 text-xs rounded-full border ${getPeriodBadgeColor(doc.period_type)}`}>
                                       {formatPeriodInfo(doc)}

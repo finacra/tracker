@@ -3,6 +3,9 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
 import { enrichComplianceItems as enrichComplianceItemsService, type EnrichedComplianceData } from '@/lib/services/compliance-enrichment'
+import { sendEmail, getSiteUrl } from '@/lib/email/resend'
+import { renderTeamInviteEmail } from '@/lib/email/templates/teamInvite'
+import { randomBytes } from 'crypto'
 
 export interface RegulatoryRequirement {
   id: string
@@ -429,6 +432,7 @@ export async function updateRequirementStatus(
     let actualStatus = newStatus
     let statusReason: string | null = null
     let missingDocs: string[] = []
+    let shouldNotifyMissingDocs = false
 
     // If marking as completed, validate required documents
     if (newStatus === 'completed') {
@@ -462,17 +466,7 @@ export async function updateRequirementStatus(
           // Cannot complete - set to pending with status reason
           actualStatus = 'pending'
           statusReason = `Missing documents: ${missingDocs.join(', ')}`
-          
-          // Send notifications to company admins
-          await notifyCompanyAdmins(
-            adminSupabase,
-            reqCompanyId,
-            'missing_docs',
-            `Compliance requires documents`,
-            `"${requirement.requirement}" cannot be completed. Missing: ${missingDocs.join(', ')}`,
-            requirementId,
-            { missing_docs: missingDocs, attempted_status: 'completed' }
-          )
+          shouldNotifyMissingDocs = true
         }
       }
     }
@@ -490,28 +484,6 @@ export async function updateRequirementStatus(
       updateData.filed_on = new Date().toISOString().split('T')[0]
       updateData.filed_by = user.id
       updateData.status_reason = null
-
-      // Notify admins of successful completion
-      await notifyCompanyAdmins(
-        adminSupabase,
-        reqCompanyId,
-        'status_change',
-        `Compliance completed`,
-        `"${requirement.requirement}" has been marked as completed.`,
-        requirementId,
-        { old_status: requirement.status, new_status: 'completed' }
-      )
-    } else if (newStatus !== requirement.status) {
-      // Notify admins of other status changes
-      await notifyCompanyAdmins(
-        adminSupabase,
-        reqCompanyId,
-        'status_change',
-        `Compliance status changed`,
-        `"${requirement.requirement}" status changed from ${requirement.status} to ${actualStatus}.`,
-        requirementId,
-        { old_status: requirement.status, new_status: actualStatus, reason: statusReason }
-      )
     }
 
     let query = adminSupabase
@@ -529,6 +501,73 @@ export async function updateRequirementStatus(
     if (error) {
       console.error('Error updating requirement status:', error)
       return { success: false, error: error.message }
+    }
+
+    // In-app notifications (after DB update, so UI is consistent)
+    if (shouldNotifyMissingDocs) {
+      await notifyCompanyAdmins(
+        adminSupabase,
+        reqCompanyId,
+        'missing_docs',
+        `Compliance requires documents`,
+        `"${requirement.requirement}" cannot be completed. Missing: ${missingDocs.join(', ')}`,
+        requirementId,
+        { missing_docs: missingDocs, attempted_status: 'completed' }
+      )
+    }
+
+    if (newStatus !== requirement.status) {
+      if (actualStatus === 'completed') {
+        await notifyCompanyAdmins(
+          adminSupabase,
+          reqCompanyId,
+          'status_change',
+          `Compliance completed`,
+          `"${requirement.requirement}" has been marked as completed.`,
+          requirementId,
+          { old_status: requirement.status, new_status: 'completed' }
+        )
+      } else {
+        await notifyCompanyAdmins(
+          adminSupabase,
+          reqCompanyId,
+          'status_change',
+          `Compliance status changed`,
+          `"${requirement.requirement}" status changed from ${requirement.status} to ${actualStatus}.`,
+          requirementId,
+          { old_status: requirement.status, new_status: actualStatus, reason: statusReason }
+        )
+      }
+    }
+
+    // Queue email notifications for status changes (batched every 5 min)
+    if (newStatus !== requirement.status) {
+      try {
+        const recipients = await getCompanyAdminRecipients(adminSupabase, reqCompanyId)
+        if (recipients.length > 0) {
+          // Best-effort: fetch company name for nicer email
+          const { data: companyRow } = await adminSupabase
+            .from('companies')
+            .select('name')
+            .eq('id', reqCompanyId)
+            .single()
+
+          const companyName = companyRow?.name || 'Company'
+
+          // Queue emails for batch sending (prevents spam on bulk updates)
+          await queueStatusChangeEmails(adminSupabase, recipients, {
+            companyId: reqCompanyId,
+            companyName,
+            requirementId,
+            requirementName: requirement.requirement,
+            dueDate: requirement.due_date,
+            oldStatus: requirement.status,
+            newStatus: actualStatus,
+          })
+        }
+      } catch (emailErr) {
+        console.error('[updateRequirementStatus] Email queue failed:', emailErr)
+      }
     }
 
     return { 
@@ -588,6 +627,89 @@ async function notifyCompanyAdmins(
     }
   } catch (err) {
     console.error('[notifyCompanyAdmins] Exception:', err)
+  }
+}
+
+type CompanyAdminRecipient = {
+  userId: string
+  email: string
+  name: string | null
+}
+
+async function getCompanyAdminRecipients(
+  adminSupabase: ReturnType<typeof createAdminClient>,
+  companyId: string
+): Promise<CompanyAdminRecipient[]> {
+  const { data: adminUsers, error: adminError } = await adminSupabase
+    .from('user_roles')
+    .select('user_id')
+    .eq('company_id', companyId)
+    .in('role', ['admin', 'superadmin'])
+
+  if (adminError || !adminUsers || adminUsers.length === 0) return []
+
+  const recipients: CompanyAdminRecipient[] = []
+  for (const row of adminUsers) {
+    try {
+      const { data } = await adminSupabase.auth.admin.getUserById(row.user_id)
+      const email = data?.user?.email
+      if (!email) continue
+      recipients.push({
+        userId: row.user_id,
+        email,
+        name: (data?.user?.user_metadata as any)?.full_name || null,
+      })
+    } catch {
+      // Ignore lookup failures
+    }
+  }
+
+  const byEmail = new Map<string, CompanyAdminRecipient>()
+  for (const r of recipients) byEmail.set(r.email.toLowerCase(), r)
+  return Array.from(byEmail.values())
+}
+
+/**
+ * Queue status change emails for batch sending (prevents email spam)
+ * Emails are batched and sent every 5 minutes by the flush-email-queue Edge Function
+ */
+async function queueStatusChangeEmails(
+  adminSupabase: ReturnType<typeof createAdminClient>,
+  recipients: CompanyAdminRecipient[],
+  data: {
+    companyId: string
+    companyName: string
+    requirementId: string
+    requirementName: string
+    dueDate: string | null
+    oldStatus: string
+    newStatus: string
+  }
+) {
+  try {
+    const queueEntries = recipients.map((recipient) => ({
+      user_id: recipient.userId,
+      user_email: recipient.email,
+      company_id: data.companyId,
+      company_name: data.companyName,
+      email_type: 'status_change',
+      payload: {
+        requirement_id: data.requirementId,
+        requirement_name: data.requirementName,
+        due_date: data.dueDate,
+        old_status: data.oldStatus,
+        new_status: data.newStatus,
+        recipient_name: recipient.name,
+      },
+    }))
+
+    const { error } = await adminSupabase.from('email_batch_queue').insert(queueEntries)
+
+    if (error) {
+      console.error('[queueStatusChangeEmails] Error inserting queue entries:', error)
+    }
+  } catch (err) {
+    console.error('[queueStatusChangeEmails] Exception:', err)
   }
 }
 
@@ -944,6 +1066,195 @@ export async function addTeamMember(
     console.error('[addTeamMember] EXCEPTION - Unexpected error:', error)
     console.error('[addTeamMember] Stack:', error.stack)
     return { success: false, error: error.message || 'Unexpected error occurred' }
+  }
+}
+
+/**
+ * Create an email-based team invitation (supports non-auth recipients).
+ * The invited user gets access only after they accept the invitation.
+ */
+export async function createTeamInvitation(
+  companyId: string,
+  email: string,
+  role: 'viewer' | 'editor' | 'admin',
+  inviteeName?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, error: 'Not authenticated' }
+    }
+
+    const canManage = await canUserManage(companyId)
+    const { role: userRole } = await getUserRole(companyId)
+    const isSuperadmin = userRole === 'superadmin'
+
+    if (!canManage && !isSuperadmin) {
+      return { success: false, error: 'You do not have permission to invite team members' }
+    }
+
+    const adminSupabase = createAdminClient()
+
+    const { data: company, error: companyError } = await adminSupabase
+      .from('companies')
+      .select('name')
+      .eq('id', companyId)
+      .single()
+
+    if (companyError || !company?.name) {
+      return { success: false, error: 'Company not found' }
+    }
+
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!normalizedEmail) {
+      return { success: false, error: 'Email is required' }
+    }
+
+    const token = randomBytes(24).toString('hex')
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+
+    const { error: insertError } = await adminSupabase
+      .from('team_invitations')
+      .insert({
+        company_id: companyId,
+        email: normalizedEmail,
+        role,
+        token,
+        invited_by: user.id,
+        expires_at: expiresAt.toISOString(),
+      })
+
+    if (insertError) {
+      console.error('[createTeamInvitation] Insert error:', insertError)
+      return { success: false, error: insertError.message }
+    }
+
+    const siteUrl = getSiteUrl()
+    const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(`/invite/accept?token=${token}`)}`
+
+    const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
+      type: 'invite',
+      email: normalizedEmail,
+      options: { redirectTo },
+    } as any)
+
+    if (linkError) {
+      console.error('[createTeamInvitation] generateLink error:', linkError)
+      return { success: false, error: linkError.message }
+    }
+
+    const actionUrl =
+      (linkData as any)?.properties?.action_link ||
+      (linkData as any)?.action_link ||
+      null
+
+    if (!actionUrl) {
+      return { success: false, error: 'Failed to generate invite link' }
+    }
+
+    const { subject, html } = renderTeamInviteEmail({
+      companyName: company.name,
+      inviterEmail: user.email || null,
+      role,
+      actionUrl,
+      recipientEmail: normalizedEmail,
+    })
+
+    await sendEmail({ to: normalizedEmail, subject, html })
+
+    await notifyCompanyAdmins(
+      adminSupabase,
+      companyId,
+      'team_update',
+      'Invitation sent',
+      `An invitation was sent to ${normalizedEmail}${inviteeName ? ` (${inviteeName})` : ''}.`,
+      undefined,
+      { invited_email: normalizedEmail, role }
+    )
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error in createTeamInvitation:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Accept an invitation token and grant access to the current authenticated user.
+ */
+export async function acceptTeamInvitation(
+  token: string
+): Promise<{ success: boolean; error?: string; companyId?: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, error: 'Not authenticated' }
+    }
+
+    const adminSupabase = createAdminClient()
+
+    const { data: invite, error: inviteError } = await adminSupabase
+      .from('team_invitations')
+      .select('*')
+      .eq('token', token)
+      .single()
+
+    if (inviteError || !invite) {
+      return { success: false, error: 'Invalid invitation token' }
+    }
+
+    if (invite.accepted_at) {
+      return { success: true, companyId: invite.company_id }
+    }
+
+    const expiresAt = new Date(invite.expires_at)
+    if (expiresAt.getTime() < Date.now()) {
+      return { success: false, error: 'Invitation has expired' }
+    }
+
+    const { error: roleError } = await adminSupabase
+      .from('user_roles')
+      .upsert(
+        {
+          user_id: user.id,
+          company_id: invite.company_id,
+          role: invite.role,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,company_id' }
+      )
+
+    if (roleError) {
+      console.error('[acceptTeamInvitation] role upsert error:', roleError)
+      return { success: false, error: roleError.message }
+    }
+
+    await adminSupabase
+      .from('team_invitations')
+      .update({
+        accepted_at: new Date().toISOString(),
+        accepted_by_user_id: user.id,
+      })
+      .eq('id', invite.id)
+
+    await notifyCompanyAdmins(
+      adminSupabase,
+      invite.company_id,
+      'team_update',
+      'Team member joined',
+      `${user.email || 'A user'} accepted an invitation and joined the team.`,
+      undefined,
+      { joined_user_id: user.id, joined_email: user.email || null, role: invite.role }
+    )
+
+    return { success: true, companyId: invite.company_id }
+  } catch (error: any) {
+    console.error('Error in acceptTeamInvitation:', error)
+    return { success: false, error: error.message }
   }
 }
 

@@ -23,7 +23,8 @@
     "pdf-parse": "^1.1.1",
     "razorpay": "^2.9.2",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "react-dom": "^19.2.3",
+    "resend": "^6.9.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

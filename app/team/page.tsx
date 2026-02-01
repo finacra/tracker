@@ -6,7 +6,7 @@ import CompanySelector from '@/components/CompanySelector'
 import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
 import { createClient } from '@/utils/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
-import { getCompanyUserRoles, addTeamMember, removeTeamMember, updateTeamMemberRole } from '@/app/data-room/actions'
+import { getCompanyUserRoles, createTeamInvitation, removeTeamMember, updateTeamMemberRole } from '@/app/data-room/actions'
 import { useUserRole } from '@/hooks/useUserRole'
 
 interface Company {
@@ -212,10 +212,10 @@ export default function TeamPage() {
 
     setIsInviting(true)
     try {
-      const result = await addTeamMember(currentCompany.id, inviteEmail, inviteRole)
+      const result = await createTeamInvitation(currentCompany.id, inviteEmail, inviteRole, inviteName)
       
       if (result.success) {
-        alert('Team member added successfully!')
+        alert('Invitation sent! They will get access after accepting the email invite.')
         setInviteEmail('')
         setInviteName('')
         setInviteRole('viewer')
@@ -226,11 +226,11 @@ export default function TeamPage() {
           setTeamMembers(refreshResult.roles)
         }
       } else {
-        alert(`Failed to add team member: ${result.error}`)
+        alert(`Failed to send invitation: ${result.error}`)
       }
     } catch (error: any) {
       console.error('Error inviting team member:', error)
-      alert(`Failed to invite team member: ${error.message}`)
+      alert(`Failed to send invitation: ${error.message}`)
     } finally {
       setIsInviting(false)
     }
@@ -364,7 +364,7 @@ export default function TeamPage() {
                 <h2 className="text-lg sm:text-xl font-light text-white">Invite Team Member</h2>
               </div>
               <p className="text-gray-400 text-xs sm:text-sm mb-4 sm:mb-6 ml-0 sm:ml-11">
-                Add a user to this company. They must already have an account.
+                Invite a teammate by email. They can accept even if they don’t have an account yet.
               </p>
 
               <div className="space-y-3 sm:space-y-4">
@@ -471,7 +471,7 @@ export default function TeamPage() {
                   {isInviting ? (
                     <>
                       <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Adding...
+                      Sending...
                     </>
                   ) : (
                     <>
@@ -489,7 +489,7 @@ export default function TeamPage() {
                         <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                         <polyline points="22,6 12,13 2,6" />
                       </svg>
-                      Add Team Member
+                      Send Invitation
                     </>
                   )}
                 </button>

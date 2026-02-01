@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/server'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  const explicitNext = searchParams.get('next')
   
   if (code) {
     const supabase = await createClient()
@@ -34,11 +35,17 @@ export async function GET(request: Request) {
       // Determine redirect destination based on whether user has companies
       let next = hasCompanies ? '/data-room' : '/onboarding'
       
-      // If "next" is explicitly provided in params, use it (but still check companies first)
-      const explicitNext = searchParams.get('next')
+      // If "next" is explicitly provided in params, honor invite-accept flows even for existing users.
       if (explicitNext && explicitNext.startsWith('/')) {
-        // Only use explicit next if user doesn't have companies (to allow onboarding for new companies)
-        if (!hasCompanies) {
+        const isInviteAccept =
+          explicitNext.startsWith('/invite/accept') ||
+          explicitNext.includes('/invite/accept') ||
+          explicitNext.includes('token=')
+
+        if (isInviteAccept) {
+          next = explicitNext
+        } else if (!hasCompanies) {
+          // Only use explicit next if user doesn't have companies (to allow onboarding for new companies)
           next = explicitNext
         }
       }
