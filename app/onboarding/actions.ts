@@ -69,6 +69,20 @@ export async function completeOnboarding(
     throw new Error('Failed to create company: ' + companyError.message)
   }
 
+  // 1b. Assign admin role to the company creator
+  const { error: roleError } = await adminSupabase
+    .from('user_roles')
+    .insert({
+      user_id: user.id,
+      company_id: company.id,
+      role: 'admin'
+    })
+
+  if (roleError) {
+    console.error('Role assignment error:', roleError)
+    // Don't throw - the company owner can still access via user_id on companies table
+  }
+
   // 2. Insert Directors into public schema
   if (directors.length > 0) {
     const directorsToInsert = directors.map(dir => ({
