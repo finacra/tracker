@@ -123,6 +123,14 @@ export async function getUserRole(companyId: string | null): Promise<{ success: 
 }
 
 /**
+ * Check if user can view resources for a company (any role: viewer, editor, admin)
+ */
+export async function canUserView(companyId: string | null): Promise<boolean> {
+  const { role } = await getUserRole(companyId)
+  return role === 'viewer' || role === 'editor' || role === 'admin' || role === 'superadmin'
+}
+
+/**
  * Check if user can edit (editor, admin, or superadmin)
  * Superadmin can edit everything (companyId can be null)
  */
@@ -888,8 +896,9 @@ export async function getCompanyUserRoles(companyId: string | null = null): Prom
       if (!companyId) {
         return { success: false, error: 'Company ID required for non-superadmin users' }
       }
-      const canManage = await canUserManage(companyId)
-      if (!canManage) {
+      // All users (viewer, editor, admin) can VIEW team members
+      const canView = await canUserView(companyId)
+      if (!canView) {
         return { success: false, error: 'You do not have permission to view roles' }
       }
     }
