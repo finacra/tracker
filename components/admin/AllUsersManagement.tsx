@@ -164,24 +164,24 @@ export default function AllUsersManagement({ supabase, companies }: AllUsersMana
     }
   }
 
-  const getSubscriptionStatus = (sub: UserSubscription | null): { label: string; color: string; isActive: boolean } => {
+  const getSubscriptionStatus = (sub: UserSubscription | null): { label: string; color: string; isActive: boolean; isTrial: boolean; isPaid: boolean } => {
     if (!sub) {
-      return { label: 'No Subscription', color: 'bg-gray-800 text-gray-400 border-gray-700', isActive: false }
+      return { label: 'No Subscription', color: 'bg-gray-800 text-gray-400 border-gray-700', isActive: false, isTrial: false, isPaid: false }
     }
 
     const now = new Date()
     const endDate = sub.trial_ends_at ? new Date(sub.trial_ends_at) : new Date(sub.end_date)
 
     if (sub.status === 'expired' || endDate < now) {
-      return { label: 'Expired', color: 'bg-red-500/20 text-red-400 border-red-500/30', isActive: false }
+      return { label: 'Expired', color: 'bg-red-500/20 text-red-400 border-red-500/30', isActive: false, isTrial: false, isPaid: false }
     }
 
     if (sub.is_trial) {
       const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-      return { label: `Trial (${daysLeft}d)`, color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', isActive: true }
+      return { label: `Trial (${daysLeft}d)`, color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', isActive: true, isTrial: true, isPaid: false }
     }
 
-    return { label: 'Active', color: 'bg-green-500/20 text-green-400 border-green-500/30', isActive: true }
+    return { label: 'Paid', color: 'bg-green-500/20 text-green-400 border-green-500/30', isActive: true, isTrial: false, isPaid: true }
   }
 
   const getRoleBadge = (role: string) => {
@@ -302,8 +302,8 @@ export default function AllUsersManagement({ supabase, companies }: AllUsersMana
             <option value="all">All Users</option>
             <option value="owners">Company Owners</option>
             <option value="team_only">Team Members Only</option>
-            <option value="subscriber">With Active Subscription</option>
-            <option value="non_subscriber">Without Subscription</option>
+            <option value="subscriber">With Active Access (Trial/Paid)</option>
+            <option value="non_subscriber">No Active Access</option>
           </select>
 
           {/* Refresh */}
@@ -319,23 +319,57 @@ export default function AllUsersManagement({ supabase, companies }: AllUsersMana
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
           <div className="text-2xl font-bold text-white">{users.length}</div>
           <div className="text-xs text-gray-400">Total Users</div>
+          <div className="text-[10px] text-gray-500 mt-1">All registered users</div>
         </div>
         <div className="bg-primary-orange/10 border border-primary-orange/30 rounded-xl p-4">
           <div className="text-2xl font-bold text-primary-orange">{totalOwners}</div>
           <div className="text-xs text-primary-orange/80">Company Owners</div>
+          <div className="text-[10px] text-primary-orange/60 mt-1">Created companies</div>
         </div>
         <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
           <div className="text-2xl font-bold text-blue-400">{totalTeamOnly}</div>
-          <div className="text-xs text-blue-400/80">Team Members Only</div>
+          <div className="text-xs text-blue-400/80">Team Only</div>
+          <div className="text-[10px] text-blue-400/60 mt-1">Invited members</div>
+        </div>
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+          <div className="text-2xl font-bold text-yellow-400">
+            {users.filter(u => u.subscription?.is_trial && getSubscriptionStatus(u.subscription).isActive).length}
+          </div>
+          <div className="text-xs text-yellow-400/80">Active Trials</div>
+          <div className="text-[10px] text-yellow-400/60 mt-1">Free trial period</div>
         </div>
         <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
-          <div className="text-2xl font-bold text-green-400">{totalSubscribers}</div>
-          <div className="text-xs text-green-400/80">Active Subscribers</div>
+          <div className="text-2xl font-bold text-green-400">
+            {users.filter(u => u.subscription && !u.subscription.is_trial && getSubscriptionStatus(u.subscription).isActive).length}
+          </div>
+          <div className="text-xs text-green-400/80">Paid Subscribers</div>
+          <div className="text-[10px] text-green-400/60 mt-1">Purchased plans</div>
         </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap items-center gap-4 text-xs">
+        <span className="text-gray-400">Status Legend:</span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-green-400"></span>
+          <span className="text-gray-300">Paid Subscriber</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
+          <span className="text-gray-300">Active Trial</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-red-400"></span>
+          <span className="text-gray-300">Expired</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-gray-500"></span>
+          <span className="text-gray-300">No Subscription</span>
+        </span>
       </div>
 
       {/* Users List */}

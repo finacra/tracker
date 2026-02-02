@@ -364,24 +364,24 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
     }
   }
 
-  const getSubscriptionStatus = (sub: UserSubscription | null): { label: string; color: string } => {
+  const getSubscriptionStatus = (sub: UserSubscription | null): { label: string; color: string; isTrial: boolean; isPaid: boolean } => {
     if (!sub) {
-      return { label: 'No Subscription', color: 'bg-gray-800 text-gray-400 border-gray-700' }
+      return { label: 'No Subscription', color: 'bg-gray-800 text-gray-400 border-gray-700', isTrial: false, isPaid: false }
     }
 
     const now = new Date()
     const endDate = sub.trial_ends_at ? new Date(sub.trial_ends_at) : new Date(sub.end_date)
 
     if (sub.status === 'expired' || endDate < now) {
-      return { label: 'Expired', color: 'bg-red-500/20 text-red-400 border-red-500/30' }
+      return { label: 'Expired', color: 'bg-red-500/20 text-red-400 border-red-500/30', isTrial: false, isPaid: false }
     }
 
     if (sub.is_trial) {
       const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-      return { label: `Trial (${daysLeft}d left)`, color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' }
+      return { label: `Trial (${daysLeft}d left)`, color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', isTrial: true, isPaid: false }
     }
 
-    return { label: 'Active', color: 'bg-green-500/20 text-green-400 border-green-500/30' }
+    return { label: 'Paid', color: 'bg-green-500/20 text-green-400 border-green-500/30', isTrial: false, isPaid: true }
   }
 
   const getRoleBadge = (role: string) => {
@@ -406,8 +406,8 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
 
     const status = getSubscriptionStatus(user.subscription)
     
-    if (filterStatus === 'active') return matchesSearch && status.label === 'Active'
-    if (filterStatus === 'trial') return matchesSearch && status.label.includes('Trial')
+    if (filterStatus === 'active') return matchesSearch && status.isPaid
+    if (filterStatus === 'trial') return matchesSearch && status.isTrial
     if (filterStatus === 'expired') return matchesSearch && status.label === 'Expired'
     if (filterStatus === 'none') return matchesSearch && status.label === 'No Subscription'
 
@@ -448,8 +448,8 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
       {/* Header and Filters */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-light text-white mb-1">Subscription Management</h2>
-          <p className="text-gray-400 text-sm">Manage user subscriptions, trials, and team access</p>
+          <h2 className="text-2xl font-light text-white mb-1">Trial & Subscription Management</h2>
+          <p className="text-gray-400 text-sm">Manage company owners, their trials/subscriptions, and team access</p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
@@ -473,11 +473,11 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
             onChange={(e) => setFilterStatus(e.target.value as any)}
             className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange"
           >
-            <option value="all">All Users</option>
-            <option value="active">Active Subscription</option>
-            <option value="trial">On Trial</option>
-            <option value="expired">Expired</option>
-            <option value="none">No Subscription</option>
+            <option value="all">All Company Owners</option>
+            <option value="active">Paid Subscribers</option>
+            <option value="trial">Active Trials</option>
+            <option value="expired">Expired (Trial/Paid)</option>
+            <option value="none">No Trial/Subscription</option>
           </select>
 
           {/* Refresh */}
@@ -496,29 +496,34 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
           <div className="text-2xl font-bold text-white">{users.length}</div>
-          <div className="text-xs text-gray-400">Total Subscribers</div>
+          <div className="text-xs text-gray-400">Company Owners</div>
+          <div className="text-[10px] text-gray-500 mt-1">Users who created companies</div>
         </div>
         <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
           <div className="text-2xl font-bold text-green-400">
-            {users.filter(u => getSubscriptionStatus(u.subscription).label === 'Active').length}
+            {users.filter(u => getSubscriptionStatus(u.subscription).isPaid).length}
           </div>
-          <div className="text-xs text-green-400/80">Active</div>
+          <div className="text-xs text-green-400/80">Paid Subscribers</div>
+          <div className="text-[10px] text-green-400/60 mt-1">Active paid plans</div>
         </div>
         <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
           <div className="text-2xl font-bold text-yellow-400">
-            {users.filter(u => getSubscriptionStatus(u.subscription).label.includes('Trial')).length}
+            {users.filter(u => getSubscriptionStatus(u.subscription).isTrial).length}
           </div>
-          <div className="text-xs text-yellow-400/80">On Trial</div>
+          <div className="text-xs text-yellow-400/80">Active Trials</div>
+          <div className="text-[10px] text-yellow-400/60 mt-1">Free trial period</div>
         </div>
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
           <div className="text-2xl font-bold text-red-400">
             {users.filter(u => getSubscriptionStatus(u.subscription).label === 'Expired').length}
           </div>
           <div className="text-xs text-red-400/80">Expired</div>
+          <div className="text-[10px] text-red-400/60 mt-1">Trial/subscription ended</div>
         </div>
         <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
           <div className="text-2xl font-bold text-blue-400">{totalTeamMembers}</div>
-          <div className="text-xs text-blue-400/80">Total Team Members</div>
+          <div className="text-xs text-blue-400/80">Team Members</div>
+          <div className="text-[10px] text-blue-400/60 mt-1">Across all companies</div>
         </div>
       </div>
 
@@ -528,19 +533,42 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <div className="text-sm">
-          <p className="text-primary-orange font-medium">How Subscription Access Works</p>
-          <p className="text-primary-orange/80 mt-1">
-            When you grant, extend, or revoke a subscription for an owner, all team members of their companies are affected.
-            Click on a subscriber to view their companies, then click on a company to see all team members.
-          </p>
+          <p className="text-primary-orange font-medium">Understanding Trial vs Paid Subscriptions</p>
+          <div className="text-primary-orange/80 mt-1 space-y-1">
+            <p>• <strong>Active Trial:</strong> Free trial period (e.g., 15 days). User has access but hasn't paid yet.</p>
+            <p>• <strong>Paid Subscriber:</strong> User has purchased a subscription plan (Starter/Professional/Enterprise).</p>
+            <p>• <strong>Expired:</strong> Trial or subscription has ended. User and their team members lose access.</p>
+            <p className="mt-2">When you grant/extend/revoke access for a company owner, all their team members are affected.</p>
+          </div>
         </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap items-center gap-4 text-xs">
+        <span className="text-gray-400">Status Legend:</span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-green-400"></span>
+          <span className="text-gray-300">Paid Subscriber</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
+          <span className="text-gray-300">Active Trial (Free)</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-red-400"></span>
+          <span className="text-gray-300">Expired</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-gray-500"></span>
+          <span className="text-gray-300">No Subscription</span>
+        </span>
       </div>
 
       {/* Users List */}
       <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
         {filteredUsers.length === 0 ? (
           <div className="px-6 py-12 text-center text-gray-400">
-            No subscribers found matching your criteria.
+            No company owners found matching your criteria.
           </div>
         ) : (
           <div className="divide-y divide-gray-800">
