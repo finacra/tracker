@@ -9,6 +9,7 @@ import { createClient } from '@/utils/supabase/client'
 import { getRegulatoryRequirements, getCompanyUserRoles, getUserRole, getComplianceTemplates, createComplianceTemplate, updateComplianceTemplate, deleteComplianceTemplate, getTemplateDetails, applyAllTemplates, type ComplianceTemplate } from '@/app/data-room/actions'
 import { useUserRole } from '@/hooks/useUserRole'
 import UsersManagement from '@/components/admin/UsersManagement'
+import AllUsersManagement from '@/components/admin/AllUsersManagement'
 import { 
   FIXED_COSTS, 
   CAPEX_YEAR_1, 
@@ -48,7 +49,7 @@ export default function AdminPage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [allRequirements, setAllRequirements] = useState<Requirement[]>([])
   const [selectedCompany, setSelectedCompany] = useState<string>('all')
-  const [activeTab, setActiveTab] = useState<'overview' | 'companies' | 'compliances' | 'users' | 'templates' | 'financials'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'companies' | 'compliances' | 'subscriptions' | 'allusers' | 'templates' | 'financials'>('overview')
   const [templates, setTemplates] = useState<ComplianceTemplate[]>([])
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([])
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
@@ -315,9 +316,23 @@ export default function AdminPage() {
             <span>Compliance Templates</span>
           </button>
           <button
-            onClick={() => setActiveTab('users')}
+            onClick={() => setActiveTab('subscriptions')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${
-              activeTab === 'users'
+              activeTab === 'subscriptions'
+                ? 'border-primary-orange bg-primary-orange/20 text-white'
+                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+            }`}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+              <line x1="1" y1="10" x2="23" y2="10" />
+            </svg>
+            <span>Subscriptions</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('allusers')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${
+              activeTab === 'allusers'
                 ? 'border-primary-orange bg-primary-orange/20 text-white'
                 : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
             }`}
@@ -328,7 +343,7 @@ export default function AdminPage() {
               <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
               <path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
-            <span>Users</span>
+            <span>All Users</span>
           </button>
           <button
             onClick={() => setActiveTab('financials')}
@@ -847,8 +862,12 @@ export default function AdminPage() {
           </div>
         )}
 
-        {activeTab === 'users' && (
+        {activeTab === 'subscriptions' && (
           <UsersManagement supabase={supabase} companies={companies} />
+        )}
+
+        {activeTab === 'allusers' && (
+          <AllUsersManagement supabase={supabase} companies={companies} />
         )}
 
         {activeTab === 'financials' && (
