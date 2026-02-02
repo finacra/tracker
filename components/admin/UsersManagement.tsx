@@ -24,14 +24,24 @@ interface UserSubscription {
   created_at: string
 }
 
+interface TeamMember {
+  user_id: string
+  email: string
+  role: string
+}
+
+interface CompanyWithTeam extends Company {
+  team_members: TeamMember[]
+}
+
 interface UserWithDetails {
   id: string
   email: string
   created_at: string
   last_sign_in_at: string | null
-  companies_owned: number
+  companies_owned: CompanyWithTeam[]
   subscription: UserSubscription | null
-  roles: { company_id: string; company_name: string; role: string }[]
+  invited_to: { company_id: string; company_name: string; role: string }[]
 }
 
 interface UsersManagementProps {
@@ -44,13 +54,19 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'trial' | 'expired' | 'none'>('all')
+  
+  // Expanded state - can be user ID, or "user_id:company_id" for company expansion
   const [expandedUser, setExpandedUser] = useState<string | null>(null)
+  const [expandedCompany, setExpandedCompany] = useState<string | null>(null)
   
   // Trial management state
   const [extendDays, setExtendDays] = useState<{ [key: string]: number }>({})
   const [isExtending, setIsExtending] = useState<{ [key: string]: boolean }>({})
   const [isRevoking, setIsRevoking] = useState<{ [key: string]: boolean }>({})
   const [isGranting, setIsGranting] = useState<{ [key: string]: boolean }>({})
+  
+  // Email cache for team members
+  const [emailCache, setEmailCache] = useState<{ [key: string]: string }>({})
 
   useEffect(() => {
     loadUsers()
@@ -78,26 +94,41 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
         console.error('Error loading user roles:', rolesError)
       }
 
-      // Get unique user IDs from companies (owners), subscriptions, and user_roles
-      const userIds = new Set<string>()
+      // Get unique user IDs from subscriptions (these are subscribers/trial users)
+      const subscriberUserIds = new Set<string>()
+      subscriptions?.forEach(s => subscriberUserIds.add(s.user_id))
       
-      companies.forEach(c => userIds.add(c.user_id))
-      subscriptions?.forEach(s => userIds.add(s.user_id))
-      userRoles?.forEach(r => userIds.add(r.user_id))
+      // Also include company owners who might not have subscriptions yet
+      companies.forEach(c => subscriberUserIds.add(c.user_id))
 
-      // Build user details
+      // Build user details for subscribers
       const usersWithDetails: UserWithDetails[] = []
       
-      for (const userId of userIds) {
+      for (const userId of subscriberUserIds) {
         // Get user's subscription (latest one)
         const userSub = subscriptions?.find(s => s.user_id === userId) || null
         
-        // Count companies owned
-        const companiesOwned = companies.filter(c => c.user_id === userId).length
+        // Get companies owned by this user with team members
+        const ownedCompanies: CompanyWithTeam[] = companies
+          .filter(c => c.user_id === userId)
+          .map(c => {
+            // Get team members for this company
+            const teamRoles = userRoles?.filter(r => r.company_id === c.id) || []
+            const teamMembers: TeamMember[] = teamRoles.map(r => ({
+              user_id: r.user_id,
+              email: 'Loading...', // Will be populated later
+              role: r.role
+            }))
+            
+            return {
+              ...c,
+              team_members: teamMembers
+            }
+          })
         
-        // Get user's roles
-        const userRolesList = userRoles
-          ?.filter(r => r.user_id === userId && r.company_id)
+        // Get companies user is invited to (not owned)
+        const invitedTo = userRoles
+          ?.filter(r => r.user_id === userId && r.company_id && !ownedCompanies.some(c => c.id === r.company_id))
           .map(r => ({
             company_id: r.company_id,
             company_name: companies.find(c => c.id === r.company_id)?.name || 'Unknown',
@@ -106,46 +137,99 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
 
         usersWithDetails.push({
           id: userId,
-          email: 'Loading...', // Will be populated via RPC or left as ID
+          email: 'Loading...',
           created_at: userSub?.created_at || '',
           last_sign_in_at: null,
-          companies_owned: companiesOwned,
+          companies_owned: ownedCompanies,
           subscription: userSub,
-          roles: userRolesList
+          invited_to: invitedTo
         })
       }
 
-      // Try to get user emails from auth.users via RPC (if available)
+      // Collect all user IDs that need email lookup (subscribers + team members)
+      const allUserIds = new Set<string>(subscriberUserIds)
+      usersWithDetails.forEach(user => {
+        user.companies_owned.forEach(company => {
+          company.team_members.forEach(member => {
+            allUserIds.add(member.user_id)
+          })
+        })
+      })
+
+      // Try to get user emails from auth.users via RPC
       try {
         const { data: authUsers, error: authError } = await supabase
-          .rpc('get_users_by_ids', { user_ids: Array.from(userIds) })
+          .rpc('get_users_by_ids', { user_ids: Array.from(allUserIds) })
         
         if (!authError && authUsers) {
+          const newEmailCache: { [key: string]: string } = {}
           authUsers.forEach((authUser: any) => {
+            newEmailCache[authUser.id] = authUser.email || authUser.id.substring(0, 8) + '...'
+            
+            // Update user email
             const user = usersWithDetails.find(u => u.id === authUser.id)
             if (user) {
-              user.email = authUser.email || user.id
+              user.email = authUser.email || user.id.substring(0, 8) + '...'
               user.created_at = authUser.created_at || user.created_at
               user.last_sign_in_at = authUser.last_sign_in_at
             }
+            
+            // Update team member emails
+            usersWithDetails.forEach(u => {
+              u.companies_owned.forEach(c => {
+                c.team_members.forEach(m => {
+                  if (m.user_id === authUser.id) {
+                    m.email = authUser.email || authUser.id.substring(0, 8) + '...'
+                  }
+                })
+              })
+            })
           })
+          setEmailCache(newEmailCache)
         } else {
-          // RPC failed or returned error, set email to user ID
+          // RPC failed, use fallback
           usersWithDetails.forEach(user => {
             if (user.email === 'Loading...') {
               user.email = user.id.substring(0, 8) + '...'
             }
+            user.companies_owned.forEach(c => {
+              c.team_members.forEach(m => {
+                if (m.email === 'Loading...') {
+                  m.email = m.user_id.substring(0, 8) + '...'
+                }
+              })
+            })
           })
         }
       } catch (rpcError) {
-        // RPC not available, use user_id as fallback
         console.log('RPC not available for user emails, using fallback')
         usersWithDetails.forEach(user => {
           if (user.email === 'Loading...') {
             user.email = user.id.substring(0, 8) + '...'
           }
+          user.companies_owned.forEach(c => {
+            c.team_members.forEach(m => {
+              if (m.email === 'Loading...') {
+                m.email = m.user_id.substring(0, 8) + '...'
+              }
+            })
+          })
         })
       }
+
+      // Sort by subscription status (trial/active first, then by created_at)
+      usersWithDetails.sort((a, b) => {
+        const statusA = getSubscriptionStatus(a.subscription)
+        const statusB = getSubscriptionStatus(b.subscription)
+        
+        // Trial > Active > Expired > None
+        const statusOrder = { 'Trial': 0, 'Active': 1, 'Expired': 2, 'No Subscription': 3 }
+        const orderA = statusA.label.includes('Trial') ? 0 : statusOrder[statusA.label as keyof typeof statusOrder] ?? 3
+        const orderB = statusB.label.includes('Trial') ? 0 : statusOrder[statusB.label as keyof typeof statusOrder] ?? 3
+        
+        if (orderA !== orderB) return orderA - orderB
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      })
 
       setUsers(usersWithDetails)
     } catch (error) {
@@ -194,7 +278,7 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
       if (error) {
         alert(`Failed to extend trial: ${error.message}`)
       } else {
-        alert(`Trial extended by ${days} days. New end date: ${newEndDate.toLocaleDateString()}`)
+        alert(`Trial extended by ${days} days. New end date: ${newEndDate.toLocaleDateString()}\n\nThis affects the owner and all team members of their companies.`)
         await loadUsers()
       }
     } catch (err: any) {
@@ -205,7 +289,11 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
   }
 
   const handleRevokeTrial = async (userId: string, subscriptionId: string) => {
-    if (!confirm('Are you sure you want to revoke this trial? The user will lose access.')) {
+    // Get user's companies and team member count
+    const user = users.find(u => u.id === userId)
+    const teamMemberCount = user?.companies_owned.reduce((sum, c) => sum + c.team_members.length, 0) || 0
+    
+    if (!confirm(`Are you sure you want to revoke this trial?\n\nThis will:\n• Remove access for this user\n• Remove access for ${teamMemberCount} team member(s) across ${user?.companies_owned.length || 0} company(ies)`)) {
       return
     }
 
@@ -224,7 +312,7 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
       if (error) {
         alert(`Failed to revoke trial: ${error.message}`)
       } else {
-        alert('Trial revoked successfully')
+        alert('Trial revoked successfully. The owner and all team members have lost access.')
         await loadUsers()
       }
     } catch (err: any) {
@@ -266,7 +354,7 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
       if (error) {
         alert(`Failed to grant trial: ${error.message}`)
       } else {
-        alert(`Trial granted for ${days} days`)
+        alert(`Trial granted for ${days} days.\n\nThis gives access to the owner and all team members of their companies.`)
         await loadUsers()
       }
     } catch (err: any) {
@@ -296,11 +384,22 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
     return { label: 'Active', color: 'bg-green-500/20 text-green-400 border-green-500/30' }
   }
 
+  const getRoleBadge = (role: string) => {
+    const colors: { [key: string]: string } = {
+      'admin': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+      'editor': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+      'viewer': 'bg-gray-700 text-gray-300 border-gray-600',
+      'superadmin': 'bg-red-500/20 text-red-400 border-red-500/30',
+    }
+    return colors[role] || colors['viewer']
+  }
+
   const filteredUsers = users.filter(user => {
     // Search filter
     const matchesSearch = searchQuery === '' || 
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.id.toLowerCase().includes(searchQuery.toLowerCase())
+      user.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.companies_owned.some(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
     // Status filter
     if (filterStatus === 'all') return matchesSearch
@@ -324,8 +423,10 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
     )
   }
 
-  // Check if we have any emails loaded (vs just user IDs)
   const hasEmails = users.some(u => u.email.includes('@'))
+
+  // Stats
+  const totalTeamMembers = users.reduce((sum, u) => sum + u.companies_owned.reduce((s, c) => s + c.team_members.length, 0), 0)
 
   return (
     <div className="space-y-6">
@@ -347,8 +448,8 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
       {/* Header and Filters */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-light text-white mb-1">User Management</h2>
-          <p className="text-gray-400 text-sm">Manage user subscriptions, trials, and access</p>
+          <h2 className="text-2xl font-light text-white mb-1">Subscription Management</h2>
+          <p className="text-gray-400 text-sm">Manage user subscriptions, trials, and team access</p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
@@ -359,10 +460,10 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
             </svg>
             <input
               type="text"
-              placeholder="Search by email or ID..."
+              placeholder="Search by email, ID or company..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange w-64"
+              className="pl-10 pr-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange w-72"
             />
           </div>
 
@@ -392,16 +493,16 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
           <div className="text-2xl font-bold text-white">{users.length}</div>
-          <div className="text-xs text-gray-400">Total Users</div>
+          <div className="text-xs text-gray-400">Total Subscribers</div>
         </div>
         <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
           <div className="text-2xl font-bold text-green-400">
             {users.filter(u => getSubscriptionStatus(u.subscription).label === 'Active').length}
           </div>
-          <div className="text-xs text-green-400/80">Active Subscriptions</div>
+          <div className="text-xs text-green-400/80">Active</div>
         </div>
         <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
           <div className="text-2xl font-bold text-yellow-400">
@@ -415,214 +516,306 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
           </div>
           <div className="text-xs text-red-400/80">Expired</div>
         </div>
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+          <div className="text-2xl font-bold text-blue-400">{totalTeamMembers}</div>
+          <div className="text-xs text-blue-400/80">Total Team Members</div>
+        </div>
       </div>
 
-      {/* Users Table */}
+      {/* Info Box */}
+      <div className="bg-primary-orange/10 border border-primary-orange/30 rounded-xl p-4 flex items-start gap-3">
+        <svg className="w-5 h-5 text-primary-orange flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div className="text-sm">
+          <p className="text-primary-orange font-medium">How Subscription Access Works</p>
+          <p className="text-primary-orange/80 mt-1">
+            When you grant, extend, or revoke a subscription for an owner, all team members of their companies are affected.
+            Click on a subscriber to view their companies, then click on a company to see all team members.
+          </p>
+        </div>
+      </div>
+
+      {/* Users List */}
       <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-900 border-b border-gray-800">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">User</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Tier</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Companies</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Expires</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
-                    No users found matching your criteria.
-                  </td>
-                </tr>
-              ) : (
-                filteredUsers.map((user) => {
-                  const status = getSubscriptionStatus(user.subscription)
-                  const isExpanded = expandedUser === user.id
-                  
-                  return (
-                    <>
-                      <tr 
-                        key={user.id} 
-                        className={`hover:bg-gray-900/50 transition-colors border-t border-gray-800 cursor-pointer ${isExpanded ? 'bg-gray-900/30' : ''}`}
-                        onClick={() => setExpandedUser(isExpanded ? null : user.id)}
-                      >
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-primary-orange/20 rounded-full flex items-center justify-center">
-                              <span className="text-primary-orange text-sm font-medium">
-                                {user.email.includes('@') ? user.email.charAt(0).toUpperCase() : 'U'}
-                              </span>
-                            </div>
-                            <div>
-                              {user.email.includes('@') ? (
-                                <>
-                                  <div className="text-white font-medium text-sm">{user.email}</div>
-                                  <div className="text-gray-500 text-xs truncate max-w-[200px]">{user.id}</div>
-                                </>
-                              ) : (
-                                <>
-                                  <div className="text-white font-medium text-sm font-mono">{user.id.substring(0, 8)}...</div>
-                                  <div className="text-gray-500 text-xs">User ID (email not available)</div>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${status.color}`}>
-                            {status.label}
+        {filteredUsers.length === 0 ? (
+          <div className="px-6 py-12 text-center text-gray-400">
+            No subscribers found matching your criteria.
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-800">
+            {filteredUsers.map((user) => {
+              const status = getSubscriptionStatus(user.subscription)
+              const isExpanded = expandedUser === user.id
+              const totalMembers = user.companies_owned.reduce((sum, c) => sum + c.team_members.length, 0)
+              
+              return (
+                <div key={user.id} className="bg-primary-dark-card">
+                  {/* User Row */}
+                  <div 
+                    className={`px-6 py-4 hover:bg-gray-900/50 transition-colors cursor-pointer ${isExpanded ? 'bg-gray-900/30' : ''}`}
+                    onClick={() => {
+                      setExpandedUser(isExpanded ? null : user.id)
+                      setExpandedCompany(null)
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        {/* Expand Icon */}
+                        <svg 
+                          className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                        
+                        {/* User Info */}
+                        <div className="w-10 h-10 bg-primary-orange/20 rounded-full flex items-center justify-center">
+                          <span className="text-primary-orange text-sm font-bold">
+                            {user.email.includes('@') ? user.email.charAt(0).toUpperCase() : 'U'}
                           </span>
-                        </td>
-                        <td className="px-6 py-4 text-gray-300 text-sm">
-                          {user.subscription?.tier ? user.subscription.tier.charAt(0).toUpperCase() + user.subscription.tier.slice(1) : '-'}
-                        </td>
-                        <td className="px-6 py-4 text-gray-300 text-sm">
-                          {user.companies_owned}
-                        </td>
-                        <td className="px-6 py-4 text-gray-300 text-sm">
-                          {user.subscription?.trial_ends_at || user.subscription?.end_date
-                            ? new Date(user.subscription.trial_ends_at || user.subscription.end_date).toLocaleDateString()
-                            : '-'
-                          }
-                        </td>
-                        <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center gap-2">
-                            {user.subscription ? (
-                              <>
-                                {/* Extend/Add Days */}
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="365"
-                                  value={extendDays[user.id] || 15}
-                                  onChange={(e) => setExtendDays(prev => ({ ...prev, [user.id]: parseInt(e.target.value) || 15 }))}
-                                  className="w-14 px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white text-sm text-center focus:outline-none focus:border-primary-orange"
-                                />
-                                <button
-                                  onClick={() => handleExtendTrial(user.id, user.subscription!.id)}
-                                  disabled={isExtending[user.id]}
-                                  className="px-3 py-1 bg-green-500/20 text-green-400 border border-green-500/30 rounded text-xs font-medium hover:bg-green-500/30 transition-colors disabled:opacity-50"
-                                >
-                                  {isExtending[user.id] ? '...' : '+Days'}
-                                </button>
-                                {user.subscription.is_trial && (
-                                  <button
-                                    onClick={() => handleRevokeTrial(user.id, user.subscription!.id)}
-                                    disabled={isRevoking[user.id]}
-                                    className="px-3 py-1 bg-red-500/20 text-red-400 border border-red-500/30 rounded text-xs font-medium hover:bg-red-500/30 transition-colors disabled:opacity-50"
-                                  >
-                                    {isRevoking[user.id] ? '...' : 'Revoke'}
-                                  </button>
-                                )}
-                              </>
-                            ) : (
-                              <>
-                                {/* Grant Trial */}
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="365"
-                                  value={extendDays[user.id] || 15}
-                                  onChange={(e) => setExtendDays(prev => ({ ...prev, [user.id]: parseInt(e.target.value) || 15 }))}
-                                  className="w-14 px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white text-sm text-center focus:outline-none focus:border-primary-orange"
-                                />
-                                <button
-                                  onClick={() => handleGrantTrial(user.id)}
-                                  disabled={isGranting[user.id]}
-                                  className="px-3 py-1 bg-primary-orange text-white rounded text-xs font-medium hover:bg-primary-orange/90 transition-colors disabled:opacity-50"
-                                >
-                                  {isGranting[user.id] ? '...' : 'Grant Trial'}
-                                </button>
-                              </>
-                            )}
+                        </div>
+                        <div>
+                          <div className="text-white font-medium">
+                            {user.email.includes('@') ? user.email : `User ${user.id.substring(0, 8)}...`}
                           </div>
-                        </td>
-                      </tr>
-                      
-                      {/* Expanded Row - User Details */}
-                      {isExpanded && (
-                        <tr key={`${user.id}-details`} className="bg-gray-900/20 border-t border-gray-800/50">
-                          <td colSpan={6} className="px-6 py-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              {/* Companies Owned */}
-                              <div>
-                                <h4 className="text-sm font-medium text-gray-300 mb-2">Companies Owned</h4>
-                                {user.companies_owned > 0 ? (
-                                  <div className="space-y-1">
-                                    {companies.filter(c => c.user_id === user.id).map(c => (
-                                      <div key={c.id} className="text-sm text-gray-400 flex items-center gap-2">
-                                        <span className="w-2 h-2 bg-primary-orange rounded-full"></span>
-                                        {c.name}
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <p className="text-sm text-gray-500">No companies owned</p>
-                                )}
-                              </div>
+                          <div className="text-gray-500 text-xs flex items-center gap-2">
+                            <span>{user.companies_owned.length} companies</span>
+                            <span>•</span>
+                            <span>{totalMembers} team members</span>
+                          </div>
+                        </div>
+                      </div>
 
-                              {/* Team Memberships */}
-                              <div>
-                                <h4 className="text-sm font-medium text-gray-300 mb-2">Team Memberships</h4>
-                                {user.roles.length > 0 ? (
-                                  <div className="space-y-1">
-                                    {user.roles.map((role, idx) => (
-                                      <div key={idx} className="text-sm text-gray-400 flex items-center gap-2">
-                                        <span className={`px-2 py-0.5 text-xs rounded ${
-                                          role.role === 'admin' ? 'bg-purple-500/20 text-purple-400' :
-                                          role.role === 'editor' ? 'bg-blue-500/20 text-blue-400' :
-                                          'bg-gray-700 text-gray-300'
-                                        }`}>
-                                          {role.role}
-                                        </span>
-                                        {role.company_name}
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <p className="text-sm text-gray-500">Not a member of any team</p>
-                                )}
-                              </div>
+                      <div className="flex items-center gap-4">
+                        {/* Status Badge */}
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium border ${status.color}`}>
+                          {status.label}
+                        </span>
+                        
+                        {/* Tier */}
+                        <div className="text-gray-400 text-sm w-20 text-right">
+                          {user.subscription?.tier ? user.subscription.tier.charAt(0).toUpperCase() + user.subscription.tier.slice(1) : '-'}
+                        </div>
 
-                              {/* Subscription Details */}
-                              {user.subscription && (
-                                <div className="md:col-span-2">
-                                  <h4 className="text-sm font-medium text-gray-300 mb-2">Subscription Details</h4>
-                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                                    <div>
-                                      <span className="text-gray-500">Status:</span>
-                                      <span className="ml-2 text-white">{user.subscription.status}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-gray-500">Tier:</span>
-                                      <span className="ml-2 text-white">{user.subscription.tier}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-gray-500">Is Trial:</span>
-                                      <span className="ml-2 text-white">{user.subscription.is_trial ? 'Yes' : 'No'}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-gray-500">Created:</span>
-                                      <span className="ml-2 text-white">{new Date(user.subscription.created_at).toLocaleDateString()}</span>
+                        {/* Actions */}
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          {user.subscription ? (
+                            <>
+                              <input
+                                type="number"
+                                min="1"
+                                max="365"
+                                value={extendDays[user.id] || 15}
+                                onChange={(e) => setExtendDays(prev => ({ ...prev, [user.id]: parseInt(e.target.value) || 15 }))}
+                                className="w-14 px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white text-sm text-center focus:outline-none focus:border-primary-orange"
+                              />
+                              <button
+                                onClick={() => handleExtendTrial(user.id, user.subscription!.id)}
+                                disabled={isExtending[user.id]}
+                                className="px-3 py-1 bg-green-500/20 text-green-400 border border-green-500/30 rounded text-xs font-medium hover:bg-green-500/30 transition-colors disabled:opacity-50"
+                              >
+                                {isExtending[user.id] ? '...' : '+Days'}
+                              </button>
+                              {user.subscription.is_trial && (
+                                <button
+                                  onClick={() => handleRevokeTrial(user.id, user.subscription!.id)}
+                                  disabled={isRevoking[user.id]}
+                                  className="px-3 py-1 bg-red-500/20 text-red-400 border border-red-500/30 rounded text-xs font-medium hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                                >
+                                  {isRevoking[user.id] ? '...' : 'Revoke'}
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <input
+                                type="number"
+                                min="1"
+                                max="365"
+                                value={extendDays[user.id] || 15}
+                                onChange={(e) => setExtendDays(prev => ({ ...prev, [user.id]: parseInt(e.target.value) || 15 }))}
+                                className="w-14 px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white text-sm text-center focus:outline-none focus:border-primary-orange"
+                              />
+                              <button
+                                onClick={() => handleGrantTrial(user.id)}
+                                disabled={isGranting[user.id]}
+                                className="px-3 py-1 bg-primary-orange text-white rounded text-xs font-medium hover:bg-primary-orange/90 transition-colors disabled:opacity-50"
+                              >
+                                {isGranting[user.id] ? '...' : 'Grant Trial'}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Expanded: Companies List */}
+                  {isExpanded && (
+                    <div className="bg-gray-900/20 border-t border-gray-800/50">
+                      {user.companies_owned.length === 0 ? (
+                        <div className="px-12 py-4 text-gray-500 text-sm">
+                          No companies owned by this user.
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-gray-800/50">
+                          {user.companies_owned.map((company) => {
+                            const isCompanyExpanded = expandedCompany === company.id
+                            
+                            return (
+                              <div key={company.id}>
+                                {/* Company Row */}
+                                <div 
+                                  className={`px-12 py-3 hover:bg-gray-900/30 transition-colors cursor-pointer ${isCompanyExpanded ? 'bg-gray-900/40' : ''}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setExpandedCompany(isCompanyExpanded ? null : company.id)
+                                  }}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <svg 
+                                        className={`w-4 h-4 text-gray-500 transition-transform ${isCompanyExpanded ? 'rotate-90' : ''}`} 
+                                        fill="none" 
+                                        stroke="currentColor" 
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                      </svg>
+                                      <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                                        <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                        </svg>
+                                      </div>
+                                      <div>
+                                        <div className="text-white text-sm font-medium">{company.name}</div>
+                                        <div className="text-gray-500 text-xs">
+                                          {company.type} • {company.team_members.length} team member{company.team_members.length !== 1 ? 's' : ''}
+                                        </div>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
+
+                                {/* Expanded: Team Members */}
+                                {isCompanyExpanded && (
+                                  <div className="bg-gray-900/30 px-16 py-3 border-t border-gray-800/30">
+                                    <div className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
+                                      Team Members
+                                    </div>
+                                    {company.team_members.length === 0 ? (
+                                      <div className="text-gray-500 text-sm">No team members</div>
+                                    ) : (
+                                      <div className="space-y-2">
+                                        {company.team_members.map((member, idx) => (
+                                          <div 
+                                            key={idx} 
+                                            className="flex items-center justify-between py-2 px-3 bg-gray-800/30 rounded-lg"
+                                          >
+                                            <div className="flex items-center gap-3">
+                                              <div className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center">
+                                                <span className="text-gray-300 text-xs font-medium">
+                                                  {member.email.includes('@') ? member.email.charAt(0).toUpperCase() : 'U'}
+                                                </span>
+                                              </div>
+                                              <div>
+                                                <div className="text-gray-200 text-sm">
+                                                  {member.email.includes('@') ? member.email : `User ${member.user_id.substring(0, 8)}...`}
+                                                </div>
+                                                {member.user_id === user.id && (
+                                                  <span className="text-xs text-primary-orange">Owner</span>
+                                                )}
+                                              </div>
+                                            </div>
+                                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getRoleBadge(member.role)}`}>
+                                              {member.role}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Access Status Note */}
+                                    <div className="mt-3 text-xs text-gray-500 flex items-center gap-1">
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                      </svg>
+                                      {status.label.includes('Trial') || status.label === 'Active' 
+                                        ? 'All team members have access through the owner\'s subscription'
+                                        : 'Team members have no access (owner\'s subscription expired)'
+                                      }
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
                       )}
-                    </>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+
+                      {/* Invited To (as team member in other companies) */}
+                      {user.invited_to.length > 0 && (
+                        <div className="px-12 py-3 border-t border-gray-800/50">
+                          <div className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
+                            Also Team Member In
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {user.invited_to.map((invite, idx) => (
+                              <span 
+                                key={idx}
+                                className="inline-flex items-center gap-1 px-2 py-1 bg-gray-800/50 rounded text-xs text-gray-300"
+                              >
+                                {invite.company_name}
+                                <span className={`px-1.5 py-0.5 rounded text-xs ${getRoleBadge(invite.role)}`}>
+                                  {invite.role}
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Subscription Details */}
+                      {user.subscription && (
+                        <div className="px-12 py-3 border-t border-gray-800/50">
+                          <div className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
+                            Subscription Details
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                              <span className="text-gray-500">Status:</span>
+                              <span className="ml-2 text-white">{user.subscription.status}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Tier:</span>
+                              <span className="ml-2 text-white">{user.subscription.tier}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Is Trial:</span>
+                              <span className="ml-2 text-white">{user.subscription.is_trial ? 'Yes' : 'No'}</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Expires:</span>
+                              <span className="ml-2 text-white">
+                                {user.subscription.trial_ends_at || user.subscription.end_date
+                                  ? new Date(user.subscription.trial_ends_at || user.subscription.end_date).toLocaleDateString()
+                                  : '-'
+                                }
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
