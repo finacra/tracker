@@ -2289,6 +2289,7 @@ export default function DataRoomPage() {
             const lightGray = [210, 210, 210]
             const textGray = [90, 90, 90]
             const redColor = [198, 40, 40] // Muted red for highlights only
+            const accentBlue = [112, 160, 220] // Light accent for cover accents (subtle)
 
             // Helper function to add new page if needed
             // Reserve space for footer (20px from bottom to prevent overlap)
@@ -2327,35 +2328,76 @@ export default function DataRoomPage() {
               return lines
             }
 
-            // Cover page (professional)
-            doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
-            doc.rect(0, 0, pageWidth, 70, 'F')
-            doc.setTextColor(255, 255, 255)
-              doc.setFont('helvetica', 'bold')
-            doc.setFontSize(24)
-            doc.text('Compliance Risk Report', margin, 40, { maxWidth: contentWidth })
+            // Cover page (modern, minimalist — keep content, refresh layout)
+            const coverDate = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
+            const companyName = currentCompany?.name || 'Company'
+
+            // White background
+            doc.setFillColor(255, 255, 255)
+            doc.rect(0, 0, pageWidth, pageHeight, 'F')
+
+            // Diagonal accents (top-left + bottom-right) inspired by modern report covers
+            // Use thick diagonal lines to avoid relying on polygon APIs.
+            doc.setLineCap(2)
+
+            // Top-left main band
+            doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2])
+            doc.setLineWidth(34)
+            doc.line(-40, 40, pageWidth * 0.58, -60)
+
+            // Top-left accent strokes
+            doc.setDrawColor(210, 230, 255)
+            doc.setLineWidth(10)
+            doc.line(-38, 55, pageWidth * 0.56, -45)
+            doc.setDrawColor(accentBlue[0], accentBlue[1], accentBlue[2])
+            doc.setLineWidth(6)
+            doc.line(-35, 68, pageWidth * 0.54, -32)
+
+            // Bottom-right band
+            doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2])
+            doc.setLineWidth(42)
+            doc.line(pageWidth * 0.52, pageHeight + 70, pageWidth + 60, pageHeight * 0.62)
+
+            // Bottom-right accent strokes
+            doc.setDrawColor(210, 230, 255)
+            doc.setLineWidth(12)
+            doc.line(pageWidth * 0.56, pageHeight + 62, pageWidth + 52, pageHeight * 0.66)
+            doc.setDrawColor(accentBlue[0], accentBlue[1], accentBlue[2])
+            doc.setLineWidth(7)
+            doc.line(pageWidth * 0.60, pageHeight + 50, pageWidth + 44, pageHeight * 0.70)
+
+            // Content block
+            doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(12)
+            doc.text('COMPLIANCE REPORT', margin, 45, { maxWidth: contentWidth })
+
+            // Company name (large, wrapped)
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(40)
+            const companyLines = splitText(companyName.toUpperCase(), contentWidth, 40)
+            let coverY = 85
+            companyLines.slice(0, 3).forEach((line, idx) => {
+              doc.text(line, margin, coverY + idx * 18, { maxWidth: contentWidth })
+            })
+
+            // Byline
+            coverY += Math.min(companyLines.length, 3) * 18 + 10
+            doc.setFont('helvetica', 'italic')
+            doc.setFontSize(14)
+            doc.text('BY FINNOVATE AI', margin, coverY, { maxWidth: contentWidth })
+
+            // Footer details (bottom-left)
+            const footerBlockY = pageHeight - 70
             doc.setFont('helvetica', 'normal')
             doc.setFontSize(10)
-            const coverDate = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
-            doc.text(`Generated: ${coverDate}`, margin, 52)
-
-                doc.setTextColor(0, 0, 0)
-              doc.setFont('helvetica', 'bold')
-            doc.setFontSize(16)
-            const companyName = currentCompany?.name || 'Company'
-            doc.text(companyName, margin, 95, { maxWidth: contentWidth })
-
-              doc.setFont('helvetica', 'normal')
-            doc.setFontSize(10)
             doc.setTextColor(textGray[0], textGray[1], textGray[2])
-            doc.text('Prepared for management review.', margin, 108, { maxWidth: contentWidth })
-            doc.text(`As of: ${coverDate}`, margin, 116, { maxWidth: contentWidth })
-            doc.text(`Scope: Overdue & pending (past due) compliances for the selected company.`, margin, 124, { maxWidth: contentWidth })
+            doc.text('PREPARED FOR MANAGEMENT REVIEW', margin, footerBlockY, { maxWidth: contentWidth })
             doc.setFontSize(9)
-            doc.text('Prepared by: Finnovate', margin, 134, { maxWidth: contentWidth })
-            doc.text('Version: v1.0', margin, 141, { maxWidth: contentWidth })
-            doc.text('Contact: support@finnovate.ai', margin, 148, { maxWidth: contentWidth })
-            doc.text('Confidential — for internal use only.', margin, 158, { maxWidth: contentWidth })
+            doc.text(`Date: ${coverDate}`, margin, footerBlockY + 10, { maxWidth: contentWidth })
+            doc.text(`Scope: Overdue & pending (past due) compliances for the selected company.`, margin, footerBlockY + 20, { maxWidth: contentWidth })
+            doc.text('Confidential — for internal use only.', margin, footerBlockY + 32, { maxWidth: contentWidth })
+            doc.text(`Generated: ${coverDate}`, margin, footerBlockY + 44, { maxWidth: contentWidth })
               
             // Page break to main content
               doc.addPage()
@@ -2982,6 +3024,61 @@ export default function DataRoomPage() {
               doc.setFont('helvetica', 'bold')
               const penaltyText = `₹${totalPenalty.toLocaleString('en-IN')}`
               doc.text(penaltyText, margin, yPos, { maxWidth: contentWidth })
+            }
+
+            // Last page: QR + CTA (brand)
+            doc.addPage()
+            // White background
+            doc.setFillColor(255, 255, 255)
+            doc.rect(0, 0, pageWidth, pageHeight, 'F')
+
+            // Subtle diagonal accents (match cover)
+            doc.setLineCap(2)
+            doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2])
+            doc.setLineWidth(34)
+            doc.line(pageWidth * 0.55, pageHeight + 70, pageWidth + 60, pageHeight * 0.62)
+            doc.setDrawColor(210, 230, 255)
+            doc.setLineWidth(10)
+            doc.line(pageWidth * 0.58, pageHeight + 62, pageWidth + 52, pageHeight * 0.66)
+
+            // QR code
+            try {
+              const QRCode: any = await import('qrcode')
+              const qrUrl = 'https://www.finnovateai.com'
+              const qrDataUrl: string = await QRCode.toDataURL(qrUrl, {
+                margin: 1,
+                width: 260,
+                color: {
+                  dark: '#1E3A5F',
+                  light: '#FFFFFF',
+                },
+              })
+
+              const qrSize = 80
+              const qrX = (pageWidth - qrSize) / 2
+              const qrY = pageHeight / 2 - 55
+              doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize)
+
+              doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
+              doc.setFont('helvetica', 'bold')
+              doc.setFontSize(18)
+              doc.text('Try free trial now!', pageWidth / 2, qrY + qrSize + 18, { align: 'center' })
+
+              doc.setFont('helvetica', 'normal')
+              doc.setFontSize(10)
+              doc.setTextColor(textGray[0], textGray[1], textGray[2])
+              doc.text('Scan to visit', pageWidth / 2, qrY + qrSize + 32, { align: 'center' })
+              doc.text('www.finnovateai.com', pageWidth / 2, qrY + qrSize + 44, { align: 'center' })
+            } catch (qrErr) {
+              // Fallback if QR generation fails: show the URL + CTA text
+              doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
+              doc.setFont('helvetica', 'bold')
+              doc.setFontSize(18)
+              doc.text('Try free trial now!', pageWidth / 2, pageHeight / 2, { align: 'center' })
+              doc.setFont('helvetica', 'normal')
+              doc.setFontSize(10)
+              doc.setTextColor(textGray[0], textGray[1], textGray[2])
+              doc.text('www.finnovateai.com', pageWidth / 2, pageHeight / 2 + 14, { align: 'center' })
             }
 
             // Footer - Add to all pages with proper spacing
