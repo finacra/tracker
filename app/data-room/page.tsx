@@ -933,8 +933,8 @@ export default function DataRoomPage() {
     return months[new Date().getMonth()]
   }
 
-  const [selectedTrackerFY, setSelectedTrackerFY] = useState<string>(getCurrentFinancialYear())
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(getCurrentMonth())
+  const [selectedTrackerFY, setSelectedTrackerFY] = useState<string>('') // '' means "All Years"
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null) // null means "All Months"
   const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState(false)
   const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null)
   const [isQuarterDropdownOpen, setIsQuarterDropdownOpen] = useState(false)
@@ -5123,17 +5123,14 @@ export default function DataRoomPage() {
                   onChange={(e) => {
                     const newFY = e.target.value
                     setSelectedTrackerFY(newFY)
-                    // If changing to current FY, set current month; otherwise clear
-                    if (newFY === getCurrentFinancialYear()) {
-                      setSelectedMonth(getCurrentMonth())
-                    } else {
-                    setSelectedMonth(null)
-                    }
-                    setSelectedQuarter(null)
                   }}
-                  className="w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 border-gray-700 bg-primary-dark-card text-white text-sm sm:text-base hover:border-gray-600 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors appearance-none cursor-pointer"
+                  className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange appearance-none cursor-pointer ${
+                    selectedTrackerFY 
+                      ? 'border-primary-orange bg-primary-orange/20 text-white' 
+                      : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
+                  }`}
                 >
-                  <option value="">Select Financial Year</option>
+                  <option value="">All Years</option>
                   {financialYears.map((fy) => (
                     <option key={fy} value={fy}>
                       {fy}
@@ -5142,25 +5139,20 @@ export default function DataRoomPage() {
                 </select>
               </div>
 
-              {/* Monthly Dropdown - Only enabled if FY is selected */}
+              {/* Monthly Dropdown */}
               <div className="relative flex-1 sm:flex-initial">
                 <button
                   onClick={() => {
-                    if (selectedTrackerFY) {
-                      setIsMonthDropdownOpen(!isMonthDropdownOpen)
-                      setIsQuarterDropdownOpen(false)
-                    }
+                    setIsMonthDropdownOpen(!isMonthDropdownOpen)
+                    setIsQuarterDropdownOpen(false)
                   }}
-                  disabled={!selectedTrackerFY}
                   className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors flex items-center justify-between sm:justify-start gap-2 text-sm sm:text-base ${
                     selectedMonth
                       ? 'border-primary-orange bg-primary-orange/20 text-white'
-                      : selectedTrackerFY
-                      ? 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
-                      : 'border-gray-700 bg-primary-dark-card text-gray-500 cursor-not-allowed opacity-50'
+                      : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
                   }`}
                 >
-                  <span>Monthly</span>
+                  <span>{selectedMonth || 'All Months'}</span>
                   <svg
                     width="14"
                     height="14"
@@ -5175,13 +5167,28 @@ export default function DataRoomPage() {
                     <polyline points="6 9 12 15 18 9" />
                   </svg>
                 </button>
-                {isMonthDropdownOpen && selectedTrackerFY && (
+                {isMonthDropdownOpen && (
                   <>
                     <div
                       className="fixed inset-0 z-10"
                       onClick={() => setIsMonthDropdownOpen(false)}
                     />
                     <div className="absolute top-full left-0 mt-2 bg-gray-900 border border-gray-800 rounded-lg shadow-2xl z-20 min-w-[200px] max-h-64 overflow-y-auto">
+                      {/* All Months option */}
+                      <button
+                        onClick={() => {
+                          setSelectedMonth(null)
+                          setIsMonthDropdownOpen(false)
+                        }}
+                        className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${
+                          selectedMonth === null
+                            ? 'bg-primary-orange/20 text-white'
+                            : 'text-gray-300'
+                        }`}
+                      >
+                        All Months
+                      </button>
+                      <div className="border-t border-gray-800" />
                       {months.map((month) => (
                         <button
                           key={month}
@@ -5196,7 +5203,7 @@ export default function DataRoomPage() {
                               : 'text-gray-300'
                           }`}
                         >
-                          {month} {selectedTrackerFY ? selectedTrackerFY.split(' ')[1].split('-')[0] : ''}
+                          {month}
                         </button>
                       ))}
                     </div>
@@ -5204,25 +5211,20 @@ export default function DataRoomPage() {
                 )}
               </div>
 
-              {/* Quarters Dropdown - Only enabled if FY is selected */}
+              {/* Quarters Dropdown */}
               <div className="relative flex-1 sm:flex-initial">
                 <button
                   onClick={() => {
-                    if (selectedTrackerFY) {
-                      setIsQuarterDropdownOpen(!isQuarterDropdownOpen)
-                      setIsMonthDropdownOpen(false)
-                    }
+                    setIsQuarterDropdownOpen(!isQuarterDropdownOpen)
+                    setIsMonthDropdownOpen(false)
                   }}
-                  disabled={!selectedTrackerFY}
                   className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors flex items-center justify-between sm:justify-start gap-2 text-sm sm:text-base ${
                     selectedQuarter
                       ? 'border-primary-orange bg-primary-orange/20 text-white'
-                      : selectedTrackerFY
-                      ? 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
-                      : 'border-gray-700 bg-primary-dark-card text-gray-500 cursor-not-allowed opacity-50'
+                      : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
                   }`}
                 >
-                  <span>Quarters</span>
+                  <span>{selectedQuarter ? quarters.find(q => q.value === selectedQuarter)?.label.split(' - ')[0] : 'All Quarters'}</span>
                   <svg
                     width="14"
                     height="14"
@@ -5237,13 +5239,28 @@ export default function DataRoomPage() {
                     <polyline points="6 9 12 15 18 9" />
                   </svg>
                 </button>
-                {isQuarterDropdownOpen && selectedTrackerFY && (
+                {isQuarterDropdownOpen && (
                   <>
                     <div
                       className="fixed inset-0 z-10"
                       onClick={() => setIsQuarterDropdownOpen(false)}
                     />
                     <div className="absolute top-full left-0 mt-2 bg-gray-900 border border-gray-800 rounded-lg shadow-2xl z-20 min-w-[200px]">
+                      {/* All Quarters option */}
+                      <button
+                        onClick={() => {
+                          setSelectedQuarter(null)
+                          setIsQuarterDropdownOpen(false)
+                        }}
+                        className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${
+                          selectedQuarter === null
+                            ? 'bg-primary-orange/20 text-white'
+                            : 'text-gray-300'
+                        }`}
+                      >
+                        All Quarters
+                      </button>
+                      <div className="border-t border-gray-800" />
                       {quarters.map((quarter) => (
                         <button
                           key={quarter.value}
@@ -5258,7 +5275,7 @@ export default function DataRoomPage() {
                               : 'text-gray-300'
                           }`}
                         >
-                          {quarter.label} {selectedTrackerFY ? selectedTrackerFY.split(' ')[1].split('-')[0] : ''}
+                          {quarter.label}
                         </button>
                       ))}
                     </div>
@@ -5528,57 +5545,46 @@ export default function DataRoomPage() {
                     return 'Cannot calculate - Insufficient information'
                   }
                   
-                  // Filter by date (Monthly/Quarters based on selected FY)
+                  // Filter by date (Financial Year, Month, Quarter - all independent/loosely coupled)
                   let dateFilteredRequirements = displayRequirements
                   
-                  if (selectedTrackerFY) {
-                    // Extract year from FY (e.g., "FY 2019-20" -> 2019)
-                    const fyYear = parseInt(selectedTrackerFY.split(' ')[1].split('-')[0])
-                    
-                    if (selectedMonth) {
-                      const monthIndex = months.indexOf(selectedMonth)
-                      dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
-                        const reqMonth = getMonthFromDate(req.dueDate)
-                        const reqYear = parseInt(req.dueDate.split(', ')[1] || req.dueDate.split(' ')[2] || '2026')
-                        // For Indian FY: April (3) to March (2) spans two calendar years
-                        // Months Apr-Jun (3-5) are in fyYear, Jul-Sep (6-8) are in fyYear, Oct-Dec (9-11) are in fyYear
-                        // Months Jan-Mar (0-2) are in fyYear + 1
-                        let expectedYear = fyYear
-                        if (monthIndex >= 0 && monthIndex <= 2) {
-                          // Jan-Mar are in the next calendar year
-                          expectedYear = fyYear + 1
-                        }
-                        return reqMonth === monthIndex && reqYear === expectedYear
-                      })
-                    } else if (selectedQuarter) {
-                      dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
-                        const reqQuarter = getQuarterFromDate(req.dueDate)
-                        const reqYear = parseInt(req.dueDate.split(', ')[1] || req.dueDate.split(' ')[2] || '2026')
-                        // Q1 (Apr-Jun) = fyYear
-                        // Q2 (Jul-Sep) = fyYear
-                        // Q3 (Oct-Dec) = fyYear
-                        // Q4 (Jan-Mar) = fyYear + 1
-                        if (selectedQuarter === 'q4') {
-                          return reqQuarter === selectedQuarter && reqYear === fyYear + 1
-                        } else {
-                          return reqQuarter === selectedQuarter && reqYear === fyYear
-                        }
-                      })
+                  // Helper to check if date falls within a financial year
+                  const isInFinancialYear = (reqMonth: number, reqYear: number, fyYear: number) => {
+                    // FY spans from April (month 3) of fyYear to March (month 2) of fyYear + 1
+                    if (reqMonth >= 3) {
+                      // Apr-Dec are in fyYear
+                      return reqYear === fyYear
                     } else {
-                      // If FY is selected but no month/quarter, show all items for that FY
-                      dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
-                        const reqYear = parseInt(req.dueDate.split(', ')[1] || req.dueDate.split(' ')[2] || '2026')
-                        const reqMonth = getMonthFromDate(req.dueDate)
-                        // FY spans from April (month 3) of fyYear to March (month 2) of fyYear + 1
-                        if (reqMonth >= 3) {
-                          // Apr-Dec are in fyYear
-                          return reqYear === fyYear
-                        } else {
-                          // Jan-Mar are in fyYear + 1
-                          return reqYear === fyYear + 1
-                        }
-                      })
+                      // Jan-Mar are in fyYear + 1
+                      return reqYear === fyYear + 1
                     }
+                  }
+                  
+                  // Filter by Financial Year (if selected)
+                  if (selectedTrackerFY) {
+                    const fyYear = parseInt(selectedTrackerFY.split(' ')[1].split('-')[0])
+                    dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
+                      const reqYear = parseInt(req.dueDate.split(', ')[1] || req.dueDate.split(' ')[2] || '2026')
+                      const reqMonth = getMonthFromDate(req.dueDate)
+                      return isInFinancialYear(reqMonth, reqYear, fyYear)
+                    })
+                  }
+                  
+                  // Filter by Month (if selected) - works independently
+                  if (selectedMonth) {
+                    const monthIndex = months.indexOf(selectedMonth)
+                    dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
+                      const reqMonth = getMonthFromDate(req.dueDate)
+                      return reqMonth === monthIndex
+                    })
+                  }
+                  
+                  // Filter by Quarter (if selected) - works independently
+                  if (selectedQuarter) {
+                    dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
+                      const reqQuarter = getQuarterFromDate(req.dueDate)
+                      return reqQuarter === selectedQuarter
+                    })
                   }
                   
                   // Filter by status/category and additional filters
