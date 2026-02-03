@@ -38,11 +38,6 @@ export default function BulkUploadPage() {
   const [isInitialized, setIsInitialized] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-
-  // Multi-select helper (checkboxes -> comma-separated cell value)
-  const [activeMultiSelectColumn, setActiveMultiSelectColumn] = useState<'entity_types' | 'industries' | 'industry_categories' | null>(null)
-  const [multiSelectValues, setMultiSelectValues] = useState<string[]>([])
-  const [multiSelectTargetSummary, setMultiSelectTargetSummary] = useState<string>('Select a cell in Entity Types / Industries / Industry Categories to edit via checkboxes.')
   const containerRef = useRef<HTMLDivElement>(null)
   const initRef = useRef(false) // Prevent double initialization
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -161,66 +156,6 @@ export default function BulkUploadPage() {
     setCellErrors(errors)
   }, [dataToRows])
 
-  const MULTI_SELECT_COLUMNS = ['entity_types', 'industries', 'industry_categories'] as const
-
-  const isMultiSelectColumn = (col: string | null): col is typeof MULTI_SELECT_COLUMNS[number] => {
-    return Boolean(col && (MULTI_SELECT_COLUMNS as readonly string[]).includes(col))
-  }
-
-  const getOptionsForColumn = (column: typeof MULTI_SELECT_COLUMNS[number]): readonly string[] => {
-    switch (column) {
-      case 'entity_types':
-        return ENTITY_TYPES
-      case 'industries':
-        return INDUSTRIES
-      case 'industry_categories':
-        return INDUSTRY_CATEGORIES
-    }
-  }
-
-  const parseCommaList = (value: string): string[] => {
-    if (!value) return []
-    return value
-      .split(',')
-      .map(v => v.trim())
-      .filter(Boolean)
-  }
-
-  const formatCommaList = (values: string[]): string => {
-    return values.join(', ')
-  }
-
-  const applyMultiSelectToSelection = useCallback((column: typeof MULTI_SELECT_COLUMNS[number], values: string[]) => {
-    if (!hotInstance) return
-
-    const selectedRanges = hotInstance.getSelected?.() as Array<[number, number, number, number]> | null
-    if (!selectedRanges || selectedRanges.length === 0) return
-
-    const columnIndex = CSV_COLUMNS.indexOf(column as any)
-    if (columnIndex < 0) return
-
-    const nextValue = formatCommaList(values)
-
-    // Apply only to cells in the target column (so selecting a rectangle won't overwrite other columns)
-    selectedRanges.forEach(([r1, c1, r2, c2]) => {
-      const rowStart = Math.min(r1, r2)
-      const rowEnd = Math.max(r1, r2)
-      const colStart = Math.min(c1, c2)
-      const colEnd = Math.max(c1, c2)
-
-      if (columnIndex < colStart || columnIndex > colEnd) return
-
-      for (let r = rowStart; r <= rowEnd; r++) {
-        hotInstance.setDataAtCell(r, columnIndex, nextValue, 'checkbox-multiselect')
-      }
-    })
-
-    const newData = hotInstance.getData() as string[][]
-    setData(newData)
-    autoSave(newData)
-    runValidation(newData)
-  }, [hotInstance, autoSave, runValidation])
-
   // Initialize Handsontable on client side only
   useEffect(() => {
     console.log('[BulkUpload] useEffect starting...', 'user:', user?.id)
@@ -308,22 +243,286 @@ export default function BulkUploadPage() {
         }
       }
 
+      // =====================================================
+      // Custom multi-select checkbox editor (dropdown-style)
+      // - Supports All + Clear + Search
+      // - Saves as comma-separated text
+      // =====================================================
+      const parseCommaList = (value: string): string[] =>
+        (value || '')
+          .split(',')
+          .map(v => v.trim())
+          .filter(Boolean)
+
+      const formatCommaList = (values: string[], optionsOrder: string[]): string => {
+        const set = new Set(values)
+        const ordered = optionsOrder.filter(o => set.has(o))
+        return ordered.join(', ')
+      }
+
+      class MultiCheckboxEditor extends (Handsontable as any).editors.BaseEditor {
+        container: HTMLDivElement | null = null
+        searchInput: HTMLInputElement | null = null
+        listEl: HTMLDivElement | null = null
+        applyBtn: HTMLButtonElement | null = null
+        cancelBtn: HTMLButtonElement | null = null
+        allBtn: HTMLButtonElement | null = null
+        clearBtn: HTMLButtonElement | null = null
+        options: string[] = []
+        selected: Set<string> = new Set()
+        lastCommittedValue: string = ''
+        cleanupFns: Array<() => void> = []
+
+        init() {
+          this.container = document.createElement('div')
+          this.container.style.position = 'fixed'
+          this.container.style.zIndex = '9999'
+          this.container.style.minWidth = '380px'
+          this.container.style.maxWidth = '560px'
+          this.container.style.maxHeight = '380px'
+          this.container.style.overflow = 'hidden'
+          this.container.style.background = '#fff'
+          this.container.style.border = '1px solid #d4d4d4'
+          this.container.style.borderRadius = '10px'
+          this.container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.18)'
+          this.container.style.display = 'none'
+          this.container.style.fontFamily = 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif'
+
+          const header = document.createElement('div')
+          header.style.display = 'flex'
+          header.style.alignItems = 'center'
+          header.style.gap = '8px'
+          header.style.padding = '10px'
+          header.style.borderBottom = '1px solid #eee'
+
+          this.searchInput = document.createElement('input')
+          this.searchInput.type = 'text'
+          this.searchInput.placeholder = 'Search...'
+          this.searchInput.style.flex = '1'
+          this.searchInput.style.padding = '8px 10px'
+          this.searchInput.style.fontSize = '12px'
+          this.searchInput.style.border = '1px solid #d4d4d4'
+          this.searchInput.style.borderRadius = '8px'
+          this.searchInput.style.outline = 'none'
+
+          this.allBtn = document.createElement('button')
+          this.allBtn.type = 'button'
+          this.allBtn.textContent = 'Select All'
+          this.allBtn.style.padding = '8px 10px'
+          this.allBtn.style.fontSize = '12px'
+          this.allBtn.style.borderRadius = '8px'
+          this.allBtn.style.border = '1px solid #0078d4'
+          this.allBtn.style.background = '#e5f3ff'
+          this.allBtn.style.color = '#0078d4'
+          this.allBtn.style.cursor = 'pointer'
+
+          this.clearBtn = document.createElement('button')
+          this.clearBtn.type = 'button'
+          this.clearBtn.textContent = 'Clear'
+          this.clearBtn.style.padding = '8px 10px'
+          this.clearBtn.style.fontSize = '12px'
+          this.clearBtn.style.borderRadius = '8px'
+          this.clearBtn.style.border = '1px solid #d4d4d4'
+          this.clearBtn.style.background = '#fff'
+          this.clearBtn.style.color = '#333'
+          this.clearBtn.style.cursor = 'pointer'
+
+          header.appendChild(this.searchInput)
+          header.appendChild(this.allBtn)
+          header.appendChild(this.clearBtn)
+
+          this.listEl = document.createElement('div')
+          this.listEl.style.padding = '10px'
+          this.listEl.style.overflow = 'auto'
+          this.listEl.style.maxHeight = '260px'
+          this.listEl.style.display = 'grid'
+          this.listEl.style.gridTemplateColumns = '1fr 1fr'
+          this.listEl.style.gap = '8px'
+
+          const footer = document.createElement('div')
+          footer.style.display = 'flex'
+          footer.style.justifyContent = 'flex-end'
+          footer.style.gap = '8px'
+          footer.style.padding = '10px'
+          footer.style.borderTop = '1px solid #eee'
+
+          this.cancelBtn = document.createElement('button')
+          this.cancelBtn.type = 'button'
+          this.cancelBtn.textContent = 'Cancel'
+          this.cancelBtn.style.padding = '8px 12px'
+          this.cancelBtn.style.fontSize = '12px'
+          this.cancelBtn.style.borderRadius = '8px'
+          this.cancelBtn.style.border = '1px solid #d4d4d4'
+          this.cancelBtn.style.background = '#fff'
+          this.cancelBtn.style.cursor = 'pointer'
+
+          this.applyBtn = document.createElement('button')
+          this.applyBtn.type = 'button'
+          this.applyBtn.textContent = 'Apply'
+          this.applyBtn.style.padding = '8px 12px'
+          this.applyBtn.style.fontSize = '12px'
+          this.applyBtn.style.borderRadius = '8px'
+          this.applyBtn.style.border = '1px solid #217346'
+          this.applyBtn.style.background = '#e8f5e9'
+          this.applyBtn.style.color = '#155724'
+          this.applyBtn.style.cursor = 'pointer'
+
+          footer.appendChild(this.cancelBtn)
+          footer.appendChild(this.applyBtn)
+
+          this.container.appendChild(header)
+          this.container.appendChild(this.listEl)
+          this.container.appendChild(footer)
+          document.body.appendChild(this.container)
+        }
+
+        prepare(row: number, col: number, prop: any, td: HTMLElement, originalValue: any, cellProperties: any) {
+          super.prepare(row, col, prop, td, originalValue, cellProperties)
+          this.options = Array.isArray(cellProperties?.multiSelectOptions) ? cellProperties.multiSelectOptions : []
+          const current = parseCommaList(String(originalValue || ''))
+          this.selected = new Set(current.filter(v => this.options.includes(v)))
+          this.lastCommittedValue = String(originalValue || '')
+        }
+
+        getValue() {
+          return formatCommaList(Array.from(this.selected), this.options)
+        }
+
+        setValue(newValue: any) {
+          const current = parseCommaList(String(newValue || ''))
+          this.selected = new Set(current.filter(v => this.options.includes(v)))
+        }
+
+        open() {
+          if (!this.container || !this.listEl || !this.searchInput || !this.applyBtn || !this.cancelBtn || !this.allBtn || !this.clearBtn) return
+
+          const tdRect = (this.TD as any)?.getBoundingClientRect?.()
+          const viewportW = window.innerWidth
+          const viewportH = window.innerHeight
+          const width = 520
+          const left = Math.min(viewportW - width - 12, Math.max(12, (tdRect?.left ?? 12)))
+          const top = Math.min(viewportH - 380 - 12, Math.max(12, (tdRect?.bottom ?? 12) + 6))
+
+          this.container.style.left = `${left}px`
+          this.container.style.top = `${top}px`
+          this.container.style.display = 'block'
+
+          const render = () => {
+            const q = (this.searchInput!.value || '').toLowerCase().trim()
+            const filtered = q ? this.options.filter(o => o.toLowerCase().includes(q)) : this.options
+            this.listEl!.innerHTML = ''
+
+            filtered.forEach((opt) => {
+              const checked = this.selected.has(opt)
+              const item = document.createElement('label')
+              item.style.display = 'flex'
+              item.style.alignItems = 'center'
+              item.style.gap = '8px'
+              item.style.padding = '8px 10px'
+              item.style.border = '1px solid #d4d4d4'
+              item.style.borderRadius = '8px'
+              item.style.background = checked ? '#e8f5e9' : '#fff'
+              item.style.cursor = 'pointer'
+
+              const cb = document.createElement('input')
+              cb.type = 'checkbox'
+              cb.checked = checked
+              cb.style.width = '16px'
+              cb.style.height = '16px'
+
+              const text = document.createElement('span')
+              text.textContent = opt
+              text.style.fontSize = '12px'
+              text.style.color = '#333'
+              text.style.whiteSpace = 'nowrap'
+              text.style.overflow = 'hidden'
+              text.style.textOverflow = 'ellipsis'
+
+              item.appendChild(cb)
+              item.appendChild(text)
+
+              const toggle = (next: boolean) => {
+                if (next) this.selected.add(opt)
+                else this.selected.delete(opt)
+                render()
+              }
+
+              item.addEventListener('click', (e) => {
+                if ((e.target as any)?.tagName?.toLowerCase?.() === 'input') return
+                toggle(!checked)
+              })
+              cb.addEventListener('change', (e) => toggle((e.target as HTMLInputElement).checked))
+
+              this.listEl!.appendChild(item)
+            })
+          }
+
+          const onSearch = () => render()
+          const onSelectAll = () => { this.options.forEach(o => this.selected.add(o)); render() }
+          const onClear = () => { this.selected.clear(); render() }
+          const onApply = () => { this.finishEditing(false) }
+          const onCancel = () => { this.setValue(this.lastCommittedValue); this.finishEditing(true) }
+
+          this.searchInput.addEventListener('input', onSearch)
+          this.allBtn.addEventListener('click', onSelectAll)
+          this.clearBtn.addEventListener('click', onClear)
+          this.applyBtn.addEventListener('click', onApply)
+          this.cancelBtn.addEventListener('click', onCancel)
+
+          const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') { e.preventDefault(); onCancel() }
+            if (e.key === 'Enter') { e.preventDefault(); onApply() }
+          }
+          document.addEventListener('keydown', onKeyDown, true)
+
+          const onOutsidePointer = (e: MouseEvent) => {
+            if (!this.container) return
+            if (this.container.contains(e.target as Node)) return
+            onCancel()
+          }
+          document.addEventListener('mousedown', onOutsidePointer, true)
+
+          this.cleanupFns.push(() => this.searchInput?.removeEventListener('input', onSearch))
+          this.cleanupFns.push(() => this.allBtn?.removeEventListener('click', onSelectAll))
+          this.cleanupFns.push(() => this.clearBtn?.removeEventListener('click', onClear))
+          this.cleanupFns.push(() => this.applyBtn?.removeEventListener('click', onApply))
+          this.cleanupFns.push(() => this.cancelBtn?.removeEventListener('click', onCancel))
+          this.cleanupFns.push(() => document.removeEventListener('keydown', onKeyDown, true))
+          this.cleanupFns.push(() => document.removeEventListener('mousedown', onOutsidePointer, true))
+
+          render()
+          setTimeout(() => this.searchInput?.focus(), 0)
+        }
+
+        close() {
+          if (this.container) this.container.style.display = 'none'
+          this.cleanupFns.forEach(fn => fn())
+          this.cleanupFns = []
+        }
+
+        focus() {
+          this.searchInput?.focus()
+        }
+      }
+
       // Column configurations
       const columns = CSV_COLUMNS.map((col, idx) => {
         const base: any = { data: idx }
         
         const dropdownColumns = ['category', 'compliance_type', 'penalty_type', 'is_critical', 'is_active']
-        const autocompleteColumns = ['entity_types', 'industries', 'industry_categories']
+        const multiSelectColumns = ['entity_types', 'industries', 'industry_categories']
         const numericColumns = ['due_date_offset', 'due_month', 'due_day', 'penalty_rate', 'penalty_cap']
         
         if (dropdownColumns.includes(col)) {
           base.type = 'dropdown'
           base.source = getDropdownSource(col)
           base.strict = col === 'category' || col === 'compliance_type'
-        } else if (autocompleteColumns.includes(col)) {
-          base.type = 'autocomplete'
-          base.source = getDropdownSource(col)
+        } else if (multiSelectColumns.includes(col)) {
+          base.type = 'text'
+          base.editor = MultiCheckboxEditor
           base.strict = false
+          base.className = 'htAutocomplete'
+          base.multiSelectOptions = getDropdownSource(col) || []
         } else if (numericColumns.includes(col)) {
           base.type = 'numeric'
         } else if (col === 'due_date') {
@@ -364,23 +563,20 @@ export default function BulkUploadPage() {
           if (col === 'entity_types' || col === 'industries' || col === 'industry_categories') return 180
           return 120
         }),
-        afterSelectionEnd: (row, col) => {
-          const colName = getColumnName(col)
-          if (!colName || !isMultiSelectColumn(colName)) {
-            setActiveMultiSelectColumn(null)
-            setMultiSelectValues([])
-            setMultiSelectTargetSummary('Select a cell in Entity Types / Industries / Industry Categories to edit via checkboxes.')
-            return
+        afterOnCellMouseDown: (event, coords, td) => {
+          // Open multi-select editor when user clicks the "dropdown arrow area" at the right side of the cell
+          const colName = getColumnName(coords.col)
+          if (!colName) return
+          if (!['entity_types', 'industries', 'industry_categories'].includes(colName)) return
+          if (!td) return
+          const rect = (td as HTMLElement).getBoundingClientRect()
+          if ((event as MouseEvent).clientX > rect.right - 26) {
+            setTimeout(() => {
+              hot.selectCell(coords.row, coords.col)
+              const editor = hot.getActiveEditor()
+              editor?.beginEditing()
+            }, 0)
           }
-
-          const cellValue = hot.getDataAtCell(row, col) as string
-          const parsed = parseCommaList(cellValue || '')
-          const allowed = new Set(getOptionsForColumn(colName))
-          const normalized = parsed.filter(v => allowed.has(v))
-
-          setActiveMultiSelectColumn(colName)
-          setMultiSelectValues(normalized)
-          setMultiSelectTargetSummary(`Editing: ${CSV_COLUMN_HEADERS[colName]} (Row ${row + 1})`)
         },
         afterChange: (changes, source) => {
           if (!changes) return
@@ -761,93 +957,8 @@ export default function BulkUploadPage() {
         </span>
       </div>
 
-      {/* Multi-select helper: checkbox options -> comma-separated cell value */}
-      <div className="bg-white border-b border-[#d4d4d4] px-4 py-2">
-        <div className="flex flex-col xl:flex-row xl:items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-semibold text-[#333] truncate">{multiSelectTargetSummary}</div>
-            <div className="text-[11px] text-[#666] mt-0.5">
-              This applies to the spreadsheet columns <span className="font-semibold">entity_types</span>, <span className="font-semibold">industries</span>, <span className="font-semibold">industry_categories</span>.
-              Values are stored as <span className="font-semibold">comma-separated</span> text (e.g., <span className="font-mono">A, B, C</span>).
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => {
-                if (!activeMultiSelectColumn) return
-                const all = Array.from(getOptionsForColumn(activeMultiSelectColumn))
-                setMultiSelectValues(all)
-                applyMultiSelectToSelection(activeMultiSelectColumn, all)
-              }}
-              disabled={!activeMultiSelectColumn}
-              className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${
-                activeMultiSelectColumn
-                  ? 'bg-[#e5f3ff] border-[#0078d4] text-[#0078d4] hover:bg-[#d7ecff]'
-                  : 'bg-[#f5f5f5] border-[#d4d4d4] text-[#999] cursor-not-allowed'
-              }`}
-              title="Select all options and write them into the selected cells as comma-separated text"
-            >
-              Select All
-            </button>
-            <button
-              onClick={() => {
-                if (!activeMultiSelectColumn) return
-                setMultiSelectValues([])
-                applyMultiSelectToSelection(activeMultiSelectColumn, [])
-              }}
-              disabled={!activeMultiSelectColumn}
-              className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${
-                activeMultiSelectColumn
-                  ? 'bg-white border-[#d4d4d4] text-[#333] hover:bg-[#f5f5f5]'
-                  : 'bg-[#f5f5f5] border-[#d4d4d4] text-[#999] cursor-not-allowed'
-              }`}
-              title="Clear the comma-separated list in the selected cells"
-            >
-              Clear
-            </button>
-            <span className="text-[11px] text-[#666]">
-              {activeMultiSelectColumn ? `${multiSelectValues.length} selected` : 'Select a multi-select cell to enable'}
-            </span>
-          </div>
-        </div>
-
-        {activeMultiSelectColumn && (
-          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
-            {Array.from(getOptionsForColumn(activeMultiSelectColumn)).map((opt) => {
-              const checked = multiSelectValues.includes(opt)
-              return (
-                <label
-                  key={opt}
-                  className={`flex items-center gap-2 px-3 py-2 rounded border text-xs cursor-pointer transition-colors ${
-                    checked
-                      ? 'bg-[#e8f5e9] border-[#28a745] text-[#155724]'
-                      : 'bg-[#fafafa] border-[#d4d4d4] text-[#333] hover:bg-[#f5f5f5]'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(e) => {
-                      if (!activeMultiSelectColumn) return
-                      const next = e.target.checked
-                        ? Array.from(new Set([...multiSelectValues, opt]))
-                        : multiSelectValues.filter(v => v !== opt)
-                      setMultiSelectValues(next)
-                      applyMultiSelectToSelection(activeMultiSelectColumn, next)
-                    }}
-                    className="w-4 h-4"
-                  />
-                  <span className="truncate">{opt}</span>
-                </label>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
       {/* Spreadsheet Container */}
-      <div className="flex-1 relative bg-white border border-[#d4d4d4]" style={{ minHeight: 'calc(100vh - 180px)' }}>
+      <div className="flex-1 relative bg-white border border-[#d4d4d4]" style={{ minHeight: 'calc(100vh - 120px)' }}>
         <div 
           ref={containerRef} 
           className="absolute inset-0"
