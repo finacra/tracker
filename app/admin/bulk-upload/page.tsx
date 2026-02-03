@@ -26,6 +26,30 @@ import { bulkCreateComplianceTemplates } from '@/app/data-room/actions'
 
 const STORAGE_KEY_PREFIX = 'bulk_upload_spreadsheet_data'
 
+// Multi-select column names
+const MULTI_SELECT_COLUMNS = ['entity_types', 'industries', 'industry_categories'] as const
+
+// Get options for a multi-select column
+function getMultiSelectOptions(colName: string): string[] {
+  switch (colName) {
+    case 'entity_types': return [...ENTITY_TYPES]
+    case 'industries': return [...INDUSTRIES]
+    case 'industry_categories': return [...INDUSTRY_CATEGORIES]
+    default: return []
+  }
+}
+
+// Parse comma-separated string to array
+function parseCommaList(value: string): string[] {
+  return (value || '').split(',').map(v => v.trim()).filter(Boolean)
+}
+
+// Format array to comma-separated string (preserving option order)
+function formatCommaList(values: string[], optionsOrder: string[]): string {
+  const set = new Set(values)
+  return optionsOrder.filter(o => set.has(o)).join(', ')
+}
+
 export default function BulkUploadPage() {
   const router = useRouter()
   const { user } = useAuth()
@@ -41,6 +65,15 @@ export default function BulkUploadPage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const initRef = useRef(false) // Prevent double initialization
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Multi-select dropdown state (entity_types, industries, industry_categories)
+  const [msOpen, setMsOpen] = useState(false)
+  const [msCell, setMsCell] = useState<{ row: number; col: number; colName: string } | null>(null)
+  const [msOptions, setMsOptions] = useState<string[]>([])
+  const [msSelected, setMsSelected] = useState<Set<string>>(new Set())
+  const [msSearch, setMsSearch] = useState('')
+  const [msPosition, setMsPosition] = useState({ top: 100, left: 100 })
+  const msRef = useRef<HTMLDivElement>(null)
 
   // Get user-specific storage key
   const getStorageKey = useCallback(() => {
@@ -117,6 +150,74 @@ export default function BulkUploadPage() {
       console.error('[AutoSave] Failed to clear localStorage:', error)
     }
   }, [user?.id, getStorageKey])
+
+  // Open multi-select dropdown for a cell
+  const openMultiSelect = useCallback((row: number, col: number, colName: string, cellElement: HTMLElement) => {
+    const options = getMultiSelectOptions(colName)
+    if (options.length === 0) return
+    
+    // Get current cell value
+    const currentValue = hotInstance?.getDataAtCell(row, col) || ''
+    const selectedValues = parseCommaList(currentValue)
+    
+    // Position near the cell
+    const rect = cellElement.getBoundingClientRect()
+    const viewportW = window.innerWidth
+    const viewportH = window.innerHeight
+    const dropdownW = 420
+    const dropdownH = 380
+    
+    let left = rect.left
+    let top = rect.bottom + 4
+    
+    // Keep within viewport
+    if (left + dropdownW > viewportW - 12) left = viewportW - dropdownW - 12
+    if (left < 12) left = 12
+    if (top + dropdownH > viewportH - 12) top = rect.top - dropdownH - 4
+    if (top < 12) top = 12
+    
+    setMsCell({ row, col, colName })
+    setMsOptions(options)
+    setMsSelected(new Set(selectedValues.filter(v => options.includes(v))))
+    setMsSearch('')
+    setMsPosition({ top, left })
+    setMsOpen(true)
+  }, [hotInstance])
+
+  // Apply multi-select selection to the cell
+  const applyMultiSelect = useCallback(() => {
+    if (!msCell || !hotInstance) return
+    const value = formatCommaList(Array.from(msSelected), msOptions)
+    hotInstance.setDataAtCell(msCell.row, msCell.col, value)
+    setMsOpen(false)
+    setMsCell(null)
+  }, [msCell, msSelected, msOptions, hotInstance])
+
+  // Cancel multi-select
+  const cancelMultiSelect = useCallback(() => {
+    setMsOpen(false)
+    setMsCell(null)
+  }, [])
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!msOpen) return
+    const handleClick = (e: MouseEvent) => {
+      if (msRef.current && !msRef.current.contains(e.target as Node)) {
+        cancelMultiSelect()
+      }
+    }
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') cancelMultiSelect()
+      if (e.key === 'Enter') applyMultiSelect()
+    }
+    document.addEventListener('mousedown', handleClick)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [msOpen, cancelMultiSelect, applyMultiSelect])
 
   // Debounced auto-save
   const autoSave = useCallback((tableData: string[][]) => {
@@ -243,268 +344,6 @@ export default function BulkUploadPage() {
         }
       }
 
-      // =====================================================
-      // Custom multi-select checkbox editor (dropdown-style)
-      // - Supports All + Clear + Search
-      // - Saves as comma-separated text
-      // =====================================================
-      const parseCommaList = (value: string): string[] =>
-        (value || '')
-          .split(',')
-          .map(v => v.trim())
-          .filter(Boolean)
-
-      const formatCommaList = (values: string[], optionsOrder: string[]): string => {
-        const set = new Set(values)
-        const ordered = optionsOrder.filter(o => set.has(o))
-        return ordered.join(', ')
-      }
-
-      class MultiCheckboxEditor extends (Handsontable as any).editors.BaseEditor {
-        container: HTMLDivElement | null = null
-        searchInput: HTMLInputElement | null = null
-        listEl: HTMLDivElement | null = null
-        applyBtn: HTMLButtonElement | null = null
-        cancelBtn: HTMLButtonElement | null = null
-        allBtn: HTMLButtonElement | null = null
-        clearBtn: HTMLButtonElement | null = null
-        options: string[] = []
-        selected: Set<string> = new Set()
-        lastCommittedValue: string = ''
-        cleanupFns: Array<() => void> = []
-
-        init() {
-          this.container = document.createElement('div')
-          this.container.style.position = 'fixed'
-          this.container.style.zIndex = '9999'
-          this.container.style.minWidth = '380px'
-          this.container.style.maxWidth = '560px'
-          this.container.style.maxHeight = '380px'
-          this.container.style.overflow = 'hidden'
-          this.container.style.background = '#fff'
-          this.container.style.border = '1px solid #d4d4d4'
-          this.container.style.borderRadius = '10px'
-          this.container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.18)'
-          this.container.style.display = 'none'
-          this.container.style.fontFamily = 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif'
-
-          const header = document.createElement('div')
-          header.style.display = 'flex'
-          header.style.alignItems = 'center'
-          header.style.gap = '8px'
-          header.style.padding = '10px'
-          header.style.borderBottom = '1px solid #eee'
-
-          this.searchInput = document.createElement('input')
-          this.searchInput.type = 'text'
-          this.searchInput.placeholder = 'Search...'
-          this.searchInput.style.flex = '1'
-          this.searchInput.style.padding = '8px 10px'
-          this.searchInput.style.fontSize = '12px'
-          this.searchInput.style.border = '1px solid #d4d4d4'
-          this.searchInput.style.borderRadius = '8px'
-          this.searchInput.style.outline = 'none'
-
-          this.allBtn = document.createElement('button')
-          this.allBtn.type = 'button'
-          this.allBtn.textContent = 'Select All'
-          this.allBtn.style.padding = '8px 10px'
-          this.allBtn.style.fontSize = '12px'
-          this.allBtn.style.borderRadius = '8px'
-          this.allBtn.style.border = '1px solid #0078d4'
-          this.allBtn.style.background = '#e5f3ff'
-          this.allBtn.style.color = '#0078d4'
-          this.allBtn.style.cursor = 'pointer'
-
-          this.clearBtn = document.createElement('button')
-          this.clearBtn.type = 'button'
-          this.clearBtn.textContent = 'Clear'
-          this.clearBtn.style.padding = '8px 10px'
-          this.clearBtn.style.fontSize = '12px'
-          this.clearBtn.style.borderRadius = '8px'
-          this.clearBtn.style.border = '1px solid #d4d4d4'
-          this.clearBtn.style.background = '#fff'
-          this.clearBtn.style.color = '#333'
-          this.clearBtn.style.cursor = 'pointer'
-
-          header.appendChild(this.searchInput)
-          header.appendChild(this.allBtn)
-          header.appendChild(this.clearBtn)
-
-          this.listEl = document.createElement('div')
-          this.listEl.style.padding = '10px'
-          this.listEl.style.overflow = 'auto'
-          this.listEl.style.maxHeight = '260px'
-          this.listEl.style.display = 'grid'
-          this.listEl.style.gridTemplateColumns = '1fr 1fr'
-          this.listEl.style.gap = '8px'
-
-          const footer = document.createElement('div')
-          footer.style.display = 'flex'
-          footer.style.justifyContent = 'flex-end'
-          footer.style.gap = '8px'
-          footer.style.padding = '10px'
-          footer.style.borderTop = '1px solid #eee'
-
-          this.cancelBtn = document.createElement('button')
-          this.cancelBtn.type = 'button'
-          this.cancelBtn.textContent = 'Cancel'
-          this.cancelBtn.style.padding = '8px 12px'
-          this.cancelBtn.style.fontSize = '12px'
-          this.cancelBtn.style.borderRadius = '8px'
-          this.cancelBtn.style.border = '1px solid #d4d4d4'
-          this.cancelBtn.style.background = '#fff'
-          this.cancelBtn.style.cursor = 'pointer'
-
-          this.applyBtn = document.createElement('button')
-          this.applyBtn.type = 'button'
-          this.applyBtn.textContent = 'Apply'
-          this.applyBtn.style.padding = '8px 12px'
-          this.applyBtn.style.fontSize = '12px'
-          this.applyBtn.style.borderRadius = '8px'
-          this.applyBtn.style.border = '1px solid #217346'
-          this.applyBtn.style.background = '#e8f5e9'
-          this.applyBtn.style.color = '#155724'
-          this.applyBtn.style.cursor = 'pointer'
-
-          footer.appendChild(this.cancelBtn)
-          footer.appendChild(this.applyBtn)
-
-          this.container.appendChild(header)
-          this.container.appendChild(this.listEl)
-          this.container.appendChild(footer)
-          document.body.appendChild(this.container)
-        }
-
-        prepare(row: number, col: number, prop: any, td: HTMLElement, originalValue: any, cellProperties: any) {
-          super.prepare(row, col, prop, td, originalValue, cellProperties)
-          this.options = Array.isArray(cellProperties?.multiSelectOptions) ? cellProperties.multiSelectOptions : []
-          const current = parseCommaList(String(originalValue || ''))
-          this.selected = new Set(current.filter(v => this.options.includes(v)))
-          this.lastCommittedValue = String(originalValue || '')
-        }
-
-        getValue() {
-          return formatCommaList(Array.from(this.selected), this.options)
-        }
-
-        setValue(newValue: any) {
-          const current = parseCommaList(String(newValue || ''))
-          this.selected = new Set(current.filter(v => this.options.includes(v)))
-        }
-
-        open() {
-          if (!this.container || !this.listEl || !this.searchInput || !this.applyBtn || !this.cancelBtn || !this.allBtn || !this.clearBtn) return
-
-          const tdRect = (this.TD as any)?.getBoundingClientRect?.()
-          const viewportW = window.innerWidth
-          const viewportH = window.innerHeight
-          const width = 520
-          const left = Math.min(viewportW - width - 12, Math.max(12, (tdRect?.left ?? 12)))
-          const top = Math.min(viewportH - 380 - 12, Math.max(12, (tdRect?.bottom ?? 12) + 6))
-
-          this.container.style.left = `${left}px`
-          this.container.style.top = `${top}px`
-          this.container.style.display = 'block'
-
-          const render = () => {
-            const q = (this.searchInput!.value || '').toLowerCase().trim()
-            const filtered = q ? this.options.filter(o => o.toLowerCase().includes(q)) : this.options
-            this.listEl!.innerHTML = ''
-
-            filtered.forEach((opt) => {
-              const checked = this.selected.has(opt)
-              const item = document.createElement('label')
-              item.style.display = 'flex'
-              item.style.alignItems = 'center'
-              item.style.gap = '8px'
-              item.style.padding = '8px 10px'
-              item.style.border = '1px solid #d4d4d4'
-              item.style.borderRadius = '8px'
-              item.style.background = checked ? '#e8f5e9' : '#fff'
-              item.style.cursor = 'pointer'
-
-              const cb = document.createElement('input')
-              cb.type = 'checkbox'
-              cb.checked = checked
-              cb.style.width = '16px'
-              cb.style.height = '16px'
-
-              const text = document.createElement('span')
-              text.textContent = opt
-              text.style.fontSize = '12px'
-              text.style.color = '#333'
-              text.style.whiteSpace = 'nowrap'
-              text.style.overflow = 'hidden'
-              text.style.textOverflow = 'ellipsis'
-
-              item.appendChild(cb)
-              item.appendChild(text)
-
-              const toggle = (next: boolean) => {
-                if (next) this.selected.add(opt)
-                else this.selected.delete(opt)
-                render()
-              }
-
-              item.addEventListener('click', (e) => {
-                if ((e.target as any)?.tagName?.toLowerCase?.() === 'input') return
-                toggle(!checked)
-              })
-              cb.addEventListener('change', (e) => toggle((e.target as HTMLInputElement).checked))
-
-              this.listEl!.appendChild(item)
-            })
-          }
-
-          const onSearch = () => render()
-          const onSelectAll = () => { this.options.forEach(o => this.selected.add(o)); render() }
-          const onClear = () => { this.selected.clear(); render() }
-          const onApply = () => { this.finishEditing(false) }
-          const onCancel = () => { this.setValue(this.lastCommittedValue); this.finishEditing(true) }
-
-          this.searchInput.addEventListener('input', onSearch)
-          this.allBtn.addEventListener('click', onSelectAll)
-          this.clearBtn.addEventListener('click', onClear)
-          this.applyBtn.addEventListener('click', onApply)
-          this.cancelBtn.addEventListener('click', onCancel)
-
-          const onKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') { e.preventDefault(); onCancel() }
-            if (e.key === 'Enter') { e.preventDefault(); onApply() }
-          }
-          document.addEventListener('keydown', onKeyDown, true)
-
-          const onOutsidePointer = (e: MouseEvent) => {
-            if (!this.container) return
-            if (this.container.contains(e.target as Node)) return
-            onCancel()
-          }
-          document.addEventListener('mousedown', onOutsidePointer, true)
-
-          this.cleanupFns.push(() => this.searchInput?.removeEventListener('input', onSearch))
-          this.cleanupFns.push(() => this.allBtn?.removeEventListener('click', onSelectAll))
-          this.cleanupFns.push(() => this.clearBtn?.removeEventListener('click', onClear))
-          this.cleanupFns.push(() => this.applyBtn?.removeEventListener('click', onApply))
-          this.cleanupFns.push(() => this.cancelBtn?.removeEventListener('click', onCancel))
-          this.cleanupFns.push(() => document.removeEventListener('keydown', onKeyDown, true))
-          this.cleanupFns.push(() => document.removeEventListener('mousedown', onOutsidePointer, true))
-
-          render()
-          setTimeout(() => this.searchInput?.focus(), 0)
-        }
-
-        close() {
-          if (this.container) this.container.style.display = 'none'
-          this.cleanupFns.forEach(fn => fn())
-          this.cleanupFns = []
-        }
-
-        focus() {
-          this.searchInput?.focus()
-        }
-      }
-
       // Column configurations
       const columns = CSV_COLUMNS.map((col, idx) => {
         const base: any = { data: idx }
@@ -518,11 +357,11 @@ export default function BulkUploadPage() {
           base.source = getDropdownSource(col)
           base.strict = col === 'category' || col === 'compliance_type'
         } else if (multiSelectColumns.includes(col)) {
+          // Multi-select columns: text display with dropdown arrow indicator
+          // Editing is handled by our React dropdown (via afterOnCellMouseDown)
           base.type = 'text'
-          base.editor = MultiCheckboxEditor
-          base.strict = false
-          base.className = 'htAutocomplete'
-          base.multiSelectOptions = getDropdownSource(col) || []
+          base.readOnly = true  // Prevent default text editor, our dropdown handles it
+          base.className = 'htAutocomplete'  // Show dropdown arrow
         } else if (numericColumns.includes(col)) {
           base.type = 'numeric'
         } else if (col === 'due_date') {
@@ -564,43 +403,24 @@ export default function BulkUploadPage() {
           return 120
         }),
         afterOnCellMouseDown: (event, coords) => {
-          // For multi-select columns, open the checkbox dropdown on normal click
-          // (no special arrow-area behavior; users expect dropdown-like cells to open directly)
+          // For multi-select columns, open our React dropdown
           const colName = getColumnName(coords.col)
           if (!colName) return
-          if (!['entity_types', 'industries', 'industry_categories'].includes(colName)) return
+          if (!(MULTI_SELECT_COLUMNS as readonly string[]).includes(colName)) return
           if (coords.row < 0 || coords.col < 0) return
 
           const e = event as MouseEvent
-          // Don't hijack selection gestures (shift/ctrl/meta for multi-select, or right-click)
+          // Don't hijack selection gestures or right-click
           if (e.button !== 0) return
           if ((e as any).ctrlKey || (e as any).metaKey || (e as any).shiftKey || (e as any).altKey) return
 
-          setTimeout(() => {
-            try {
-              hot.selectCell(coords.row, coords.col)
-              const editor = hot.getCellEditor(coords.row, coords.col)
-              editor?.beginEditing()
-            } catch {
-              // ignore
-            }
-          }, 0)
-        },
-        afterSelectionEnd: (row, col) => {
-          // Also open on selection end (covers keyboard navigation into the cell)
-          const colName = getColumnName(col)
-          if (!colName) return
-          if (!['entity_types', 'industries', 'industry_categories'].includes(colName)) return
-          if (row < 0 || col < 0) return
-
-          setTimeout(() => {
-            try {
-              const editor = hot.getCellEditor(row, col)
-              editor?.beginEditing()
-            } catch {
-              // ignore
-            }
-          }, 0)
+          // Get the cell element
+          const td = hot.getCell(coords.row, coords.col)
+          if (td) {
+            e.preventDefault()
+            e.stopPropagation()
+            openMultiSelect(coords.row, coords.col, colName, td)
+          }
         },
         afterChange: (changes, source) => {
           if (!changes) return
@@ -1202,6 +1022,115 @@ export default function BulkUploadPage() {
           background: #a8a8a8;
         }
       `}</style>
+
+      {/* Multi-select dropdown for entity_types, industries, industry_categories */}
+      {msOpen && (
+        <div
+          ref={msRef}
+          style={{
+            position: 'fixed',
+            top: msPosition.top,
+            left: msPosition.left,
+            zIndex: 10000,
+            width: 420,
+            maxHeight: 400,
+            background: '#fff',
+            border: '1px solid #d4d4d4',
+            borderRadius: 10,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
+            fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderBottom: '1px solid #eee', background: '#f9f9f9' }}>
+            <input
+              type="text"
+              placeholder="Search..."
+              value={msSearch}
+              onChange={(e) => setMsSearch(e.target.value)}
+              autoFocus
+              style={{ flex: 1, padding: '8px 10px', fontSize: 12, border: '1px solid #d4d4d4', borderRadius: 8, outline: 'none' }}
+            />
+            <button
+              type="button"
+              onClick={() => setMsSelected(new Set(msOptions))}
+              style={{ padding: '8px 10px', fontSize: 12, borderRadius: 8, border: '1px solid #0078d4', background: '#e5f3ff', color: '#0078d4', cursor: 'pointer' }}
+            >
+              Select All
+            </button>
+            <button
+              type="button"
+              onClick={() => setMsSelected(new Set())}
+              style={{ padding: '8px 10px', fontSize: 12, borderRadius: 8, border: '1px solid #d4d4d4', background: '#fff', color: '#333', cursor: 'pointer' }}
+            >
+              Clear
+            </button>
+          </div>
+
+          {/* Options list */}
+          <div style={{ padding: 10, maxHeight: 260, overflow: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {msOptions
+              .filter(opt => !msSearch || opt.toLowerCase().includes(msSearch.toLowerCase()))
+              .map(opt => {
+                const checked = msSelected.has(opt)
+                return (
+                  <label
+                    key={opt}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '8px 10px',
+                      border: '1px solid #d4d4d4',
+                      borderRadius: 8,
+                      background: checked ? '#e8f5e9' : '#fff',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => {
+                        const next = new Set(msSelected)
+                        if (checked) next.delete(opt)
+                        else next.add(opt)
+                        setMsSelected(next)
+                      }}
+                      style={{ width: 16, height: 16, cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: 12, color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {opt}
+                    </span>
+                  </label>
+                )
+              })}
+          </div>
+
+          {/* Footer */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '10px 12px', borderTop: '1px solid #eee', background: '#f9f9f9' }}>
+            <span style={{ fontSize: 11, color: '#666' }}>
+              {msSelected.size} of {msOptions.length} selected
+            </span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={cancelMultiSelect}
+                style={{ padding: '8px 14px', fontSize: 12, borderRadius: 8, border: '1px solid #d4d4d4', background: '#fff', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={applyMultiSelect}
+                style={{ padding: '8px 14px', fontSize: 12, borderRadius: 8, border: '1px solid #217346', background: '#217346', color: '#fff', cursor: 'pointer', fontWeight: 600 }}
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
