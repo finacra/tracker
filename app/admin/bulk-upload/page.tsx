@@ -579,7 +579,23 @@ export default function BulkUploadPage() {
           setTimeout(() => {
             try {
               hot.selectCell(coords.row, coords.col)
-              const editor = hot.getActiveEditor()
+              const editor = hot.getCellEditor(coords.row, coords.col)
+              editor?.beginEditing()
+            } catch {
+              // ignore
+            }
+          }, 0)
+        },
+        afterSelectionEnd: (row, col) => {
+          // Also open on selection end (covers keyboard navigation into the cell)
+          const colName = getColumnName(col)
+          if (!colName) return
+          if (!['entity_types', 'industries', 'industry_categories'].includes(colName)) return
+          if (row < 0 || col < 0) return
+
+          setTimeout(() => {
+            try {
+              const editor = hot.getCellEditor(row, col)
               editor?.beginEditing()
             } catch {
               // ignore
