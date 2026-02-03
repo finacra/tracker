@@ -38,6 +38,11 @@ export default function BulkUploadPage() {
   const [isInitialized, setIsInitialized] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+
+  // Multi-select helper (checkboxes -> comma-separated cell value)
+  const [activeMultiSelectColumn, setActiveMultiSelectColumn] = useState<'entity_types' | 'industries' | 'industry_categories' | null>(null)
+  const [multiSelectValues, setMultiSelectValues] = useState<string[]>([])
+  const [multiSelectTargetSummary, setMultiSelectTargetSummary] = useState<string>('Select a cell in Entity Types / Industries / Industry Categories to edit via checkboxes.')
   const containerRef = useRef<HTMLDivElement>(null)
   const initRef = useRef(false) // Prevent double initialization
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -155,6 +160,66 @@ export default function BulkUploadPage() {
     })
     setCellErrors(errors)
   }, [dataToRows])
+
+  const MULTI_SELECT_COLUMNS = ['entity_types', 'industries', 'industry_categories'] as const
+
+  const isMultiSelectColumn = (col: string | null): col is typeof MULTI_SELECT_COLUMNS[number] => {
+    return Boolean(col && (MULTI_SELECT_COLUMNS as readonly string[]).includes(col))
+  }
+
+  const getOptionsForColumn = (column: typeof MULTI_SELECT_COLUMNS[number]): readonly string[] => {
+    switch (column) {
+      case 'entity_types':
+        return ENTITY_TYPES
+      case 'industries':
+        return INDUSTRIES
+      case 'industry_categories':
+        return INDUSTRY_CATEGORIES
+    }
+  }
+
+  const parseCommaList = (value: string): string[] => {
+    if (!value) return []
+    return value
+      .split(',')
+      .map(v => v.trim())
+      .filter(Boolean)
+  }
+
+  const formatCommaList = (values: string[]): string => {
+    return values.join(', ')
+  }
+
+  const applyMultiSelectToSelection = useCallback((column: typeof MULTI_SELECT_COLUMNS[number], values: string[]) => {
+    if (!hotInstance) return
+
+    const selectedRanges = hotInstance.getSelected?.() as Array<[number, number, number, number]> | null
+    if (!selectedRanges || selectedRanges.length === 0) return
+
+    const columnIndex = CSV_COLUMNS.indexOf(column as any)
+    if (columnIndex < 0) return
+
+    const nextValue = formatCommaList(values)
+
+    // Apply only to cells in the target column (so selecting a rectangle won't overwrite other columns)
+    selectedRanges.forEach(([r1, c1, r2, c2]) => {
+      const rowStart = Math.min(r1, r2)
+      const rowEnd = Math.max(r1, r2)
+      const colStart = Math.min(c1, c2)
+      const colEnd = Math.max(c1, c2)
+
+      if (columnIndex < colStart || columnIndex > colEnd) return
+
+      for (let r = rowStart; r <= rowEnd; r++) {
+        hotInstance.setDataAtCell(r, columnIndex, nextValue, 'checkbox-multiselect')
+      }
+    })
+
+    const newData = hotInstance.getData() as string[][]
+    setData(newData)
+    autoSave(newData)
+    runValidation(newData)
+  }, [hotInstance, autoSave, runValidation])
 
   // Initialize Handsontable on client side only
   useEffect(() => {
@@ -291,12 +356,32 @@ export default function BulkUploadPage() {
         manualRowResize: true,
         autoColumnSize: true,
         minSpareRows: 1,
+        filters: true,
+        dropdownMenu: true,
         colWidths: CSV_COLUMNS.map(col => {
           if (col === 'description' || col === 'possible_legal_action') return 200
           if (col === 'requirement' || col === 'required_documents') return 180
           if (col === 'entity_types' || col === 'industries' || col === 'industry_categories') return 180
           return 120
         }),
+        afterSelectionEnd: (row, col) => {
+          const colName = getColumnName(col)
+          if (!colName || !isMultiSelectColumn(colName)) {
+            setActiveMultiSelectColumn(null)
+            setMultiSelectValues([])
+            setMultiSelectTargetSummary('Select a cell in Entity Types / Industries / Industry Categories to edit via checkboxes.')
+            return
+          }
+
+          const cellValue = hot.getDataAtCell(row, col) as string
+          const parsed = parseCommaList(cellValue || '')
+          const allowed = new Set(getOptionsForColumn(colName))
+          const normalized = parsed.filter(v => allowed.has(v))
+
+          setActiveMultiSelectColumn(colName)
+          setMultiSelectValues(normalized)
+          setMultiSelectTargetSummary(`Editing: ${CSV_COLUMN_HEADERS[colName]} (Row ${row + 1})`)
+        },
         afterChange: (changes, source) => {
           if (!changes) return
           const newData = hot.getData() as string[][]
@@ -676,8 +761,93 @@ export default function BulkUploadPage() {
         </span>
       </div>
 
+      {/* Multi-select helper: checkbox options -> comma-separated cell value */}
+      <div className="bg-white border-b border-[#d4d4d4] px-4 py-2">
+        <div className="flex flex-col xl:flex-row xl:items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-semibold text-[#333] truncate">{multiSelectTargetSummary}</div>
+            <div className="text-[11px] text-[#666] mt-0.5">
+              This applies to the spreadsheet columns <span className="font-semibold">entity_types</span>, <span className="font-semibold">industries</span>, <span className="font-semibold">industry_categories</span>.
+              Values are stored as <span className="font-semibold">comma-separated</span> text (e.g., <span className="font-mono">A, B, C</span>).
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => {
+                if (!activeMultiSelectColumn) return
+                const all = Array.from(getOptionsForColumn(activeMultiSelectColumn))
+                setMultiSelectValues(all)
+                applyMultiSelectToSelection(activeMultiSelectColumn, all)
+              }}
+              disabled={!activeMultiSelectColumn}
+              className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${
+                activeMultiSelectColumn
+                  ? 'bg-[#e5f3ff] border-[#0078d4] text-[#0078d4] hover:bg-[#d7ecff]'
+                  : 'bg-[#f5f5f5] border-[#d4d4d4] text-[#999] cursor-not-allowed'
+              }`}
+              title="Select all options and write them into the selected cells as comma-separated text"
+            >
+              Select All
+            </button>
+            <button
+              onClick={() => {
+                if (!activeMultiSelectColumn) return
+                setMultiSelectValues([])
+                applyMultiSelectToSelection(activeMultiSelectColumn, [])
+              }}
+              disabled={!activeMultiSelectColumn}
+              className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${
+                activeMultiSelectColumn
+                  ? 'bg-white border-[#d4d4d4] text-[#333] hover:bg-[#f5f5f5]'
+                  : 'bg-[#f5f5f5] border-[#d4d4d4] text-[#999] cursor-not-allowed'
+              }`}
+              title="Clear the comma-separated list in the selected cells"
+            >
+              Clear
+            </button>
+            <span className="text-[11px] text-[#666]">
+              {activeMultiSelectColumn ? `${multiSelectValues.length} selected` : 'Select a multi-select cell to enable'}
+            </span>
+          </div>
+        </div>
+
+        {activeMultiSelectColumn && (
+          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+            {Array.from(getOptionsForColumn(activeMultiSelectColumn)).map((opt) => {
+              const checked = multiSelectValues.includes(opt)
+              return (
+                <label
+                  key={opt}
+                  className={`flex items-center gap-2 px-3 py-2 rounded border text-xs cursor-pointer transition-colors ${
+                    checked
+                      ? 'bg-[#e8f5e9] border-[#28a745] text-[#155724]'
+                      : 'bg-[#fafafa] border-[#d4d4d4] text-[#333] hover:bg-[#f5f5f5]'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      if (!activeMultiSelectColumn) return
+                      const next = e.target.checked
+                        ? Array.from(new Set([...multiSelectValues, opt]))
+                        : multiSelectValues.filter(v => v !== opt)
+                      setMultiSelectValues(next)
+                      applyMultiSelectToSelection(activeMultiSelectColumn, next)
+                    }}
+                    className="w-4 h-4"
+                  />
+                  <span className="truncate">{opt}</span>
+                </label>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Spreadsheet Container */}
-      <div className="flex-1 relative bg-white border border-[#d4d4d4]" style={{ minHeight: 'calc(100vh - 120px)' }}>
+      <div className="flex-1 relative bg-white border border-[#d4d4d4]" style={{ minHeight: 'calc(100vh - 180px)' }}>
         <div 
           ref={containerRef} 
           className="absolute inset-0"
