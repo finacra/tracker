@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import React from 'react'
 import Header from '@/components/Header'
 import CompanySelector from '@/components/CompanySelector'
@@ -48,10 +48,12 @@ interface EntityDetails {
   directors: Director[]
 }
 
-export default function DataRoomPage() {
+function DataRoomPageInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
   const supabase = createClient()
+  const initialCompanyId = searchParams.get('company_id') || searchParams.get('company')
   
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null)
   const [companies, setCompanies] = useState<Company[]>([])
@@ -215,9 +217,13 @@ export default function DataRoomPage() {
         console.log('[fetchCompanies] Companies:', allCompanies.map(c => ({ id: c.id, name: c.name })))
         
         if (allCompanies.length > 0) {
-          console.log('[fetchCompanies] Setting companies and current company:', allCompanies[0].name)
+          const preferred = initialCompanyId
+            ? allCompanies.find(c => c.id === initialCompanyId)
+            : undefined
+          const selected = preferred || allCompanies[0]
+          console.log('[fetchCompanies] Setting companies and current company:', selected.name)
           setCompanies(allCompanies)
-          setCurrentCompany(allCompanies[0])
+          setCurrentCompany(selected)
         } else {
           console.log('[fetchCompanies] No companies found, clearing state')
           setCompanies([])
@@ -241,7 +247,7 @@ export default function DataRoomPage() {
     // Run both in parallel
     fetchCompanies()
     fetchTemplates()
-  }, [user, supabase, authLoading])
+  }, [user, supabase, authLoading, initialCompanyId])
 
   // Check access when company is selected - redirect if no access
   useEffect(() => {
@@ -8162,6 +8168,20 @@ export default function DataRoomPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function DataRoomPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <DataRoomPageInner />
+    </Suspense>
   )
 }
 

@@ -53,7 +53,7 @@ interface Director {
 export default function OnboardingPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
-  const { hasSubscription, companyLimit, currentCompanyCount, canCreateCompany, isLoading: subLoading } = useUserSubscription()
+  const { hasSubscription, isTrial, trialDaysRemaining, companyLimit, currentCompanyCount, canCreateCompany, isLoading: subLoading } = useUserSubscription()
   const supabase = createClient()
   
   // All hooks must be called before any conditional returns
@@ -638,8 +638,14 @@ export default function OnboardingPage() {
       }, directors)
 
       if (result.success && result.companyId) {
-        // Redirect to subscription page for new company
-        router.push(`/subscribe?company_id=${result.companyId}`)
+        // If user already has an active trial/subscription, go straight to data-room.
+        // Otherwise route to subscribe to start a trial or purchase a plan.
+        const hasActiveAccess = hasSubscription && (!isTrial || trialDaysRemaining > 0)
+        if (hasActiveAccess) {
+          router.push(`/data-room?company_id=${result.companyId}`)
+        } else {
+          router.push(`/subscribe?company_id=${result.companyId}`)
+        }
       }
     } catch (error: any) {
       console.error('Error submitting form:', error)

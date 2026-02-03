@@ -18,6 +18,7 @@ function SubscribePageInner() {
   
   // Optional company_id for context (showing company name)
   const companyId = searchParams.get('company_id')
+  const showUpgrade = searchParams.get('upgrade') === '1'
   
   const [companyName, setCompanyName] = useState<string>('')
   const [selectedBillingCycle, setSelectedBillingCycle] = useState<BillingCycle>('annual')
@@ -52,17 +53,16 @@ function SubscribePageInner() {
 
   // If user already has subscription, redirect to data-room or onboarding
   useEffect(() => {
-    if (!subLoading && hasSubscription && !isTrial) {
-      // User has paid subscription, redirect appropriately
-      if (companyId) {
-        router.push('/data-room')
-      } else if (currentCompanyCount > 0) {
-        router.push('/data-room')
-      } else {
-        router.push('/onboarding')
-      }
+    if (subLoading) return
+    if (!user) return
+
+    // If user has active access (trial or paid), don't force them to stay on /subscribe
+    // Unless they explicitly asked to upgrade via ?upgrade=1
+    if (hasSubscription && (isTrial ? trialDaysRemaining > 0 : true) && !showUpgrade) {
+      const target = companyId ? `/data-room?company_id=${companyId}` : '/data-room'
+      router.replace(target)
     }
-  }, [hasSubscription, isTrial, subLoading, companyId, currentCompanyCount, router])
+  }, [hasSubscription, isTrial, trialDaysRemaining, subLoading, companyId, router, user, showUpgrade])
 
   const handleStartTrial = async () => {
     if (!user) {
@@ -123,7 +123,10 @@ function SubscribePageInner() {
       }
 
       // Success - redirect
-      if (currentCompanyCount > 0) {
+      // If trial is created successfully, send user to data-room (optionally selecting company_id)
+      if (companyId) {
+        router.push(`/data-room?company_id=${companyId}`)
+      } else if (currentCompanyCount > 0) {
         router.push('/data-room')
       } else {
         router.push('/onboarding')
@@ -151,8 +154,8 @@ function SubscribePageInner() {
     )
   }
 
-  // Show trial upgrade prompt if user has trial
-  if (isTrial && trialDaysRemaining > 0) {
+  // Show trial upgrade prompt ONLY if user explicitly wants to upgrade during trial
+  if (isTrial && trialDaysRemaining > 0 && showUpgrade) {
     return (
       <div className="min-h-screen bg-primary-dark relative overflow-hidden">
         <SubtleCircuitBackground />
@@ -171,7 +174,7 @@ function SubscribePageInner() {
                 You have <span className="text-yellow-400 font-bold">{trialDaysRemaining} days</span> remaining in your trial.
               </p>
               <p className="text-gray-400 text-sm">
-                Upgrade now to continue accessing all features after your trial ends.
+                Your trial is active. You can upgrade anytime to continue uninterrupted after it ends.
               </p>
             </div>
           </div>
