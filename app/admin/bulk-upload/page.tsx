@@ -563,20 +563,28 @@ export default function BulkUploadPage() {
           if (col === 'entity_types' || col === 'industries' || col === 'industry_categories') return 180
           return 120
         }),
-        afterOnCellMouseDown: (event, coords, td) => {
-          // Open multi-select editor when user clicks the "dropdown arrow area" at the right side of the cell
+        afterOnCellMouseDown: (event, coords) => {
+          // For multi-select columns, open the checkbox dropdown on normal click
+          // (no special arrow-area behavior; users expect dropdown-like cells to open directly)
           const colName = getColumnName(coords.col)
           if (!colName) return
           if (!['entity_types', 'industries', 'industry_categories'].includes(colName)) return
-          if (!td) return
-          const rect = (td as HTMLElement).getBoundingClientRect()
-          if ((event as MouseEvent).clientX > rect.right - 26) {
-            setTimeout(() => {
+          if (coords.row < 0 || coords.col < 0) return
+
+          const e = event as MouseEvent
+          // Don't hijack selection gestures (shift/ctrl/meta for multi-select, or right-click)
+          if (e.button !== 0) return
+          if ((e as any).ctrlKey || (e as any).metaKey || (e as any).shiftKey || (e as any).altKey) return
+
+          setTimeout(() => {
+            try {
               hot.selectCell(coords.row, coords.col)
               const editor = hot.getActiveEditor()
               editor?.beginEditing()
-            }, 0)
-          }
+            } catch {
+              // ignore
+            }
+          }, 0)
         },
         afterChange: (changes, source) => {
           if (!changes) return
