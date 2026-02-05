@@ -38,15 +38,17 @@ interface CompanyAccessResult {
 /**
  * Hook to check if the current user has access to a specific company
  * 
- * User-based subscription model:
- * 1. User subscribes to a plan (Starter/Professional/Enterprise)
- * 2. Plan determines how many companies they can create
- * 3. Invited team members get access without needing their own subscription
+ * Hybrid subscription model:
+ * - Starter/Professional: Company-first (each company needs its own subscription)
+ * - Enterprise: User-first (one subscription covers all companies)
+ * - Invited members: Get free access in both models
  * 
  * Access is granted if:
  * 1. User is superadmin
  * 2. User is invited member (has role in user_roles for this company, not owner)
- * 3. User is owner AND has active subscription/trial on their account
+ * 3. User is owner AND has active subscription/trial:
+ *    - For Starter/Professional: Company has active subscription
+ *    - For Enterprise: User has active subscription
  */
 export function useCompanyAccess(companyId: string | null): CompanyAccessResult {
   const { user, loading: authLoading } = useAuth()
@@ -136,16 +138,97 @@ export function useCompanyAccess(companyId: string | null): CompanyAccessResult 
         
         console.log('[useCompanyAccess] User role for this company:', userRole?.role || 'none')
 
+        // 3. Use unified access check RPC (handles both company-first and user-first)
+        try {
+          const { data: accessData, error: accessError } = await supabase
+            .rpc('check_company_access', {
+              p_user_id: user.id,
+              p_company_id: companyId
+            })
+            .single()
+
+          if (!accessError && accessData) {
+            const access = accessData as {
+              has_access: boolean
+              access_type: string
+              tier: string
+              is_trial: boolean
+              trial_days_remaining: number
+            }
+
+            console.log('[useCompanyAccess] Access check result:', access)
+
+            if (access.has_access) {
+              setHasAccess(true)
+              setAccessType(access.access_type as CompanyAccessType)
+              
+              if (access.is_trial) {
+                setTrialDaysRemaining(access.trial_days_remaining)
+              }
+
+              // Set subscription info for owners
+              if (userIsOwner && (access.access_type === 'subscription' || access.access_type === 'trial')) {
+                setSubscriptionInfo({
+                  hasSubscription: true,
+                  tier: access.tier,
+                  isTrial: access.is_trial,
+                  trialDaysRemaining: access.trial_days_remaining,
+                  companyLimit: access.tier === 'enterprise' ? 100 : access.tier === 'professional' ? 20 : 5,
+                  userLimit: access.tier === 'enterprise' ? 999999 : access.tier === 'professional' ? 10 : 3,
+                })
+              }
+
+              // Handle invited member case
+              if (!userIsOwner && userRole) {
+                if (access.has_access) {
+                  setOwnerSubscriptionExpired(false)
+                } else {
+                  setOwnerSubscriptionExpired(true)
+                }
+              }
+
+              setIsLoading(false)
+              return
+            } else {
+              // No access
+              if (!userIsOwner && userRole) {
+                setOwnerSubscriptionExpired(true)
+              }
+              setHasAccess(false)
+              setAccessType(null)
+              setIsLoading(false)
+              return
+            }
+          }
+        } catch (rpcErr) {
+          console.log('[useCompanyAccess] Unified RPC failed, falling back to manual checks:', rpcErr)
+        }
+
+        // Fallback: Manual access check if RPC is not available
         // If user is invited member (has role but NOT owner), check if owner has valid subscription
         if (userRole && !userIsOwner) {
-          console.log('[useCompanyAccess] User is invited member, checking owner subscription')
+          console.log('[useCompanyAccess] User is invited member, checking owner subscription (fallback)')
           
-          // Get owner's user ID from company
           const ownerId = company?.user_id
           
           if (ownerId) {
-            // Check owner's subscription status
+            // Check owner's subscription (try both company-first and user-first)
             try {
+              // First check company subscription (Starter/Professional)
+              const { data: companySubData } = await supabase
+                .rpc('check_company_subscription', { p_company_id: companyId })
+                .single()
+              
+              if (companySubData && (companySubData as any).has_subscription) {
+                console.log('[useCompanyAccess] Owner has company subscription, granting access')
+                setHasAccess(true)
+                setAccessType('invited')
+                setOwnerSubscriptionExpired(false)
+                setIsLoading(false)
+                return
+              }
+
+              // Then check user subscription (Enterprise)
               const { data: ownerSubData } = await supabase
                 .rpc('check_user_subscription', { target_user_id: ownerId })
                 .single()
@@ -153,68 +236,67 @@ export function useCompanyAccess(companyId: string | null): CompanyAccessResult 
               const ownerSub = ownerSubData as SubscriptionRPCResponse | null
               
               if (ownerSub?.has_subscription) {
-                console.log('[useCompanyAccess] Owner has valid subscription, granting access to invited member')
+                console.log('[useCompanyAccess] Owner has user subscription, granting access')
                 setHasAccess(true)
                 setAccessType('invited')
                 setOwnerSubscriptionExpired(false)
                 setIsLoading(false)
                 return
-              } else {
-                console.log('[useCompanyAccess] Owner subscription expired, invited user cannot access')
-                setHasAccess(false)
-                setOwnerSubscriptionExpired(true)
-                setIsLoading(false)
-                return
               }
+
+              console.log('[useCompanyAccess] Owner has no valid subscription')
+              setHasAccess(false)
+              setOwnerSubscriptionExpired(true)
+              setIsLoading(false)
+              return
             } catch (err) {
-              // RPC failed, try direct query
-              console.log('[useCompanyAccess] RPC failed for owner check, trying direct query')
-              
-              const { data: ownerActiveSub } = await supabase
-                .from('subscriptions')
-                .select('id, status, is_trial, trial_ends_at, end_date')
-                .eq('user_id', ownerId)
-                .in('status', ['active', 'trial'])
-                .order('end_date', { ascending: false })
-                .limit(1)
-                .single()
-              
-              if (ownerActiveSub) {
-                const isValid = ownerActiveSub.is_trial 
-                  ? new Date(ownerActiveSub.trial_ends_at) > new Date()
-                  : new Date(ownerActiveSub.end_date) > new Date()
-                
-                if (isValid) {
-                  console.log('[useCompanyAccess] Owner has valid subscription (direct query)')
-                  setHasAccess(true)
-                  setAccessType('invited')
-                  setOwnerSubscriptionExpired(false)
-                  setIsLoading(false)
-                  return
-                }
-              }
-              
-              console.log('[useCompanyAccess] Owner subscription expired (direct query)')
+              console.error('[useCompanyAccess] Error checking owner subscription:', err)
               setHasAccess(false)
               setOwnerSubscriptionExpired(true)
               setIsLoading(false)
               return
             }
-          } else {
-            // No owner found, grant access (shouldn't happen)
-            console.log('[useCompanyAccess] No owner found, granting access')
-            setHasAccess(true)
-            setAccessType('invited')
-            setIsLoading(false)
-            return
           }
         }
 
-        // 4. If user is owner, check USER's subscription (not company's)
+        // 4. If user is owner, check subscription (company-first or user-first)
         if (userIsOwner) {
-          console.log('[useCompanyAccess] User is owner, checking USER subscription status')
+          console.log('[useCompanyAccess] User is owner, checking subscription (fallback)')
           
-          // Try using the RPC function first (more reliable)
+          // First check if company has subscription (Starter/Professional - company-first)
+          try {
+            const { data: companySubData } = await supabase
+              .rpc('check_company_subscription', { p_company_id: companyId })
+              .single()
+            
+            if (companySubData && (companySubData as any).has_subscription) {
+              const companySub = companySubData as {
+                has_subscription: boolean
+                tier: string
+                is_trial: boolean
+                trial_days_remaining: number
+              }
+              
+              console.log('[useCompanyAccess] Company has subscription:', companySub.tier)
+              setHasAccess(true)
+              setAccessType(companySub.is_trial ? 'trial' : 'subscription')
+              setTrialDaysRemaining(companySub.is_trial ? companySub.trial_days_remaining : null)
+              setSubscriptionInfo({
+                hasSubscription: true,
+                tier: companySub.tier,
+                isTrial: companySub.is_trial,
+                trialDaysRemaining: companySub.trial_days_remaining,
+                companyLimit: companySub.tier === 'professional' ? 20 : 5,
+                userLimit: companySub.tier === 'professional' ? 10 : 3,
+              })
+              setIsLoading(false)
+              return
+            }
+          } catch (err) {
+            console.log('[useCompanyAccess] Company subscription check failed:', err)
+          }
+
+          // Then check if user has Enterprise subscription (user-first)
           try {
             const { data, error: rpcError } = await supabase
               .rpc('check_user_subscription', { target_user_id: user.id })
@@ -222,11 +304,11 @@ export function useCompanyAccess(companyId: string | null): CompanyAccessResult 
 
             const subInfo = data as SubscriptionRPCResponse | null
 
-            if (!rpcError && subInfo) {
-              console.log('[useCompanyAccess] Subscription info from RPC:', subInfo)
+            if (!rpcError && subInfo && subInfo.has_subscription) {
+              console.log('[useCompanyAccess] User has Enterprise subscription:', subInfo.tier)
               
               setSubscriptionInfo({
-                hasSubscription: subInfo.has_subscription,
+                hasSubscription: true,
                 tier: subInfo.tier,
                 isTrial: subInfo.is_trial,
                 trialDaysRemaining: subInfo.trial_days_remaining,
@@ -234,91 +316,14 @@ export function useCompanyAccess(companyId: string | null): CompanyAccessResult 
                 userLimit: subInfo.user_limit,
               })
 
-              if (subInfo.has_subscription) {
-                if (subInfo.is_trial) {
-                  console.log('[useCompanyAccess] User has active trial, days remaining:', subInfo.trial_days_remaining)
-                  setHasAccess(true)
-                  setAccessType('trial')
-                  setTrialDaysRemaining(subInfo.trial_days_remaining)
-                } else {
-                  console.log('[useCompanyAccess] User has active subscription:', subInfo.tier)
-                  setHasAccess(true)
-                  setAccessType('subscription')
-                }
-                setIsLoading(false)
-                return
-              }
-            }
-          } catch (rpcErr) {
-            console.log('[useCompanyAccess] RPC not available, falling back to direct query')
-          }
-
-          // Fallback: Direct query for user's subscription
-          try {
-            // Check for active paid subscription (user-based)
-            const { data: activeSubscription } = await supabase
-              .from('subscriptions')
-              .select('id, status, tier, is_trial, trial_ends_at, end_date')
-              .eq('user_id', user.id)
-              .eq('status', 'active')
-              .gt('end_date', new Date().toISOString())
-              .order('end_date', { ascending: false })
-              .limit(1)
-              .single()
-
-            if (activeSubscription && !activeSubscription.is_trial) {
-              console.log('[useCompanyAccess] Found active user subscription:', activeSubscription.tier)
               setHasAccess(true)
-              setAccessType('subscription')
-              setSubscriptionInfo({
-                hasSubscription: true,
-                tier: activeSubscription.tier || 'starter',
-                isTrial: false,
-                trialDaysRemaining: 0,
-                companyLimit: activeSubscription.tier === 'enterprise' ? 999999 : activeSubscription.tier === 'professional' ? 20 : 5,
-                userLimit: activeSubscription.tier === 'enterprise' ? 999999 : activeSubscription.tier === 'professional' ? 10 : 3,
-              })
+              setAccessType(subInfo.is_trial ? 'trial' : 'subscription')
+              setTrialDaysRemaining(subInfo.is_trial ? subInfo.trial_days_remaining : null)
               setIsLoading(false)
               return
             }
-
-            // Check for active trial
-            const { data: trialSubscription } = await supabase
-              .from('subscriptions')
-              .select('id, status, tier, is_trial, trial_ends_at')
-              .eq('user_id', user.id)
-              .eq('is_trial', true)
-              .in('status', ['active', 'trial'])
-              .order('trial_ends_at', { ascending: false })
-              .limit(1)
-              .single()
-
-            if (trialSubscription && trialSubscription.trial_ends_at) {
-              const trialEnd = new Date(trialSubscription.trial_ends_at)
-              const now = new Date()
-              
-              if (trialEnd > now) {
-                const diffTime = trialEnd.getTime() - now.getTime()
-                const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-                
-                console.log('[useCompanyAccess] Active trial, days remaining:', daysRemaining)
-                setHasAccess(true)
-                setAccessType('trial')
-                setTrialDaysRemaining(daysRemaining)
-                setSubscriptionInfo({
-                  hasSubscription: true,
-                  tier: 'starter',
-                  isTrial: true,
-                  trialDaysRemaining: daysRemaining,
-                  companyLimit: 5,
-                  userLimit: 3,
-                })
-                setIsLoading(false)
-                return
-              }
-            }
-          } catch (err) {
-            console.error('[useCompanyAccess] Error checking user subscriptions:', err)
+          } catch (rpcErr) {
+            console.log('[useCompanyAccess] User subscription check failed:', rpcErr)
           }
 
           // Owner but no subscription or trial

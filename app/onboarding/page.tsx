@@ -53,7 +53,7 @@ interface Director {
 export default function OnboardingPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
-  const { hasSubscription, isTrial, trialDaysRemaining, companyLimit, currentCompanyCount, canCreateCompany, isLoading: subLoading } = useUserSubscription()
+  const { hasSubscription, isTrial, trialDaysRemaining, companyLimit, currentCompanyCount, canCreateCompany, tier, isLoading: subLoading } = useUserSubscription()
   const supabase = createClient()
   
   // All hooks must be called before any conditional returns
@@ -638,12 +638,15 @@ export default function OnboardingPage() {
       }, directors)
 
       if (result.success && result.companyId) {
-        // If user already has an active trial/subscription, go straight to data-room.
-        // Otherwise route to subscribe to start a trial or purchase a plan.
-        const hasActiveAccess = hasSubscription && (!isTrial || trialDaysRemaining > 0)
-        if (hasActiveAccess) {
+        // Hybrid subscription model:
+        // - Enterprise (user-first): If user has active subscription and hasn't reached limit, go to data-room
+        // - Starter/Professional (company-first): Always redirect to subscribe (each company needs its own subscription)
+        if (hasSubscription && tier === 'enterprise' && canCreateCompany) {
+          // Enterprise user with active subscription and room for more companies
           router.push(`/data-room?company_id=${result.companyId}`)
         } else {
+          // Starter/Professional: always need to subscribe for new company
+          // Enterprise: no subscription or limit reached
           router.push(`/subscribe?company_id=${result.companyId}`)
         }
       }

@@ -151,13 +151,35 @@ async function createOrUpdateSubscription(
       break
   }
 
-  // Check for existing subscription
-  const { data: existing } = await supabase
-    .from('subscriptions')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .single()
+  // Determine subscription type based on tier
+  const subscriptionType = tier === 'enterprise' ? 'user' : 'company'
+  const finalCompanyId = tier === 'enterprise' ? null : companyId
+
+  // For Enterprise: check by user_id (user-first)
+  // For Starter/Professional: check by company_id (company-first)
+  let existing
+  if (subscriptionType === 'user') {
+    const { data } = await supabase
+      .from('subscriptions')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('subscription_type', 'user')
+      .eq('status', 'active')
+      .single()
+    existing = data
+  } else {
+    // Company-first: check by company_id
+    if (finalCompanyId) {
+      const { data } = await supabase
+        .from('subscriptions')
+        .select('id')
+        .eq('company_id', finalCompanyId)
+        .eq('subscription_type', 'company')
+        .eq('status', 'active')
+        .single()
+      existing = data
+    }
+  }
 
   if (existing) {
     await supabase
@@ -179,7 +201,8 @@ async function createOrUpdateSubscription(
       .from('subscriptions')
       .insert({
         user_id: userId,
-        company_id: companyId,
+        company_id: finalCompanyId,
+        subscription_type: subscriptionType,
         tier,
         billing_cycle: billingCycle,
         amount,

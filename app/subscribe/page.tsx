@@ -24,25 +24,45 @@ function SubscribePageInner() {
   const [selectedBillingCycle, setSelectedBillingCycle] = useState<BillingCycle>('annual')
   const [isStartingTrial, setIsStartingTrial] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [userCompanies, setUserCompanies] = useState<Array<{ id: string; name: string }>>([])
+  const [selectedCompanyForSubscription, setSelectedCompanyForSubscription] = useState<string | null>(companyId)
 
-  // Fetch company name if provided
+  // Fetch company name if provided, and fetch all user companies for selection
   useEffect(() => {
-    async function fetchCompany() {
-      if (!companyId) return
+    async function fetchCompanies() {
+      if (!user) return
       
-      const { data } = await supabase
+      // Fetch company name if companyId provided
+      if (companyId) {
+        const { data } = await supabase
+          .from('companies')
+          .select('name')
+          .eq('id', companyId)
+          .single()
+        
+        if (data) {
+          setCompanyName(data.name)
+        }
+      }
+      
+      // Fetch all companies user owns (for company selection in Starter/Professional)
+      const { data: companies } = await supabase
         .from('companies')
-        .select('name')
-        .eq('id', companyId)
-        .single()
+        .select('id, name')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
       
-      if (data) {
-        setCompanyName(data.name)
+      if (companies) {
+        setUserCompanies(companies)
+        // If companyId not provided but user has companies, select first one
+        if (!companyId && companies.length > 0) {
+          setSelectedCompanyForSubscription(companies[0].id)
+        }
       }
     }
     
-    fetchCompany()
-  }, [companyId, supabase])
+    fetchCompanies()
+  }, [companyId, user, supabase])
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -64,7 +84,7 @@ function SubscribePageInner() {
     }
   }, [hasSubscription, isTrial, trialDaysRemaining, subLoading, companyId, router, user, showUpgrade])
 
-  const handleStartTrial = async () => {
+  const handleStartTrial = async (tier: 'starter' | 'professional' | 'enterprise' = 'starter') => {
     if (!user) {
       setError('Please sign in first')
       return
@@ -74,63 +94,47 @@ function SubscribePageInner() {
     setError(null)
 
     try {
-      // Use the RPC function to create user trial
+      // Enterprise: user-first trial
+      if (tier === 'enterprise') {
+        const { data, error: rpcError } = await supabase
+          .rpc('create_user_trial', { target_user_id: user.id })
+
+        if (rpcError) {
+          throw new Error(rpcError.message || 'Failed to create trial')
+        }
+
+        // Success - redirect
+        if (companyId) {
+          router.push(`/data-room?company_id=${companyId}`)
+        } else if (currentCompanyCount > 0) {
+          router.push('/data-room')
+        } else {
+          router.push('/onboarding')
+        }
+        return
+      }
+
+      // Starter/Professional: company-first trial
+      // Require company selection
+      const targetCompanyId = selectedCompanyForSubscription || companyId
+      if (!targetCompanyId) {
+        setError('Please select a company for the trial')
+        setIsStartingTrial(false)
+        return
+      }
+
       const { data, error: rpcError } = await supabase
-        .rpc('create_user_trial', { target_user_id: user.id })
+        .rpc('create_company_trial', {
+          p_user_id: user.id,
+          p_company_id: targetCompanyId
+        })
 
       if (rpcError) {
-        // Fallback: direct insert
-        console.log('RPC failed, trying direct insert:', rpcError.message)
-        
-        // Check if user already has subscription
-        const { data: existingSub } = await supabase
-          .from('subscriptions')
-          .select('id')
-          .eq('user_id', user.id)
-          .in('status', ['active', 'trial'])
-          .single()
-
-        if (existingSub) {
-          setError('You already have an active subscription or trial')
-          setIsStartingTrial(false)
-          return
-        }
-
-        // Create trial subscription
-        const trialEndDate = new Date()
-        trialEndDate.setDate(trialEndDate.getDate() + 15)
-
-        const { error: insertError } = await supabase
-          .from('subscriptions')
-          .insert({
-            user_id: user.id,
-            company_id: null, // User-based, not company-based
-            status: 'trial',
-            tier: 'starter',
-            billing_cycle: 'monthly', // Required field - trials default to monthly
-            amount: 0, // Trial is free
-            currency: 'INR',
-            is_trial: true,
-            trial_started_at: new Date().toISOString(),
-            trial_ends_at: trialEndDate.toISOString(),
-            start_date: new Date().toISOString(),
-            end_date: trialEndDate.toISOString(),
-          })
-
-        if (insertError) {
-          throw new Error(insertError.message)
-        }
+        throw new Error(rpcError.message || 'Failed to create trial')
       }
 
-      // Success - redirect
-      // If trial is created successfully, send user to data-room (optionally selecting company_id)
-      if (companyId) {
-        router.push(`/data-room?company_id=${companyId}`)
-      } else if (currentCompanyCount > 0) {
-        router.push('/data-room')
-      } else {
-        router.push('/onboarding')
-      }
+      // Success - redirect to the company
+      router.push(`/data-room?company_id=${targetCompanyId}`)
     } catch (err: any) {
       console.error('Trial creation error:', err)
       setError(err.message || 'Failed to start trial')
@@ -299,7 +303,11 @@ function SubscribePageInner() {
                   tier={tier.id}
                   billingCycle={selectedBillingCycle}
                   price={selectedPricing.price}
-                  companyId={companyId || undefined}
+                  companyId={
+                    tier.id === 'enterprise' 
+                      ? undefined // Enterprise: user-first, no company_id
+                      : (selectedCompanyForSubscription || companyId || undefined) // Starter/Pro: company-first
+                  }
                   className={`w-full py-3 px-6 rounded-lg font-semibold transition-all mb-6 ${
                     tier.popular
                       ? 'bg-orange-500 hover:bg-orange-600 text-white'
@@ -358,9 +366,34 @@ function SubscribePageInner() {
             </p>
           )}
           <p className="text-gray-500 text-sm">
-            Your subscription covers all your companies. Select a plan based on how many companies you need.
+            Starter & Professional: Each company needs its own subscription. Enterprise: One subscription covers all companies (up to 100).
           </p>
         </div>
+
+        {/* Company Selector for Starter/Professional */}
+        {userCompanies.length > 0 && (
+          <div className="max-w-2xl mx-auto mb-6">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Select Company (for Starter/Professional plans):
+            </label>
+            <select
+              value={selectedCompanyForSubscription || ''}
+              onChange={(e) => setSelectedCompanyForSubscription(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange"
+            >
+              {userCompanies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
+                </option>
+              ))}
+            </select>
+            {selectedCompanyForSubscription && (
+              <p className="text-gray-500 text-xs mt-2">
+                Starter/Professional subscriptions are for this company only. Enterprise covers all companies.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Pay Later / Trial Option */}
         <div className="max-w-2xl mx-auto mb-12">
@@ -372,23 +405,29 @@ function SubscribePageInner() {
               <span className="text-xl font-semibold text-white">Not ready to commit?</span>
             </div>
             <p className="text-gray-400 mb-4">
-              Start with a <span className="text-primary-orange font-semibold">15-day free trial</span> — no credit card required. 
-              You can manage up to 5 companies during your trial.
-            </p>
-            <button
-              onClick={handleStartTrial}
-              disabled={isStartingTrial}
-              className="bg-primary-orange text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isStartingTrial ? (
-                <span className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Starting Trial...
-                </span>
+              Start with a <span className="text-primary-orange font-semibold">15-day free trial</span> — no credit card required.
+              {selectedCompanyForSubscription ? (
+                <> This trial is for <span className="text-white font-medium">{userCompanies.find(c => c.id === selectedCompanyForSubscription)?.name || 'selected company'}</span> only.</>
               ) : (
-                'Start 15-Day Free Trial'
+                <> Enterprise trial covers all your companies.</>
               )}
-            </button>
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={() => handleStartTrial('starter')}
+                disabled={isStartingTrial || (userCompanies.length > 0 && !selectedCompanyForSubscription)}
+                className="bg-primary-orange text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                {isStartingTrial ? 'Starting...' : 'Trial for Starter'}
+              </button>
+              <button
+                onClick={() => handleStartTrial('enterprise')}
+                disabled={isStartingTrial}
+                className="bg-gray-800 text-white px-6 py-2 rounded-lg font-semibold hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm border border-gray-700"
+              >
+                {isStartingTrial ? 'Starting...' : 'Trial for Enterprise'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -404,9 +443,9 @@ function SubscribePageInner() {
         {/* Skip for now link */}
         <div className="text-center mt-12">
           <button
-            onClick={handleStartTrial}
-            disabled={isStartingTrial}
-            className="text-gray-500 hover:text-gray-400 text-sm underline transition-colors"
+            onClick={() => handleStartTrial('starter')}
+            disabled={isStartingTrial || (userCompanies.length > 0 && !selectedCompanyForSubscription)}
+            className="text-gray-500 hover:text-gray-400 text-sm underline transition-colors disabled:opacity-50"
           >
             Skip for now and start free trial
           </button>
