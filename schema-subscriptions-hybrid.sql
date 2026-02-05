@@ -6,15 +6,59 @@
 -- 2. User-first (Enterprise): Subscription tied to user_id with company_id = NULL
 -- ============================================
 
--- 1. Add subscription_type column
-ALTER TABLE public.subscriptions ADD COLUMN IF NOT EXISTS subscription_type TEXT DEFAULT 'company' CHECK (subscription_type IN ('company', 'user'));
+-- 1. Add subscription_type column (without constraint first)
+ALTER TABLE public.subscriptions ADD COLUMN IF NOT EXISTS subscription_type TEXT;
 
--- Add constraint: company-first must have company_id, user-first must have company_id = NULL
+-- 2. Set default subscription_type for existing rows
+UPDATE public.subscriptions
+SET subscription_type = 'company'
+WHERE subscription_type IS NULL;
+
+-- 3. Migrate Enterprise subscriptions to user-first BEFORE adding constraint
+UPDATE public.subscriptions
+SET 
+  subscription_type = 'user',
+  company_id = NULL
+WHERE tier = 'enterprise'
+  AND subscription_type = 'company';
+
+-- 4. Ensure Starter/Professional subscriptions have company_id
+-- If a Starter/Pro subscription has company_id = NULL, try to find user's first company
+UPDATE public.subscriptions s
+SET company_id = (
+  SELECT c.id
+  FROM public.companies c
+  WHERE c.user_id = s.user_id
+  ORDER BY c.created_at ASC
+  LIMIT 1
+)
+WHERE s.tier IN ('starter', 'professional')
+  AND s.subscription_type = 'company'
+  AND s.company_id IS NULL
+  AND EXISTS (
+    SELECT 1 FROM public.companies c WHERE c.user_id = s.user_id
+  );
+
+-- 5. Mark invalid subscriptions (Starter/Pro without company_id and no companies found)
+UPDATE public.subscriptions
+SET status = 'cancelled'
+WHERE tier IN ('starter', 'professional')
+  AND subscription_type = 'company'
+  AND company_id IS NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM public.companies c WHERE c.user_id = subscriptions.user_id
+  );
+
+-- 6. Now add the CHECK constraint
 ALTER TABLE public.subscriptions DROP CONSTRAINT IF EXISTS check_subscription_type_company_id;
 ALTER TABLE public.subscriptions ADD CONSTRAINT check_subscription_type_company_id CHECK (
   (subscription_type = 'company' AND company_id IS NOT NULL) OR
   (subscription_type = 'user' AND company_id IS NULL)
 );
+
+-- 7. Add NOT NULL constraint to subscription_type now that all rows have values
+ALTER TABLE public.subscriptions ALTER COLUMN subscription_type SET NOT NULL;
+ALTER TABLE public.subscriptions ALTER COLUMN subscription_type SET DEFAULT 'company';
 
 -- Create index for company-based lookups
 CREATE INDEX IF NOT EXISTS idx_subscriptions_company_id ON public.subscriptions(company_id) WHERE company_id IS NOT NULL;
