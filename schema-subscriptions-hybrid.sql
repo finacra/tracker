@@ -52,7 +52,25 @@ WHERE tier IN ('starter', 'professional')
     SELECT 1 FROM public.companies c WHERE c.user_id = subscriptions.user_id
   );
 
--- 7. Now add the CHECK constraint (data is now compliant)
+-- 7. Verify data is compliant before adding constraint
+-- Check for any remaining violations
+DO $$
+DECLARE
+  violation_count INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO violation_count
+  FROM public.subscriptions
+  WHERE 
+    subscription_type IS NULL
+    OR (subscription_type = 'company' AND company_id IS NULL)
+    OR (subscription_type = 'user' AND company_id IS NOT NULL);
+  
+  IF violation_count > 0 THEN
+    RAISE EXCEPTION 'Cannot add constraint: % rows still violate the constraint. Run fix-subscription-constraint-violation-comprehensive.sql first.', violation_count;
+  END IF;
+END $$;
+
+-- 8. Now add the CHECK constraint (data is verified compliant)
 ALTER TABLE public.subscriptions DROP CONSTRAINT IF EXISTS check_subscription_type_company_id;
 ALTER TABLE public.subscriptions ADD CONSTRAINT check_subscription_type_company_id CHECK (
   (subscription_type = 'company' AND company_id IS NOT NULL) OR
