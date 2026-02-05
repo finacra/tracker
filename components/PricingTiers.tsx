@@ -74,8 +74,28 @@ export default function PricingTiers() {
 
               {/* Tier Header */}
               <div className="mb-6">
-                <h3 className="text-2xl font-bold mb-2">{tier.name}</h3>
-                <p className="text-gray-400 text-sm mb-4">{tier.description}</p>
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-2xl font-bold">{tier.name}</h3>
+                  {tier.id === 'enterprise' ? (
+                    <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-xs font-semibold">
+                      User-First
+                    </span>
+                  ) : (
+                    <span className="bg-purple-500/20 text-purple-400 px-2 py-1 rounded text-xs font-semibold">
+                      Company-First
+                    </span>
+                  )}
+                </div>
+                <p className="text-gray-400 text-sm mb-2">{tier.description}</p>
+                {tier.id === 'enterprise' ? (
+                  <p className="text-gray-500 text-xs mb-4">
+                    One subscription covers all your companies (up to 100 companies)
+                  </p>
+                ) : (
+                  <p className="text-gray-500 text-xs mb-4">
+                    Subscription is per company. Each company needs its own subscription.
+                  </p>
+                )}
 
                 {/* Price */}
                 <div className="mb-4">
@@ -149,10 +169,22 @@ export default function PricingTiers() {
               {/* Limits Info */}
               <div className="mt-6 pt-6 border-t border-gray-700">
                 <div className="text-xs text-gray-500 space-y-1">
-                  <div>Companies: {tier.limits.companies === 'unlimited' ? 'Unlimited' : tier.limits.companies}</div>
+                  {tier.id === 'enterprise' ? (
+                    <>
+                      <div>Companies: Up to 100 companies per subscription</div>
+                      <div>Users per Company: Unlimited</div>
+                    </>
+                  ) : (
+                    <>
+                      <div>Users per Company: {tier.limits.users === 'unlimited' ? 'Unlimited' : tier.limits.users}</div>
+                      <div>Subscription Model: Per Company</div>
+                    </>
+                  )}
                   <div>Storage: {tier.limits.storage}</div>
-                  <div>Users: {tier.limits.users === 'unlimited' ? 'Unlimited' : tier.limits.users}</div>
                   <div>Support: {tier.limits.support}</div>
+                  <div className="pt-2 text-green-400 font-semibold">
+                    ✓ Invited team members get free access
+                  </div>
                 </div>
               </div>
             </div>
@@ -177,10 +209,26 @@ export default function PricingTiers() {
             </thead>
             <tbody>
               <tr className="border-b border-gray-800">
-                <td className="p-4 text-gray-300">Companies</td>
+                <td className="p-4 text-gray-300">Subscription Model</td>
                 {PRICING_TIERS.map((tier) => (
                   <td key={tier.id} className="p-4 text-center text-gray-400">
-                    {tier.limits.companies === 'unlimited' ? 'Unlimited' : tier.limits.companies}
+                    {tier.id === 'enterprise' ? (
+                      <span className="text-blue-400 font-semibold">User-First</span>
+                    ) : (
+                      <span className="text-purple-400 font-semibold">Company-First</span>
+                    )}
+                  </td>
+                ))}
+              </tr>
+              <tr className="border-b border-gray-800">
+                <td className="p-4 text-gray-300">Companies Coverage</td>
+                {PRICING_TIERS.map((tier) => (
+                  <td key={tier.id} className="p-4 text-center text-gray-400">
+                    {tier.id === 'enterprise' ? (
+                      'Up to 100 per subscription'
+                    ) : (
+                      '1 company per subscription'
+                    )}
                   </td>
                 ))}
               </tr>
@@ -193,10 +241,31 @@ export default function PricingTiers() {
                 ))}
               </tr>
               <tr className="border-b border-gray-800">
-                <td className="p-4 text-gray-300">Team Members</td>
+                <td className="p-4 text-gray-300">Team Members per Company</td>
                 {PRICING_TIERS.map((tier) => (
                   <td key={tier.id} className="p-4 text-center text-gray-400">
                     {tier.limits.users === 'unlimited' ? 'Unlimited' : tier.limits.users}
+                  </td>
+                ))}
+              </tr>
+              <tr className="border-b border-gray-800">
+                <td className="p-4 text-gray-300">Invited Members Access</td>
+                {PRICING_TIERS.map((tier) => (
+                  <td key={tier.id} className="p-4 text-center">
+                    <svg
+                      className="w-5 h-5 text-green-400 mx-auto"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    <span className="text-xs text-gray-500 mt-1 block">Free</span>
                   </td>
                 ))}
               </tr>
@@ -265,14 +334,75 @@ export default function PricingTiers() {
         </div>
       </div>
 
+      {/* Subscription Model Explanation */}
+      <div className="mt-16 max-w-4xl mx-auto">
+        <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 rounded-2xl p-8 border border-gray-700">
+          <h3 className="text-2xl font-bold mb-6 text-center">Understanding Our Subscription Models</h3>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="bg-gray-900/50 rounded-lg p-6 border border-purple-500/30">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="bg-purple-500/20 text-purple-400 px-3 py-1 rounded text-sm font-semibold">
+                  Company-First
+                </span>
+                <span className="text-gray-400 text-sm">Starter & Professional</span>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                Each company requires its own subscription. Perfect if you manage multiple independent companies or want to subscribe per company.
+              </p>
+              <ul className="text-gray-400 text-xs space-y-1 list-disc list-inside">
+                <li>Subscribe separately for each company</li>
+                <li>Pay only for companies you actively use</li>
+                <li>Each company has its own subscription period</li>
+                <li>Ideal for agencies or multi-company management</li>
+              </ul>
+            </div>
+            <div className="bg-gray-900/50 rounded-lg p-6 border border-blue-500/30">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded text-sm font-semibold">
+                  User-First
+                </span>
+                <span className="text-gray-400 text-sm">Enterprise</span>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                One subscription covers all your companies (up to 100). Perfect for organizations managing multiple companies under one account.
+              </p>
+              <ul className="text-gray-400 text-xs space-y-1 list-disc list-inside">
+                <li>One subscription for all companies</li>
+                <li>Manage up to 100 companies</li>
+                <li>Unlimited users per company</li>
+                <li>Ideal for large organizations</li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-6 pt-6 border-t border-gray-700">
+            <p className="text-center text-gray-400 text-sm">
+              <span className="text-green-400 font-semibold">✓ Free Access:</span> Invited team members get free access to companies in both models, as long as the company owner has an active subscription.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* FAQ Section */}
       <div className="mt-16">
         <h3 className="text-2xl font-bold text-center mb-8">Frequently Asked Questions</h3>
         <div className="max-w-3xl mx-auto space-y-4">
           <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
+            <h4 className="font-semibold mb-2 text-orange-400">What's the difference between Company-First and User-First?</h4>
+            <p className="text-gray-400 text-sm">
+              <strong>Company-First (Starter/Professional):</strong> Each company needs its own subscription. You subscribe per company, so if you have 3 companies, you'll need 3 subscriptions.<br/><br/>
+              <strong>User-First (Enterprise):</strong> One subscription covers all your companies (up to 100). You pay once and can manage all your companies under that subscription.
+            </p>
+          </div>
+          <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
+            <h4 className="font-semibold mb-2 text-orange-400">Do invited team members need their own subscription?</h4>
+            <p className="text-gray-400 text-sm">
+              No! Invited team members get free access to companies in both subscription models. As long as the company owner has an active subscription, all invited members can access that company at no additional cost.
+            </p>
+          </div>
+          <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
             <h4 className="font-semibold mb-2 text-orange-400">Can I change my plan later?</h4>
             <p className="text-gray-400 text-sm">
-              Yes, you can upgrade or downgrade your plan at any time. Changes will be prorated.
+              Yes, you can upgrade or downgrade your plan at any time. Changes will be prorated. For Company-First plans, you can upgrade individual companies. For Enterprise, you can upgrade your user subscription.
             </p>
           </div>
           <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
@@ -284,13 +414,13 @@ export default function PricingTiers() {
           <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
             <h4 className="font-semibold mb-2 text-orange-400">Is there a free trial?</h4>
             <p className="text-gray-400 text-sm">
-              We offer a 14-day free trial for all plans. No credit card required.
+              Yes! We offer a 15-day free trial for all plans. No credit card required. For Company-First plans, you can start a trial for each company. For Enterprise, one trial covers all your companies.
             </p>
           </div>
           <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
             <h4 className="font-semibold mb-2 text-orange-400">What happens if I exceed my plan limits?</h4>
             <p className="text-gray-400 text-sm">
-              We'll notify you when you're approaching your limits. You can upgrade your plan or purchase additional capacity.
+              We'll notify you when you're approaching your limits. For Company-First plans, you can subscribe for additional companies. For Enterprise, you can upgrade to a higher tier or contact us for custom solutions.
             </p>
           </div>
         </div>
