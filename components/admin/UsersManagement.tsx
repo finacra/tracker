@@ -30,8 +30,20 @@ interface TeamMember {
   role: string
 }
 
+interface CompanySubscription {
+  id: string
+  company_id: string
+  status: string
+  tier: string
+  is_trial: boolean
+  trial_ends_at: string | null
+  end_date: string
+  subscription_type: string
+}
+
 interface CompanyWithTeam extends Company {
   team_members: TeamMember[]
+  subscription: CompanySubscription | null
 }
 
 interface UserWithDetails {
@@ -63,6 +75,7 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
   const [extendDays, setExtendDays] = useState<{ [key: string]: number }>({})
   const [isExtending, setIsExtending] = useState<{ [key: string]: boolean }>({})
   const [isRevoking, setIsRevoking] = useState<{ [key: string]: boolean }>({})
+  const [isRevokingCompany, setIsRevokingCompany] = useState<{ [key: string]: boolean }>({})
   const [isGranting, setIsGranting] = useState<{ [key: string]: boolean }>({})
   
   // Email cache for team members
@@ -108,7 +121,7 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
         // Get user's subscription (latest one)
         const userSub = subscriptions?.find(s => s.user_id === userId) || null
         
-        // Get companies owned by this user with team members
+        // Get companies owned by this user with team members and subscriptions
         const ownedCompanies: CompanyWithTeam[] = companies
           .filter(c => c.user_id === userId)
           .map(c => {
@@ -120,9 +133,24 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
               role: r.role
             }))
             
+            // Get company subscription (company-first: Starter/Professional)
+            const companySub = subscriptions?.find(
+              s => s.company_id === c.id && s.subscription_type === 'company'
+            ) || null
+            
             return {
               ...c,
-              team_members: teamMembers
+              team_members: teamMembers,
+              subscription: companySub ? {
+                id: companySub.id,
+                company_id: companySub.company_id,
+                status: companySub.status,
+                tier: companySub.tier,
+                is_trial: companySub.is_trial || false,
+                trial_ends_at: companySub.trial_ends_at,
+                end_date: companySub.end_date,
+                subscription_type: companySub.subscription_type || 'company'
+              } : null
             }
           })
         
@@ -319,6 +347,45 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
       alert(`Failed to revoke trial: ${err.message}`)
     } finally {
       setIsRevoking(prev => ({ ...prev, [userId]: false }))
+    }
+  }
+
+  const handleRevokeCompanySubscription = async (companyId: string, subscriptionId: string, companyName: string) => {
+    // Find the company to get team member count
+    let teamMemberCount = 0
+    users.forEach(u => {
+      const company = u.companies_owned.find(c => c.id === companyId)
+      if (company) {
+        teamMemberCount = company.team_members.length
+      }
+    })
+    
+    if (!confirm(`Are you sure you want to revoke the subscription for "${companyName}"?\n\nThis will:\n• Remove access for this company\n• Remove access for ${teamMemberCount} team member(s) in this company`)) {
+      return
+    }
+
+    setIsRevokingCompany(prev => ({ ...prev, [companyId]: true }))
+    try {
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({
+          status: 'expired',
+          trial_ends_at: new Date().toISOString(),
+          end_date: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', subscriptionId)
+
+      if (error) {
+        alert(`Failed to revoke company subscription: ${error.message}`)
+      } else {
+        alert(`Subscription revoked successfully for "${companyName}". The company owner and all team members have lost access to this company.`)
+        await loadUsers()
+      }
+    } catch (err: any) {
+      alert(`Failed to revoke company subscription: ${err.message}`)
+    } finally {
+      setIsRevokingCompany(prev => ({ ...prev, [companyId]: false }))
     }
   }
 
@@ -725,6 +792,42 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
                                         </div>
                                       </div>
                                     </div>
+                                    
+                                    {/* Company Subscription Status & Actions */}
+                                    <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                                      {company.subscription ? (
+                                        <>
+                                          <span className={`px-2 py-1 rounded text-xs font-medium border ${
+                                            company.subscription.is_trial
+                                              ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                                              : company.subscription.status === 'active'
+                                              ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                                              : 'bg-red-500/20 text-red-400 border-red-500/30'
+                                          }`}>
+                                            {company.subscription.is_trial 
+                                              ? `Trial (${Math.ceil((new Date(company.subscription.trial_ends_at || company.subscription.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}d left)`
+                                              : company.subscription.status === 'active'
+                                              ? 'Active'
+                                              : 'Expired'
+                                            }
+                                          </span>
+                                          <span className="text-gray-500 text-xs">
+                                            {company.subscription.tier}
+                                          </span>
+                                          {(company.subscription.is_trial || company.subscription.status === 'active') && (
+                                            <button
+                                              onClick={() => handleRevokeCompanySubscription(company.id, company.subscription!.id, company.name)}
+                                              disabled={isRevokingCompany[company.id]}
+                                              className="px-2 py-1 bg-red-500/20 text-red-400 border border-red-500/30 rounded text-xs font-medium hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                                            >
+                                              {isRevokingCompany[company.id] ? '...' : 'Revoke'}
+                                            </button>
+                                          )}
+                                        </>
+                                      ) : (
+                                        <span className="text-gray-500 text-xs">No subscription</span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
 
@@ -771,9 +874,13 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
                                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                       </svg>
-                                      {status.label.includes('Trial') || status.label === 'Active' 
-                                        ? 'All team members have access through the owner\'s subscription'
-                                        : 'Team members have no access (owner\'s subscription expired)'
+                                      {company.subscription 
+                                        ? (company.subscription.is_trial || company.subscription.status === 'active'
+                                          ? 'All team members have access through this company\'s subscription'
+                                          : 'Team members have no access (company subscription expired)')
+                                        : (status.label.includes('Trial') || status.label === 'Active'
+                                          ? 'All team members have access through the owner\'s subscription'
+                                          : 'Team members have no access (owner\'s subscription expired)')
                                       }
                                     </div>
                                   </div>
