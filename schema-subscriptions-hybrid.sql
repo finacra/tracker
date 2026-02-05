@@ -158,6 +158,7 @@ CREATE POLICY "Superadmins can manage all subscriptions"
   );
 
 -- 3. Function to check if a company has active subscription (for Starter/Professional)
+DROP FUNCTION IF EXISTS public.check_company_subscription(UUID) CASCADE;
 CREATE OR REPLACE FUNCTION public.check_company_subscription(p_company_id UUID)
 RETURNS TABLE (
   has_subscription BOOLEAN,
@@ -222,6 +223,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 4. Update check_user_subscription to only check user-first subscriptions (Enterprise)
+DROP FUNCTION IF EXISTS public.check_user_subscription(UUID) CASCADE;
 CREATE OR REPLACE FUNCTION public.check_user_subscription(target_user_id UUID)
 RETURNS TABLE (
   has_subscription BOOLEAN,
@@ -293,6 +295,9 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 5. Unified function to check company access (routes based on subscription type)
+-- Drop existing function if it exists (with different signature)
+DROP FUNCTION IF EXISTS public.check_company_access(UUID, UUID) CASCADE;
+
 CREATE OR REPLACE FUNCTION public.check_company_access(p_user_id UUID, p_company_id UUID)
 RETURNS TABLE (
   has_access BOOLEAN,
@@ -395,6 +400,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 6. Function to create company trial (for Starter/Professional)
+DROP FUNCTION IF EXISTS public.create_company_trial(UUID, UUID) CASCADE;
 CREATE OR REPLACE FUNCTION public.create_company_trial(p_user_id UUID, p_company_id UUID)
 RETURNS UUID AS $$
 DECLARE
@@ -458,6 +464,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 7. Update create_user_trial to only create user-first trials (Enterprise)
+DROP FUNCTION IF EXISTS public.create_user_trial(UUID) CASCADE;
 CREATE OR REPLACE FUNCTION public.create_user_trial(target_user_id UUID)
 RETURNS UUID AS $$
 DECLARE
