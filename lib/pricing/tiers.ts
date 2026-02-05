@@ -56,7 +56,7 @@ export const PRICING_TIERS: PricingTierConfig[] = [
     id: 'starter',
     name: 'Starter',
     description: 'Perfect for small businesses and startups',
-    monthlyPrice: 3500,
+    monthlyPrice: 2500, // Per company pricing - competitive for single company
     features: [
       '1 company per subscription',
       'Up to 3 team members per company',
@@ -68,7 +68,7 @@ export const PRICING_TIERS: PricingTierConfig[] = [
       'Invited members get free access',
     ],
     limits: {
-      companies: 5,
+      companies: 1, // Company-first: 1 company per subscription
       storage: '10GB',
       users: 3,
       apiAccess: false,
@@ -79,7 +79,7 @@ export const PRICING_TIERS: PricingTierConfig[] = [
     id: 'professional',
     name: 'Professional',
     description: 'Ideal for growing businesses',
-    monthlyPrice: 8000,
+    monthlyPrice: 6000, // Per company pricing - competitive for single company
     features: [
       '1 company per subscription',
       'Up to 10 team members per company',
@@ -95,7 +95,7 @@ export const PRICING_TIERS: PricingTierConfig[] = [
     ],
     popular: true,
     limits: {
-      companies: 20,
+      companies: 1, // Company-first: 1 company per subscription
       storage: '50GB',
       users: 10,
       apiAccess: true,
@@ -106,7 +106,7 @@ export const PRICING_TIERS: PricingTierConfig[] = [
     id: 'enterprise',
     name: 'Enterprise',
     description: 'For large organizations and corporations',
-    monthlyPrice: 18000,
+    monthlyPrice: 18000, // User-first: covers up to 100 companies (₹180/company/month)
     features: [
       'Up to 100 companies per subscription',
       'Unlimited team members per company',
@@ -122,7 +122,7 @@ export const PRICING_TIERS: PricingTierConfig[] = [
       'Invited members get free access',
     ],
     limits: {
-      companies: 'unlimited',
+      companies: 100, // User-first: up to 100 companies per subscription
       storage: '500GB',
       users: 'unlimited',
       apiAccess: true,
