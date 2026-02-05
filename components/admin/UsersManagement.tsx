@@ -77,6 +77,9 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
   const [isRevoking, setIsRevoking] = useState<{ [key: string]: boolean }>({})
   const [isRevokingCompany, setIsRevokingCompany] = useState<{ [key: string]: boolean }>({})
   const [isGranting, setIsGranting] = useState<{ [key: string]: boolean }>({})
+  const [isGrantingCompany, setIsGrantingCompany] = useState<{ [key: string]: boolean }>({})
+  const [companyExtendDays, setCompanyExtendDays] = useState<{ [key: string]: number }>({})
+  const [companyTier, setCompanyTier] = useState<{ [key: string]: 'starter' | 'professional' }>({})
   
   // Email cache for team members
   const [emailCache, setEmailCache] = useState<{ [key: string]: string }>({})
@@ -389,7 +392,7 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
     }
   }
 
-  const handleGrantTrial = async (userId: string) => {
+  const handleGrantTrial = async (userId: string, tier: 'starter' | 'professional' | 'enterprise' = 'enterprise') => {
     const days = extendDays[userId] || 15
     if (days < 1 || days > 365) {
       alert('Please enter a valid number of days (1-365)')
@@ -398,6 +401,84 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
 
     setIsGranting(prev => ({ ...prev, [userId]: true }))
     try {
+      // Enterprise: user-first trial
+      if (tier === 'enterprise') {
+        // Check if user already has active subscription
+        const { data: existingSub } = await supabase
+          .from('subscriptions')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('subscription_type', 'user')
+          .or('status.eq.active,is_trial.eq.true')
+          .gt('end_date', new Date().toISOString())
+          .maybeSingle()
+
+        if (existingSub) {
+          throw new Error('User already has an active Enterprise subscription or trial')
+        }
+
+        const trialEndDate = new Date()
+        trialEndDate.setDate(trialEndDate.getDate() + days)
+
+        const { error } = await supabase
+          .from('subscriptions')
+          .insert({
+            user_id: userId,
+            company_id: null,
+            subscription_type: 'user',
+            status: 'trial',
+            tier: 'enterprise',
+            billing_cycle: 'monthly',
+            amount: 0,
+            currency: 'INR',
+            is_trial: true,
+            trial_started_at: new Date().toISOString(),
+            trial_ends_at: trialEndDate.toISOString(),
+            start_date: new Date().toISOString(),
+            end_date: trialEndDate.toISOString(),
+          })
+
+        if (error) {
+          throw new Error(error.message || 'Failed to create user trial')
+        }
+
+        alert(`Enterprise trial granted for ${days} days.\n\nThis gives access to the owner and all team members across all their companies (up to 100 companies).`)
+      } else {
+        // This shouldn't happen for user-level, but handle it
+        throw new Error('User-level trials are only available for Enterprise tier')
+      }
+
+      await loadUsers()
+    } catch (err: any) {
+      alert(`Failed to grant trial: ${err.message}`)
+    } finally {
+      setIsGranting(prev => ({ ...prev, [userId]: false }))
+    }
+  }
+
+  const handleGrantCompanyTrial = async (companyId: string, userId: string, tier: 'starter' | 'professional' = 'starter', companyName: string) => {
+    const days = companyExtendDays[companyId] || 15
+    if (days < 1 || days > 365) {
+      alert('Please enter a valid number of days (1-365)')
+      return
+    }
+
+    setIsGrantingCompany(prev => ({ ...prev, [companyId]: true }))
+    try {
+      // Check if company already has active subscription
+      const { data: existingSub } = await supabase
+        .from('subscriptions')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('subscription_type', 'company')
+        .or('status.eq.active,is_trial.eq.true')
+        .gt('end_date', new Date().toISOString())
+        .maybeSingle()
+
+      if (existingSub) {
+        throw new Error('Company already has an active subscription or trial')
+      }
+
       const trialEndDate = new Date()
       trialEndDate.setDate(trialEndDate.getDate() + days)
 
@@ -405,9 +486,10 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
         .from('subscriptions')
         .insert({
           user_id: userId,
-          company_id: null, // User-based subscription
+          company_id: companyId,
+          subscription_type: 'company',
           status: 'trial',
-          tier: 'starter',
+          tier: tier,
           billing_cycle: 'monthly',
           amount: 0,
           currency: 'INR',
@@ -419,15 +501,15 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
         })
 
       if (error) {
-        alert(`Failed to grant trial: ${error.message}`)
-      } else {
-        alert(`Trial granted for ${days} days.\n\nThis gives access to the owner and all team members of their companies.`)
-        await loadUsers()
+        throw new Error(error.message || 'Failed to create company trial')
       }
+
+      alert(`${tier.charAt(0).toUpperCase() + tier.slice(1)} trial granted for "${companyName}" for ${days} days.\n\nThis gives access to the company owner and all team members of this company.`)
+      await loadUsers()
     } catch (err: any) {
-      alert(`Failed to grant trial: ${err.message}`)
+      alert(`Failed to grant company trial: ${err.message}`)
     } finally {
-      setIsGranting(prev => ({ ...prev, [userId]: false }))
+      setIsGrantingCompany(prev => ({ ...prev, [companyId]: false }))
     }
   }
 
@@ -735,9 +817,10 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
                                 className="w-14 px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white text-sm text-center focus:outline-none focus:border-primary-orange"
                               />
                               <button
-                                onClick={() => handleGrantTrial(user.id)}
+                                onClick={() => handleGrantTrial(user.id, 'enterprise')}
                                 disabled={isGranting[user.id]}
                                 className="px-3 py-1 bg-primary-orange text-white rounded text-xs font-medium hover:bg-primary-orange/90 transition-colors disabled:opacity-50"
+                                title="Grant Enterprise trial (covers all companies)"
                               >
                                 {isGranting[user.id] ? '...' : 'Grant Trial'}
                               </button>
@@ -825,7 +908,36 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
                                           )}
                                         </>
                                       ) : (
-                                        <span className="text-gray-500 text-xs">No subscription</span>
+                                        <>
+                                          <span className="text-gray-500 text-xs">No subscription</span>
+                                          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                            <select
+                                              value={companyTier[company.id] || 'starter'}
+                                              onChange={(e) => setCompanyTier(prev => ({ ...prev, [company.id]: e.target.value as 'starter' | 'professional' }))}
+                                              className="px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white text-xs focus:outline-none focus:border-primary-orange"
+                                            >
+                                              <option value="starter">Starter</option>
+                                              <option value="professional">Professional</option>
+                                            </select>
+                                            <input
+                                              type="number"
+                                              min="1"
+                                              max="365"
+                                              value={companyExtendDays[company.id] || 15}
+                                              onChange={(e) => setCompanyExtendDays(prev => ({ ...prev, [company.id]: parseInt(e.target.value) || 15 }))}
+                                              className="w-12 px-1 py-0.5 bg-gray-900 border border-gray-700 rounded text-white text-xs text-center focus:outline-none focus:border-primary-orange"
+                                            />
+                                            <button
+                                              onClick={() => {
+                                                handleGrantCompanyTrial(company.id, user.id, companyTier[company.id] || 'starter', company.name)
+                                              }}
+                                              disabled={isGrantingCompany[company.id]}
+                                              className="px-2 py-1 bg-primary-orange text-white rounded text-xs font-medium hover:bg-primary-orange/90 transition-colors disabled:opacity-50"
+                                            >
+                                              {isGrantingCompany[company.id] ? '...' : 'Grant Trial'}
+                                            </button>
+                                          </div>
+                                        </>
                                       )}
                                     </div>
                                   </div>
