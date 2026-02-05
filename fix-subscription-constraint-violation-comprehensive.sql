@@ -46,28 +46,43 @@ WHERE s.tier IN ('starter', 'professional')
   );
 
 -- 7. For Starter/Professional subscriptions without company_id and no companies found:
--- Option A: Cancel them (if they're not active)
+-- Option A: Convert cancelled/inactive trials to user-first (cleaner than leaving them invalid)
 UPDATE public.subscriptions
-SET status = 'cancelled'
+SET 
+  subscription_type = 'user',
+  company_id = NULL,
+  tier = 'enterprise'  -- Convert to enterprise for user-first
 WHERE tier IN ('starter', 'professional')
   AND subscription_type = 'company'
   AND company_id IS NULL
+  AND is_trial = TRUE
+  AND NOT EXISTS (
+    SELECT 1 FROM public.companies c WHERE c.user_id = subscriptions.user_id
+  );
+
+-- Option B: For non-trial cancelled subscriptions, try to assign a company or convert to user-first
+UPDATE public.subscriptions
+SET 
+  subscription_type = 'user',
+  company_id = NULL,
+  tier = 'enterprise'
+WHERE tier IN ('starter', 'professional')
+  AND subscription_type = 'company'
+  AND company_id IS NULL
+  AND is_trial = FALSE
   AND status != 'active'
   AND NOT EXISTS (
     SELECT 1 FROM public.companies c WHERE c.user_id = subscriptions.user_id
   );
 
--- Option B: Convert to user-first trial (if they're active trials)
+-- Option C: For active non-trial subscriptions without company_id, cancel them
 UPDATE public.subscriptions
-SET 
-  subscription_type = 'user',
-  company_id = NULL,
-  tier = 'enterprise'  -- Upgrade to enterprise for user-first
+SET status = 'cancelled'
 WHERE tier IN ('starter', 'professional')
   AND subscription_type = 'company'
   AND company_id IS NULL
-  AND is_trial = TRUE
-  AND status IN ('active', 'trial')
+  AND is_trial = FALSE
+  AND status = 'active'
   AND NOT EXISTS (
     SELECT 1 FROM public.companies c WHERE c.user_id = subscriptions.user_id
   );
