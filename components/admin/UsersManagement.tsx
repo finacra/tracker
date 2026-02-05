@@ -80,6 +80,8 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
   const [isGrantingCompany, setIsGrantingCompany] = useState<{ [key: string]: boolean }>({})
   const [companyExtendDays, setCompanyExtendDays] = useState<{ [key: string]: number }>({})
   const [companyTier, setCompanyTier] = useState<{ [key: string]: 'starter' | 'professional' }>({})
+  const [isChangingTier, setIsChangingTier] = useState<{ [key: string]: boolean }>({})
+  const [isExtendingCompany, setIsExtendingCompany] = useState<{ [key: string]: boolean }>({})
   
   // Email cache for team members
   const [emailCache, setEmailCache] = useState<{ [key: string]: string }>({})
@@ -465,7 +467,7 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
 
     setIsGrantingCompany(prev => ({ ...prev, [companyId]: true }))
     try {
-      // Check if company already has active subscription
+      // Check if company already has active subscription (not expired)
       const { data: existingSub } = await supabase
         .from('subscriptions')
         .select('id')
@@ -478,6 +480,9 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
       if (existingSub) {
         throw new Error('Company already has an active subscription or trial')
       }
+
+      // If there's an expired subscription, we can still create a new one
+      // (The expired one won't block access, so we allow creating a new trial)
 
       const trialEndDate = new Date()
       trialEndDate.setDate(trialEndDate.getDate() + days)
@@ -510,6 +515,83 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
       alert(`Failed to grant company trial: ${err.message}`)
     } finally {
       setIsGrantingCompany(prev => ({ ...prev, [companyId]: false }))
+    }
+  }
+
+  const handleChangeCompanyTier = async (companyId: string, subscriptionId: string, newTier: 'starter' | 'professional', companyName: string) => {
+    if (!confirm(`Change subscription tier for "${companyName}" to ${newTier.charAt(0).toUpperCase() + newTier.slice(1)}?`)) {
+      return
+    }
+
+    setIsChangingTier(prev => ({ ...prev, [companyId]: true }))
+    try {
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({
+          tier: newTier,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', subscriptionId)
+
+      if (error) {
+        throw new Error(error.message || 'Failed to change tier')
+      }
+
+      alert(`Subscription tier changed to ${newTier.charAt(0).toUpperCase() + newTier.slice(1)} for "${companyName}".`)
+      await loadUsers()
+    } catch (err: any) {
+      alert(`Failed to change tier: ${err.message}`)
+    } finally {
+      setIsChangingTier(prev => ({ ...prev, [companyId]: false }))
+    }
+  }
+
+  const handleExtendCompanyTrial = async (companyId: string, subscriptionId: string, companyName: string) => {
+    const days = companyExtendDays[companyId] || 15
+    if (days < 1 || days > 365) {
+      alert('Please enter a valid number of days (1-365)')
+      return
+    }
+
+    setIsExtendingCompany(prev => ({ ...prev, [companyId]: true }))
+    try {
+      // Get current subscription
+      const { data: currentSub } = await supabase
+        .from('subscriptions')
+        .select('trial_ends_at, end_date')
+        .eq('id', subscriptionId)
+        .single()
+
+      const currentEndDate = currentSub?.trial_ends_at 
+        ? new Date(currentSub.trial_ends_at) 
+        : (currentSub?.end_date ? new Date(currentSub.end_date) : new Date())
+      
+      // If subscription is expired, extend from today
+      const baseDate = currentEndDate < new Date() ? new Date() : currentEndDate
+      const newEndDate = new Date(baseDate)
+      newEndDate.setDate(newEndDate.getDate() + days)
+
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({
+          status: 'trial',
+          is_trial: true,
+          trial_ends_at: newEndDate.toISOString(),
+          end_date: newEndDate.toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', subscriptionId)
+
+      if (error) {
+        alert(`Failed to extend trial: ${error.message}`)
+      } else {
+        alert(`Trial extended by ${days} days for "${companyName}". New end date: ${newEndDate.toLocaleDateString()}`)
+        await loadUsers()
+      }
+    } catch (err: any) {
+      alert(`Failed to extend trial: ${err.message}`)
+    } finally {
+      setIsExtendingCompany(prev => ({ ...prev, [companyId]: false }))
     }
   }
 
@@ -888,15 +970,51 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
                                               : 'bg-red-500/20 text-red-400 border-red-500/30'
                                           }`}>
                                             {company.subscription.is_trial 
-                                              ? `Trial (${Math.ceil((new Date(company.subscription.trial_ends_at || company.subscription.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}d left)`
+                                              ? `Trial (${Math.max(0, Math.ceil((new Date(company.subscription.trial_ends_at || company.subscription.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))}d left)`
                                               : company.subscription.status === 'active'
                                               ? 'Active'
                                               : 'Expired'
                                             }
                                           </span>
-                                          <span className="text-gray-500 text-xs">
-                                            {company.subscription.tier}
-                                          </span>
+                                          
+                                          {/* Tier Selector - Allow changing tier */}
+                                          <select
+                                            value={company.subscription.tier}
+                                            onChange={(e) => {
+                                              const newTier = e.target.value as 'starter' | 'professional'
+                                              if (newTier !== company.subscription!.tier) {
+                                                handleChangeCompanyTier(company.id, company.subscription!.id, newTier, company.name)
+                                              }
+                                            }}
+                                            disabled={isChangingTier[company.id]}
+                                            className="px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white text-xs focus:outline-none focus:border-primary-orange disabled:opacity-50"
+                                          >
+                                            <option value="starter">Starter</option>
+                                            <option value="professional">Professional</option>
+                                          </select>
+
+                                          {/* Extend Trial - Show if trial or expired */}
+                                          {(company.subscription.is_trial || company.subscription.status === 'expired') && (
+                                            <>
+                                              <input
+                                                type="number"
+                                                min="1"
+                                                max="365"
+                                                value={companyExtendDays[company.id] || 15}
+                                                onChange={(e) => setCompanyExtendDays(prev => ({ ...prev, [company.id]: parseInt(e.target.value) || 15 }))}
+                                                className="w-12 px-1 py-0.5 bg-gray-900 border border-gray-700 rounded text-white text-xs text-center focus:outline-none focus:border-primary-orange"
+                                              />
+                                              <button
+                                                onClick={() => handleExtendCompanyTrial(company.id, company.subscription!.id, company.name)}
+                                                disabled={isExtendingCompany[company.id]}
+                                                className="px-2 py-1 bg-green-500/20 text-green-400 border border-green-500/30 rounded text-xs font-medium hover:bg-green-500/30 transition-colors disabled:opacity-50"
+                                              >
+                                                {isExtendingCompany[company.id] ? '...' : '+Days'}
+                                              </button>
+                                            </>
+                                          )}
+
+                                          {/* Revoke Button */}
                                           {(company.subscription.is_trial || company.subscription.status === 'active') && (
                                             <button
                                               onClick={() => handleRevokeCompanySubscription(company.id, company.subscription!.id, company.name)}
@@ -905,6 +1023,35 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
                                             >
                                               {isRevokingCompany[company.id] ? '...' : 'Revoke'}
                                             </button>
+                                          )}
+
+                                          {/* Grant New Trial - Show if expired */}
+                                          {company.subscription.status === 'expired' && (
+                                            <>
+                                              <select
+                                                value={companyTier[company.id] || company.subscription.tier}
+                                                onChange={(e) => setCompanyTier(prev => ({ ...prev, [company.id]: e.target.value as 'starter' | 'professional' }))}
+                                                className="px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white text-xs focus:outline-none focus:border-primary-orange"
+                                              >
+                                                <option value="starter">Starter</option>
+                                                <option value="professional">Professional</option>
+                                              </select>
+                                              <input
+                                                type="number"
+                                                min="1"
+                                                max="365"
+                                                value={companyExtendDays[company.id] || 15}
+                                                onChange={(e) => setCompanyExtendDays(prev => ({ ...prev, [company.id]: parseInt(e.target.value) || 15 }))}
+                                                className="w-12 px-1 py-0.5 bg-gray-900 border border-gray-700 rounded text-white text-xs text-center focus:outline-none focus:border-primary-orange"
+                                              />
+                                              <button
+                                                onClick={() => handleGrantCompanyTrial(company.id, user.id, companyTier[company.id] || (company.subscription?.tier as 'starter' | 'professional') || 'starter', company.name)}
+                                                disabled={isGrantingCompany[company.id]}
+                                                className="px-2 py-1 bg-primary-orange text-white rounded text-xs font-medium hover:bg-primary-orange/90 transition-colors disabled:opacity-50"
+                                              >
+                                                {isGrantingCompany[company.id] ? '...' : 'Grant Trial'}
+                                              </button>
+                                            </>
                                           )}
                                         </>
                                       ) : (
