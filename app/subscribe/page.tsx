@@ -26,6 +26,46 @@ function SubscribePageInner() {
   const [error, setError] = useState<string | null>(null)
   const [userCompanies, setUserCompanies] = useState<Array<{ id: string; name: string }>>([])
   const [selectedCompanyForSubscription, setSelectedCompanyForSubscription] = useState<string | null>(companyId)
+  const [companyHasActiveSubscription, setCompanyHasActiveSubscription] = useState<boolean>(false)
+  const [isCheckingCompanySubscription, setIsCheckingCompanySubscription] = useState(false)
+
+  // Check if selected company has active subscription/trial
+  useEffect(() => {
+    async function checkCompanySubscription() {
+      const targetCompanyId = selectedCompanyForSubscription || companyId
+      if (!targetCompanyId || !user) {
+        setCompanyHasActiveSubscription(false)
+        return
+      }
+
+      setIsCheckingCompanySubscription(true)
+      try {
+        const { data, error: rpcError } = await supabase
+          .rpc('check_company_subscription', { p_company_id: targetCompanyId })
+          .single()
+
+        if (!rpcError && data) {
+          const subscriptionData = data as {
+            has_subscription: boolean
+            tier: string
+            is_trial: boolean
+            trial_days_remaining: number
+            user_limit: number
+          }
+          setCompanyHasActiveSubscription(subscriptionData.has_subscription)
+        } else {
+          setCompanyHasActiveSubscription(false)
+        }
+      } catch (err) {
+        console.error('Error checking company subscription:', err)
+        setCompanyHasActiveSubscription(false)
+      } finally {
+        setIsCheckingCompanySubscription(false)
+      }
+    }
+
+    checkCompanySubscription()
+  }, [selectedCompanyForSubscription, companyId, user, supabase])
 
   // Fetch company name if provided, and fetch all user companies for selection
   useEffect(() => {
@@ -395,41 +435,59 @@ function SubscribePageInner() {
           </div>
         )}
 
-        {/* Pay Later / Trial Option */}
-        <div className="max-w-2xl mx-auto mb-12">
-          <div className="bg-gradient-to-r from-primary-orange/10 to-orange-600/10 border border-primary-orange/30 rounded-2xl p-6 text-center">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <svg className="w-6 h-6 text-primary-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-xl font-semibold text-white">Not ready to commit?</span>
-            </div>
-            <p className="text-gray-400 mb-4">
-              Start with a <span className="text-primary-orange font-semibold">15-day free trial</span> — no credit card required.
-              {selectedCompanyForSubscription ? (
-                <> This trial is for <span className="text-white font-medium">{userCompanies.find(c => c.id === selectedCompanyForSubscription)?.name || 'selected company'}</span> only.</>
-              ) : (
-                <> Enterprise trial covers all your companies.</>
-              )}
-            </p>
-            <div className="flex items-center justify-center gap-3">
-              <button
-                onClick={() => handleStartTrial('starter')}
-                disabled={isStartingTrial || (userCompanies.length > 0 && !selectedCompanyForSubscription)}
-                className="bg-primary-orange text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-              >
-                {isStartingTrial ? 'Starting...' : 'Trial for Starter'}
-              </button>
-              <button
-                onClick={() => handleStartTrial('enterprise')}
-                disabled={isStartingTrial}
-                className="bg-gray-800 text-white px-6 py-2 rounded-lg font-semibold hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm border border-gray-700"
-              >
-                {isStartingTrial ? 'Starting...' : 'Trial for Enterprise'}
-              </button>
+        {/* Pay Later / Trial Option - Only show if company doesn't have active subscription */}
+        {!companyHasActiveSubscription && (selectedCompanyForSubscription || companyId) && (
+          <div className="max-w-2xl mx-auto mb-12">
+            <div className="bg-gradient-to-r from-primary-orange/10 to-orange-600/10 border border-primary-orange/30 rounded-2xl p-6 text-center">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <svg className="w-6 h-6 text-primary-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-xl font-semibold text-white">Not ready to commit?</span>
+              </div>
+              <p className="text-gray-400 mb-4">
+                Start with a <span className="text-primary-orange font-semibold">15-day free trial</span> — no credit card required.
+                {selectedCompanyForSubscription ? (
+                  <> This trial is for <span className="text-white font-medium">{userCompanies.find(c => c.id === selectedCompanyForSubscription)?.name || 'selected company'}</span> only.</>
+                ) : (
+                  <> Enterprise trial covers all your companies.</>
+                )}
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={() => handleStartTrial('starter')}
+                  disabled={isStartingTrial || isCheckingCompanySubscription || (userCompanies.length > 0 && !selectedCompanyForSubscription)}
+                  className="bg-primary-orange text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  {isStartingTrial ? 'Starting...' : 'Trial for Starter'}
+                </button>
+                <button
+                  onClick={() => handleStartTrial('enterprise')}
+                  disabled={isStartingTrial || isCheckingCompanySubscription}
+                  className="bg-gray-800 text-white px-6 py-2 rounded-lg font-semibold hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm border border-gray-700"
+                >
+                  {isStartingTrial ? 'Starting...' : 'Trial for Enterprise'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Show message if company has active subscription */}
+        {companyHasActiveSubscription && (selectedCompanyForSubscription || companyId) && (
+          <div className="max-w-2xl mx-auto mb-12">
+            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 text-center">
+              <p className="text-red-400 font-medium">
+                Company already has an active subscription or trial
+              </p>
+              <p className="text-gray-400 text-sm mt-2">
+                {selectedCompanyForSubscription && (
+                  <>The selected company already has an active subscription or trial. You can upgrade your plan or wait for the current subscription to expire.</>
+                )}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Divider */}
         <div className="flex items-center gap-4 max-w-4xl mx-auto mb-12">
