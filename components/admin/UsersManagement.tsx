@@ -977,25 +977,26 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
                                             }
                                           </span>
                                           
-                                          {/* Tier Selector - Allow changing tier */}
-                                          <select
-                                            value={company.subscription.tier}
-                                            onChange={(e) => {
-                                              const newTier = e.target.value as 'starter' | 'professional'
-                                              if (newTier !== company.subscription!.tier) {
-                                                handleChangeCompanyTier(company.id, company.subscription!.id, newTier, company.name)
-                                              }
-                                            }}
-                                            disabled={isChangingTier[company.id]}
-                                            className="px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white text-xs focus:outline-none focus:border-primary-orange disabled:opacity-50"
-                                          >
-                                            <option value="starter">Starter</option>
-                                            <option value="professional">Professional</option>
-                                          </select>
-
-                                          {/* Extend Trial - Show if trial or expired */}
-                                          {(company.subscription.is_trial || company.subscription.status === 'expired') && (
+                                          {/* Active/Trial Subscription: Show tier selector, extend, and revoke */}
+                                          {(company.subscription.is_trial || company.subscription.status === 'active') && (
                                             <>
+                                              {/* Tier Selector - Allow changing tier */}
+                                              <select
+                                                value={company.subscription.tier}
+                                                onChange={(e) => {
+                                                  const newTier = e.target.value as 'starter' | 'professional'
+                                                  if (newTier !== company.subscription!.tier) {
+                                                    handleChangeCompanyTier(company.id, company.subscription!.id, newTier, company.name)
+                                                  }
+                                                }}
+                                                disabled={isChangingTier[company.id]}
+                                                className="px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white text-xs focus:outline-none focus:border-primary-orange disabled:opacity-50"
+                                              >
+                                                <option value="starter">Starter</option>
+                                                <option value="professional">Professional</option>
+                                              </select>
+
+                                              {/* Extend Trial */}
                                               <input
                                                 type="number"
                                                 min="1"
@@ -1011,21 +1012,19 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
                                               >
                                                 {isExtendingCompany[company.id] ? '...' : '+Days'}
                                               </button>
+
+                                              {/* Revoke Button */}
+                                              <button
+                                                onClick={() => handleRevokeCompanySubscription(company.id, company.subscription!.id, company.name)}
+                                                disabled={isRevokingCompany[company.id]}
+                                                className="px-2 py-1 bg-red-500/20 text-red-400 border border-red-500/30 rounded text-xs font-medium hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                                              >
+                                                {isRevokingCompany[company.id] ? '...' : 'Revoke'}
+                                              </button>
                                             </>
                                           )}
 
-                                          {/* Revoke Button */}
-                                          {(company.subscription.is_trial || company.subscription.status === 'active') && (
-                                            <button
-                                              onClick={() => handleRevokeCompanySubscription(company.id, company.subscription!.id, company.name)}
-                                              disabled={isRevokingCompany[company.id]}
-                                              className="px-2 py-1 bg-red-500/20 text-red-400 border border-red-500/30 rounded text-xs font-medium hover:bg-red-500/30 transition-colors disabled:opacity-50"
-                                            >
-                                              {isRevokingCompany[company.id] ? '...' : 'Revoke'}
-                                            </button>
-                                          )}
-
-                                          {/* Grant New Trial - Show if expired */}
+                                          {/* Expired Subscription: Show grant new trial OR extend (not both) */}
                                           {company.subscription.status === 'expired' && (
                                             <>
                                               <select

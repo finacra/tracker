@@ -257,10 +257,10 @@ function DataRoomPageInner() {
     // If no company selected, don't check access yet
     if (!currentCompany) return
     
-    // If user is owner and doesn't have access, redirect to subscribe
+    // If user is owner but no subscription/trial (or company subscription revoked/expired)
     if (isOwner && !hasAccess) {
-      console.log('[Access Check] Owner without access, redirecting to subscribe page')
-      router.push(`/subscribe?company_id=${currentCompany.id}`)
+      console.log('[Access Check] Owner has no subscription or company subscription expired, redirecting to subscription-required page')
+      router.push(`/subscription-required?company_id=${currentCompany.id}`)
       return
     }
     
@@ -274,7 +274,7 @@ function DataRoomPageInner() {
     // If user is not owner and doesn't have access for other reasons
     if (!hasAccess && !isOwner) {
       console.log('[Access Check] No access to this company')
-      router.push('/subscription-required')
+      router.push(`/subscription-required?company_id=${currentCompany.id}`)
     }
   }, [currentCompany, hasAccess, isOwner, ownerSubscriptionExpired, accessLoading, authLoading, router])
 
