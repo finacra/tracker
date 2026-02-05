@@ -53,6 +53,11 @@ function SubscribePageInner() {
             user_limit: number
           }
           setCompanyHasActiveSubscription(subscriptionData.has_subscription)
+          
+          // If company has active subscription and user is not explicitly upgrading, redirect to data-room
+          if (subscriptionData.has_subscription && !showUpgrade) {
+            router.replace(`/data-room?company_id=${targetCompanyId}`)
+          }
         } else {
           setCompanyHasActiveSubscription(false)
         }
@@ -65,7 +70,7 @@ function SubscribePageInner() {
     }
 
     checkCompanySubscription()
-  }, [selectedCompanyForSubscription, companyId, user, supabase])
+  }, [selectedCompanyForSubscription, companyId, user, supabase, showUpgrade, router])
 
   // Fetch company name if provided, and fetch all user companies for selection
   useEffect(() => {
