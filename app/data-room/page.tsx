@@ -387,7 +387,8 @@ function DataRoomPageInner() {
     certificateNumber: '',
     issuer: '',
     expiryDate: '',
-    frequency: '1' as '1' | '2',
+    frequency: '1' as '1' | '2' | 'custom',
+    customFrequencyYears: '',
     inHouseNotifications: true,
     emailNotifications: true,
     notificationEmails: [] as string[],
@@ -5228,7 +5229,7 @@ function DataRoomPageInner() {
                         name="frequency"
                         value="1"
                         checked={dscCredentials.frequency === '1'}
-                        onChange={(e) => setDscCredentials({ ...dscCredentials, frequency: e.target.value as '1' | '2' })}
+                        onChange={(e) => setDscCredentials({ ...dscCredentials, frequency: e.target.value as '1' | '2' | 'custom' })}
                         className="w-5 h-5 text-primary-orange bg-gray-900 border-gray-700 focus:ring-primary-orange focus:ring-2"
                       />
                       <div>
@@ -5243,7 +5244,7 @@ function DataRoomPageInner() {
                         name="frequency"
                         value="2"
                         checked={dscCredentials.frequency === '2'}
-                        onChange={(e) => setDscCredentials({ ...dscCredentials, frequency: e.target.value as '1' | '2' })}
+                        onChange={(e) => setDscCredentials({ ...dscCredentials, frequency: e.target.value as '1' | '2' | 'custom' })}
                         className="w-5 h-5 text-primary-orange bg-gray-900 border-gray-700 focus:ring-primary-orange focus:ring-2"
                       />
                       <div>
@@ -5251,7 +5252,46 @@ function DataRoomPageInner() {
                         <p className="text-gray-400 text-xs">Biennial renewal</p>
                       </div>
                     </label>
+
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="frequency"
+                        value="custom"
+                        checked={dscCredentials.frequency === 'custom'}
+                        onChange={(e) => setDscCredentials({ ...dscCredentials, frequency: e.target.value as '1' | '2' | 'custom' })}
+                        className="w-5 h-5 text-primary-orange bg-gray-900 border-gray-700 focus:ring-primary-orange focus:ring-2"
+                      />
+                      <div>
+                        <span className="text-white font-medium">Custom</span>
+                        <p className="text-gray-400 text-xs">Specify custom years</p>
+                      </div>
+                    </label>
                   </div>
+
+                  {/* Custom Frequency Input */}
+                  {dscCredentials.frequency === 'custom' && (
+                    <div className="mt-4 p-4 bg-gray-900/50 rounded-lg border border-gray-800">
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Number of Years <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={dscCredentials.customFrequencyYears}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          if (value === '' || (parseInt(value) >= 1 && parseInt(value) <= 10)) {
+                            setDscCredentials({ ...dscCredentials, customFrequencyYears: value })
+                          }
+                        }}
+                        placeholder="Enter number of years (1-10)"
+                        className="w-full sm:w-64 px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      />
+                      <p className="mt-2 text-xs text-gray-500">Enter a number between 1 and 10 years</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Notifications Section */}
@@ -5510,6 +5550,10 @@ function DataRoomPageInner() {
                         alert('Please fill in all required fields')
                         return
                       }
+                      if (dscCredentials.frequency === 'custom' && !dscCredentials.customFrequencyYears) {
+                        alert('Please enter the number of years for custom frequency')
+                        return
+                      }
                       if (dscCredentials.storePlatformCredentials && (!dscCredentials.platformEmail || !dscCredentials.platformPassword)) {
                         alert('Please fill in platform email and password if you want to store platform credentials')
                         return
@@ -5520,7 +5564,7 @@ function DataRoomPageInner() {
                       setIsDscSaving(false)
                       alert('DSC credentials saved successfully!')
                     }}
-                    disabled={isDscSaving || !dscCredentials.name || !dscCredentials.certificateNumber || !dscCredentials.issuer || !dscCredentials.expiryDate || (dscCredentials.storePlatformCredentials && (!dscCredentials.platformEmail || !dscCredentials.platformPassword))}
+                    disabled={isDscSaving || !dscCredentials.name || !dscCredentials.certificateNumber || !dscCredentials.issuer || !dscCredentials.expiryDate || (dscCredentials.frequency === 'custom' && !dscCredentials.customFrequencyYears) || (dscCredentials.storePlatformCredentials && (!dscCredentials.platformEmail || !dscCredentials.platformPassword))}
                     className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg font-medium hover:from-purple-600 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20"
                   >
                     {isDscSaving ? (
