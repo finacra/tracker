@@ -1,4 +1,4 @@
-# Finacra
+# Finnovate AI
 
 A modern financial compliance management application built with Next.js 16.
 

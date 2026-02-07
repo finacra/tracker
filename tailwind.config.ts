@@ -11,16 +11,19 @@ const config: Config = {
       colors: {
         primary: {
           navy: '#1E3A5F',
+          'navy-dark': '#152A47',
           'navy-light': '#2A4A6F',
-          'navy-dark': '#152A45',
-          orange: '#FF6B35', // Keep for accents/CTAs if needed
-          dark: '#1E3A5F', // Changed to navy
-          'dark-gray': '#2A4A6F',
-          'dark-card': '#1E3A5F',
+          background: '#F8FAFC',
+          card: '#FFFFFF',
+          'text-primary': '#111827',
+          'text-secondary': '#374151',
+          'text-muted': '#6B7280',
+          border: '#E5E7EB',
+          link: '#1E3A5F',
         },
       },
       backgroundImage: {
-        'circuit-pattern': 'radial-gradient(circle at 20% 50%, rgba(30, 58, 95, 0.2) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(30, 58, 95, 0.25) 0%, transparent 50%)',
+        'circuit-pattern': 'radial-gradient(circle at 20% 50%, rgba(30, 58, 95, 0.05) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(30, 58, 95, 0.08) 0%, transparent 50%)',
       },
     },
   },

@@ -48,7 +48,7 @@ export default function PaymentButton({ tier, billingCycle, price, companyId, cl
         key: orderData.keyId,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: 'Finacra',
+        name: 'Finnovate AI',
         description: `${tier.charAt(0).toUpperCase() + tier.slice(1)} Plan - ${billingCycle}`,
         order_id: orderData.orderId,
         prefill: {
