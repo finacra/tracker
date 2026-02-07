@@ -159,12 +159,12 @@ export default function Header() {
   const userEmail = user?.email || ''
 
   return (
-    <header className="bg-primary-card border-b border-primary-border sticky top-0 z-50 shadow-sm">
+    <header className="bg-primary-dark-card border-b border-gray-800 sticky top-0 z-50">
       <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-navy rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-primary-navy/20 flex-shrink-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-orange rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-primary-orange/30 flex-shrink-0">
               <svg
                 width="16"
                 height="16"
@@ -175,7 +175,7 @@ export default function Header() {
               >
                 <path
                   d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
-                  stroke="#FFFFFF"
+                  stroke="white"
                   strokeWidth="1.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -184,7 +184,7 @@ export default function Header() {
                 />
                 <path
                   d="M14 2V8H20"
-                  stroke="#FFFFFF"
+                  stroke="white"
                   strokeWidth="1.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -194,7 +194,7 @@ export default function Header() {
                   y1="11"
                   x2="16"
                   y2="11"
-                  stroke="#FFFFFF"
+                  stroke="white"
                   strokeWidth="1.5"
                   strokeLinecap="round"
                 />
@@ -203,7 +203,7 @@ export default function Header() {
                   y1="14"
                   x2="16"
                   y2="14"
-                  stroke="#FFFFFF"
+                  stroke="white"
                   strokeWidth="1.5"
                   strokeLinecap="round"
                 />
@@ -212,31 +212,31 @@ export default function Header() {
                   y1="17"
                   x2="16"
                   y2="17"
-                  stroke="#FFFFFF"
+                  stroke="white"
                   strokeWidth="1.5"
                   strokeLinecap="round"
                 />
               </svg>
             </div>
             <div>
-              <div className="text-primary-text-primary font-medium text-sm sm:text-base md:text-lg">
-                Finacra
+              <div className="text-white font-medium text-sm sm:text-base md:text-lg">
+                Finnovate <span className="bg-primary-orange text-white px-1 py-0.5 rounded text-[10px] sm:text-xs md:text-sm">AI</span>
               </div>
-              <div className="text-primary-text-muted text-[10px] sm:text-xs">Smart Compliance</div>
+              <div className="text-gray-400 text-[10px] sm:text-xs">Smart Compliance</div>
             </div>
           </div>
 
           {/* Navigation (Desktop) */}
           <nav className="hidden md:flex items-center gap-6">
-            <a href="/data-room" className="text-primary-text-primary font-medium border-b-2 border-primary-navy pb-1">
+            <a href="/data-room" className="text-white font-medium border-b-2 border-primary-orange pb-1">
               Data Room
             </a>
             {isSuperadmin && (
-              <a href="/admin" className="text-primary-text-muted hover:text-primary-text-primary transition-colors">
+              <a href="/admin" className="text-gray-400 hover:text-white transition-colors">
                 Admin
               </a>
             )}
-            <a href="/team" className="text-primary-text-muted hover:text-primary-text-primary transition-colors">
+            <a href="/team" className="text-gray-400 hover:text-white transition-colors">
               Team
             </a>
           </nav>
@@ -247,7 +247,7 @@ export default function Header() {
             <div className="relative hidden md:block">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-1.5 sm:p-2 text-primary-text-muted hover:text-primary-text-primary transition-colors"
+                className="relative p-1.5 sm:p-2 text-gray-400 hover:text-white transition-colors"
             >
               <svg
                 width="18"
@@ -280,14 +280,14 @@ export default function Header() {
                     onClick={() => setShowNotifications(false)} 
                   />
                   {/* Dropdown */}
-                  <div className="absolute right-0 top-full mt-2 w-80 max-h-96 bg-primary-card border border-primary-border rounded-xl shadow-2xl z-50 overflow-hidden">
+                  <div className="absolute right-0 top-full mt-2 w-80 max-h-96 bg-primary-dark-card border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden">
                     {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-primary-border">
-                      <h3 className="text-primary-text-primary font-medium">Notifications</h3>
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+                      <h3 className="text-white font-medium">Notifications</h3>
                       {unreadCount > 0 && (
                         <button
                           onClick={handleMarkAllRead}
-                          className="text-xs text-primary-navy hover:text-primary-navy-dark transition-colors"
+                          className="text-xs text-primary-orange hover:text-orange-400 transition-colors"
                         >
                           Mark all read
                         </button>
@@ -297,11 +297,11 @@ export default function Header() {
                     {/* Notification List */}
                     <div className="max-h-72 overflow-y-auto">
                       {isLoadingNotifications ? (
-                        <div className="p-4 text-center text-primary-text-muted">
-                          <div className="animate-spin w-6 h-6 border-2 border-primary-navy border-t-transparent rounded-full mx-auto"></div>
+                        <div className="p-4 text-center text-gray-400">
+                          <div className="animate-spin w-6 h-6 border-2 border-primary-orange border-t-transparent rounded-full mx-auto"></div>
                         </div>
                       ) : notifications.length === 0 ? (
-                        <div className="p-6 text-center text-primary-text-muted">
+                        <div className="p-6 text-center text-gray-400">
                           <svg className="w-12 h-12 mx-auto mb-2 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
@@ -317,10 +317,10 @@ export default function Header() {
                               setSelectedNotification(notification)
                               setShowNotifications(false)
                             }}
-                            className={`px-4 py-3 border-b border-primary-border cursor-pointer transition-colors ${
+                            className={`px-4 py-3 border-b border-gray-800 cursor-pointer transition-colors ${
                               notification.is_read 
-                                ? 'bg-transparent hover:bg-gray-50' 
-                                : 'bg-primary-navy/5 hover:bg-primary-navy/10'
+                                ? 'bg-transparent hover:bg-gray-800/50' 
+                                : 'bg-primary-orange/5 hover:bg-primary-orange/10'
                             }`}
                           >
                             <div className="flex items-start gap-3">
@@ -352,7 +352,7 @@ export default function Header() {
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className={`text-sm font-medium ${notification.is_read ? 'text-primary-text-secondary' : 'text-primary-text-primary'}`}>
+                                <p className={`text-sm font-medium ${notification.is_read ? 'text-gray-300' : 'text-white'}`}>
                                   {notification.title}
                                 </p>
                                 <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
@@ -369,7 +369,7 @@ export default function Header() {
                               </div>
                               {/* Unread indicator */}
                               {!notification.is_read && (
-                                <div className="w-2 h-2 bg-primary-navy rounded-full flex-shrink-0 mt-1.5"></div>
+                                <div className="w-2 h-2 bg-primary-orange rounded-full flex-shrink-0 mt-1.5"></div>
                               )}
                             </div>
                           </div>
@@ -379,7 +379,7 @@ export default function Header() {
 
                     {/* Footer */}
                     {notifications.length > 0 && (
-                      <div className="px-4 py-2 border-t border-primary-border">
+                      <div className="px-4 py-2 border-t border-gray-700">
                         <button
                           onClick={async () => {
                             setShowNotifications(false)
@@ -390,7 +390,7 @@ export default function Header() {
                               setShowAllNotifications(true)
                             }
                           }}
-                          className="w-full text-center text-sm text-primary-navy hover:text-primary-navy-dark transition-colors"
+                          className="w-full text-center text-sm text-primary-orange hover:text-orange-400 transition-colors"
                         >
                           View all in Data Room
                         </button>
@@ -404,7 +404,7 @@ export default function Header() {
             {/* Hamburger Menu Button (Mobile Only) */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 text-primary-text-muted hover:text-primary-text-primary transition-colors"
+              className="md:hidden p-2 text-gray-400 hover:text-white transition-colors"
               aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? (
@@ -441,16 +441,16 @@ export default function Header() {
 
             {/* User Profile */}
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-navy rounded-full flex items-center justify-center text-white font-medium text-xs sm:text-sm">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-orange rounded-full flex items-center justify-center text-white font-medium text-xs sm:text-sm">
                 {userInitials}
               </div>
               <div className="hidden lg:block">
-                <div className="text-primary-text-primary text-sm font-medium">{userName}</div>
-                <div className="text-primary-text-muted text-xs">{userEmail}</div>
+                <div className="text-white text-sm font-medium">{userName}</div>
+                <div className="text-gray-400 text-xs">{userEmail}</div>
               </div>
               <button
                 onClick={handleSignOut}
-                className="hidden sm:block ml-2 px-3 py-1.5 text-sm text-primary-text-muted hover:text-primary-text-primary hover:bg-gray-100 rounded-lg transition-colors"
+                className="hidden sm:block ml-2 px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
                 title="Sign out"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -469,16 +469,16 @@ export default function Header() {
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/20 z-40 md:hidden"
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
             onClick={() => setIsMobileMenuOpen(false)}
           />
           {/* Mobile Menu */}
-          <div className="fixed top-0 left-0 h-full w-64 bg-primary-card border-r border-primary-border z-50 md:hidden shadow-2xl">
+          <div className="fixed top-0 left-0 h-full w-64 bg-primary-dark-card border-r border-gray-800 z-50 md:hidden shadow-2xl">
             <div className="flex flex-col h-full">
               {/* Mobile Menu Header */}
-              <div className="flex items-center justify-between p-4 border-b border-primary-border">
+              <div className="flex items-center justify-between p-4 border-b border-gray-800">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-primary-navy rounded-lg flex items-center justify-center shadow-lg shadow-primary-navy/20">
+                  <div className="w-8 h-8 bg-primary-orange rounded-lg flex items-center justify-center shadow-lg shadow-primary-orange/30">
                     <svg
                       width="16"
                       height="16"
@@ -488,7 +488,7 @@ export default function Header() {
                     >
                       <path
                         d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
-                        stroke="#FFFFFF"
+                        stroke="white"
                         strokeWidth="1.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -497,20 +497,20 @@ export default function Header() {
                       />
                       <path
                         d="M14 2V8H20"
-                        stroke="#FFFFFF"
+                        stroke="white"
                         strokeWidth="1.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       />
                     </svg>
                   </div>
-                  <div className="text-primary-text-primary font-medium text-sm">
-                    Finacra
+                  <div className="text-white font-medium text-sm">
+                    Finnovate <span className="bg-primary-orange text-white px-1 py-0.5 rounded text-xs">AI</span>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-2 text-primary-text-muted hover:text-primary-text-primary transition-colors"
+                  className="p-2 text-gray-400 hover:text-white transition-colors"
                   aria-label="Close menu"
                 >
                   <svg
@@ -534,7 +534,7 @@ export default function Header() {
                 <a
                   href="/data-room"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 text-primary-text-primary font-medium bg-primary-navy/10 border border-primary-navy/30 rounded-lg"
+                  className="flex items-center gap-3 px-4 py-3 text-white font-medium bg-primary-orange/20 border border-primary-orange/30 rounded-lg"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -546,7 +546,7 @@ export default function Header() {
                   <a
                     href="/admin"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-primary-text-muted hover:text-primary-text-primary hover:bg-gray-50 rounded-lg transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -570,14 +570,14 @@ export default function Header() {
               </nav>
 
               {/* Mobile Menu Footer - User Info */}
-              <div className="border-t border-primary-border p-4">
+              <div className="border-t border-gray-800 p-4">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-primary-navy rounded-full flex items-center justify-center text-white font-medium text-sm">
+                  <div className="w-10 h-10 bg-primary-orange rounded-full flex items-center justify-center text-white font-medium text-sm">
                     {userInitials}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-primary-text-primary text-sm font-medium truncate">{userName}</div>
-                    <div className="text-primary-text-muted text-xs truncate">{userEmail}</div>
+                    <div className="text-white text-sm font-medium truncate">{userName}</div>
+                    <div className="text-gray-400 text-xs truncate">{userEmail}</div>
                   </div>
                 </div>
                 <button
@@ -585,7 +585,7 @@ export default function Header() {
                     setIsMobileMenuOpen(false)
                     await handleSignOut()
                   }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-primary-text-muted hover:text-primary-text-primary hover:bg-gray-50 rounded-lg transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -602,11 +602,11 @@ export default function Header() {
 
       {/* Notification Detail Modal */}
       {selectedNotification && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-primary-card border border-primary-border rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-primary-border">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-800">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-light text-primary-text-primary">Notification Details</h3>
+                <h3 className="text-xl font-light text-white">Notification Details</h3>
                 <button
                   onClick={() => {
                     setSelectedNotification(null)
@@ -614,7 +614,7 @@ export default function Header() {
                       router.push('/data-room')
                     }
                   }}
-                  className="text-primary-text-muted hover:text-primary-text-primary transition-colors"
+                  className="text-gray-400 hover:text-white transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -653,15 +653,15 @@ export default function Header() {
                   )}
                 </div>
                 <div>
-                  <div className="text-primary-text-primary font-medium">{selectedNotification.title}</div>
-                  <div className="text-primary-text-muted text-sm capitalize">{selectedNotification.type.replace('_', ' ')}</div>
+                  <div className="text-white font-medium">{selectedNotification.title}</div>
+                  <div className="text-gray-400 text-sm capitalize">{selectedNotification.type.replace('_', ' ')}</div>
                 </div>
               </div>
 
               {/* Full Message */}
               <div>
-                <label className="block text-sm font-medium text-primary-text-muted mb-2">Message</label>
-                <div className="text-primary-text-primary bg-gray-50 rounded-lg p-4 whitespace-pre-wrap">
+                <label className="block text-sm font-medium text-gray-400 mb-2">Message</label>
+                <div className="text-white bg-gray-900 rounded-lg p-4 whitespace-pre-wrap">
                   {selectedNotification.message}
                 </div>
               </div>
@@ -679,9 +679,9 @@ export default function Header() {
                       // If parsing fails, treat as plain text
                       return (
                         <div>
-                          <label className="block text-sm font-medium text-primary-text-muted mb-2">Details</label>
-                          <div className="bg-gray-50 rounded-lg p-4">
-                            <p className="text-primary-text-primary text-sm">{selectedNotification.metadata}</p>
+                          <label className="block text-sm font-medium text-gray-400 mb-2">Details</label>
+                          <div className="bg-gray-900 rounded-lg p-4">
+                            <p className="text-white text-sm">{selectedNotification.metadata}</p>
                           </div>
                         </div>
                       )
@@ -697,12 +697,12 @@ export default function Header() {
                 
                 return (
                   <div>
-                    <label className="block text-sm font-medium text-primary-text-muted mb-2">Details</label>
-                    <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                    <label className="block text-sm font-medium text-gray-400 mb-2">Details</label>
+                    <div className="bg-gray-900 rounded-lg p-4 space-y-2">
                       {Object.entries(metadataObj).map(([key, value]) => (
                         <div key={key} className="flex justify-between items-start gap-4">
-                          <span className="text-primary-text-muted text-sm capitalize flex-shrink-0">{key.replace(/_/g, ' ')}:</span>
-                          <span className="text-primary-text-primary text-sm text-right break-words">
+                          <span className="text-gray-400 text-sm capitalize flex-shrink-0">{key.replace(/_/g, ' ')}:</span>
+                          <span className="text-white text-sm text-right break-words">
                             {value === null || value === undefined 
                               ? 'N/A'
                               : typeof value === 'object' 
@@ -718,10 +718,10 @@ export default function Header() {
               })()}
 
               {/* Timestamp */}
-              <div className="flex items-center justify-between pt-4 border-t border-primary-border">
+              <div className="flex items-center justify-between pt-4 border-t border-gray-800">
                 <div>
-                  <div className="text-primary-text-muted text-xs">Created</div>
-                  <div className="text-primary-text-primary text-sm">
+                  <div className="text-gray-400 text-xs">Created</div>
+                  <div className="text-white text-sm">
                     {new Date(selectedNotification.created_at).toLocaleString('en-GB', {
                       day: 'numeric',
                       month: 'long',
@@ -733,8 +733,8 @@ export default function Header() {
                 </div>
                 {selectedNotification.read_at && (
                   <div>
-                    <div className="text-primary-text-muted text-xs">Read</div>
-                    <div className="text-primary-text-primary text-sm">
+                    <div className="text-gray-400 text-xs">Read</div>
+                    <div className="text-white text-sm">
                       {new Date(selectedNotification.read_at).toLocaleString('en-GB', {
                         day: 'numeric',
                         month: 'long',
@@ -748,12 +748,12 @@ export default function Header() {
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-primary-border">
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-800">
                 <button
                   onClick={() => {
                     setSelectedNotification(null)
                   }}
-                  className="px-4 py-2 bg-gray-100 text-primary-text-secondary rounded-lg hover:bg-gray-200 transition-colors"
+                  className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
                 >
                   Close
                 </button>
@@ -763,7 +763,7 @@ export default function Header() {
                       router.push('/data-room')
                       setSelectedNotification(null)
                     }}
-                    className="px-4 py-2 bg-primary-navy text-white rounded-lg hover:bg-primary-navy-dark transition-colors"
+                    className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors"
                   >
                     View in Data Room
                   </button>
@@ -776,15 +776,15 @@ export default function Header() {
 
       {/* View All Notifications Modal */}
       {showAllNotifications && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-primary-card border border-primary-border rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-primary-border flex items-center justify-between">
-              <h3 className="text-xl font-light text-primary-text-primary">All Notifications</h3>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+              <h3 className="text-xl font-light text-white">All Notifications</h3>
               <div className="flex items-center gap-3">
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllRead}
-                    className="text-sm text-primary-navy hover:text-primary-navy-dark transition-colors"
+                    className="text-sm text-primary-orange hover:text-orange-400 transition-colors"
                   >
                     Mark all read
                   </button>
@@ -794,7 +794,7 @@ export default function Header() {
                     setShowAllNotifications(false)
                     fetchNotifications() // Refresh to get limited list back
                   }}
-                  className="text-primary-text-muted hover:text-primary-text-primary transition-colors"
+                  className="text-gray-400 hover:text-white transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -805,11 +805,11 @@ export default function Header() {
 
             <div className="flex-1 overflow-y-auto p-6">
               {isLoadingNotifications ? (
-                <div className="p-8 text-center text-primary-text-muted">
-                  <div className="animate-spin w-8 h-8 border-2 border-primary-navy border-t-transparent rounded-full mx-auto"></div>
+                <div className="p-8 text-center text-gray-400">
+                  <div className="animate-spin w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full mx-auto"></div>
                 </div>
               ) : notifications.length === 0 ? (
-                <div className="p-8 text-center text-primary-text-muted">
+                <div className="p-8 text-center text-gray-400">
                   <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                     <path d="M13.73 21a2 2 0 0 1-3.46 0" />
@@ -826,10 +826,10 @@ export default function Header() {
                         setSelectedNotification(notification)
                         setShowAllNotifications(false)
                       }}
-                      className={`px-4 py-4 border border-primary-border rounded-lg cursor-pointer transition-colors ${
+                      className={`px-4 py-4 border border-gray-800 rounded-lg cursor-pointer transition-colors ${
                         notification.is_read 
-                          ? 'bg-gray-50 hover:bg-gray-100' 
-                          : 'bg-primary-navy/5 hover:bg-primary-navy/10 border-primary-navy/30'
+                          ? 'bg-gray-900/50 hover:bg-gray-900' 
+                          : 'bg-primary-orange/5 hover:bg-primary-orange/10 border-primary-orange/30'
                       }`}
                     >
                       <div className="flex items-start gap-3">
@@ -861,17 +861,17 @@ export default function Header() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className={`text-base font-medium ${notification.is_read ? 'text-primary-text-secondary' : 'text-primary-text-primary'}`}>
+                            <p className={`text-base font-medium ${notification.is_read ? 'text-gray-300' : 'text-white'}`}>
                               {notification.title}
                             </p>
                             {!notification.is_read && (
-                              <div className="w-2 h-2 bg-primary-navy rounded-full flex-shrink-0"></div>
+                              <div className="w-2 h-2 bg-primary-orange rounded-full flex-shrink-0"></div>
                             )}
                           </div>
-                          <p className="text-sm text-primary-text-muted mt-1 line-clamp-3">
+                          <p className="text-sm text-gray-400 mt-1 line-clamp-3">
                             {notification.message}
                           </p>
-                          <p className="text-xs text-primary-text-muted mt-2">
+                          <p className="text-xs text-gray-500 mt-2">
                             {new Date(notification.created_at).toLocaleString('en-GB', {
                               day: 'numeric',
                               month: 'long',

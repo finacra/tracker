@@ -141,30 +141,30 @@ function LoginPageInner() {
               <path d="M14 2V8H20" stroke="white" strokeWidth="1.5"/>
             </svg>
           </div>
-          <span className="text-primary-text-primary text-lg font-light">Finacra</span>
+          <span className="text-white text-lg font-light">Finnovate<span className="text-primary-orange">AI</span></span>
         </div>
         <div className="flex items-center gap-6">
           <button 
             onClick={() => setActiveTab('login')}
-            className={`text-sm font-medium transition-colors pb-2 ${activeTab === 'login' ? 'text-primary-navy border-b-2 border-primary-navy' : 'text-primary-text-muted hover:text-primary-text-primary'}`}
+            className={`text-sm font-medium transition-colors pb-2 ${activeTab === 'login' ? 'text-primary-orange border-b-2 border-primary-orange' : 'text-gray-400 hover:text-white'}`}
           >
             Login
           </button>
           <button 
             onClick={() => setActiveTab('home')}
-            className={`text-sm font-medium transition-colors pb-2 ${activeTab === 'home' ? 'text-primary-navy border-b-2 border-primary-navy' : 'text-primary-text-muted hover:text-primary-text-primary'}`}
+            className={`text-sm font-medium transition-colors pb-2 ${activeTab === 'home' ? 'text-primary-orange border-b-2 border-primary-orange' : 'text-gray-400 hover:text-white'}`}
           >
             Home
           </button>
           <button 
             onClick={() => setActiveTab('privacy')}
-            className={`text-sm font-medium transition-colors pb-2 ${activeTab === 'privacy' ? 'text-primary-navy border-b-2 border-primary-navy' : 'text-primary-text-muted hover:text-primary-text-primary'}`}
+            className={`text-sm font-medium transition-colors pb-2 ${activeTab === 'privacy' ? 'text-primary-orange border-b-2 border-primary-orange' : 'text-gray-400 hover:text-white'}`}
           >
             Privacy
           </button>
           <button 
             onClick={() => setActiveTab('terms')}
-            className={`text-sm font-medium transition-colors pb-2 ${activeTab === 'terms' ? 'text-primary-navy border-b-2 border-primary-navy' : 'text-primary-text-muted hover:text-primary-text-primary'}`}
+            className={`text-sm font-medium transition-colors pb-2 ${activeTab === 'terms' ? 'text-primary-orange border-b-2 border-primary-orange' : 'text-gray-400 hover:text-white'}`}
           >
             Terms
           </button>
@@ -178,7 +178,7 @@ function LoginPageInner() {
       <div className="relative z-10 w-full max-w-md">
         {/* Logo Icon */}
         <div className="mb-8 flex justify-center">
-          <div className="w-16 h-16 bg-primary-navy rounded-xl flex items-center justify-center shadow-lg shadow-primary-navy/20">
+          <div className="w-16 h-16 bg-primary-orange rounded-xl flex items-center justify-center shadow-lg shadow-primary-orange/30">
             <svg
               width="28"
               height="28"
@@ -238,7 +238,10 @@ function LoginPageInner() {
         <h1 className="text-5xl font-thin text-white mb-2 text-center tracking-tight">
           Welcome to{' '}
           <span className="text-white inline-flex items-baseline gap-1">
-            <span className="font-light">Finacra</span>
+            <span className="font-light">Finnovate</span>
+            <span className="bg-primary-orange text-white px-2 py-0.5 rounded font-light">
+              AI
+            </span>
           </span>
         </h1>
         <p className="text-gray-400 mb-12 text-center">
@@ -246,7 +249,7 @@ function LoginPageInner() {
         </p>
 
         {/* Sign-in Card */}
-        <div className="bg-primary-card border border-primary-border rounded-2xl shadow-2xl p-8 w-full backdrop-blur-sm">
+        <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-8 w-full backdrop-blur-sm">
           {/* Google Sign-in Button */}
           <button
             onClick={handleGoogleSignIn}
