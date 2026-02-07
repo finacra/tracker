@@ -381,6 +381,23 @@ function DataRoomPageInner() {
   const [selectedGstPeriod, setSelectedGstPeriod] = useState('012026')
   const [gstActiveSection, setGstActiveSection] = useState<'overview' | 'gstr1' | 'gstr2a' | 'gstr2b' | 'gstr3b' | 'ledger'>('overview')
 
+  // DSC Management States
+  const [dscCredentials, setDscCredentials] = useState({
+    name: '',
+    certificateNumber: '',
+    issuer: '',
+    expiryDate: '',
+    frequency: '1' as '1' | '2',
+    inHouseNotifications: true,
+    emailNotifications: true,
+    notificationEmails: [] as string[],
+    storePlatformCredentials: false,
+    platformEmail: '',
+    platformPassword: ''
+  })
+  const [newEmail, setNewEmail] = useState('')
+  const [isDscSaving, setIsDscSaving] = useState(false)
+
   // Notices States
   const [noticesFilter, setNoticesFilter] = useState<'all' | 'pending' | 'responded' | 'resolved'>('all')
   const [noticesTypeFilter, setNoticesTypeFilter] = useState<string>('all')
@@ -1579,6 +1596,30 @@ function DataRoomPageInner() {
               <line x1="1" y1="10" x2="23" y2="10" />
             </svg>
             <span className="text-sm sm:text-base">GST <span className="text-gray-500 text-xs">(Soon)</span></span>
+          </button>
+          <button
+            onClick={() => setActiveTab('dsc')}
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+              activeTab === 'dsc'
+                ? 'border-primary-orange bg-primary-orange/20 text-white'
+                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+            }`}
+          >
+            <svg
+              width="16"
+              height="16"
+              className="sm:w-[18px] sm:h-[18px]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            <span className="text-sm sm:text-base">DSC Management</span>
           </button>
         </div>
 
@@ -5086,6 +5127,421 @@ function DataRoomPageInner() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'dsc' && (
+          <div className="space-y-6">
+            <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-6 sm:p-8">
+              {/* Header */}
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/20">
+                  <svg
+                    width="24"
+                    height="24"
+                    className="sm:w-8 sm:h-8"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-light text-white">DSC Management</h2>
+                  <p className="text-gray-400 text-sm sm:text-base">Manage your Digital Signature Certificate credentials and notifications</p>
+                </div>
+              </div>
+
+              {/* Form */}
+              <div className="space-y-6">
+                {/* DSC Credentials Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white border-b border-gray-800 pb-2">DSC Credentials</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Certificate Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={dscCredentials.name}
+                        onChange={(e) => setDscCredentials({ ...dscCredentials, name: e.target.value })}
+                        placeholder="Enter certificate name"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Certificate Number <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={dscCredentials.certificateNumber}
+                        onChange={(e) => setDscCredentials({ ...dscCredentials, certificateNumber: e.target.value })}
+                        placeholder="Enter certificate number"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Issuer <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={dscCredentials.issuer}
+                        onChange={(e) => setDscCredentials({ ...dscCredentials, issuer: e.target.value })}
+                        placeholder="e.g., eMudhra, Sify, etc."
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Expiry Date <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={dscCredentials.expiryDate}
+                        onChange={(e) => setDscCredentials({ ...dscCredentials, expiryDate: e.target.value })}
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Frequency Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white border-b border-gray-800 pb-2">Renewal Frequency</h3>
+                  
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="frequency"
+                        value="1"
+                        checked={dscCredentials.frequency === '1'}
+                        onChange={(e) => setDscCredentials({ ...dscCredentials, frequency: e.target.value as '1' | '2' })}
+                        className="w-5 h-5 text-primary-orange bg-gray-900 border-gray-700 focus:ring-primary-orange focus:ring-2"
+                      />
+                      <div>
+                        <span className="text-white font-medium">1 Year</span>
+                        <p className="text-gray-400 text-xs">Annual renewal</p>
+                      </div>
+                    </label>
+                    
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="frequency"
+                        value="2"
+                        checked={dscCredentials.frequency === '2'}
+                        onChange={(e) => setDscCredentials({ ...dscCredentials, frequency: e.target.value as '1' | '2' })}
+                        className="w-5 h-5 text-primary-orange bg-gray-900 border-gray-700 focus:ring-primary-orange focus:ring-2"
+                      />
+                      <div>
+                        <span className="text-white font-medium">2 Years</span>
+                        <p className="text-gray-400 text-xs">Biennial renewal</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Notifications Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-white border-b border-gray-800 pb-2">Notifications</h3>
+                  
+                  <div className="space-y-4">
+                    {/* In-House Notifications */}
+                    <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-800">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                          </svg>
+                        </div>
+                        <div>
+                          <span className="text-white font-medium block">In-House Notifications</span>
+                          <p className="text-gray-400 text-sm">Receive notifications within the platform</p>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={dscCredentials.inHouseNotifications}
+                          onChange={(e) => setDscCredentials({ ...dscCredentials, inHouseNotifications: e.target.checked })}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-orange rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-orange"></div>
+                      </label>
+                    </div>
+
+                    {/* Email Notifications */}
+                    <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-800">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                            <polyline points="22,6 12,13 2,6" />
+                          </svg>
+                        </div>
+                        <div>
+                          <span className="text-white font-medium block">Email Notifications</span>
+                          <p className="text-gray-400 text-sm">Receive email alerts for expiry reminders</p>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={dscCredentials.emailNotifications}
+                          onChange={(e) => setDscCredentials({ ...dscCredentials, emailNotifications: e.target.checked })}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-orange rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-orange"></div>
+                      </label>
+                    </div>
+
+                    {/* Email Addresses */}
+                    {dscCredentials.emailNotifications && (
+                      <div className="mt-4 p-4 bg-gray-900/50 rounded-lg border border-gray-800">
+                        <label className="block text-sm font-medium text-gray-300 mb-3">
+                          Notification Email Addresses
+                        </label>
+                        <div className="space-y-3">
+                          {/* Existing emails */}
+                          {dscCredentials.notificationEmails.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {dscCredentials.notificationEmails.map((email, index) => (
+                                <div
+                                  key={index}
+                                  className="flex items-center gap-2 px-3 py-1.5 bg-primary-orange/20 border border-primary-orange/30 rounded-lg text-sm text-white"
+                                >
+                                  <span>{email}</span>
+                                  <button
+                                    onClick={() => {
+                                      const updated = [...dscCredentials.notificationEmails]
+                                      updated.splice(index, 1)
+                                      setDscCredentials({ ...dscCredentials, notificationEmails: updated })
+                                    }}
+                                    className="text-primary-orange hover:text-primary-orange/80 transition-colors"
+                                  >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <line x1="18" y1="6" x2="6" y2="18" />
+                                      <line x1="6" y1="6" x2="18" y2="18" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {/* Add email input */}
+                          <div className="flex gap-2">
+                            <input
+                              type="email"
+                              value={newEmail}
+                              onChange={(e) => setNewEmail(e.target.value)}
+                              placeholder="Enter email address"
+                              className="flex-1 px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors text-sm"
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter' && newEmail.trim() && newEmail.includes('@')) {
+                                  if (!dscCredentials.notificationEmails.includes(newEmail.trim())) {
+                                    setDscCredentials({
+                                      ...dscCredentials,
+                                      notificationEmails: [...dscCredentials.notificationEmails, newEmail.trim()]
+                                    })
+                                    setNewEmail('')
+                                  }
+                                }
+                              }}
+                            />
+                            <button
+                              onClick={() => {
+                                if (newEmail.trim() && newEmail.includes('@')) {
+                                  if (!dscCredentials.notificationEmails.includes(newEmail.trim())) {
+                                    setDscCredentials({
+                                      ...dscCredentials,
+                                      notificationEmails: [...dscCredentials.notificationEmails, newEmail.trim()]
+                                    })
+                                    setNewEmail('')
+                                  }
+                                }
+                              }}
+                              disabled={!newEmail.trim() || !newEmail.includes('@') || dscCredentials.notificationEmails.includes(newEmail.trim())}
+                              className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                            >
+                              Add
+                            </button>
+                          </div>
+                          <p className="text-xs text-gray-500">Press Enter or click Add to add an email address</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Platform Credentials Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-800">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                          <line x1="16" y1="13" x2="8" y2="13" />
+                          <line x1="16" y1="17" x2="8" y2="17" />
+                          <polyline points="10 9 9 9 8 9" />
+                        </svg>
+                      </div>
+                      <div>
+                        <span className="text-white font-medium block">Store Platform Credentials</span>
+                        <p className="text-gray-400 text-sm">Save your platform email and password for easy access</p>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={dscCredentials.storePlatformCredentials}
+                        onChange={(e) => setDscCredentials({ ...dscCredentials, storePlatformCredentials: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-orange rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-orange"></div>
+                    </label>
+                  </div>
+
+                  {dscCredentials.storePlatformCredentials && (
+                    <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-800 space-y-4">
+                      <h3 className="text-lg font-medium text-white border-b border-gray-800 pb-2">Platform Login Details</h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Platform Email <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="email"
+                            value={dscCredentials.platformEmail}
+                            onChange={(e) => setDscCredentials({ ...dscCredentials, platformEmail: e.target.value })}
+                            placeholder="Enter platform email address"
+                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Platform Password <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="password"
+                            value={dscCredentials.platformPassword}
+                            onChange={(e) => setDscCredentials({ ...dscCredentials, platformPassword: e.target.value })}
+                            placeholder="Enter platform password"
+                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                        <div className="flex items-start gap-2">
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="text-yellow-400 mt-0.5 flex-shrink-0"
+                          >
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                            <path d="M12 8v4" />
+                            <path d="M12 16h.01" />
+                          </svg>
+                          <p className="text-yellow-400 text-xs">
+                            Your credentials are stored securely. Make sure to use strong passwords and keep them updated.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Save Button */}
+                <div className="pt-4 border-t border-gray-800">
+                  <button
+                    onClick={async () => {
+                      if (!dscCredentials.name || !dscCredentials.certificateNumber || !dscCredentials.issuer || !dscCredentials.expiryDate) {
+                        alert('Please fill in all required fields')
+                        return
+                      }
+                      if (dscCredentials.storePlatformCredentials && (!dscCredentials.platformEmail || !dscCredentials.platformPassword)) {
+                        alert('Please fill in platform email and password if you want to store platform credentials')
+                        return
+                      }
+                      setIsDscSaving(true)
+                      // Simulate save operation
+                      await new Promise(resolve => setTimeout(resolve, 1000))
+                      setIsDscSaving(false)
+                      alert('DSC credentials saved successfully!')
+                    }}
+                    disabled={isDscSaving || !dscCredentials.name || !dscCredentials.certificateNumber || !dscCredentials.issuer || !dscCredentials.expiryDate || (dscCredentials.storePlatformCredentials && (!dscCredentials.platformEmail || !dscCredentials.platformPassword))}
+                    className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg font-medium hover:from-purple-600 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20"
+                  >
+                    {isDscSaving ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                          <polyline points="17 21 17 13 7 13 7 21" />
+                          <polyline points="7 3 7 8 15 8" />
+                        </svg>
+                        Save DSC Credentials
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
