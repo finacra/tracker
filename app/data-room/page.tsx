@@ -776,12 +776,12 @@ function DataRoomPageInner() {
 
   // Helper function to get period badge color
   const getPeriodBadgeColor = (periodType: string | null): string => {
-    if (!periodType) return 'bg-gray-700'
+    if (!periodType) return 'bg-black'
     switch (periodType) {
-      case 'monthly': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-      case 'quarterly': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-      case 'annual': return 'bg-green-500/20 text-green-400 border-green-500/30'
-      default: return 'bg-gray-700'
+      case 'monthly': return 'bg-white/10 text-white border-white/30'
+      case 'quarterly': return 'bg-white/10 text-white border-white/30'
+      case 'annual': return 'bg-white/10 text-white border-white/30'
+      default: return 'bg-black'
     }
   }
 
@@ -1379,10 +1379,10 @@ function DataRoomPageInner() {
   // Show loading while checking access
   if (currentCompany && accessLoading) {
     return (
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-400 text-sm">Checking access...</p>
+          <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-white text-sm">Checking access...</p>
         </div>
       </div>
     )
@@ -1391,17 +1391,17 @@ function DataRoomPageInner() {
   // If owner without access, show redirect message (redirect happens via useEffect)
   if (currentCompany && isOwner && !hasAccess && !accessLoading) {
     return (
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-400 text-sm">Redirecting to subscription...</p>
+          <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-white text-sm">Redirecting to subscription...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark relative overflow-hidden">
+    <div className="min-h-screen bg-black relative overflow-hidden">
       {/* Subtle Circuit Board Background */}
       <SubtleCircuitBackground />
 
@@ -1410,19 +1410,19 @@ function DataRoomPageInner() {
 
       {/* Trial Banner */}
       {accessType === 'trial' && trialDaysRemaining !== null && currentCompany && (
-        <div className="relative z-20 bg-gradient-to-r from-primary-orange/20 to-orange-600/20 border-b border-primary-orange/30">
+        <div className="relative z-20 bg-gradient-to-r from-white/10 to-white/10 border-b border-white/30">
           <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm">
-              <svg className="w-4 h-4 text-primary-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-gray-300">
-                <span className="text-primary-orange font-semibold">{trialDaysRemaining} days</span> left in your trial
+              <span className="text-white">
+                <span className="text-white font-semibold">{trialDaysRemaining} days</span> left in your trial
               </span>
             </div>
             <button
               onClick={() => router.push(`/subscribe?company_id=${currentCompany.id}`)}
-              className="text-xs sm:text-sm bg-primary-orange text-white px-3 py-1 rounded-lg hover:bg-primary-orange/90 transition-colors"
+              className="text-xs sm:text-sm bg-white text-black px-3 py-1 rounded-lg hover:bg-white/90 transition-colors"
             >
               Upgrade Now
             </button>
@@ -1434,7 +1434,7 @@ function DataRoomPageInner() {
       <div className="relative z-10 container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Company Selector */}
         <div className="mb-4 sm:mb-6">
-          <h2 className="text-gray-400 text-sm font-medium mb-2 sm:mb-3">My companies</h2>
+          <h2 className="text-white text-sm font-medium mb-2 sm:mb-3">My companies</h2>
           <CompanySelector
             companies={companies}
             currentCompany={currentCompany}
@@ -1451,8 +1451,8 @@ function DataRoomPageInner() {
             onClick={() => setActiveTab('overview')}
             className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'overview'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+                ? 'border-white bg-white/20 text-white'
+                : 'border-white/30 bg-black text-white hover:text-white hover:border-white/50'
             }`}
           >
             <svg
@@ -1477,8 +1477,8 @@ function DataRoomPageInner() {
             onClick={() => setActiveTab('tracker')}
             className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'tracker'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+                ? 'border-white bg-white/20 text-white'
+                : 'border-white/30 bg-black text-white hover:text-white hover:border-white/50'
             }`}
           >
             <svg
@@ -1500,8 +1500,8 @@ function DataRoomPageInner() {
             onClick={() => setActiveTab('documents')}
             className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'documents'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+                ? 'border-white bg-white/20 text-white'
+                : 'border-white/30 bg-black text-white hover:text-white hover:border-white/50'
             }`}
           >
             <svg
@@ -1527,8 +1527,8 @@ function DataRoomPageInner() {
             onClick={() => setActiveTab('reports')}
             className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'reports'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+                ? 'border-white bg-white/20 text-white'
+                : 'border-white/30 bg-black text-white hover:text-white hover:border-white/50'
             }`}
           >
             <svg
@@ -1554,8 +1554,8 @@ function DataRoomPageInner() {
             onClick={() => setActiveTab('notices')}
             className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'notices'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+                ? 'border-white bg-white/20 text-white'
+                : 'border-white/30 bg-black text-white hover:text-white hover:border-white/50'
             }`}
           >
             <svg
@@ -1572,14 +1572,14 @@ function DataRoomPageInner() {
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
-            <span className="text-sm sm:text-base">Notices <span className="text-gray-500 text-xs">(Soon)</span></span>
+            <span className="text-sm sm:text-base">Notices <span className="text-white/70 text-xs">(Soon)</span></span>
           </button>
           <button
             onClick={() => setActiveTab('gst')}
             className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'gst'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+                ? 'border-white bg-white/20 text-white'
+                : 'border-white/30 bg-black text-white hover:text-white hover:border-white/50'
             }`}
           >
             <svg
@@ -1596,14 +1596,14 @@ function DataRoomPageInner() {
               <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
               <line x1="1" y1="10" x2="23" y2="10" />
             </svg>
-            <span className="text-sm sm:text-base">GST <span className="text-gray-500 text-xs">(Soon)</span></span>
+            <span className="text-sm sm:text-base">GST <span className="text-white/70 text-xs">(Soon)</span></span>
           </button>
           <button
             onClick={() => setActiveTab('dsc')}
             className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'dsc'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+                ? 'border-white bg-white/20 text-white'
+                : 'border-white/30 bg-black text-white hover:text-white hover:border-white/50'
             }`}
           >
             <svg
@@ -1627,11 +1627,11 @@ function DataRoomPageInner() {
         {/* Content based on active tab */}
         {activeTab === 'overview' && (
           <div>
-            <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8">
+            <div className="bg-black border border-white/20 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8">
               {/* Card Header - Stack on Mobile */}
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-3 mb-4 sm:mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-orange rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
                     <svg
                       width="16"
                       height="16"
@@ -1661,7 +1661,7 @@ function DataRoomPageInner() {
                 <div className="sm:ml-auto w-full sm:w-auto">
                   <button
                     onClick={() => router.push('/manage-company')}
-                    className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-primary-orange/20 border border-primary-orange text-primary-orange rounded-lg hover:bg-primary-orange/30 transition-colors text-xs sm:text-sm flex items-center justify-center gap-2"
+                    className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-white/20 border border-white text-white rounded-lg hover:bg-white/30 transition-colors text-xs sm:text-sm flex items-center justify-center gap-2"
                   >
                     <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -1674,71 +1674,71 @@ function DataRoomPageInner() {
 
               {isLoading ? (
                 <div className="py-8 sm:py-12 flex flex-col items-center justify-center">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mb-4"></div>
-                  <p className="text-gray-400 text-sm sm:text-base">Loading company details...</p>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-white border-t-transparent rounded-full animate-spin mb-4"></div>
+                  <p className="text-white text-sm sm:text-base">Loading company details...</p>
                 </div>
               ) : entityDetails ? (
               <div className="space-y-3 sm:space-y-4">
                 {/* Company Name */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Company Name</label>
+                  <label className="text-xs sm:text-sm text-white sm:w-32 sm:flex-shrink-0">Company Name</label>
                   <div className="text-white text-base sm:text-lg font-medium break-words">{entityDetails.companyName}</div>
                 </div>
 
                 {/* Type */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Type</label>
-                  <span className="inline-block bg-primary-orange text-white px-3 py-1 rounded-full text-xs sm:text-sm font-medium w-fit">
+                  <label className="text-xs sm:text-sm text-white sm:w-32 sm:flex-shrink-0">Type</label>
+                  <span className="inline-block bg-white text-black px-3 py-1 rounded-full text-xs sm:text-sm font-medium w-fit">
                     {entityDetails.type}
                   </span>
                 </div>
 
                 {/* Reg Date */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Reg Date</label>
+                  <label className="text-xs sm:text-sm text-white sm:w-32 sm:flex-shrink-0">Reg Date</label>
                   <div className="text-white text-base sm:text-lg font-medium">{entityDetails.regDate}</div>
                 </div>
 
                 {/* PAN */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">PAN</label>
+                  <label className="text-xs sm:text-sm text-white sm:w-32 sm:flex-shrink-0">PAN</label>
                   <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.pan}</div>
                 </div>
 
                 {/* CIN */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">CIN</label>
+                  <label className="text-xs sm:text-sm text-white sm:w-32 sm:flex-shrink-0">CIN</label>
                   <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.cin}</div>
                 </div>
 
                 {/* Address */}
                 <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-0.5">Address</label>
+                  <label className="text-xs sm:text-sm text-white sm:w-32 sm:flex-shrink-0 pt-0.5">Address</label>
                   <div className="text-white text-base sm:text-lg font-medium break-words flex-1">{entityDetails.address}</div>
                 </div>
 
                 {/* Phone Number */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Phone Number</label>
+                  <label className="text-xs sm:text-sm text-white sm:w-32 sm:flex-shrink-0">Phone Number</label>
                   <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.phoneNumber}</div>
                 </div>
 
                 {/* Industry Category */}
                 <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-0.5">Industry Category</label>
+                  <label className="text-xs sm:text-sm text-white sm:w-32 sm:flex-shrink-0 pt-0.5">Industry Category</label>
                   <div className="text-white text-base sm:text-lg font-medium break-words flex-1">{entityDetails.industryCategory}</div>
                 </div>
 
                 {/* Directors */}
                 <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-1">Directors</label>
+                  <label className="text-xs sm:text-sm text-white sm:w-32 sm:flex-shrink-0 pt-1">Directors</label>
                     <div className="flex-1 space-y-3 sm:space-y-4">
                       {/* Directors Dropdown */}
                       <div>
                         <select
                           value={selectedDirectorId || ''}
                           onChange={(e) => setSelectedDirectorId(e.target.value || null)}
-                          className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors appearance-none cursor-pointer"
+                          className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-black border border-white/30 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors appearance-none cursor-pointer"
                         >
                           <option value="">Select a director to view profile</option>
                           {entityDetails.directors.map((director) => (
@@ -1755,16 +1755,16 @@ function DataRoomPageInner() {
                         if (!director) return null
                         
                         return (
-                          <div className={`p-4 sm:p-6 bg-gray-900 border rounded-lg ${
+                          <div className={`p-4 sm:p-6 bg-black border rounded-lg ${
                             director.verified
-                              ? 'border-green-500/50 bg-green-500/5'
-                              : 'border-gray-700'
+                              ? 'border-white/50 bg-white/5'
+                              : 'border-white/30'
                           }`}>
                             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-4">
                               <div className="flex-1">
                                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-                                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-orange/20 rounded-full flex items-center justify-center flex-shrink-0">
-                                    <span className="text-primary-orange font-semibold text-base sm:text-lg">
+                                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <span className="text-white font-semibold text-base sm:text-lg">
                                       {director.firstName?.[0] || ''}{director.lastName?.[0] || ''}
                                     </span>
                 </div>
@@ -1773,12 +1773,12 @@ function DataRoomPageInner() {
                                       {director.firstName} {director.middleName} {director.lastName}
                                     </h3>
                                     {director.designation && (
-                                      <p className="text-gray-400 text-xs sm:text-sm break-words">{director.designation}</p>
+                                      <p className="text-white text-xs sm:text-sm break-words">{director.designation}</p>
                                     )}
               </div>
                                   <div className="sm:ml-auto flex items-center gap-2 flex-shrink-0">
                                     {director.verified && (
-                                      <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded flex items-center gap-1">
+                                      <span className="px-2 py-1 bg-white/10 text-white text-xs rounded flex items-center gap-1">
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                                           <polyline points="22 4 12 14.01 9 11.01" />
@@ -1792,32 +1792,32 @@ function DataRoomPageInner() {
                                 {/* Director Details Grid */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                   {director.din && (
-                                    <div className="p-3 bg-gray-800 rounded-lg">
-                                      <div className="text-xs text-gray-500 mb-1">DIN Number</div>
+                                    <div className="p-3 bg-black rounded-lg">
+                                      <div className="text-xs text-white/70 mb-1">DIN Number</div>
                                       <div className="text-white font-mono text-sm sm:text-base break-all">{director.din}</div>
                                     </div>
                                   )}
                                   {director.pan && (
-                                    <div className="p-3 bg-gray-800 rounded-lg">
-                                      <div className="text-xs text-gray-500 mb-1">PAN Number</div>
+                                    <div className="p-3 bg-black rounded-lg">
+                                      <div className="text-xs text-white/70 mb-1">PAN Number</div>
                                       <div className="text-white font-mono text-sm sm:text-base break-all">{director.pan}</div>
                                     </div>
                                   )}
                                   {director.dob && (
-                                    <div className="p-3 bg-gray-800 rounded-lg">
-                                      <div className="text-xs text-gray-500 mb-1">Date of Birth</div>
+                                    <div className="p-3 bg-black rounded-lg">
+                                      <div className="text-xs text-white/70 mb-1">Date of Birth</div>
                                       <div className="text-white text-sm sm:text-base">{formatDateForDisplay(director.dob)}</div>
                                     </div>
                                   )}
                                   {director.email && (
-                                    <div className="p-3 bg-gray-800 rounded-lg">
-                                      <div className="text-xs text-gray-500 mb-1">Email Address</div>
+                                    <div className="p-3 bg-black rounded-lg">
+                                      <div className="text-xs text-white/70 mb-1">Email Address</div>
                                       <div className="text-white text-sm sm:text-base break-all">{director.email}</div>
                                     </div>
                                   )}
                                   {director.mobile && (
-                                    <div className="p-3 bg-gray-800 rounded-lg">
-                                      <div className="text-xs text-gray-500 mb-1">Mobile Number</div>
+                                    <div className="p-3 bg-black rounded-lg">
+                                      <div className="text-xs text-white/70 mb-1">Mobile Number</div>
                                       <div className="text-white text-sm sm:text-base break-all">{director.mobile}</div>
                                     </div>
                                   )}
@@ -1832,7 +1832,7 @@ function DataRoomPageInner() {
                 </div>
               ) : (
                 <div className="py-12 text-center">
-                  <p className="text-gray-400">No company selected or found.</p>
+                  <p className="text-white">No company selected or found.</p>
                 </div>
               )}
             </div>
@@ -2433,7 +2433,7 @@ function DataRoomPageInner() {
             coverY += Math.min(companyLines.length, 3) * 18 + 10
             doc.setFont('helvetica', 'italic')
             doc.setFontSize(14)
-            doc.text('BY FINNOVATE AI', margin, coverY, { maxWidth: contentWidth })
+            doc.text('BY FINACRA', margin, coverY, { maxWidth: contentWidth })
 
             // Footer details (bottom-left)
             const footerBlockY = pageHeight - 70
@@ -3092,7 +3092,7 @@ function DataRoomPageInner() {
             // QR code
             try {
               const QRCode: any = await import('qrcode')
-              const qrUrl = 'https://www.finnovateai.com'
+              const qrUrl = 'https://www.finacra.com'
               const qrDataUrl: string = await QRCode.toDataURL(qrUrl, {
                 margin: 1,
                 width: 260,
@@ -3116,7 +3116,7 @@ function DataRoomPageInner() {
               doc.setFontSize(10)
               doc.setTextColor(textGray[0], textGray[1], textGray[2])
               doc.text('Scan to visit', pageWidth / 2, qrY + qrSize + 32, { align: 'center' })
-              doc.text('www.finnovateai.com', pageWidth / 2, qrY + qrSize + 44, { align: 'center' })
+              doc.text('www.finacra.com', pageWidth / 2, qrY + qrSize + 44, { align: 'center' })
             } catch (qrErr) {
               // Fallback if QR generation fails: show the URL + CTA text
               doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
@@ -3126,7 +3126,7 @@ function DataRoomPageInner() {
               doc.setFont('helvetica', 'normal')
               doc.setFontSize(10)
               doc.setTextColor(textGray[0], textGray[1], textGray[2])
-              doc.text('www.finnovateai.com', pageWidth / 2, pageHeight / 2 + 14, { align: 'center' })
+              doc.text('www.finacra.com', pageWidth / 2, pageHeight / 2 + 14, { align: 'center' })
             }
 
             // Footer - Add to all pages with proper spacing
@@ -3155,14 +3155,14 @@ function DataRoomPageInner() {
           return (
             <div className="space-y-4 sm:space-y-6">
               {/* Header */}
-              <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="bg-black border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-3 sm:mb-4">
                   <h2 className="text-xl sm:text-2xl font-light text-white">Compliance Reports</h2>
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                     <button
                       onClick={exportPDFReport}
                       disabled={isGeneratingEnhancedPDF}
-                      className="px-3 sm:px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3 sm:px-4 py-2 bg-white text-black rounded-lg hover:bg-white/90 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isGeneratingEnhancedPDF ? (
                         <>
@@ -3188,7 +3188,7 @@ function DataRoomPageInner() {
                     </button>
                     <button
                       onClick={exportComplianceReport}
-                      className="px-3 sm:px-4 py-2 bg-primary-orange/20 border border-primary-orange text-primary-orange rounded-lg hover:bg-primary-orange/30 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+                      className="px-3 sm:px-4 py-2 bg-white/20 border border-white text-white rounded-lg hover:bg-white/30 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
                     >
                       <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -3202,7 +3202,7 @@ function DataRoomPageInner() {
                     {overdueCompliances.length > 0 && (
                       <button
                         onClick={exportOverdueReport}
-                        className="px-3 sm:px-4 py-2 bg-red-500/20 border border-red-500 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+                        className="px-3 sm:px-4 py-2 bg-white/10 border border-white text-white rounded-lg hover:bg-white/20 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
                       >
                         <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -3216,69 +3216,69 @@ function DataRoomPageInner() {
                     )}
               </div>
                   {isGeneratingEnhancedPDF && (
-                    <div className="mt-4 p-4 bg-primary-orange/10 border border-primary-orange/30 rounded-lg">
+                    <div className="mt-4 p-4 bg-white/10 border border-white/30 rounded-lg">
                       <div className="flex items-center gap-3">
-                        <svg className="animate-spin h-5 w-5 text-primary-orange" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
                         <div className="flex-1">
                           <div className="text-white text-sm font-medium">{pdfGenerationProgress.step}</div>
                           {pdfGenerationProgress.total > 0 && (
-                            <div className="text-gray-400 text-xs mt-1">
+                            <div className="text-white text-xs mt-1">
                               {pdfGenerationProgress.current} of {pdfGenerationProgress.total} items enriched
                             </div>
                           )}
                         </div>
                       </div>
-                      <div className="mt-2 text-xs text-gray-400">
+                      <div className="mt-2 text-xs text-white">
                         This may take a few moments as we research legal sections and analyze business impact...
             </div>
           </div>
         )}
                 </div>
-                <p className="text-gray-400 text-sm sm:text-base">Comprehensive compliance analytics and insights</p>
+                <p className="text-white text-sm sm:text-base">Comprehensive compliance analytics and insights</p>
               </div>
 
               {/* Statistics Overview */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {/* Total Compliances */}
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-black border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Total Compliances</h3>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <h3 className="text-base sm:text-lg font-medium text-white">Total Compliances</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M9 11l3 3L22 4" />
                         <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7" />
                       </svg>
                     </div>
                   </div>
                   <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{totalCompliances}</div>
-                  <p className="text-xs sm:text-sm text-gray-400">All compliance requirements</p>
+                  <p className="text-xs sm:text-sm text-white">All compliance requirements</p>
                 </div>
 
                 {/* Completed */}
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-black border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Completed</h3>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <h3 className="text-base sm:text-lg font-medium text-white">Completed</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                     </div>
                   </div>
                   <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{completed}</div>
-                  <p className="text-xs sm:text-sm text-gray-400">
+                  <p className="text-xs sm:text-sm text-white">
                     {totalCompliances > 0 ? `${Math.round((completed / totalCompliances) * 100)}% completion rate` : 'No compliances'}
                   </p>
                 </div>
 
                 {/* Overdue */}
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-black border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Overdue</h3>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <h3 className="text-base sm:text-lg font-medium text-white">Overdue</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="8" x2="12" y2="12" />
                         <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -3286,17 +3286,17 @@ function DataRoomPageInner() {
                     </div>
                   </div>
                   <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{overdue}</div>
-                  <p className="text-xs sm:text-sm text-gray-400">
+                  <p className="text-xs sm:text-sm text-white">
                     {totalCompliances > 0 ? `${Math.round((overdue / totalCompliances) * 100)}% overdue rate` : 'No compliances'}
                   </p>
                 </div>
 
                 {/* Pending */}
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-black border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Pending</h3>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-yellow-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <h3 className="text-base sm:text-lg font-medium text-white">Pending</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="8" x2="12" y2="12" />
                         <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -3304,15 +3304,15 @@ function DataRoomPageInner() {
                     </div>
                   </div>
                   <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{pending}</div>
-                  <p className="text-xs sm:text-sm text-gray-400">In progress</p>
+                  <p className="text-xs sm:text-sm text-white">In progress</p>
                 </div>
 
                 {/* Not Started */}
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-black border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Not Started</h3>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <h3 className="text-base sm:text-lg font-medium text-white">Not Started</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="8" x2="12" y2="12" />
                         <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -3320,15 +3320,15 @@ function DataRoomPageInner() {
                     </div>
                   </div>
                   <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{notStarted}</div>
-                  <p className="text-xs sm:text-sm text-gray-400">Awaiting action</p>
+                  <p className="text-xs sm:text-sm text-white">Awaiting action</p>
                 </div>
 
               {/* Compliance Score */}
-              <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="bg-black border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <h3 className="text-base sm:text-lg font-medium text-gray-300">Compliance Score</h3>
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <svg width="20" height="20" className="sm:w-6 sm:h-6 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <h3 className="text-base sm:text-lg font-medium text-white">Compliance Score</h3>
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg width="20" height="20" className="sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M12 2L2 7l10 5 10-5-10-5z" />
                       <path d="M2 17l10 5 10-5" />
                       <path d="M2 12l10 5 10-5" />
@@ -3340,20 +3340,20 @@ function DataRoomPageInner() {
                     {totalCompliances === 0 ? '—' : `${complianceScore}`}
                   </div>
                   {totalCompliances > 0 && (
-                    <div className="text-xs sm:text-sm text-gray-400">/ 100</div>
+                    <div className="text-xs sm:text-sm text-white">/ 100</div>
                   )}
                 </div>
-                <p className="text-xs sm:text-sm text-gray-400">
+                <p className="text-xs sm:text-sm text-white">
                   Overall compliance health based on completion and overdue items
                 </p>
               </div>
 
               {/* Total Penalty */}
-              <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="bg-black border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Total Penalty</h3>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <h3 className="text-base sm:text-lg font-medium text-white">Total Penalty</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="8" x2="12" y2="12" />
                         <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -3363,22 +3363,22 @@ function DataRoomPageInner() {
                   <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">
                     {totalPenalty > 0 ? `₹${totalPenalty.toLocaleString('en-IN')}` : '₹0'}
                   </div>
-                  <p className="text-xs sm:text-sm text-gray-400">Accumulated penalties</p>
+                  <p className="text-xs sm:text-sm text-white">Accumulated penalties</p>
                 </div>
               </div>
 
               {/* Status Breakdown Chart */}
-              <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="bg-black border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                 <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Status Breakdown</h3>
                 <div className="space-y-3 sm:space-y-4">
                   {Object.entries(statusBreakdown).map(([status, count]) => {
                     const percentage = totalCompliances > 0 ? (count / totalCompliances) * 100 : 0
                     const statusColors: Record<string, { bg: string; text: string; bar: string }> = {
-                      completed: { bg: 'bg-green-500/20', text: 'text-green-400', bar: 'bg-green-500' },
-                      pending: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', bar: 'bg-yellow-500' },
-                      overdue: { bg: 'bg-red-500/20', text: 'text-red-400', bar: 'bg-red-500' },
-                      notStarted: { bg: 'bg-gray-500/20', text: 'text-gray-400', bar: 'bg-gray-500' },
-                      upcoming: { bg: 'bg-blue-500/20', text: 'text-blue-400', bar: 'bg-blue-500' }
+                      completed: { bg: 'bg-white/10', text: 'text-white', bar: 'bg-white' },
+                      pending: { bg: 'bg-white/10', text: 'text-white', bar: 'bg-white' },
+                      overdue: { bg: 'bg-white/10', text: 'text-white', bar: 'bg-white' },
+                      notStarted: { bg: 'bg-white/10', text: 'text-white', bar: 'bg-white' },
+                      upcoming: { bg: 'bg-white/10', text: 'text-white', bar: 'bg-white' }
                     }
                     const colors = statusColors[status] || statusColors.notStarted
                     const statusLabel = status === 'notStarted' ? 'Not Started' : status.charAt(0).toUpperCase() + status.slice(1)
@@ -3387,9 +3387,9 @@ function DataRoomPageInner() {
                       <div key={status}>
                         <div className="flex items-center justify-between mb-1.5 sm:mb-2">
                           <span className={`text-xs sm:text-sm font-medium ${colors.text}`}>{statusLabel}</span>
-                          <span className="text-xs sm:text-sm text-gray-400">{count} ({Math.round(percentage)}%)</span>
+                          <span className="text-xs sm:text-sm text-white">{count} ({Math.round(percentage)}%)</span>
                         </div>
-                        <div className="w-full bg-gray-800 rounded-full h-1.5 sm:h-2">
+                        <div className="w-full bg-black rounded-full h-1.5 sm:h-2">
                           <div
                             className={`h-1.5 sm:h-2 rounded-full ${colors.bar} transition-all duration-300`}
                             style={{ width: `${percentage}%` }}
@@ -3402,7 +3402,7 @@ function DataRoomPageInner() {
               </div>
 
               {/* Category Breakdown */}
-              <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="bg-black border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                 <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Category Breakdown</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   {Object.entries(categoryBreakdown)
@@ -3410,18 +3410,18 @@ function DataRoomPageInner() {
                     .map(([category, count]) => {
                       const percentage = totalCompliances > 0 ? (count / totalCompliances) * 100 : 0
                       return (
-                        <div key={category} className="border border-gray-700 rounded-lg p-3 sm:p-4">
+                        <div key={category} className="border border-white/30 rounded-lg p-3 sm:p-4">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-white font-medium text-sm sm:text-base break-words">{category}</span>
-                            <span className="text-primary-orange font-semibold text-sm sm:text-base flex-shrink-0 ml-2">{count}</span>
+                            <span className="text-white font-semibold text-sm sm:text-base flex-shrink-0 ml-2">{count}</span>
                           </div>
-                          <div className="w-full bg-gray-800 rounded-full h-1 sm:h-1.5">
+                          <div className="w-full bg-black rounded-full h-1 sm:h-1.5">
                             <div
-                              className="bg-primary-orange h-1 sm:h-1.5 rounded-full transition-all duration-300"
+                              className="bg-white h-1 sm:h-1.5 rounded-full transition-all duration-300"
                               style={{ width: `${percentage}%` }}
                             />
                           </div>
-                          <p className="text-[10px] sm:text-xs text-gray-400 mt-1">{Math.round(percentage)}% of total</p>
+                          <p className="text-[10px] sm:text-xs text-white mt-1">{Math.round(percentage)}% of total</p>
                         </div>
                       )
                     })}
@@ -3429,7 +3429,7 @@ function DataRoomPageInner() {
               </div>
 
               {/* Compliance Type Breakdown */}
-              <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="bg-black border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                 <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Compliance Type Breakdown</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                   {Object.entries(complianceTypeBreakdown)
@@ -3442,10 +3442,10 @@ function DataRoomPageInner() {
                         'annual': 'Annual'
                       }
                       const typeColors: Record<string, { bg: string; text: string; border: string; bar: string }> = {
-                        'one-time': { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', bar: 'bg-blue-400' },
-                        'monthly': { bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/30', bar: 'bg-purple-400' },
-                        'quarterly': { bg: 'bg-indigo-500/20', text: 'text-indigo-400', border: 'border-indigo-500/30', bar: 'bg-indigo-400' },
-                        'annual': { bg: 'bg-cyan-500/20', text: 'text-cyan-400', border: 'border-cyan-500/30', bar: 'bg-cyan-400' }
+                        'one-time': { bg: 'bg-white/10', text: 'text-white', border: 'border-white/30', bar: 'bg-white' },
+                        'monthly': { bg: 'bg-white/10', text: 'text-white', border: 'border-white/30', bar: 'bg-white' },
+                        'quarterly': { bg: 'bg-white/10', text: 'text-white', border: 'border-white/30', bar: 'bg-white' },
+                        'annual': { bg: 'bg-white/10', text: 'text-white', border: 'border-white/30', bar: 'bg-white' }
                       }
                       const colors = typeColors[type] || typeColors['one-time']
                       const completionRate = data.total > 0 ? (data.completed / data.total) * 100 : 0
@@ -3458,28 +3458,28 @@ function DataRoomPageInner() {
                           </div>
                           <div className="space-y-1.5 sm:space-y-2">
                             <div className="flex items-center justify-between text-xs sm:text-sm">
-                              <span className="text-gray-400">Completed</span>
-                              <span className="text-green-400 font-medium">{data.completed}</span>
+                              <span className="text-white">Completed</span>
+                              <span className="text-white font-medium">{data.completed}</span>
                             </div>
                             <div className="flex items-center justify-between text-xs sm:text-sm">
-                              <span className="text-gray-400">Overdue</span>
-                              <span className="text-red-400 font-medium">{data.overdue}</span>
+                              <span className="text-white">Overdue</span>
+                              <span className="text-white font-medium">{data.overdue}</span>
                             </div>
                             <div className="flex items-center justify-between text-xs sm:text-sm">
-                              <span className="text-gray-400">Pending</span>
-                              <span className="text-yellow-400 font-medium">{data.pending}</span>
+                              <span className="text-white">Pending</span>
+                              <span className="text-white font-medium">{data.pending}</span>
                             </div>
                             <div className="flex items-center justify-between text-xs sm:text-sm">
-                              <span className="text-gray-400">Not Started</span>
-                              <span className="text-gray-400 font-medium">{data.notStarted}</span>
+                              <span className="text-white">Not Started</span>
+                              <span className="text-white font-medium">{data.notStarted}</span>
                             </div>
                           </div>
-                          <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-700">
+                          <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-white/30">
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10px] sm:text-xs text-gray-400">Completion Rate</span>
+                              <span className="text-[10px] sm:text-xs text-white">Completion Rate</span>
                               <span className={`text-[10px] sm:text-xs font-semibold ${colors.text}`}>{Math.round(completionRate)}%</span>
                             </div>
-                            <div className="w-full bg-gray-800 rounded-full h-1 sm:h-1.5">
+                            <div className="w-full bg-black rounded-full h-1 sm:h-1.5">
                               <div
                                 className={`h-1 sm:h-1.5 rounded-full ${colors.bar} transition-all duration-300`}
                                 style={{ width: `${completionRate}%` }}
@@ -3494,7 +3494,7 @@ function DataRoomPageInner() {
 
               {/* Financial Year Breakdown */}
               {Object.keys(fyBreakdown).length > 0 && (
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-black border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Financial Year Breakdown</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     {Object.entries(fyBreakdown)
@@ -3508,9 +3508,9 @@ function DataRoomPageInner() {
                         return getYear(b) - getYear(a)
                       })
                       .map(([fy, count]) => (
-                        <div key={fy} className="border border-gray-700 rounded-lg p-3 sm:p-4 text-center">
+                        <div key={fy} className="border border-white/30 rounded-lg p-3 sm:p-4 text-center">
                           <div className="text-xl sm:text-2xl font-light text-white mb-1">{count}</div>
-                          <div className="text-xs sm:text-sm text-gray-400 break-words">{fy}</div>
+                          <div className="text-xs sm:text-sm text-white break-words">{fy}</div>
                         </div>
                       ))}
                   </div>
@@ -3519,10 +3519,10 @@ function DataRoomPageInner() {
 
               {/* Overdue Compliances Detail */}
               {overdueCompliances.length > 0 && (
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-black border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
                     <h3 className="text-lg sm:text-xl font-light text-white">Overdue Compliances</h3>
-                    <span className="px-2 sm:px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-xs sm:text-sm font-medium w-fit">
+                    <span className="px-2 sm:px-3 py-1 bg-white/10 text-white rounded-full text-xs sm:text-sm font-medium w-fit">
                       {overdueCompliances.length} items
                     </span>
                   </div>
@@ -3533,35 +3533,35 @@ function DataRoomPageInner() {
                         const delay = calculateDelay(req.dueDate, req.status)
                         const penalty = calculatePenalty(req.penalty || '', delay)
                         return (
-                          <div key={req.id} className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 space-y-2">
+                          <div key={req.id} className="bg-black/50 border border-white/20 rounded-lg p-3 space-y-2">
                             <div>
-                              <div className="text-xs text-gray-400 mb-1">Category</div>
+                              <div className="text-xs text-white mb-1">Category</div>
                               <div className="text-white text-sm font-medium break-words">{req.category}</div>
                             </div>
                             <div>
-                              <div className="text-xs text-gray-400 mb-1">Requirement</div>
+                              <div className="text-xs text-white mb-1">Requirement</div>
                               <div className="text-white text-sm break-words">{req.requirement}</div>
                             </div>
                             <div className="grid grid-cols-2 gap-2 text-xs">
                               <div>
-                                <div className="text-gray-400 mb-1">Due Date</div>
-                                <div className="text-gray-300">{req.dueDate}</div>
+                                <div className="text-white mb-1">Due Date</div>
+                                <div className="text-white">{req.dueDate}</div>
                               </div>
                               <div>
-                                <div className="text-gray-400 mb-1">Days Delayed</div>
-                                <div className="text-red-400 font-medium">{delay || 0} days</div>
+                                <div className="text-white mb-1">Days Delayed</div>
+                                <div className="text-white font-medium">{delay || 0} days</div>
                               </div>
                             </div>
                             {req.penalty && (
                               <div>
-                                <div className="text-xs text-gray-400 mb-1">Penalty</div>
-                                <div className="text-gray-300 text-xs break-words">{req.penalty}</div>
+                                <div className="text-xs text-white mb-1">Penalty</div>
+                                <div className="text-white text-xs break-words">{req.penalty}</div>
                               </div>
                             )}
                             {penalty !== '-' && !penalty.includes('Cannot calculate') && (
                               <div>
-                                <div className="text-xs text-gray-400 mb-1">Calculated Penalty</div>
-                                <div className="text-red-400 font-semibold text-sm">{penalty}</div>
+                                <div className="text-xs text-white mb-1">Calculated Penalty</div>
+                                <div className="text-white font-semibold text-sm">{penalty}</div>
                               </div>
                             )}
                           </div>
@@ -3571,13 +3571,13 @@ function DataRoomPageInner() {
                     {/* Desktop Table View */}
                     <table className="hidden sm:table w-full">
                       <thead>
-                        <tr className="border-b border-gray-700">
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Category</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Requirement</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Due Date</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Days Delayed</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Penalty</th>
-                          <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Calculated Penalty</th>
+                        <tr className="border-b border-white/30">
+                          <th className="text-left py-3 px-4 text-sm font-medium text-white">Category</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-white">Requirement</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-white">Due Date</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-white">Days Delayed</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-white">Penalty</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-white">Calculated Penalty</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -3585,19 +3585,19 @@ function DataRoomPageInner() {
                           const delay = calculateDelay(req.dueDate, req.status)
                           const penalty = calculatePenalty(req.penalty || '', delay)
                           return (
-                            <tr key={req.id} className="border-b border-gray-800 hover:bg-gray-800/50">
+                            <tr key={req.id} className="border-b border-white/20 hover:bg-black/50">
                               <td className="py-3 px-4 text-white">{req.category}</td>
                               <td className="py-3 px-4 text-white">{req.requirement}</td>
-                              <td className="py-3 px-4 text-gray-400">{req.dueDate}</td>
+                              <td className="py-3 px-4 text-white">{req.dueDate}</td>
                               <td className="py-3 px-4">
-                                <span className="text-red-400 font-medium">{delay || 0} days</span>
+                                <span className="text-white font-medium">{delay || 0} days</span>
                               </td>
-                              <td className="py-3 px-4 text-gray-400">{req.penalty || '-'}</td>
+                              <td className="py-3 px-4 text-white">{req.penalty || '-'}</td>
                               <td className="py-3 px-4">
                                 {penalty !== '-' && !penalty.includes('Cannot calculate') ? (
-                                  <span className="text-red-400 font-semibold">{penalty}</span>
+                                  <span className="text-white font-semibold">{penalty}</span>
                                 ) : (
-                                  <span className="text-gray-500">-</span>
+                                  <span className="text-white/70">-</span>
                                 )}
                               </td>
                             </tr>
@@ -3606,7 +3606,7 @@ function DataRoomPageInner() {
                       </tbody>
                     </table>
                     {overdueCompliances.length > 10 && (
-                      <p className="text-xs sm:text-sm text-gray-400 mt-4 text-center">
+                      <p className="text-xs sm:text-sm text-white mt-4 text-center">
                         Showing 10 of {overdueCompliances.length} overdue compliances. Export to see all.
                       </p>
                     )}
@@ -3623,14 +3623,14 @@ function DataRoomPageInner() {
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-light text-white mb-1">Government Notices</h2>
-                <p className="text-gray-400">Track and respond to regulatory notices from various departments</p>
+                <p className="text-white">Track and respond to regulatory notices from various departments</p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 {/* Status Filter */}
                 <select
                   value={noticesFilter}
                   onChange={(e) => setNoticesFilter(e.target.value as any)}
-                  className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange"
+                  className="px-4 py-2 bg-black border border-white/30 rounded-lg text-white text-sm focus:outline-none focus:border-white"
                 >
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
@@ -3641,7 +3641,7 @@ function DataRoomPageInner() {
                 <select
                   value={noticesTypeFilter}
                   onChange={(e) => setNoticesTypeFilter(e.target.value)}
-                  className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange"
+                  className="px-4 py-2 bg-black border border-white/30 rounded-lg text-white text-sm focus:outline-none focus:border-white"
                 >
                   <option value="all">All Types</option>
                   <option value="Income Tax">Income Tax</option>
@@ -3651,7 +3651,7 @@ function DataRoomPageInner() {
                 </select>
                 <button 
                   onClick={() => setIsAddNoticeModalOpen(true)}
-                  className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2 text-sm"
+                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-white/90 transition-colors flex items-center gap-2 text-sm"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 5v14M5 12h14" />
@@ -3663,9 +3663,9 @@ function DataRoomPageInner() {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-4">
+              <div className="bg-black border border-white/20 rounded-xl p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2">
                       <circle cx="12" cy="12" r="10" />
                       <line x1="12" y1="8" x2="12" y2="12" />
@@ -3674,13 +3674,13 @@ function DataRoomPageInner() {
           </div>
                   <div>
                     <p className="text-2xl font-light text-white">{demoNotices.filter(n => n.status === 'pending').length}</p>
-                    <p className="text-gray-400 text-xs">Pending Response</p>
+                    <p className="text-white text-xs">Pending Response</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-4">
+              <div className="bg-black border border-white/20 rounded-xl p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EAB308" strokeWidth="2">
                       <circle cx="12" cy="12" r="10" />
                       <polyline points="12 6 12 12 16 14" />
@@ -3688,13 +3688,13 @@ function DataRoomPageInner() {
                   </div>
                   <div>
                     <p className="text-2xl font-light text-white">{demoNotices.filter(n => n.status === 'responded').length}</p>
-                    <p className="text-gray-400 text-xs">Awaiting Decision</p>
+                    <p className="text-white text-xs">Awaiting Decision</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-4">
+              <div className="bg-black border border-white/20 rounded-xl p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2">
                       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                       <polyline points="22 4 12 14.01 9 11.01" />
@@ -3702,13 +3702,13 @@ function DataRoomPageInner() {
                   </div>
                   <div>
                     <p className="text-2xl font-light text-white">{demoNotices.filter(n => n.status === 'resolved').length}</p>
-                    <p className="text-gray-400 text-xs">Resolved</p>
+                    <p className="text-white text-xs">Resolved</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-4">
+              <div className="bg-black border border-white/20 rounded-xl p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A855F7" strokeWidth="2">
                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                       <polyline points="14 2 14 8 20 8" />
@@ -3716,7 +3716,7 @@ function DataRoomPageInner() {
                   </div>
                   <div>
                     <p className="text-2xl font-light text-white">{demoNotices.length}</p>
-                    <p className="text-gray-400 text-xs">Total Notices</p>
+                    <p className="text-white text-xs">Total Notices</p>
                   </div>
                 </div>
               </div>
@@ -3726,39 +3726,39 @@ function DataRoomPageInner() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Notices List */}
               <div className="lg:col-span-1 space-y-3">
-                <p className="text-gray-400 text-sm mb-2">{filteredNotices.length} notices found</p>
+                <p className="text-white text-sm mb-2">{filteredNotices.length} notices found</p>
                 {filteredNotices.map((notice) => (
                   <div
                     key={notice.id}
                     onClick={() => setSelectedNotice(notice)}
-                    className={`bg-primary-dark-card border rounded-xl p-4 cursor-pointer transition-all hover:border-primary-orange/50 ${
-                      selectedNotice?.id === notice.id ? 'border-primary-orange' : 'border-gray-800'
+                    className={`bg-black border rounded-xl p-4 cursor-pointer transition-all hover:border-white/50 ${
+                      selectedNotice?.id === notice.id ? 'border-white' : 'border-white/20'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="flex items-center gap-2">
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          notice.type === 'Income Tax' ? 'bg-blue-500/20 text-blue-400' :
-                          notice.type === 'GST' ? 'bg-green-500/20 text-green-400' :
-                          notice.type === 'MCA/RoC' ? 'bg-purple-500/20 text-purple-400' :
-                          'bg-orange-500/20 text-orange-400'
+                          notice.type === 'Income Tax' ? 'bg-white/10 text-white' :
+                          notice.type === 'GST' ? 'bg-white/10 text-white' :
+                          notice.type === 'MCA/RoC' ? 'bg-white/10 text-white' :
+                          'bg-white/10 text-white'
                         }`}>
                           {notice.type}
                         </span>
                         {notice.priority === 'critical' && (
-                          <span className="px-2 py-0.5 bg-red-500/20 text-red-400 rounded text-xs">Critical</span>
+                          <span className="px-2 py-0.5 bg-white/10 text-white rounded text-xs">Critical</span>
                         )}
                       </div>
                       <span className={`px-2 py-0.5 rounded text-xs ${
-                        notice.status === 'pending' ? 'bg-red-500/20 text-red-400' :
-                        notice.status === 'responded' ? 'bg-yellow-500/20 text-yellow-400' :
-                        'bg-green-500/20 text-green-400'
+                        notice.status === 'pending' ? 'bg-white/10 text-white' :
+                        notice.status === 'responded' ? 'bg-white/10 text-white' :
+                        'bg-white/10 text-white'
                       }`}>
                         {notice.status.charAt(0).toUpperCase() + notice.status.slice(1)}
                       </span>
                     </div>
                     <h4 className="text-white text-sm font-medium mb-1 line-clamp-2">{notice.subject}</h4>
-                    <div className="flex items-center justify-between text-xs text-gray-500">
+                    <div className="flex items-center justify-between text-xs text-white/70">
                       <span>{notice.id}</span>
                       <span>Due: {new Date(notice.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
                     </div>
@@ -3769,16 +3769,16 @@ function DataRoomPageInner() {
               {/* Notice Detail */}
               <div className="lg:col-span-2">
                 {selectedNotice ? (
-                  <div className="bg-primary-dark-card border border-gray-800 rounded-2xl overflow-hidden">
+                  <div className="bg-black border border-white/20 rounded-2xl overflow-hidden">
                     {/* Detail Header */}
-                    <div className="bg-gradient-to-r from-gray-900 to-gray-800 p-6 border-b border-gray-800">
+                    <div className="bg-gradient-to-r from-black to-black p-6 border-b border-white/20">
                       <div className="flex items-start justify-between gap-4 mb-4">
                         <div className="flex items-center gap-3">
                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                            selectedNotice.type === 'Income Tax' ? 'bg-blue-500/20' :
-                            selectedNotice.type === 'GST' ? 'bg-green-500/20' :
-                            selectedNotice.type === 'MCA/RoC' ? 'bg-purple-500/20' :
-                            'bg-orange-500/20'
+                            selectedNotice.type === 'Income Tax' ? 'bg-white/10' :
+                            selectedNotice.type === 'GST' ? 'bg-white/10' :
+                            selectedNotice.type === 'MCA/RoC' ? 'bg-white/10' :
+                            'bg-white/10'
                           }`}>
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={
                               selectedNotice.type === 'Income Tax' ? '#3B82F6' :
@@ -3793,28 +3793,28 @@ function DataRoomPageInner() {
                             </svg>
                           </div>
                           <div>
-                            <p className="text-gray-400 text-sm">{selectedNotice.id}</p>
+                            <p className="text-white text-sm">{selectedNotice.id}</p>
                             <h3 className="text-white text-lg font-medium">{selectedNotice.subType}</h3>
                           </div>
                         </div>
                         <span className={`px-3 py-1 rounded-lg text-sm font-medium ${
-                          selectedNotice.status === 'pending' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                          selectedNotice.status === 'responded' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
-                          'bg-green-500/20 text-green-400 border border-green-500/30'
+                          selectedNotice.status === 'pending' ? 'bg-white/10 text-white border border-white/30' :
+                          selectedNotice.status === 'responded' ? 'bg-white/10 text-white border border-white/30' :
+                          'bg-white/10 text-white border border-white/30'
                         }`}>
                           {selectedNotice.status.charAt(0).toUpperCase() + selectedNotice.status.slice(1)}
                         </span>
                       </div>
                       <h2 className="text-white text-xl mb-2">{selectedNotice.subject}</h2>
                       <div className="flex flex-wrap items-center gap-4 text-sm">
-                        <span className="text-gray-400">
-                          <span className="text-gray-500">Section:</span> {selectedNotice.section}
+                        <span className="text-white">
+                          <span className="text-white/70">Section:</span> {selectedNotice.section}
                         </span>
-                        <span className="text-gray-400">
-                          <span className="text-gray-500">Issued:</span> {new Date(selectedNotice.issuedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        <span className="text-white">
+                          <span className="text-white/70">Issued:</span> {new Date(selectedNotice.issuedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </span>
-                        <span className={`${new Date(selectedNotice.dueDate) < new Date() && selectedNotice.status === 'pending' ? 'text-red-400' : 'text-gray-400'}`}>
-                          <span className="text-gray-500">Due:</span> {new Date(selectedNotice.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        <span className={`${new Date(selectedNotice.dueDate) < new Date() && selectedNotice.status === 'pending' ? 'text-white' : 'text-white'}`}>
+                          <span className="text-white/70">Due:</span> {new Date(selectedNotice.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </span>
                       </div>
                     </div>
@@ -3823,18 +3823,18 @@ function DataRoomPageInner() {
                     <div className="p-6 space-y-6">
                       {/* Description */}
                       <div>
-                        <h4 className="text-gray-400 text-sm font-medium mb-2">Notice Description</h4>
-                        <p className="text-white text-sm leading-relaxed bg-gray-900/50 p-4 rounded-lg">
+                        <h4 className="text-white text-sm font-medium mb-2">Notice Description</h4>
+                        <p className="text-white text-sm leading-relaxed bg-black/50 p-4 rounded-lg">
                           {selectedNotice.description}
                         </p>
                       </div>
 
                       {/* Required Documents */}
                       <div>
-                        <h4 className="text-gray-400 text-sm font-medium mb-2">Required Documents</h4>
+                        <h4 className="text-white text-sm font-medium mb-2">Required Documents</h4>
                         <div className="flex flex-wrap gap-2">
                           {selectedNotice.documents.map((doc: string, idx: number) => (
-                            <span key={idx} className="px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg text-sm flex items-center gap-2">
+                            <span key={idx} className="px-3 py-1.5 bg-black text-white rounded-lg text-sm flex items-center gap-2">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                                 <polyline points="14 2 14 8 20 8" />
@@ -3847,22 +3847,22 @@ function DataRoomPageInner() {
 
                       {/* Timeline */}
                       <div>
-                        <h4 className="text-gray-400 text-sm font-medium mb-3">Activity Timeline</h4>
+                        <h4 className="text-white text-sm font-medium mb-3">Activity Timeline</h4>
                         <div className="space-y-3">
                           {selectedNotice.timeline.map((event: any, idx: number) => (
                             <div key={idx} className="flex items-start gap-3">
                               <div className="flex flex-col items-center">
-                                <div className={`w-3 h-3 rounded-full ${idx === 0 ? 'bg-primary-orange' : 'bg-gray-600'}`}></div>
+                                <div className={`w-3 h-3 rounded-full ${idx === 0 ? 'bg-white' : 'bg-white/50'}`}></div>
                                 {idx < selectedNotice.timeline.length - 1 && (
-                                  <div className="w-0.5 h-8 bg-gray-700"></div>
+                                  <div className="w-0.5 h-8 bg-black"></div>
                                 )}
                               </div>
                               <div className="flex-1 pb-2">
                                 <div className="flex items-center justify-between">
                                   <p className="text-white text-sm">{event.action}</p>
-                                  <span className="text-gray-500 text-xs">{new Date(event.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                                  <span className="text-white/70 text-xs">{new Date(event.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
                                 </div>
-                                <p className="text-gray-500 text-xs">by {event.by}</p>
+                                <p className="text-white/70 text-xs">by {event.by}</p>
                               </div>
                             </div>
                           ))}
@@ -3871,17 +3871,17 @@ function DataRoomPageInner() {
 
                       {/* Response Section (only for pending notices) */}
                       {selectedNotice.status === 'pending' && (
-                        <div className="border-t border-gray-800 pt-6">
-                          <h4 className="text-gray-400 text-sm font-medium mb-3">Submit Response</h4>
+                        <div className="border-t border-white/20 pt-6">
+                          <h4 className="text-white text-sm font-medium mb-3">Submit Response</h4>
                           <textarea
                             value={noticeResponse}
                             onChange={(e) => setNoticeResponse(e.target.value)}
                             placeholder="Enter your response or remarks..."
                             rows={4}
-                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors resize-none"
+                            className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors resize-none"
                           />
                           <div className="flex items-center justify-between mt-4">
-                            <button className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm">
+                            <button className="px-4 py-2 bg-black text-white rounded-lg hover:bg-black transition-colors flex items-center gap-2 text-sm">
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
                               </svg>
@@ -3896,7 +3896,7 @@ function DataRoomPageInner() {
                                 setIsSubmittingResponse(false)
                               }}
                               disabled={isSubmittingResponse || !noticeResponse.trim()}
-                              className="px-6 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="px-6 py-2 bg-white text-black rounded-lg hover:bg-white/90 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               {isSubmittingResponse ? (
                                 <>
@@ -3919,8 +3919,8 @@ function DataRoomPageInner() {
 
                       {/* Actions for responded/resolved notices */}
                       {selectedNotice.status !== 'pending' && (
-                        <div className="border-t border-gray-800 pt-6 flex items-center gap-3">
-                          <button className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm">
+                        <div className="border-t border-white/20 pt-6 flex items-center gap-3">
+                          <button className="px-4 py-2 bg-black text-white rounded-lg hover:bg-black transition-colors flex items-center gap-2 text-sm">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                               <polyline points="7 10 12 15 17 10" />
@@ -3928,7 +3928,7 @@ function DataRoomPageInner() {
                             </svg>
                             Download Notice
                           </button>
-                          <button className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm">
+                          <button className="px-4 py-2 bg-black text-white rounded-lg hover:bg-black transition-colors flex items-center gap-2 text-sm">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                               <polyline points="14 2 14 8 20 8" />
@@ -3936,7 +3936,7 @@ function DataRoomPageInner() {
                             View Response
                           </button>
                           {selectedNotice.status === 'responded' && (
-                            <button className="px-4 py-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors flex items-center gap-2 text-sm">
+                            <button className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors flex items-center gap-2 text-sm">
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                                 <polyline points="22 4 12 14.01 9 11.01" />
@@ -3949,8 +3949,8 @@ function DataRoomPageInner() {
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-primary-dark-card border border-gray-800 rounded-2xl h-full flex flex-col items-center justify-center py-20">
-                    <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mb-6">
+                  <div className="bg-black border border-white/20 rounded-2xl h-full flex flex-col items-center justify-center py-20">
+                    <div className="w-20 h-20 bg-black rounded-full flex items-center justify-center mb-6">
                       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="1.5">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                         <polyline points="14 2 14 8 20 8" />
@@ -3959,7 +3959,7 @@ function DataRoomPageInner() {
                       </svg>
                     </div>
                     <h3 className="text-white text-lg font-medium mb-2">Select a Notice</h3>
-                    <p className="text-gray-400 text-sm">Click on a notice from the list to view details</p>
+                    <p className="text-white text-sm">Click on a notice from the list to view details</p>
                   </div>
                 )}
               </div>
@@ -3970,12 +3970,12 @@ function DataRoomPageInner() {
         {/* Add Notice Modal */}
         {isAddNoticeModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="bg-black border border-white/20 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
               {/* Modal Header */}
-              <div className="sticky top-0 bg-primary-dark-card border-b border-gray-800 p-6 flex items-center justify-between z-10">
+              <div className="sticky top-0 bg-black border-b border-white/20 p-6 flex items-center justify-between z-10">
                 <div>
                   <h2 className="text-2xl font-light text-white mb-1">Add New Notice</h2>
-                  <p className="text-gray-400 text-sm">Enter the details of the government notice received</p>
+                  <p className="text-white text-sm">Enter the details of the government notice received</p>
                 </div>
                 <button
                   onClick={() => {
@@ -3994,9 +3994,9 @@ function DataRoomPageInner() {
                     })
                     setNewDocument('')
                   }}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-800 transition-colors"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black transition-colors"
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white">
                     <line x1="18" y1="6" x2="6" y2="18" />
                     <line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
@@ -4008,13 +4008,13 @@ function DataRoomPageInner() {
                 {/* Notice Type */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Notice Type <span className="text-red-500">*</span>
+                    <label className="block text-sm font-medium text-white mb-2">
+                      Notice Type <span className="text-white">*</span>
                     </label>
                     <select
                       value={newNoticeForm.type}
                       onChange={(e) => setNewNoticeForm({ ...newNoticeForm, type: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                     >
                       <option value="Income Tax">Income Tax</option>
                       <option value="GST">GST</option>
@@ -4025,15 +4025,15 @@ function DataRoomPageInner() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Sub Type <span className="text-red-500">*</span>
+                    <label className="block text-sm font-medium text-white mb-2">
+                      Sub Type <span className="text-white">*</span>
                     </label>
                     <input
                       type="text"
                       value={newNoticeForm.subType}
                       onChange={(e) => setNewNoticeForm({ ...newNoticeForm, subType: e.target.value })}
                       placeholder="e.g., Scrutiny Notice, Show Cause Notice"
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                     />
                   </div>
                 </div>
@@ -4041,26 +4041,26 @@ function DataRoomPageInner() {
                 {/* Section & Subject */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Section/Act <span className="text-red-500">*</span>
+                    <label className="block text-sm font-medium text-white mb-2">
+                      Section/Act <span className="text-white">*</span>
                     </label>
                     <input
                       type="text"
                       value={newNoticeForm.section}
                       onChange={(e) => setNewNoticeForm({ ...newNoticeForm, section: e.target.value })}
                       placeholder="e.g., Section 143(2), Section 73"
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-white mb-2">
                       Priority
                     </label>
                     <select
                       value={newNoticeForm.priority}
                       onChange={(e) => setNewNoticeForm({ ...newNoticeForm, priority: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                     >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
@@ -4072,36 +4072,36 @@ function DataRoomPageInner() {
 
                 {/* Subject */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Subject <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Subject <span className="text-white">*</span>
                   </label>
                   <input
                     type="text"
                     value={newNoticeForm.subject}
                     onChange={(e) => setNewNoticeForm({ ...newNoticeForm, subject: e.target.value })}
                     placeholder="Enter the notice subject/title"
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                   />
                 </div>
 
                 {/* Issued By & Dates */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Issued By <span className="text-red-500">*</span>
+                    <label className="block text-sm font-medium text-white mb-2">
+                      Issued By <span className="text-white">*</span>
                     </label>
                     <input
                       type="text"
                       value={newNoticeForm.issuedBy}
                       onChange={(e) => setNewNoticeForm({ ...newNoticeForm, issuedBy: e.target.value })}
                       placeholder="e.g., Income Tax Department"
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Issued Date <span className="text-red-500">*</span>
+                    <label className="block text-sm font-medium text-white mb-2">
+                      Issued Date <span className="text-white">*</span>
                     </label>
                     <div className="relative">
                       <input
@@ -4119,7 +4119,7 @@ function DataRoomPageInner() {
                           }
                         }}
                         placeholder="Select date"
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors cursor-pointer pr-10"
+                        className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors cursor-pointer pr-10"
                       />
                       <input
                         type="date"
@@ -4130,7 +4130,7 @@ function DataRoomPageInner() {
                         style={{ pointerEvents: 'auto' }}
                       />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white">
                           <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                           <line x1="16" y1="2" x2="16" y2="6" />
                           <line x1="8" y1="2" x2="8" y2="6" />
@@ -4141,8 +4141,8 @@ function DataRoomPageInner() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Due Date <span className="text-red-500">*</span>
+                    <label className="block text-sm font-medium text-white mb-2">
+                      Due Date <span className="text-white">*</span>
                     </label>
                     <div className="relative">
                       <input
@@ -4160,7 +4160,7 @@ function DataRoomPageInner() {
                           }
                         }}
                         placeholder="Select date"
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors cursor-pointer pr-10"
+                        className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors cursor-pointer pr-10"
                       />
                       <input
                         type="date"
@@ -4171,7 +4171,7 @@ function DataRoomPageInner() {
                         style={{ pointerEvents: 'auto' }}
                       />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white">
                           <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                           <line x1="16" y1="2" x2="16" y2="6" />
                           <line x1="8" y1="2" x2="8" y2="6" />
@@ -4184,21 +4184,21 @@ function DataRoomPageInner() {
 
                 {/* Description */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Description <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Description <span className="text-white">*</span>
                   </label>
                   <textarea
                     value={newNoticeForm.description}
                     onChange={(e) => setNewNoticeForm({ ...newNoticeForm, description: e.target.value })}
                     placeholder="Enter the full notice description and requirements..."
                     rows={5}
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors resize-none"
+                    className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors resize-none"
                   />
                 </div>
 
                 {/* Required Documents */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-white mb-2">
                     Required Documents
                   </label>
                   <div className="space-y-3">
@@ -4206,7 +4206,7 @@ function DataRoomPageInner() {
                     {newNoticeForm.documents.length > 0 && (
                       <div className="flex flex-wrap gap-2">
                         {newNoticeForm.documents.map((doc, idx) => (
-                          <span key={idx} className="px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg text-sm flex items-center gap-2">
+                          <span key={idx} className="px-3 py-1.5 bg-black text-white rounded-lg text-sm flex items-center gap-2">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                               <polyline points="14 2 14 8 20 8" />
@@ -4219,7 +4219,7 @@ function DataRoomPageInner() {
                                   documents: newNoticeForm.documents.filter((_, i) => i !== idx)
                                 })
                               }}
-                              className="ml-1 hover:text-red-400 transition-colors"
+                              className="ml-1 hover:text-white transition-colors"
                             >
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -4247,7 +4247,7 @@ function DataRoomPageInner() {
                           }
                         }}
                         placeholder="Enter document name and press Enter"
-                        className="flex-1 px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="flex-1 px-4 py-2 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                       />
                       <button
                         onClick={() => {
@@ -4259,7 +4259,7 @@ function DataRoomPageInner() {
                             setNewDocument('')
                           }
                         }}
-                        className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2"
+                        className="px-4 py-2 bg-white text-black rounded-lg hover:bg-white/90 transition-colors flex items-center gap-2"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M12 5v14M5 12h14" />
@@ -4271,7 +4271,7 @@ function DataRoomPageInner() {
                 </div>
 
                 {/* Form Actions */}
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-800">
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/20">
                   <button
                     onClick={() => {
                       setIsAddNoticeModalOpen(false)
@@ -4289,7 +4289,7 @@ function DataRoomPageInner() {
                       })
                       setNewDocument('')
                     }}
-                    className="px-6 py-2.5 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
+                    className="px-6 py-2.5 bg-black text-white rounded-lg hover:bg-black transition-colors"
                   >
                     Cancel
                   </button>
@@ -4354,7 +4354,7 @@ function DataRoomPageInner() {
                       setIsSubmittingNotice(false)
                     }}
                     disabled={isSubmittingNotice}
-                    className="px-6 py-2.5 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-6 py-2.5 bg-white text-black rounded-lg hover:bg-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {isSubmittingNotice ? (
                       <>
@@ -4381,40 +4381,40 @@ function DataRoomPageInner() {
           <div className="space-y-6">
             {/* GST Integration Flow */}
             {gstStep === 'connect' && (
-              <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-8">
+              <div className="bg-black border border-white/20 rounded-2xl shadow-2xl p-8">
                 <div className="max-w-lg mx-auto">
                   {/* Header */}
                   <div className="text-center mb-8">
-                    <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/20">
+                    <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-white/20">
                       <span className="text-3xl font-bold text-white">GST</span>
                     </div>
                     <h2 className="text-2xl font-light text-white mb-2">Connect Your GST Account</h2>
-                    <p className="text-gray-400">Link your GST portal credentials to fetch returns automatically</p>
+                    <p className="text-white">Link your GST portal credentials to fetch returns automatically</p>
                   </div>
 
                   {/* Progress Steps */}
                   <div className="flex items-center justify-center gap-4 mb-8">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-primary-orange rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
+                      <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
                       <span className="text-white text-sm">Connect</span>
                     </div>
-                    <div className="h-px w-12 bg-gray-700"></div>
+                    <div className="h-px w-12 bg-black"></div>
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-gray-400 text-sm font-bold">2</div>
-                      <span className="text-gray-400 text-sm">Verify OTP</span>
+                      <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center text-white text-sm font-bold">2</div>
+                      <span className="text-white text-sm">Verify OTP</span>
                     </div>
-                    <div className="h-px w-12 bg-gray-700"></div>
+                    <div className="h-px w-12 bg-black"></div>
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-gray-400 text-sm font-bold">3</div>
-                      <span className="text-gray-400 text-sm">Dashboard</span>
+                      <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center text-white text-sm font-bold">3</div>
+                      <span className="text-white text-sm">Dashboard</span>
                     </div>
                   </div>
 
                   {/* Form */}
                   <div className="space-y-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        GSTIN <span className="text-red-500">*</span>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        GSTIN <span className="text-white">*</span>
                       </label>
                       <input
                         type="text"
@@ -4422,26 +4422,26 @@ function DataRoomPageInner() {
                         onChange={(e) => setGstCredentials({ ...gstCredentials, gstin: e.target.value.toUpperCase() })}
                         placeholder="Enter your 15-digit GSTIN"
                         maxLength={15}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors font-mono tracking-wider"
+                        className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors font-mono tracking-wider"
                       />
-                      <p className="mt-1 text-xs text-gray-500">Example: 27AQOPD9471C3ZM</p>
+                      <p className="mt-1 text-xs text-white/70">Example: 27AQOPD9471C3ZM</p>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        GST Portal Username <span className="text-red-500">*</span>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        GST Portal Username <span className="text-white">*</span>
                       </label>
                       <input
                         type="text"
                         value={gstCredentials.gstUsername}
                         onChange={(e) => setGstCredentials({ ...gstCredentials, gstUsername: e.target.value })}
                         placeholder="Enter your GST portal username"
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                       />
                     </div>
 
                     {gstError && (
-                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400 text-sm">
+                      <div className="bg-white/5 border border-white/30 rounded-lg p-4 text-white text-sm">
                         {gstError}
                       </div>
                     )}
@@ -4464,7 +4464,7 @@ function DataRoomPageInner() {
                         setGstStep('otp')
                       }}
                       disabled={isGstLoading}
-                      className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-green-500/20"
+                      className="w-full py-4 bg-white text-black rounded-lg font-medium hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-white/20"
                     >
                       {isGstLoading ? (
                         <>
@@ -4482,8 +4482,8 @@ function DataRoomPageInner() {
                       )}
                     </button>
 
-                    <p className="text-center text-xs text-gray-500">
-                      By connecting, you agree to share your GST data securely with Finnovate
+                    <p className="text-center text-xs text-white/70">
+                      By connecting, you agree to share your GST data securely with Finacra
                     </p>
                   </div>
                 </div>
@@ -4491,51 +4491,51 @@ function DataRoomPageInner() {
             )}
 
             {gstStep === 'otp' && (
-              <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-8">
+              <div className="bg-black border border-white/20 rounded-2xl shadow-2xl p-8">
                 <div className="max-w-lg mx-auto">
                   {/* Header */}
                   <div className="text-center mb-8">
-                    <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/20">
+                    <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-white/20">
                       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                         <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                       </svg>
                     </div>
                     <h2 className="text-2xl font-light text-white mb-2">Verify OTP</h2>
-                    <p className="text-gray-400">Enter the OTP sent to your registered mobile number</p>
+                    <p className="text-white">Enter the OTP sent to your registered mobile number</p>
                   </div>
 
                   {/* Progress Steps */}
                   <div className="flex items-center justify-center gap-4 mb-8">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm">
+                      <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-white text-sm">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                       </div>
-                      <span className="text-green-400 text-sm">Connect</span>
+                      <span className="text-white text-sm">Connect</span>
                     </div>
-                    <div className="h-px w-12 bg-green-500"></div>
+                    <div className="h-px w-12 bg-white"></div>
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-primary-orange rounded-full flex items-center justify-center text-white text-sm font-bold">2</div>
+                      <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-white text-sm font-bold">2</div>
                       <span className="text-white text-sm">Verify OTP</span>
                     </div>
-                    <div className="h-px w-12 bg-gray-700"></div>
+                    <div className="h-px w-12 bg-black"></div>
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-gray-400 text-sm font-bold">3</div>
-                      <span className="text-gray-400 text-sm">Dashboard</span>
+                      <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center text-white text-sm font-bold">3</div>
+                      <span className="text-white text-sm">Dashboard</span>
                     </div>
                   </div>
 
                   {/* OTP Info */}
-                  <div className="bg-gray-900/50 rounded-lg p-4 mb-6">
+                  <div className="bg-black/50 rounded-lg p-4 mb-6">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-                        <span className="text-green-400 font-bold text-sm">GST</span>
+                      <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">GST</span>
                       </div>
                       <div>
                         <p className="text-white font-medium">{gstCredentials.gstin}</p>
-                        <p className="text-gray-400 text-sm">{gstCredentials.gstUsername}</p>
+                        <p className="text-white text-sm">{gstCredentials.gstUsername}</p>
                       </div>
                     </div>
                   </div>
@@ -4543,8 +4543,8 @@ function DataRoomPageInner() {
                   {/* OTP Input */}
                   <div className="space-y-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Enter OTP <span className="text-red-500">*</span>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        Enter OTP <span className="text-white">*</span>
                       </label>
                       <input
                         type="text"
@@ -4552,15 +4552,15 @@ function DataRoomPageInner() {
                         onChange={(e) => setGstOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="Enter 6-digit OTP"
                         maxLength={6}
-                        className="w-full px-4 py-4 bg-gray-900 border border-gray-700 rounded-lg text-white text-center text-2xl font-mono tracking-[0.5em] placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-4 bg-black border border-white/30 rounded-lg text-white text-center text-2xl font-mono tracking-[0.5em] placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                       />
-                      <p className="mt-2 text-center text-xs text-gray-500">
-                        OTP expires in <span className="text-primary-orange">5:00</span> minutes
+                      <p className="mt-2 text-center text-xs text-white/70">
+                        OTP expires in <span className="text-white">5:00</span> minutes
                       </p>
                     </div>
 
                     {gstError && (
-                      <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400 text-sm">
+                      <div className="bg-white/5 border border-white/30 rounded-lg p-4 text-white text-sm">
                         {gstError}
                       </div>
                     )}
@@ -4572,7 +4572,7 @@ function DataRoomPageInner() {
                           setGstOtp('')
                           setGstError(null)
                         }}
-                        className="flex-1 py-4 bg-gray-800 text-gray-300 rounded-lg font-medium hover:bg-gray-700 transition-colors"
+                        className="flex-1 py-4 bg-black text-white rounded-lg font-medium hover:bg-black transition-colors"
                       >
                         Back
                       </button>
@@ -4629,7 +4629,7 @@ function DataRoomPageInner() {
                           setGstStep('dashboard')
                         }}
                         disabled={isGstLoading || gstOtp.length !== 6}
-                        className="flex-1 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-green-500/20"
+                        className="flex-1 py-4 bg-white text-black rounded-lg font-medium hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-white/20"
                       >
                         {isGstLoading ? (
                           <>
@@ -4648,7 +4648,7 @@ function DataRoomPageInner() {
                       </button>
                     </div>
 
-                    <button className="w-full text-center text-sm text-primary-orange hover:text-primary-orange/80 transition-colors">
+                    <button className="w-full text-center text-sm text-white hover:text-white/80 transition-colors">
                       Didn't receive OTP? Resend
                     </button>
                   </div>
@@ -4659,17 +4659,17 @@ function DataRoomPageInner() {
             {gstStep === 'dashboard' && gstData && (
               <div className="space-y-6">
                 {/* GST Dashboard Header */}
-                <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-6">
+                <div className="bg-black border border-white/20 rounded-2xl p-6">
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-500/20">
+                      <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-white/20">
                         <span className="text-xl font-bold text-white">GST</span>
                       </div>
                       <div>
                         <h2 className="text-2xl font-light text-white">{gstData.tradeName}</h2>
-                        <p className="text-gray-400 font-mono">{gstData.gstin}</p>
-                        <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs">
-                          <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+                        <p className="text-white font-mono">{gstData.gstin}</p>
+                        <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-white/10 text-white rounded text-xs">
+                          <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
                           {gstData.status}
                         </span>
                       </div>
@@ -4678,7 +4678,7 @@ function DataRoomPageInner() {
                       <select
                         value={selectedGstPeriod}
                         onChange={(e) => setSelectedGstPeriod(e.target.value)}
-                        className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        className="px-4 py-2 bg-black border border-white/30 rounded-lg text-white focus:outline-none focus:border-white"
                       >
                         <option value="012026">January 2026</option>
                         <option value="122025">December 2025</option>
@@ -4693,7 +4693,7 @@ function DataRoomPageInner() {
                           setGstCredentials({ gstin: '', gstUsername: '' })
                           setGstOtp('')
                         }}
-                        className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                        className="px-4 py-2 bg-black text-white rounded-lg hover:bg-black transition-colors text-sm"
                       >
                         Disconnect
                       </button>
@@ -4716,8 +4716,8 @@ function DataRoomPageInner() {
                       onClick={() => setGstActiveSection(tab.id as any)}
                       className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap ${
                         gstActiveSection === tab.id
-                          ? 'bg-primary-orange text-white'
-                          : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                          ? 'bg-white text-black'
+                          : 'bg-black text-white hover:text-white hover:bg-black'
                       }`}
                     >
                       <span>{tab.icon}</span>
@@ -4730,20 +4730,20 @@ function DataRoomPageInner() {
                 {gstActiveSection === 'overview' && (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {/* Cash Balance Card */}
-                    <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6">
+                    <div className="bg-black border border-white/20 rounded-xl p-6">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                        <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2">
                             <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
                             <line x1="1" y1="10" x2="23" y2="10" />
                           </svg>
                         </div>
-                        <span className="text-gray-400 text-sm">Cash Balance</span>
+                        <span className="text-white text-sm">Cash Balance</span>
                       </div>
                       <p className="text-2xl font-light text-white mb-2">
                         ₹{(gstData.cashBalance.igst + gstData.cashBalance.cgst + gstData.cashBalance.sgst).toLocaleString('en-IN')}
                       </p>
-                      <div className="text-xs text-gray-500 space-y-1">
+                      <div className="text-xs text-white/70 space-y-1">
                         <div className="flex justify-between"><span>IGST</span><span>₹{gstData.cashBalance.igst.toLocaleString('en-IN')}</span></div>
                         <div className="flex justify-between"><span>CGST</span><span>₹{gstData.cashBalance.cgst.toLocaleString('en-IN')}</span></div>
                         <div className="flex justify-between"><span>SGST</span><span>₹{gstData.cashBalance.sgst.toLocaleString('en-IN')}</span></div>
@@ -4751,19 +4751,19 @@ function DataRoomPageInner() {
                     </div>
 
                     {/* ITC Balance Card */}
-                    <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6">
+                    <div className="bg-black border border-white/20 rounded-xl p-6">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                        <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2">
                             <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
                           </svg>
                         </div>
-                        <span className="text-gray-400 text-sm">ITC Balance</span>
+                        <span className="text-white text-sm">ITC Balance</span>
                       </div>
                       <p className="text-2xl font-light text-white mb-2">
                         ₹{(gstData.itcBalance.igst + gstData.itcBalance.cgst + gstData.itcBalance.sgst).toLocaleString('en-IN')}
                       </p>
-                      <div className="text-xs text-gray-500 space-y-1">
+                      <div className="text-xs text-white/70 space-y-1">
                         <div className="flex justify-between"><span>IGST</span><span>₹{gstData.itcBalance.igst.toLocaleString('en-IN')}</span></div>
                         <div className="flex justify-between"><span>CGST</span><span>₹{gstData.itcBalance.cgst.toLocaleString('en-IN')}</span></div>
                         <div className="flex justify-between"><span>SGST</span><span>₹{gstData.itcBalance.sgst.toLocaleString('en-IN')}</span></div>
@@ -4771,9 +4771,9 @@ function DataRoomPageInner() {
                     </div>
 
                     {/* GSTR-1 Status Card */}
-                    <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6">
+                    <div className="bg-black border border-white/20 rounded-xl p-6">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                        <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A855F7" strokeWidth="2">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                             <polyline points="14 2 14 8 20 8" />
@@ -4781,72 +4781,72 @@ function DataRoomPageInner() {
                             <line x1="16" y1="17" x2="8" y2="17" />
                           </svg>
                         </div>
-                        <span className="text-gray-400 text-sm">GSTR-1 (Dec 2025)</span>
+                        <span className="text-white text-sm">GSTR-1 (Dec 2025)</span>
                       </div>
                       <div className="flex items-center gap-2 mb-2">
-                        <span className={`px-2 py-0.5 rounded text-xs ${gstData.gstr1.filed ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                        <span className={`px-2 py-0.5 rounded text-xs ${gstData.gstr1.filed ? 'bg-white/10 text-white' : 'bg-white/10 text-white'}`}>
                           {gstData.gstr1.filed ? 'Filed' : 'Pending'}
                         </span>
-                        <span className="text-gray-500 text-xs">{gstData.gstr1.filedDate}</span>
+                        <span className="text-white/70 text-xs">{gstData.gstr1.filedDate}</span>
                       </div>
                       <p className="text-lg font-light text-white">₹{gstData.gstr1.totalValue.toLocaleString('en-IN')}</p>
-                      <p className="text-xs text-gray-500">{gstData.gstr1.totalInvoices} invoices</p>
+                      <p className="text-xs text-white/70">{gstData.gstr1.totalInvoices} invoices</p>
                     </div>
 
                     {/* GSTR-3B Status Card */}
-                    <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6">
+                    <div className="bg-black border border-white/20 rounded-xl p-6">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
+                        <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2">
                             <path d="M9 11l3 3L22 4" />
                             <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
                           </svg>
                         </div>
-                        <span className="text-gray-400 text-sm">GSTR-3B (Dec 2025)</span>
+                        <span className="text-white text-sm">GSTR-3B (Dec 2025)</span>
                       </div>
                       <div className="flex items-center gap-2 mb-2">
-                        <span className={`px-2 py-0.5 rounded text-xs ${gstData.gstr3b.filed ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                        <span className={`px-2 py-0.5 rounded text-xs ${gstData.gstr3b.filed ? 'bg-white/10 text-white' : 'bg-white/10 text-white'}`}>
                           {gstData.gstr3b.filed ? 'Filed' : 'Pending'}
                         </span>
-                        <span className="text-gray-500 text-xs">{gstData.gstr3b.filedDate}</span>
+                        <span className="text-white/70 text-xs">{gstData.gstr3b.filedDate}</span>
                       </div>
                       <p className="text-lg font-light text-white">₹{gstData.gstr3b.taxPaid.toLocaleString('en-IN')}</p>
-                      <p className="text-xs text-gray-500">Tax paid</p>
+                      <p className="text-xs text-white/70">Tax paid</p>
                     </div>
                   </div>
                 )}
 
                 {/* GSTR-1 Section */}
                 {gstActiveSection === 'gstr1' && (
-                  <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-6">
+                  <div className="bg-black border border-white/20 rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-6">
                       <div>
                         <h3 className="text-xl font-light text-white">GSTR-1 - Outward Supplies</h3>
-                        <p className="text-gray-400 text-sm">Return period: December 2025</p>
+                        <p className="text-white text-sm">Return period: December 2025</p>
                       </div>
-                      <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm">Filed on {gstData.gstr1.filedDate}</span>
+                      <span className="px-3 py-1 bg-white/10 text-white rounded-lg text-sm">Filed on {gstData.gstr1.filedDate}</span>
                     </div>
 
                     {/* Summary Cards */}
                     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-                      <div className="bg-gray-900/50 rounded-lg p-4">
-                        <p className="text-gray-400 text-xs mb-1">Total Value</p>
+                      <div className="bg-black/50 rounded-lg p-4">
+                        <p className="text-white text-xs mb-1">Total Value</p>
                         <p className="text-white text-lg font-light">₹{gstData.gstr1.totalValue.toLocaleString('en-IN')}</p>
                       </div>
-                      <div className="bg-gray-900/50 rounded-lg p-4">
-                        <p className="text-gray-400 text-xs mb-1">IGST</p>
+                      <div className="bg-black/50 rounded-lg p-4">
+                        <p className="text-white text-xs mb-1">IGST</p>
                         <p className="text-white text-lg font-light">₹{gstData.gstr1.igst.toLocaleString('en-IN')}</p>
                       </div>
-                      <div className="bg-gray-900/50 rounded-lg p-4">
-                        <p className="text-gray-400 text-xs mb-1">CGST</p>
+                      <div className="bg-black/50 rounded-lg p-4">
+                        <p className="text-white text-xs mb-1">CGST</p>
                         <p className="text-white text-lg font-light">₹{gstData.gstr1.cgst.toLocaleString('en-IN')}</p>
                       </div>
-                      <div className="bg-gray-900/50 rounded-lg p-4">
-                        <p className="text-gray-400 text-xs mb-1">SGST</p>
+                      <div className="bg-black/50 rounded-lg p-4">
+                        <p className="text-white text-xs mb-1">SGST</p>
                         <p className="text-white text-lg font-light">₹{gstData.gstr1.sgst.toLocaleString('en-IN')}</p>
                       </div>
-                      <div className="bg-gray-900/50 rounded-lg p-4">
-                        <p className="text-gray-400 text-xs mb-1">Invoices</p>
+                      <div className="bg-black/50 rounded-lg p-4">
+                        <p className="text-white text-xs mb-1">Invoices</p>
                         <p className="text-white text-lg font-light">{gstData.gstr1.totalInvoices}</p>
                       </div>
                     </div>
@@ -4855,12 +4855,12 @@ function DataRoomPageInner() {
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
-                          <tr className="border-b border-gray-800">
-                            <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Invoice No</th>
-                            <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Date</th>
-                            <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Customer GSTIN</th>
-                            <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">Value</th>
-                            <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">Tax</th>
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-3 px-4 text-white text-sm font-medium">Invoice No</th>
+                            <th className="text-left py-3 px-4 text-white text-sm font-medium">Date</th>
+                            <th className="text-left py-3 px-4 text-white text-sm font-medium">Customer GSTIN</th>
+                            <th className="text-right py-3 px-4 text-white text-sm font-medium">Value</th>
+                            <th className="text-right py-3 px-4 text-white text-sm font-medium">Tax</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -4871,12 +4871,12 @@ function DataRoomPageInner() {
                             { inv: 'INV-2025-004', date: '18-12-2025', ctin: '07AAHCS0973B1ZL', val: 56000, tax: 10080 },
                             { inv: 'INV-2025-005', date: '25-12-2025', ctin: '19AAECI3797E1ZO', val: 175000, tax: 31500 }
                           ].map((row, idx) => (
-                            <tr key={idx} className="border-b border-gray-800/50 hover:bg-gray-900/30">
+                            <tr key={idx} className="border-b border-white/20/50 hover:bg-black/30">
                               <td className="py-3 px-4 text-white font-mono text-sm">{row.inv}</td>
-                              <td className="py-3 px-4 text-gray-300 text-sm">{row.date}</td>
-                              <td className="py-3 px-4 text-gray-300 font-mono text-sm">{row.ctin}</td>
+                              <td className="py-3 px-4 text-white text-sm">{row.date}</td>
+                              <td className="py-3 px-4 text-white font-mono text-sm">{row.ctin}</td>
                               <td className="py-3 px-4 text-white text-sm text-right">₹{row.val.toLocaleString('en-IN')}</td>
-                              <td className="py-3 px-4 text-green-400 text-sm text-right">₹{row.tax.toLocaleString('en-IN')}</td>
+                              <td className="py-3 px-4 text-white text-sm text-right">₹{row.tax.toLocaleString('en-IN')}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -4887,29 +4887,29 @@ function DataRoomPageInner() {
 
                 {/* GSTR-2A Section */}
                 {gstActiveSection === 'gstr2a' && (
-                  <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-6">
+                  <div className="bg-black border border-white/20 rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-6">
                       <div>
                         <h3 className="text-xl font-light text-white">GSTR-2A - Auto-drafted Inward Supplies</h3>
-                        <p className="text-gray-400 text-sm">Return period: December 2025</p>
+                        <p className="text-white text-sm">Return period: December 2025</p>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                      <div className="bg-gray-900/50 rounded-lg p-4">
-                        <p className="text-gray-400 text-xs mb-1">Total ITC Available</p>
+                      <div className="bg-black/50 rounded-lg p-4">
+                        <p className="text-white text-xs mb-1">Total ITC Available</p>
                         <p className="text-white text-lg font-light">₹412,500</p>
                       </div>
-                      <div className="bg-gray-900/50 rounded-lg p-4">
-                        <p className="text-gray-400 text-xs mb-1">B2B Invoices</p>
+                      <div className="bg-black/50 rounded-lg p-4">
+                        <p className="text-white text-xs mb-1">B2B Invoices</p>
                         <p className="text-white text-lg font-light">89</p>
                       </div>
-                      <div className="bg-gray-900/50 rounded-lg p-4">
-                        <p className="text-gray-400 text-xs mb-1">Credit Notes</p>
+                      <div className="bg-black/50 rounded-lg p-4">
+                        <p className="text-white text-xs mb-1">Credit Notes</p>
                         <p className="text-white text-lg font-light">12</p>
                       </div>
-                      <div className="bg-gray-900/50 rounded-lg p-4">
-                        <p className="text-gray-400 text-xs mb-1">Amendments</p>
+                      <div className="bg-black/50 rounded-lg p-4">
+                        <p className="text-white text-xs mb-1">Amendments</p>
                         <p className="text-white text-lg font-light">3</p>
                       </div>
                     </div>
@@ -4918,12 +4918,12 @@ function DataRoomPageInner() {
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
-                          <tr className="border-b border-gray-800">
-                            <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Supplier GSTIN</th>
-                            <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Trade Name</th>
-                            <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Invoice</th>
-                            <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">Taxable Value</th>
-                            <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">ITC</th>
+                          <tr className="border-b border-white/20">
+                            <th className="text-left py-3 px-4 text-white text-sm font-medium">Supplier GSTIN</th>
+                            <th className="text-left py-3 px-4 text-white text-sm font-medium">Trade Name</th>
+                            <th className="text-left py-3 px-4 text-white text-sm font-medium">Invoice</th>
+                            <th className="text-right py-3 px-4 text-white text-sm font-medium">Taxable Value</th>
+                            <th className="text-right py-3 px-4 text-white text-sm font-medium">ITC</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -4932,12 +4932,12 @@ function DataRoomPageInner() {
                             { gstin: '27AAACR5055K1Z7', name: 'XYZ Supplies', inv: 'INV-789', val: 125000, itc: 22500 },
                             { gstin: '33AADCB2230M1ZE', name: 'Tech Solutions', inv: 'TS-456', val: 65000, itc: 11700 }
                           ].map((row, idx) => (
-                            <tr key={idx} className="border-b border-gray-800/50 hover:bg-gray-900/30">
-                              <td className="py-3 px-4 text-gray-300 font-mono text-sm">{row.gstin}</td>
+                            <tr key={idx} className="border-b border-white/20/50 hover:bg-black/30">
+                              <td className="py-3 px-4 text-white font-mono text-sm">{row.gstin}</td>
                               <td className="py-3 px-4 text-white text-sm">{row.name}</td>
-                              <td className="py-3 px-4 text-gray-300 text-sm">{row.inv}</td>
+                              <td className="py-3 px-4 text-white text-sm">{row.inv}</td>
                               <td className="py-3 px-4 text-white text-sm text-right">₹{row.val.toLocaleString('en-IN')}</td>
-                              <td className="py-3 px-4 text-green-400 text-sm text-right">₹{row.itc.toLocaleString('en-IN')}</td>
+                              <td className="py-3 px-4 text-white text-sm text-right">₹{row.itc.toLocaleString('en-IN')}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -4948,58 +4948,58 @@ function DataRoomPageInner() {
 
                 {/* GSTR-2B Section */}
                 {gstActiveSection === 'gstr2b' && (
-                  <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-6">
+                  <div className="bg-black border border-white/20 rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-6">
                       <div>
                         <h3 className="text-xl font-light text-white">GSTR-2B - ITC Statement</h3>
-                        <p className="text-gray-400 text-sm">Return period: December 2025</p>
+                        <p className="text-white text-sm">Return period: December 2025</p>
                       </div>
-                      <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm">Generated on 14-01-2026</span>
+                      <span className="px-3 py-1 bg-white/10 text-white rounded-lg text-sm">Generated on 14-01-2026</span>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                       {/* ITC Available */}
-                      <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-6">
-                        <h4 className="text-green-400 font-medium mb-4">ITC Available</h4>
+                      <div className="bg-white/10 border border-white/20 rounded-xl p-6">
+                        <h4 className="text-white font-medium mb-4">ITC Available</h4>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <p className="text-gray-400 text-xs mb-1">IGST</p>
+                            <p className="text-white text-xs mb-1">IGST</p>
                             <p className="text-white text-lg">₹156,250</p>
                           </div>
                           <div>
-                            <p className="text-gray-400 text-xs mb-1">CGST</p>
+                            <p className="text-white text-xs mb-1">CGST</p>
                             <p className="text-white text-lg">₹128,125</p>
                           </div>
                           <div>
-                            <p className="text-gray-400 text-xs mb-1">SGST</p>
+                            <p className="text-white text-xs mb-1">SGST</p>
                             <p className="text-white text-lg">₹128,125</p>
                           </div>
                           <div>
-                            <p className="text-gray-400 text-xs mb-1">Total</p>
-                            <p className="text-green-400 text-lg font-medium">₹412,500</p>
+                            <p className="text-white text-xs mb-1">Total</p>
+                            <p className="text-white text-lg font-medium">₹412,500</p>
                           </div>
                         </div>
                       </div>
 
                       {/* ITC Not Available */}
-                      <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6">
-                        <h4 className="text-red-400 font-medium mb-4">ITC Not Available</h4>
+                      <div className="bg-white/5 border border-white/20 rounded-xl p-6">
+                        <h4 className="text-white font-medium mb-4">ITC Not Available</h4>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <p className="text-gray-400 text-xs mb-1">IGST</p>
+                            <p className="text-white text-xs mb-1">IGST</p>
                             <p className="text-white text-lg">₹12,500</p>
                           </div>
                           <div>
-                            <p className="text-gray-400 text-xs mb-1">CGST</p>
+                            <p className="text-white text-xs mb-1">CGST</p>
                             <p className="text-white text-lg">₹6,250</p>
                           </div>
                           <div>
-                            <p className="text-gray-400 text-xs mb-1">SGST</p>
+                            <p className="text-white text-xs mb-1">SGST</p>
                             <p className="text-white text-lg">₹6,250</p>
                           </div>
                           <div>
-                            <p className="text-gray-400 text-xs mb-1">Total</p>
-                            <p className="text-red-400 text-lg font-medium">₹25,000</p>
+                            <p className="text-white text-xs mb-1">Total</p>
+                            <p className="text-white text-lg font-medium">₹25,000</p>
                           </div>
                         </div>
                       </div>
@@ -5009,41 +5009,41 @@ function DataRoomPageInner() {
 
                 {/* GSTR-3B Section */}
                 {gstActiveSection === 'gstr3b' && (
-                  <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-6">
+                  <div className="bg-black border border-white/20 rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-6">
                       <div>
                         <h3 className="text-xl font-light text-white">GSTR-3B - Summary Return</h3>
-                        <p className="text-gray-400 text-sm">Return period: December 2025</p>
+                        <p className="text-white text-sm">Return period: December 2025</p>
                       </div>
-                      <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm">Filed on {gstData.gstr3b.filedDate}</span>
+                      <span className="px-3 py-1 bg-white/10 text-white rounded-lg text-sm">Filed on {gstData.gstr3b.filedDate}</span>
                     </div>
 
                     {/* Summary */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                      <div className="bg-gray-900/50 rounded-xl p-6">
-                        <h4 className="text-gray-400 text-sm mb-4">Tax Liability</h4>
+                      <div className="bg-black/50 rounded-xl p-6">
+                        <h4 className="text-white text-sm mb-4">Tax Liability</h4>
                         <p className="text-3xl font-light text-white mb-2">₹{gstData.gstr3b.totalLiability.toLocaleString('en-IN')}</p>
-                        <div className="text-xs text-gray-500 space-y-1">
+                        <div className="text-xs text-white/70 space-y-1">
                           <div className="flex justify-between"><span>IGST</span><span>₹287,650</span></div>
                           <div className="flex justify-between"><span>CGST</span><span>₹143,825</span></div>
                           <div className="flex justify-between"><span>SGST</span><span>₹143,825</span></div>
                         </div>
                       </div>
 
-                      <div className="bg-gray-900/50 rounded-xl p-6">
-                        <h4 className="text-gray-400 text-sm mb-4">ITC Claimed</h4>
-                        <p className="text-3xl font-light text-green-400 mb-2">₹{gstData.gstr3b.itcClaimed.toLocaleString('en-IN')}</p>
-                        <div className="text-xs text-gray-500 space-y-1">
+                      <div className="bg-black/50 rounded-xl p-6">
+                        <h4 className="text-white text-sm mb-4">ITC Claimed</h4>
+                        <p className="text-3xl font-light text-white mb-2">₹{gstData.gstr3b.itcClaimed.toLocaleString('en-IN')}</p>
+                        <div className="text-xs text-white/70 space-y-1">
                           <div className="flex justify-between"><span>IGST</span><span>₹206,250</span></div>
                           <div className="flex justify-between"><span>CGST</span><span>₹103,125</span></div>
                           <div className="flex justify-between"><span>SGST</span><span>₹103,125</span></div>
                         </div>
                       </div>
 
-                      <div className="bg-primary-orange/10 border border-primary-orange/30 rounded-xl p-6">
-                        <h4 className="text-gray-400 text-sm mb-4">Tax Paid</h4>
-                        <p className="text-3xl font-light text-primary-orange mb-2">₹{gstData.gstr3b.taxPaid.toLocaleString('en-IN')}</p>
-                        <div className="text-xs text-gray-500 space-y-1">
+                      <div className="bg-white/10 border border-white/30 rounded-xl p-6">
+                        <h4 className="text-white text-sm mb-4">Tax Paid</h4>
+                        <p className="text-3xl font-light text-white mb-2">₹{gstData.gstr3b.taxPaid.toLocaleString('en-IN')}</p>
+                        <div className="text-xs text-white/70 space-y-1">
                           <div className="flex justify-between"><span>Cash</span><span>₹81,400</span></div>
                           <div className="flex justify-between"><span>ITC</span><span>₹81,400</span></div>
                         </div>
@@ -5056,18 +5056,18 @@ function DataRoomPageInner() {
                 {gstActiveSection === 'ledger' && (
                   <div className="space-y-6">
                     {/* Cash Ledger */}
-                    <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-6">
+                    <div className="bg-black border border-white/20 rounded-2xl p-6">
                       <h3 className="text-xl font-light text-white mb-6">Cash Ledger</h3>
                       <div className="overflow-x-auto">
                         <table className="w-full">
                           <thead>
-                            <tr className="border-b border-gray-800">
-                              <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Date</th>
-                              <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Description</th>
-                              <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Ref No</th>
-                              <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">Credit</th>
-                              <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">Debit</th>
-                              <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">Balance</th>
+                            <tr className="border-b border-white/20">
+                              <th className="text-left py-3 px-4 text-white text-sm font-medium">Date</th>
+                              <th className="text-left py-3 px-4 text-white text-sm font-medium">Description</th>
+                              <th className="text-left py-3 px-4 text-white text-sm font-medium">Ref No</th>
+                              <th className="text-right py-3 px-4 text-white text-sm font-medium">Credit</th>
+                              <th className="text-right py-3 px-4 text-white text-sm font-medium">Debit</th>
+                              <th className="text-right py-3 px-4 text-white text-sm font-medium">Balance</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -5076,12 +5076,12 @@ function DataRoomPageInner() {
                               { date: '05-12-2025', desc: 'Cash Deposit', ref: 'DC1205250001', cr: 100000, dr: 0, bal: 285360 },
                               { date: '20-12-2025', desc: 'GSTR-3B Payment', ref: 'DC2012250002', cr: 0, dr: 35000, bal: 250360 }
                             ].map((row, idx) => (
-                              <tr key={idx} className="border-b border-gray-800/50 hover:bg-gray-900/30">
-                                <td className="py-3 px-4 text-gray-300 text-sm">{row.date}</td>
+                              <tr key={idx} className="border-b border-white/20/50 hover:bg-black/30">
+                                <td className="py-3 px-4 text-white text-sm">{row.date}</td>
                                 <td className="py-3 px-4 text-white text-sm">{row.desc}</td>
-                                <td className="py-3 px-4 text-gray-400 font-mono text-sm">{row.ref}</td>
-                                <td className="py-3 px-4 text-green-400 text-sm text-right">{row.cr > 0 ? `₹${row.cr.toLocaleString('en-IN')}` : '-'}</td>
-                                <td className="py-3 px-4 text-red-400 text-sm text-right">{row.dr > 0 ? `₹${row.dr.toLocaleString('en-IN')}` : '-'}</td>
+                                <td className="py-3 px-4 text-white font-mono text-sm">{row.ref}</td>
+                                <td className="py-3 px-4 text-white text-sm text-right">{row.cr > 0 ? `₹${row.cr.toLocaleString('en-IN')}` : '-'}</td>
+                                <td className="py-3 px-4 text-white text-sm text-right">{row.dr > 0 ? `₹${row.dr.toLocaleString('en-IN')}` : '-'}</td>
                                 <td className="py-3 px-4 text-white text-sm text-right font-medium">₹{row.bal.toLocaleString('en-IN')}</td>
                               </tr>
                             ))}
@@ -5091,18 +5091,18 @@ function DataRoomPageInner() {
                     </div>
 
                     {/* ITC Ledger */}
-                    <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-6">
+                    <div className="bg-black border border-white/20 rounded-2xl p-6">
                       <h3 className="text-xl font-light text-white mb-6">ITC Ledger</h3>
                       <div className="overflow-x-auto">
                         <table className="w-full">
                           <thead>
-                            <tr className="border-b border-gray-800">
-                              <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Date</th>
-                              <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Description</th>
-                              <th className="text-left py-3 px-4 text-gray-400 text-sm font-medium">Return Period</th>
-                              <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">Credit</th>
-                              <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">Debit</th>
-                              <th className="text-right py-3 px-4 text-gray-400 text-sm font-medium">Balance</th>
+                            <tr className="border-b border-white/20">
+                              <th className="text-left py-3 px-4 text-white text-sm font-medium">Date</th>
+                              <th className="text-left py-3 px-4 text-white text-sm font-medium">Description</th>
+                              <th className="text-left py-3 px-4 text-white text-sm font-medium">Return Period</th>
+                              <th className="text-right py-3 px-4 text-white text-sm font-medium">Credit</th>
+                              <th className="text-right py-3 px-4 text-white text-sm font-medium">Debit</th>
+                              <th className="text-right py-3 px-4 text-white text-sm font-medium">Balance</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -5111,12 +5111,12 @@ function DataRoomPageInner() {
                               { date: '11-12-2025', desc: 'ITC from GSTR-3B', period: '112025', cr: 100000, dr: 0, bal: 625000 },
                               { date: '20-12-2025', desc: 'ITC Utilization', period: '122025', cr: 0, dr: 81400, bal: 543600 }
                             ].map((row, idx) => (
-                              <tr key={idx} className="border-b border-gray-800/50 hover:bg-gray-900/30">
-                                <td className="py-3 px-4 text-gray-300 text-sm">{row.date}</td>
+                              <tr key={idx} className="border-b border-white/20/50 hover:bg-black/30">
+                                <td className="py-3 px-4 text-white text-sm">{row.date}</td>
                                 <td className="py-3 px-4 text-white text-sm">{row.desc}</td>
-                                <td className="py-3 px-4 text-gray-400 text-sm">{row.period}</td>
-                                <td className="py-3 px-4 text-green-400 text-sm text-right">{row.cr > 0 ? `₹${row.cr.toLocaleString('en-IN')}` : '-'}</td>
-                                <td className="py-3 px-4 text-red-400 text-sm text-right">{row.dr > 0 ? `₹${row.dr.toLocaleString('en-IN')}` : '-'}</td>
+                                <td className="py-3 px-4 text-white text-sm">{row.period}</td>
+                                <td className="py-3 px-4 text-white text-sm text-right">{row.cr > 0 ? `₹${row.cr.toLocaleString('en-IN')}` : '-'}</td>
+                                <td className="py-3 px-4 text-white text-sm text-right">{row.dr > 0 ? `₹${row.dr.toLocaleString('en-IN')}` : '-'}</td>
                                 <td className="py-3 px-4 text-white text-sm text-right font-medium">₹{row.bal.toLocaleString('en-IN')}</td>
                               </tr>
                             ))}
@@ -5133,10 +5133,10 @@ function DataRoomPageInner() {
 
         {activeTab === 'dsc' && (
           <div className="space-y-6">
-            <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-6 sm:p-8">
+            <div className="bg-black border border-white/20 rounded-2xl shadow-2xl p-6 sm:p-8">
               {/* Header */}
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/20">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg shadow-white/20">
                   <svg
                     width="24"
                     height="24"
@@ -5154,7 +5154,7 @@ function DataRoomPageInner() {
                 </div>
                 <div>
                   <h2 className="text-xl sm:text-2xl font-light text-white">DSC Management</h2>
-                  <p className="text-gray-400 text-sm sm:text-base">Manage your Digital Signature Certificate credentials and notifications</p>
+                  <p className="text-white text-sm sm:text-base">Manage your Digital Signature Certificate credentials and notifications</p>
                 </div>
               </div>
 
@@ -5162,57 +5162,57 @@ function DataRoomPageInner() {
               <div className="space-y-6">
                 {/* DSC Credentials Section */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white border-b border-gray-800 pb-2">DSC Credentials</h3>
+                  <h3 className="text-lg font-medium text-white border-b border-white/20 pb-2">DSC Credentials</h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Certificate Name <span className="text-red-500">*</span>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        Certificate Name <span className="text-white">*</span>
                       </label>
                       <input
                         type="text"
                         value={dscCredentials.name}
                         onChange={(e) => setDscCredentials({ ...dscCredentials, name: e.target.value })}
                         placeholder="Enter certificate name"
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Certificate Number <span className="text-red-500">*</span>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        Certificate Number <span className="text-white">*</span>
                       </label>
                       <input
                         type="text"
                         value={dscCredentials.certificateNumber}
                         onChange={(e) => setDscCredentials({ ...dscCredentials, certificateNumber: e.target.value })}
                         placeholder="Enter certificate number"
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Issuer <span className="text-red-500">*</span>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        Issuer <span className="text-white">*</span>
                       </label>
                       <input
                         type="text"
                         value={dscCredentials.issuer}
                         onChange={(e) => setDscCredentials({ ...dscCredentials, issuer: e.target.value })}
                         placeholder="e.g., eMudhra, Sify, etc."
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Expiry Date <span className="text-red-500">*</span>
+                      <label className="block text-sm font-medium text-white mb-2">
+                        Expiry Date <span className="text-white">*</span>
                       </label>
                       <input
                         type="date"
                         value={dscCredentials.expiryDate}
                         onChange={(e) => setDscCredentials({ ...dscCredentials, expiryDate: e.target.value })}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                       />
                     </div>
                   </div>
@@ -5220,7 +5220,7 @@ function DataRoomPageInner() {
 
                 {/* Frequency Section */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white border-b border-gray-800 pb-2">Renewal Frequency</h3>
+                  <h3 className="text-lg font-medium text-white border-b border-white/20 pb-2">Renewal Frequency</h3>
                   
                   <div className="flex flex-wrap gap-4">
                     <label className="flex items-center gap-3 cursor-pointer">
@@ -5230,11 +5230,11 @@ function DataRoomPageInner() {
                         value="1"
                         checked={dscCredentials.frequency === '1'}
                         onChange={(e) => setDscCredentials({ ...dscCredentials, frequency: e.target.value as '1' | '2' | 'custom' })}
-                        className="w-5 h-5 text-primary-orange bg-gray-900 border-gray-700 focus:ring-primary-orange focus:ring-2"
+                        className="w-5 h-5 text-white bg-black border-white/30 focus:ring-white focus:ring-2"
                       />
                       <div>
                         <span className="text-white font-medium">1 Year</span>
-                        <p className="text-gray-400 text-xs">Annual renewal</p>
+                        <p className="text-white text-xs">Annual renewal</p>
                       </div>
                     </label>
                     
@@ -5245,11 +5245,11 @@ function DataRoomPageInner() {
                         value="2"
                         checked={dscCredentials.frequency === '2'}
                         onChange={(e) => setDscCredentials({ ...dscCredentials, frequency: e.target.value as '1' | '2' | 'custom' })}
-                        className="w-5 h-5 text-primary-orange bg-gray-900 border-gray-700 focus:ring-primary-orange focus:ring-2"
+                        className="w-5 h-5 text-white bg-black border-white/30 focus:ring-white focus:ring-2"
                       />
                       <div>
                         <span className="text-white font-medium">2 Years</span>
-                        <p className="text-gray-400 text-xs">Biennial renewal</p>
+                        <p className="text-white text-xs">Biennial renewal</p>
                       </div>
                     </label>
 
@@ -5260,20 +5260,20 @@ function DataRoomPageInner() {
                         value="custom"
                         checked={dscCredentials.frequency === 'custom'}
                         onChange={(e) => setDscCredentials({ ...dscCredentials, frequency: e.target.value as '1' | '2' | 'custom' })}
-                        className="w-5 h-5 text-primary-orange bg-gray-900 border-gray-700 focus:ring-primary-orange focus:ring-2"
+                        className="w-5 h-5 text-white bg-black border-white/30 focus:ring-white focus:ring-2"
                       />
                       <div>
                         <span className="text-white font-medium">Custom</span>
-                        <p className="text-gray-400 text-xs">Specify custom years</p>
+                        <p className="text-white text-xs">Specify custom years</p>
                       </div>
                     </label>
                   </div>
 
                   {/* Custom Frequency Input */}
                   {dscCredentials.frequency === 'custom' && (
-                    <div className="mt-4 p-4 bg-gray-900/50 rounded-lg border border-gray-800">
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Number of Years <span className="text-red-500">*</span>
+                    <div className="mt-4 p-4 bg-black/50 rounded-lg border border-white/20">
+                      <label className="block text-sm font-medium text-white mb-2">
+                        Number of Years <span className="text-white">*</span>
                       </label>
                       <input
                         type="number"
@@ -5287,22 +5287,22 @@ function DataRoomPageInner() {
                           }
                         }}
                         placeholder="Enter number of years (1-10)"
-                        className="w-full sm:w-64 px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full sm:w-64 px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                       />
-                      <p className="mt-2 text-xs text-gray-500">Enter a number between 1 and 10 years</p>
+                      <p className="mt-2 text-xs text-white/70">Enter a number between 1 and 10 years</p>
                     </div>
                   )}
                 </div>
 
                 {/* Notifications Section */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white border-b border-gray-800 pb-2">Notifications</h3>
+                  <h3 className="text-lg font-medium text-white border-b border-white/20 pb-2">Notifications</h3>
                   
                   <div className="space-y-4">
                     {/* In-House Notifications */}
-                    <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-800">
+                    <div className="flex items-center justify-between p-4 bg-black/50 rounded-lg border border-white/20">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                        <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
                           <svg
                             width="20"
                             height="20"
@@ -5319,7 +5319,7 @@ function DataRoomPageInner() {
                         </div>
                         <div>
                           <span className="text-white font-medium block">In-House Notifications</span>
-                          <p className="text-gray-400 text-sm">Receive notifications within the platform</p>
+                          <p className="text-white text-sm">Receive notifications within the platform</p>
                         </div>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -5329,14 +5329,14 @@ function DataRoomPageInner() {
                           onChange={(e) => setDscCredentials({ ...dscCredentials, inHouseNotifications: e.target.checked })}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-orange rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-orange"></div>
+                        <div className="w-11 h-6 bg-black peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-white rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-white"></div>
                       </label>
                     </div>
 
                     {/* Email Notifications */}
-                    <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-800">
+                    <div className="flex items-center justify-between p-4 bg-black/50 rounded-lg border border-white/20">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+                        <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
                           <svg
                             width="20"
                             height="20"
@@ -5353,7 +5353,7 @@ function DataRoomPageInner() {
                         </div>
                         <div>
                           <span className="text-white font-medium block">Email Notifications</span>
-                          <p className="text-gray-400 text-sm">Receive email alerts for expiry reminders</p>
+                          <p className="text-white text-sm">Receive email alerts for expiry reminders</p>
                         </div>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
@@ -5363,14 +5363,14 @@ function DataRoomPageInner() {
                           onChange={(e) => setDscCredentials({ ...dscCredentials, emailNotifications: e.target.checked })}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-orange rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-orange"></div>
+                        <div className="w-11 h-6 bg-black peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-white rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-white"></div>
                       </label>
                     </div>
 
                     {/* Email Addresses */}
                     {dscCredentials.emailNotifications && (
-                      <div className="mt-4 p-4 bg-gray-900/50 rounded-lg border border-gray-800">
-                        <label className="block text-sm font-medium text-gray-300 mb-3">
+                      <div className="mt-4 p-4 bg-black/50 rounded-lg border border-white/20">
+                        <label className="block text-sm font-medium text-white mb-3">
                           Notification Email Addresses
                         </label>
                         <div className="space-y-3">
@@ -5380,7 +5380,7 @@ function DataRoomPageInner() {
                               {dscCredentials.notificationEmails.map((email, index) => (
                                 <div
                                   key={index}
-                                  className="flex items-center gap-2 px-3 py-1.5 bg-primary-orange/20 border border-primary-orange/30 rounded-lg text-sm text-white"
+                                  className="flex items-center gap-2 px-3 py-1.5 bg-white/20 border border-white/30 rounded-lg text-sm text-white"
                                 >
                                   <span>{email}</span>
                                   <button
@@ -5389,7 +5389,7 @@ function DataRoomPageInner() {
                                       updated.splice(index, 1)
                                       setDscCredentials({ ...dscCredentials, notificationEmails: updated })
                                     }}
-                                    className="text-primary-orange hover:text-primary-orange/80 transition-colors"
+                                    className="text-white hover:text-white/80 transition-colors"
                                   >
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                       <line x1="18" y1="6" x2="6" y2="18" />
@@ -5408,7 +5408,7 @@ function DataRoomPageInner() {
                               value={newEmail}
                               onChange={(e) => setNewEmail(e.target.value)}
                               placeholder="Enter email address"
-                              className="flex-1 px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors text-sm"
+                              className="flex-1 px-4 py-2 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors text-sm"
                               onKeyPress={(e) => {
                                 if (e.key === 'Enter' && newEmail.trim() && newEmail.includes('@')) {
                                   if (!dscCredentials.notificationEmails.includes(newEmail.trim())) {
@@ -5434,12 +5434,12 @@ function DataRoomPageInner() {
                                 }
                               }}
                               disabled={!newEmail.trim() || !newEmail.includes('@') || dscCredentials.notificationEmails.includes(newEmail.trim())}
-                              className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                              className="px-4 py-2 bg-white text-black rounded-lg hover:bg-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                             >
                               Add
                             </button>
                           </div>
-                          <p className="text-xs text-gray-500">Press Enter or click Add to add an email address</p>
+                          <p className="text-xs text-white/70">Press Enter or click Add to add an email address</p>
                         </div>
                       </div>
                     )}
@@ -5448,9 +5448,9 @@ function DataRoomPageInner() {
 
                 {/* Platform Credentials Section */}
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-800">
+                  <div className="flex items-center justify-between p-4 bg-black/50 rounded-lg border border-white/20">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                      <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
                         <svg
                           width="20"
                           height="20"
@@ -5470,7 +5470,7 @@ function DataRoomPageInner() {
                       </div>
                       <div>
                         <span className="text-white font-medium block">Store Platform Credentials</span>
-                        <p className="text-gray-400 text-sm">Save your platform email and password for easy access</p>
+                        <p className="text-white text-sm">Save your platform email and password for easy access</p>
                       </div>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -5480,43 +5480,43 @@ function DataRoomPageInner() {
                         onChange={(e) => setDscCredentials({ ...dscCredentials, storePlatformCredentials: e.target.checked })}
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-orange rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-orange"></div>
+                      <div className="w-11 h-6 bg-black peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-white rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-white"></div>
                     </label>
                   </div>
 
                   {dscCredentials.storePlatformCredentials && (
-                    <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-800 space-y-4">
-                      <h3 className="text-lg font-medium text-white border-b border-gray-800 pb-2">Platform Login Details</h3>
+                    <div className="p-4 bg-black/50 rounded-lg border border-white/20 space-y-4">
+                      <h3 className="text-lg font-medium text-white border-b border-white/20 pb-2">Platform Login Details</h3>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Platform Email <span className="text-red-500">*</span>
+                          <label className="block text-sm font-medium text-white mb-2">
+                            Platform Email <span className="text-white">*</span>
                           </label>
                           <input
                             type="email"
                             value={dscCredentials.platformEmail}
                             onChange={(e) => setDscCredentials({ ...dscCredentials, platformEmail: e.target.value })}
                             placeholder="Enter platform email address"
-                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                            className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Platform Password <span className="text-red-500">*</span>
+                          <label className="block text-sm font-medium text-white mb-2">
+                            Platform Password <span className="text-white">*</span>
                           </label>
                           <input
                             type="password"
                             value={dscCredentials.platformPassword}
                             onChange={(e) => setDscCredentials({ ...dscCredentials, platformPassword: e.target.value })}
                             placeholder="Enter platform password"
-                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                            className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                           />
                         </div>
                       </div>
 
-                      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                      <div className="bg-white/5 border border-white/30 rounded-lg p-3">
                         <div className="flex items-start gap-2">
                           <svg
                             width="16"
@@ -5527,13 +5527,13 @@ function DataRoomPageInner() {
                             strokeWidth="2"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            className="text-yellow-400 mt-0.5 flex-shrink-0"
+                            className="text-white mt-0.5 flex-shrink-0"
                           >
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                             <path d="M12 8v4" />
                             <path d="M12 16h.01" />
                           </svg>
-                          <p className="text-yellow-400 text-xs">
+                          <p className="text-white text-xs">
                             Your credentials are stored securely. Make sure to use strong passwords and keep them updated.
                           </p>
                         </div>
@@ -5543,7 +5543,7 @@ function DataRoomPageInner() {
                 </div>
 
                 {/* Save Button */}
-                <div className="pt-4 border-t border-gray-800">
+                <div className="pt-4 border-t border-white/20">
                   <button
                     onClick={async () => {
                       if (!dscCredentials.name || !dscCredentials.certificateNumber || !dscCredentials.issuer || !dscCredentials.expiryDate) {
@@ -5565,7 +5565,7 @@ function DataRoomPageInner() {
                       alert('DSC credentials saved successfully!')
                     }}
                     disabled={isDscSaving || !dscCredentials.name || !dscCredentials.certificateNumber || !dscCredentials.issuer || !dscCredentials.expiryDate || (dscCredentials.frequency === 'custom' && !dscCredentials.customFrequencyYears) || (dscCredentials.storePlatformCredentials && (!dscCredentials.platformEmail || !dscCredentials.platformPassword))}
-                    className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg font-medium hover:from-purple-600 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20"
+                    className="w-full sm:w-auto px-6 py-3 bg-white text-black rounded-lg font-medium hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-white/20"
                   >
                     {isDscSaving ? (
                       <>
@@ -5595,17 +5595,17 @@ function DataRoomPageInner() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h2 className="text-xl sm:text-3xl font-light text-white mb-1 sm:mb-2">Regulatory Timeline</h2>
-                <p className="text-gray-400 text-sm sm:text-base">Keep track of upcoming tax and compliance deadlines.</p>
+                <p className="text-white text-sm sm:text-base">Keep track of upcoming tax and compliance deadlines.</p>
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 {/* View Toggle */}
-                <div className="flex items-center gap-1 sm:gap-2 bg-gray-800 rounded-lg p-0.5 sm:p-1">
+                <div className="flex items-center gap-1 sm:gap-2 bg-black rounded-lg p-0.5 sm:p-1">
                   <button
                     onClick={() => setTrackerView('list')}
                     className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${
                       trackerView === 'list'
-                        ? 'bg-primary-orange text-white'
-                        : 'text-gray-400 hover:text-white'
+                        ? 'bg-white text-black'
+                        : 'text-white hover:text-white'
                     }`}
                     title="List View"
                   >
@@ -5623,8 +5623,8 @@ function DataRoomPageInner() {
                     onClick={() => setTrackerView('calendar')}
                     className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${
                       trackerView === 'calendar'
-                        ? 'bg-primary-orange text-white'
-                        : 'text-gray-400 hover:text-white'
+                        ? 'bg-white text-black'
+                        : 'text-white hover:text-white'
                     }`}
                     title="Calendar View"
                   >
@@ -5641,7 +5641,7 @@ function DataRoomPageInner() {
                 <button
                   onClick={refreshRequirements}
                   disabled={isLoadingRequirements}
-                  className="bg-gray-800 text-gray-300 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm"
+                  className="bg-black text-white px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-black transition-colors flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm"
                   title="Refresh requirements"
                 >
                   <svg 
@@ -5674,7 +5674,7 @@ function DataRoomPageInner() {
                       })
                       setIsCreateModalOpen(true)
                     }}
-                    className="bg-primary-orange text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-1.5 sm:gap-2 font-medium text-xs sm:text-base"
+                    className="bg-white text-black px-3 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-white/90 transition-colors flex items-center gap-1.5 sm:gap-2 font-medium text-xs sm:text-base"
                   >
                     <svg
                       width="14"
@@ -5694,7 +5694,7 @@ function DataRoomPageInner() {
                     <span className="sm:hidden">Add</span>
                   </button>
                 )}
-                <button className="bg-primary-dark-card border border-gray-700 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-primary-orange/50 transition-colors flex items-center gap-1.5 sm:gap-2 font-medium text-xs sm:text-base">
+                <button className="bg-black border border-white/30 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-white/50 transition-colors flex items-center gap-1.5 sm:gap-2 font-medium text-xs sm:text-base">
                 <svg
                   width="14"
                   height="14"
@@ -5727,10 +5727,10 @@ function DataRoomPageInner() {
                     const newFY = e.target.value
                     setSelectedTrackerFY(newFY)
                   }}
-                  className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange appearance-none cursor-pointer ${
+                  className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors text-sm sm:text-base focus:outline-none focus:border-white focus:ring-1 focus:ring-white appearance-none cursor-pointer ${
                     selectedTrackerFY 
-                      ? 'border-primary-orange bg-primary-orange/20 text-white' 
-                      : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
+                      ? 'border-white bg-white/20 text-white' 
+                      : 'border-white/30 bg-black text-white hover:border-white/50'
                   }`}
                 >
                   <option value="">All Years</option>
@@ -5751,8 +5751,8 @@ function DataRoomPageInner() {
                   }}
                   className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors flex items-center justify-between sm:justify-start gap-2 text-sm sm:text-base ${
                     selectedMonth
-                      ? 'border-primary-orange bg-primary-orange/20 text-white'
-                      : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
+                      ? 'border-white bg-white/20 text-white'
+                      : 'border-white/30 bg-black text-white hover:border-white/50'
                   }`}
                 >
                   <span>{selectedMonth || 'All Months'}</span>
@@ -5776,22 +5776,22 @@ function DataRoomPageInner() {
                       className="fixed inset-0 z-10"
                       onClick={() => setIsMonthDropdownOpen(false)}
                     />
-                    <div className="absolute top-full left-0 mt-2 bg-gray-900 border border-gray-800 rounded-lg shadow-2xl z-20 min-w-[200px] max-h-64 overflow-y-auto">
+                    <div className="absolute top-full left-0 mt-2 bg-black border border-white/20 rounded-lg shadow-2xl z-20 min-w-[200px] max-h-64 overflow-y-auto">
                       {/* All Months option */}
                       <button
                         onClick={() => {
                           setSelectedMonth(null)
                           setIsMonthDropdownOpen(false)
                         }}
-                        className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${
+                        className={`w-full px-4 py-2 text-left hover:bg-black transition-colors ${
                           selectedMonth === null
-                            ? 'bg-primary-orange/20 text-white'
-                            : 'text-gray-300'
+                            ? 'bg-white/20 text-white'
+                            : 'text-white'
                         }`}
                       >
                         All Months
                       </button>
-                      <div className="border-t border-gray-800" />
+                      <div className="border-t border-white/20" />
                       {months.map((month) => (
                         <button
                           key={month}
@@ -5800,10 +5800,10 @@ function DataRoomPageInner() {
                             setIsMonthDropdownOpen(false)
                             setSelectedQuarter(null) // Clear quarter when month is selected
                           }}
-                          className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${
+                          className={`w-full px-4 py-2 text-left hover:bg-black transition-colors ${
                             selectedMonth === month
-                              ? 'bg-primary-orange/20 text-white'
-                              : 'text-gray-300'
+                              ? 'bg-white/20 text-white'
+                              : 'text-white'
                           }`}
                         >
                           {month}
@@ -5823,8 +5823,8 @@ function DataRoomPageInner() {
                   }}
                   className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors flex items-center justify-between sm:justify-start gap-2 text-sm sm:text-base ${
                     selectedQuarter
-                      ? 'border-primary-orange bg-primary-orange/20 text-white'
-                      : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
+                      ? 'border-white bg-white/20 text-white'
+                      : 'border-white/30 bg-black text-white hover:border-white/50'
                   }`}
                 >
                   <span>{selectedQuarter ? quarters.find(q => q.value === selectedQuarter)?.label.split(' - ')[0] : 'All Quarters'}</span>
@@ -5848,22 +5848,22 @@ function DataRoomPageInner() {
                       className="fixed inset-0 z-10"
                       onClick={() => setIsQuarterDropdownOpen(false)}
                     />
-                    <div className="absolute top-full left-0 mt-2 bg-gray-900 border border-gray-800 rounded-lg shadow-2xl z-20 min-w-[200px]">
+                    <div className="absolute top-full left-0 mt-2 bg-black border border-white/20 rounded-lg shadow-2xl z-20 min-w-[200px]">
                       {/* All Quarters option */}
                       <button
                         onClick={() => {
                           setSelectedQuarter(null)
                           setIsQuarterDropdownOpen(false)
                         }}
-                        className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${
+                        className={`w-full px-4 py-2 text-left hover:bg-black transition-colors ${
                           selectedQuarter === null
-                            ? 'bg-primary-orange/20 text-white'
-                            : 'text-gray-300'
+                            ? 'bg-white/20 text-white'
+                            : 'text-white'
                         }`}
                       >
                         All Quarters
                       </button>
-                      <div className="border-t border-gray-800" />
+                      <div className="border-t border-white/20" />
                       {quarters.map((quarter) => (
                         <button
                           key={quarter.value}
@@ -5872,10 +5872,10 @@ function DataRoomPageInner() {
                             setIsQuarterDropdownOpen(false)
                             setSelectedMonth(null) // Clear month when quarter is selected
                           }}
-                          className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${
+                          className={`w-full px-4 py-2 text-left hover:bg-black transition-colors ${
                             selectedQuarter === quarter.value
-                              ? 'bg-primary-orange/20 text-white'
-                              : 'text-gray-300'
+                              ? 'bg-white/20 text-white'
+                              : 'text-white'
                           }`}
                         >
                           {quarter.label}
@@ -5895,8 +5895,8 @@ function DataRoomPageInner() {
                   onClick={() => setCategoryFilter(filter)}
                   className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 transition-colors capitalize text-xs sm:text-sm whitespace-nowrap flex-shrink-0 ${
                     categoryFilter === filter
-                      ? 'border-primary-orange bg-primary-orange/20 text-white'
-                      : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
+                      ? 'border-white bg-white/20 text-white'
+                      : 'border-white/30 bg-black text-white hover:border-white/50'
                   }`}
                 >
                   {filter === 'all'
@@ -5914,19 +5914,19 @@ function DataRoomPageInner() {
             </div>
 
             {/* Regulatory Requirements Table */}
-            <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden">
+            <div className="bg-black border border-white/20 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden">
               {isLoadingRequirements ? (
                 <div className="py-8 sm:py-12 flex flex-col items-center justify-center">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mb-4"></div>
-                  <p className="text-gray-400 text-sm sm:text-base">Loading requirements...</p>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-white border-t-transparent rounded-full animate-spin mb-4"></div>
+                  <p className="text-white text-sm sm:text-base">Loading requirements...</p>
                 </div>
               ) : displayRequirements.length === 0 ? (
                 <div className="py-8 sm:py-12 flex flex-col items-center justify-center">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 border-2 border-gray-700 rounded-full flex items-center justify-center mb-4">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 border-2 border-white/30 rounded-full flex items-center justify-center mb-4">
                     <svg
                       width="24"
                       height="24"
-                      className="sm:w-8 sm:h-8 text-gray-600"
+                      className="sm:w-8 sm:h-8 text-white/70"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -5937,9 +5937,9 @@ function DataRoomPageInner() {
                       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                     </svg>
                   </div>
-                  <p className="text-gray-500 text-sm sm:text-base">No regulatory requirements found</p>
+                  <p className="text-white/70 text-sm sm:text-base">No regulatory requirements found</p>
                   {canEdit && (
-                    <p className="text-gray-600 text-xs sm:text-sm mt-2 text-center px-4">You can create requirements once the feature is available</p>
+                    <p className="text-white/70 text-xs sm:text-sm mt-2 text-center px-4">You can create requirements once the feature is available</p>
                   )}
                 </div>
               ) : (
@@ -6282,14 +6282,14 @@ function DataRoomPageInner() {
                     const startingDayOfWeek = firstDay.getDay()
 
                   return (
-                      <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-3 sm:p-6">
+                      <div className="bg-black border border-white/20 rounded-xl sm:rounded-2xl p-3 sm:p-6">
                         {/* Calendar Header with Navigation - Stack on Mobile */}
                         <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                           <div className="flex-1">
                             <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-4">
                               <button
                                 onClick={() => setCalendarYear(currentCalendarYear - 1)}
-                                className="p-1.5 sm:p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
+                                className="p-1.5 sm:p-2 hover:bg-black rounded-lg transition-colors text-white hover:text-white"
                                 title="Previous Year"
                               >
                                 <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -6306,7 +6306,7 @@ function DataRoomPageInner() {
                                     setCalendarMonth(currentCalendarMonth - 1)
                                   }
                                 }}
-                                className="p-1.5 sm:p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
+                                className="p-1.5 sm:p-2 hover:bg-black rounded-lg transition-colors text-white hover:text-white"
                                 title="Previous Month"
                               >
                                 <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -6325,7 +6325,7 @@ function DataRoomPageInner() {
                                     setCalendarMonth(currentCalendarMonth + 1)
                                   }
                                 }}
-                                className="p-1.5 sm:p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
+                                className="p-1.5 sm:p-2 hover:bg-black rounded-lg transition-colors text-white hover:text-white"
                                 title="Next Month"
                               >
                                 <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -6336,7 +6336,7 @@ function DataRoomPageInner() {
                                 onClick={() => {
                                   setCalendarYear(currentCalendarYear + 1)
                                 }}
-                                className="p-1.5 sm:p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
+                                className="p-1.5 sm:p-2 hover:bg-black rounded-lg transition-colors text-white hover:text-white"
                                 title="Next Year"
                               >
                                 <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -6346,7 +6346,7 @@ function DataRoomPageInner() {
                               </button>
                             </div>
                             {selectedTrackerFY && (
-                              <p className="text-gray-400 text-xs sm:text-sm mt-2 text-center sm:text-left">{selectedTrackerFY}</p>
+                              <p className="text-white text-xs sm:text-sm mt-2 text-center sm:text-left">{selectedTrackerFY}</p>
                             )}
                           </div>
                         </div>
@@ -6355,7 +6355,7 @@ function DataRoomPageInner() {
                         <div className="grid grid-cols-7 gap-1 sm:gap-2">
                           {/* Day headers */}
                           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                            <div key={day} className="text-center text-[10px] sm:text-xs font-medium text-gray-400 py-1 sm:py-2">
+                            <div key={day} className="text-center text-[10px] sm:text-xs font-medium text-white py-1 sm:py-2">
                               {day}
                             </div>
                           ))}
@@ -6373,11 +6373,11 @@ function DataRoomPageInner() {
                             return (
                               <div
                                 key={day}
-                                className={`min-h-[60px] sm:min-h-[120px] border border-gray-700 rounded sm:rounded-lg p-1 sm:p-2 bg-gray-900/50 ${
-                                  isToday ? 'ring-1 sm:ring-2 ring-primary-orange' : ''
+                                className={`min-h-[60px] sm:min-h-[120px] border border-white/30 rounded sm:rounded-lg p-1 sm:p-2 bg-black/50 ${
+                                  isToday ? 'ring-1 sm:ring-2 ring-white' : ''
                                 }`}
                               >
-                                <div className={`text-xs sm:text-sm mb-1 sm:mb-2 font-medium ${isToday ? 'text-primary-orange font-bold' : 'text-gray-300'}`}>
+                                <div className={`text-xs sm:text-sm mb-1 sm:mb-2 font-medium ${isToday ? 'text-white font-bold' : 'text-white'}`}>
                                   {day}
                                 </div>
                                 <div className="space-y-1 sm:space-y-1.5 overflow-y-auto max-h-[45px] sm:max-h-[90px]">
@@ -6391,34 +6391,34 @@ function DataRoomPageInner() {
                                         key={req.id}
                                         className={`text-[10px] sm:text-xs p-1 sm:p-2 rounded border cursor-pointer hover:opacity-80 transition-opacity ${
                                           isOverdue
-                                            ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                                            ? 'bg-white/10 text-white border-white/30'
                                             : req.status === 'completed'
-                                            ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                                            ? 'bg-white/10 text-white border-white/30'
                                             : req.status === 'pending'
-                                            ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                                            : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                            ? 'bg-white/10 text-white border-white/30'
+                                            : 'bg-white/10 text-white border-white/30'
                                         }`}
                                         title={`${req.category} - ${req.requirement}\n${req.description || ''}\nStatus: ${req.status}\nPenalty: ${req.penalty}\nCalculated: ${calculatedPenalty}`}
                                       >
                                         <div className="font-semibold truncate">{req.requirement}</div>
-                                        <div className="text-[8px] sm:text-[10px] text-gray-400 truncate mt-0.5 hidden sm:block">{req.category}</div>
+                                        <div className="text-[8px] sm:text-[10px] text-white truncate mt-0.5 hidden sm:block">{req.category}</div>
                                         <div className="flex items-center gap-0.5 sm:gap-1 mt-0.5 sm:mt-1">
                                           <span className={`px-1 sm:px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-medium ${
-                                            req.status === 'completed' ? 'bg-green-500/30 text-green-300' :
-                                            req.status === 'overdue' ? 'bg-red-500/30 text-red-300' :
-                                            req.status === 'pending' ? 'bg-yellow-500/30 text-yellow-300' :
-                                            'bg-gray-700 text-gray-300'
+                                            req.status === 'completed' ? 'bg-white/30 text-white' :
+                                            req.status === 'overdue' ? 'bg-white/20 text-white' :
+                                            req.status === 'pending' ? 'bg-white/20 text-white' :
+                                            'bg-black text-white'
                                           }`}>
                                             {req.status === 'completed' ? '✓' : req.status === 'overdue' ? '!' : req.status === 'pending' ? '⏳' : '○'}
                                           </span>
                                           {req.compliance_type && (
-                                            <span className="text-[8px] sm:text-[10px] text-gray-400 hidden sm:inline">
+                                            <span className="text-[8px] sm:text-[10px] text-white hidden sm:inline">
                                               {req.compliance_type.charAt(0).toUpperCase()}
                                             </span>
                                           )}
                                         </div>
                                         {calculatedPenalty !== '-' && (
-                                          <div className="text-[8px] sm:text-[10px] text-red-400 mt-0.5 font-medium truncate">
+                                          <div className="text-[8px] sm:text-[10px] text-white mt-0.5 font-medium truncate">
                                             {calculatedPenalty}
                                           </div>
                                         )}
@@ -6443,11 +6443,11 @@ function DataRoomPageInner() {
                           <div key={group.category}>
                             {/* Category Header */}
                             <div className="mb-2">
-                              <h3 className="text-primary-orange font-semibold text-base">
+                              <h3 className="text-white font-semibold text-base">
                                 {group.category}
                               </h3>
                               {groupIndex > 0 && (
-                                <div className="h-0.5 bg-gradient-to-r from-transparent via-primary-orange/50 to-transparent my-2"></div>
+                                <div className="h-0.5 bg-gradient-to-r from-transparent via-white/50 to-transparent my-2"></div>
                               )}
                             </div>
                             {/* Category Items as Cards */}
@@ -6458,14 +6458,14 @@ function DataRoomPageInner() {
                                 const complianceType = req.compliance_type
                                 
                                 return (
-                                  <div key={req.id} className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 space-y-2">
+                                  <div key={req.id} className="bg-black/50 border border-white/20 rounded-lg p-3 space-y-2">
                                     {/* Requirement Header */}
                                     <div className="flex items-start gap-2">
                                       {(req.isCritical || req.status === 'overdue') && (
                                         <svg
                                           width="16"
                                           height="16"
-                                          className="flex-shrink-0 mt-0.5 text-red-500"
+                                          className="flex-shrink-0 mt-0.5 text-white"
                                           viewBox="0 0 24 24"
                                           fill="none"
                                           stroke="currentColor"
@@ -6481,7 +6481,7 @@ function DataRoomPageInner() {
                                       <div className="min-w-0 flex-1">
                                         <div className="text-white font-medium text-sm break-words">{req.requirement}</div>
                                         {req.description && (
-                                          <div className="text-gray-400 text-xs break-words mt-1">{req.description}</div>
+                                          <div className="text-white text-xs break-words mt-1">{req.description}</div>
                                         )}
                                       </div>
                                     </div>
@@ -6494,14 +6494,14 @@ function DataRoomPageInner() {
                                           onChange={(e) => handleStatusChange(req.id, e.target.value as any)}
                                           className={`px-2 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
                                             req.status === 'completed'
-                                              ? 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30'
+                                              ? 'bg-white/10 text-white border-white/30 hover:bg-white/20'
                                               : req.status === 'overdue'
-                                              ? 'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30'
+                                              ? 'bg-white/10 text-white border-white/30 hover:bg-white/20'
                                               : req.status === 'pending'
-                                              ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30'
+                                              ? 'bg-white/10 text-white border-white/30 hover:bg-white/20'
                                               : req.status === 'upcoming'
-                                              ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30'
-                                              : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
+                                              ? 'bg-white/10 text-white border-white/30 hover:bg-white/20'
+                                              : 'bg-black text-white border-white/30 hover:bg-black'
                                           }`}
                                           style={{
                                             appearance: 'none',
@@ -6521,14 +6521,14 @@ function DataRoomPageInner() {
                                         <span
                                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                                             req.status === 'completed'
-                                              ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                              ? 'bg-white/10 text-white border border-white/30'
                                               : req.status === 'overdue'
-                                              ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                              ? 'bg-white/10 text-white border border-white/30'
                                               : req.status === 'pending'
-                                              ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                                              ? 'bg-white/10 text-white border border-white/30'
                                               : req.status === 'upcoming'
-                                              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                                              : 'bg-gray-800 text-gray-400 border border-gray-700'
+                                              ? 'bg-white/10 text-white border border-white/30'
+                                              : 'bg-black text-white border border-white/30'
                                           }`}
                                         >
                                           {req.status === 'completed'
@@ -6544,10 +6544,10 @@ function DataRoomPageInner() {
                                       )}
                                       {complianceType && (
                                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                          complianceType === 'one-time' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
-                                          complianceType === 'monthly' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                                          complianceType === 'quarterly' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                                          'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                                          complianceType === 'one-time' ? 'bg-white/10 text-white border border-white/30' :
+                                          complianceType === 'monthly' ? 'bg-white/10 text-white border border-white/30' :
+                                          complianceType === 'quarterly' ? 'bg-white/10 text-white border border-white/30' :
+                                          'bg-white/10 text-white border border-white/30'
                                         }`}>
                                           {complianceType.toUpperCase()}
                                         </span>
@@ -6559,7 +6559,7 @@ function DataRoomPageInner() {
                                       <svg
                                         width="14"
                                         height="14"
-                                        className="flex-shrink-0 text-gray-400"
+                                        className="flex-shrink-0 text-white"
                                         viewBox="0 0 24 24"
                                         fill="none"
                                         stroke="currentColor"
@@ -6577,22 +6577,22 @@ function DataRoomPageInner() {
                                     <div className="grid grid-cols-2 gap-2 text-xs">
                                       {daysDelayed !== null && (
                                         <div>
-                                          <span className="text-gray-400">Delayed:</span>
-                                          <span className="text-red-400 font-medium ml-1">
+                                          <span className="text-white">Delayed:</span>
+                                          <span className="text-white font-medium ml-1">
                                             {daysDelayed} {daysDelayed === 1 ? 'day' : 'days'}
                                           </span>
                                         </div>
                                       )}
                                       {req.penalty && (
                                         <div>
-                                          <span className="text-gray-400">Penalty:</span>
-                                          <span className="text-red-400 ml-1 break-words">{req.penalty}</span>
+                                          <span className="text-white">Penalty:</span>
+                                          <span className="text-white ml-1 break-words">{req.penalty}</span>
                                         </div>
                                       )}
                                       {calculatedPenalty !== '-' && (
                                         <div className="col-span-2">
-                                          <span className="text-gray-400">Calculated Penalty:</span>
-                                          <span className="text-red-400 font-semibold ml-1">
+                                          <span className="text-white">Calculated Penalty:</span>
+                                          <span className="text-white font-semibold ml-1">
                                             {calculatedPenalty}
                                           </span>
                                         </div>
@@ -6601,7 +6601,7 @@ function DataRoomPageInner() {
                                     
                                     {/* Actions */}
                                     {canEdit && (
-                                      <div className="flex items-center gap-2 pt-2 border-t border-gray-800">
+                                      <div className="flex items-center gap-2 pt-2 border-t border-white/20">
                                         <button
                                           onClick={() => {
                                             const originalReq = regulatoryRequirements.find(r => r.id === req.id)
@@ -6622,7 +6622,7 @@ function DataRoomPageInner() {
                                               setIsEditModalOpen(true)
                                             }
                                           }}
-                                          className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 rounded-lg transition-colors"
+                                          className="p-1.5 text-white hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                                           title="Edit"
                                         >
                                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -6651,7 +6651,7 @@ function DataRoomPageInner() {
                                               alert(`Error: ${error.message}`)
                                             }
                                           }}
-                                          className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
+                                          className="p-1.5 text-white hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                                           title="Delete"
                                         >
                                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -6671,40 +6671,40 @@ function DataRoomPageInner() {
                       
                       {/* Desktop Table View */}
                       <table className="hidden sm:table w-full">
-                      <thead className="bg-gray-900 border-b border-gray-800">
+                      <thead className="bg-black border-b border-white/20">
                         <tr>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                          <th className="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">
                             CATEGORY
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                          <th className="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">
                             REQUIREMENT
                           </th>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                            <th className="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">
                               TYPE
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                          <th className="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">
                             STATUS
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                          <th className="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">
                             DUE DATE
                           </th>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
+                            <th className="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider hidden md:table-cell">
                             DOCUMENTS
                           </th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+                          <th className="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider hidden lg:table-cell">
                             FILED ON
                           </th>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+                            <th className="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider hidden lg:table-cell">
                             PENALTY
                           </th>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+                            <th className="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider hidden lg:table-cell">
                               CALC PENALTY
                             </th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden xl:table-cell">
+                          <th className="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider hidden xl:table-cell">
                             LEGAL ACTION
                           </th>
                             {canEdit && (
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                          <th className="px-6 py-4 text-left text-xs font-medium text-white uppercase tracking-wider">
                                 ACTIONS
                           </th>
                             )}
@@ -6717,19 +6717,19 @@ function DataRoomPageInner() {
                             {groupIndex > 0 && (
                               <tr>
                                 <td colSpan={canEdit ? 11 : 10} className="px-0 py-0">
-                                  <div className="h-0.5 bg-gradient-to-r from-transparent via-primary-orange/50 to-transparent my-2"></div>
+                                  <div className="h-0.5 bg-gradient-to-r from-transparent via-white/50 to-transparent my-2"></div>
                                 </td>
                               </tr>
                             )}
                             {/* Category Items */}
                             {group.items.map((req, itemIndex) => (
-                              <tr key={req.id} className="hover:bg-gray-900/50 transition-colors border-t border-gray-800">
+                              <tr key={req.id} className="hover:bg-black/50 transition-colors border-t border-white/20">
                                 {itemIndex === 0 && (
                                   <td 
                                     className="px-6 py-4 border-r-0 border-l-0 border-t-0 border-b-0 align-top"
                                     rowSpan={group.items.length}
                                   >
-                                    <span className="text-primary-orange font-semibold text-2xl block">
+                                    <span className="text-white font-semibold text-2xl block">
                                       {group.category}
                                     </span>
                                   </td>
@@ -6740,7 +6740,7 @@ function DataRoomPageInner() {
                                       <svg
                                         width="16"
                                         height="16"
-                                        className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-500"
+                                        className="w-4 h-4 flex-shrink-0 mt-0.5 text-white"
                                         viewBox="0 0 24 24"
                                         fill="none"
                                         stroke="currentColor"
@@ -6755,20 +6755,20 @@ function DataRoomPageInner() {
                                     )}
                                       <div className="min-w-0 flex-1">
                                         <div className="text-white font-medium text-base break-words">{req.requirement}</div>
-                                        <div className="text-gray-400 text-sm break-words">{req.description}</div>
+                                        <div className="text-white text-sm break-words">{req.description}</div>
                                     </div>
                                   </div>
                                 </td>
                                 <td className="px-6 py-4">
                                     {(() => {
                                       const complianceType = req.compliance_type
-                                      if (!complianceType) return <span className="text-gray-500 text-sm">-</span>
+                                      if (!complianceType) return <span className="text-white/70 text-sm">-</span>
                                       return (
                                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                          complianceType === 'one-time' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
-                                          complianceType === 'monthly' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                                          complianceType === 'quarterly' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                                          'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                                          complianceType === 'one-time' ? 'bg-white/10 text-white border border-white/30' :
+                                          complianceType === 'monthly' ? 'bg-white/10 text-white border border-white/30' :
+                                          complianceType === 'quarterly' ? 'bg-white/10 text-white border border-white/30' :
+                                          'bg-white/10 text-white border border-white/30'
                                         }`}>
                                           {complianceType.toUpperCase()}
                                         </span>
@@ -6782,14 +6782,14 @@ function DataRoomPageInner() {
                                         onChange={(e) => handleStatusChange(req.id, e.target.value as any)}
                                         className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
                                           req.status === 'completed'
-                                            ? 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30'
+                                            ? 'bg-white/10 text-white border-white/30 hover:bg-white/20'
                                             : req.status === 'overdue'
-                                            ? 'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30'
+                                            ? 'bg-white/10 text-white border-white/30 hover:bg-white/20'
                                             : req.status === 'pending'
-                                            ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30'
+                                            ? 'bg-white/10 text-white border-white/30 hover:bg-white/20'
                                             : req.status === 'upcoming'
-                                            ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30'
-                                            : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
+                                            ? 'bg-white/10 text-white border-white/30 hover:bg-white/20'
+                                            : 'bg-black text-white border-white/30 hover:bg-black'
                                         }`}
                                         style={{
                                           appearance: 'none',
@@ -6809,14 +6809,14 @@ function DataRoomPageInner() {
                                   <span
                                     className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
                                       req.status === 'completed'
-                                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                        ? 'bg-white/10 text-white border border-white/30'
                                         : req.status === 'overdue'
-                                        ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                        ? 'bg-white/10 text-white border border-white/30'
                                         : req.status === 'pending'
-                                        ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                                        ? 'bg-white/10 text-white border border-white/30'
                                         : req.status === 'upcoming'
-                                        ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                                        : 'bg-gray-800 text-gray-400 border border-gray-700'
+                                        ? 'bg-white/10 text-white border border-white/30'
+                                        : 'bg-black text-white border border-white/30'
                                     }`}
                                   >
                                     {req.status === 'completed'
@@ -6840,7 +6840,7 @@ function DataRoomPageInner() {
                                     <svg
                                       width="16"
                                       height="16"
-                                        className="w-4 h-4 flex-shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                        className="w-4 h-4 flex-shrink-0 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                                     >
                                       <circle cx="12" cy="12" r="10" />
                                       <polyline points="12 6 12 12 16 14" />
@@ -6848,7 +6848,7 @@ function DataRoomPageInner() {
                                       <span className="text-sm whitespace-nowrap">{req.dueDate}</span>
                                   </div>
                                         {daysDelayed !== null && daysDelayed > 0 && (
-                                          <div className="text-red-400 text-xs mt-1 ml-6">
+                                          <div className="text-white text-xs mt-1 ml-6">
                                             Delayed by {daysDelayed} {daysDelayed === 1 ? 'day' : 'days'}
                                           </div>
                                         )}
@@ -6871,7 +6871,7 @@ function DataRoomPageInner() {
                                       })
                                     }
                                     if (!Array.isArray(requiredDocs) || requiredDocs.length === 0) {
-                                      return <div className="text-gray-500 text-sm">-</div>
+                                      return <div className="text-white/70 text-sm">-</div>
                                     }
                                     return (
                                       <div className="flex flex-wrap gap-1">
@@ -6894,7 +6894,7 @@ function DataRoomPageInner() {
                                                 })
                                               }
                                             }}
-                                            className="group px-2 py-0.5 text-xs rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 hover:border-blue-400 transition-colors flex items-center gap-1"
+                                            className="group px-2 py-0.5 text-xs rounded-full bg-white/10 text-white border border-white/30 hover:bg-white/20 hover:border-white transition-colors flex items-center gap-1"
                                             title={`Click to upload ${doc}`}
                                           >
                                             <span>{doc.length > 12 ? doc.substring(0, 12) + '...' : doc}</span>
@@ -6909,7 +6909,7 @@ function DataRoomPageInner() {
                                           </button>
                                         ))}
                                         {requiredDocs.length > 3 && (
-                                          <span className="px-2 py-0.5 text-xs rounded-full bg-gray-700 text-gray-400">
+                                          <span className="px-2 py-0.5 text-xs rounded-full bg-black text-white">
                                             +{requiredDocs.length - 3}
                                           </span>
                                         )}
@@ -6922,17 +6922,17 @@ function DataRoomPageInner() {
                                   {(() => {
                                     const filedOn = (req as any).filed_on
                                     if (!filedOn) {
-                                      return <div className="text-gray-500 text-sm">-</div>
+                                      return <div className="text-white/70 text-sm">-</div>
                                     }
                                     return (
-                                      <div className="text-green-400 text-sm">
+                                      <div className="text-white text-sm">
                                         {new Date(filedOn).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                                       </div>
                                     )
                                   })()}
                                 </td>
                                 <td className="px-6 py-4 hidden lg:table-cell">
-                                  <div className="text-gray-300 text-sm break-words max-w-[150px]" title={req.penalty || ''}>
+                                  <div className="text-white text-sm break-words max-w-[150px]" title={req.penalty || ''}>
                                     {req.penalty ? (req.penalty.length > 30 ? req.penalty.substring(0, 30) + '...' : req.penalty) : '-'}
                                   </div>
                                 </td>
@@ -6941,7 +6941,7 @@ function DataRoomPageInner() {
                                     const daysDelayed = calculateDelay(req.dueDate, req.status)
                                     const calculatedPenalty = calculatePenalty(req.penalty, daysDelayed)
                                     if (calculatedPenalty === '-') {
-                                      return <div className="text-gray-500 text-sm">-</div>
+                                      return <div className="text-white/70 text-sm">-</div>
                                     }
                                     if (calculatedPenalty.includes('Needs')) {
                                       return (
@@ -6950,7 +6950,7 @@ function DataRoomPageInner() {
                                             // TODO: Open modal to add base amount
                                             alert('Feature coming soon: Add base amount for penalty calculation')
                                           }}
-                                          className="text-yellow-400 text-xs underline hover:text-yellow-300"
+                                          className="text-white text-xs underline hover:text-white"
                                           title="Click to add required amount"
                                         >
                                           {calculatedPenalty}
@@ -6959,13 +6959,13 @@ function DataRoomPageInner() {
                                     }
                                     if (calculatedPenalty.startsWith('Cannot calculate') || calculatedPenalty.startsWith('Refer')) {
                                       return (
-                                        <div className="text-yellow-400 text-xs max-w-xs" title={calculatedPenalty}>
+                                        <div className="text-white text-xs max-w-xs" title={calculatedPenalty}>
                                           {calculatedPenalty}
                                         </div>
                                       )
                                     }
                                     return (
-                                      <div className="text-red-400 text-sm font-semibold">
+                                      <div className="text-white text-sm font-semibold">
                                         {calculatedPenalty}
                                       </div>
                                     )
@@ -6976,10 +6976,10 @@ function DataRoomPageInner() {
                                   {(() => {
                                     const legalAction = (req as any).possible_legal_action
                                     if (!legalAction) {
-                                      return <div className="text-gray-500 text-sm">-</div>
+                                      return <div className="text-white/70 text-sm">-</div>
                                     }
                                     return (
-                                      <div className="text-orange-400 text-xs max-w-[150px]" title={legalAction}>
+                                      <div className="text-white text-xs max-w-[150px]" title={legalAction}>
                                         {legalAction.length > 40 ? legalAction.substring(0, 40) + '...' : legalAction}
                                       </div>
                                     )
@@ -7008,7 +7008,7 @@ function DataRoomPageInner() {
                                               setIsEditModalOpen(true)
                                             }
                                           }}
-                                          className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 rounded-lg transition-colors"
+                                          className="p-2 text-white hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                                           title="Edit"
                                         >
                                           <svg width="16" height="16" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -7038,7 +7038,7 @@ function DataRoomPageInner() {
                                               alert(`Error: ${error.message}`)
                                             }
                                           }}
-                                          className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
+                                          className="p-2 text-white hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                                           title="Delete"
                                         >
                                           <svg width="16" height="16" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -7065,8 +7065,8 @@ function DataRoomPageInner() {
             {/* Create/Edit Compliance Modal */}
             {(isCreateModalOpen || isEditModalOpen) && (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <div className="p-6 border-b border-gray-800">
+                <div className="bg-black border border-white/20 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <div className="p-6 border-b border-white/20">
                     <div className="flex items-center justify-between">
                       <h3 className="text-2xl font-light text-white">
                         {isEditModalOpen ? 'Edit Compliance' : 'Add Compliance'}
@@ -7089,7 +7089,7 @@ function DataRoomPageInner() {
                             year: new Date().getFullYear().toString()
                           })
                         }}
-                        className="text-gray-400 hover:text-white transition-colors"
+                        className="text-white hover:text-white transition-colors"
                       >
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <line x1="18" y1="6" x2="6" y2="18" />
@@ -7102,13 +7102,13 @@ function DataRoomPageInner() {
                   <div className="p-6 space-y-4">
                     {/* Category */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="block text-sm font-medium text-white mb-2">
                         Category *
                       </label>
                       <select
                         value={requirementForm.category}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, category: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                       >
                         <option value="">Select Category</option>
                         <option value="Income Tax">Income Tax</option>
@@ -7122,27 +7122,27 @@ function DataRoomPageInner() {
 
                     {/* Requirement Name */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="block text-sm font-medium text-white mb-2">
                         Requirement *
                       </label>
                       <input
                         type="text"
                         value={requirementForm.requirement}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, requirement: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                         placeholder="e.g., TDS Payment - Monthly"
                       />
                     </div>
 
                     {/* Description */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="block text-sm font-medium text-white mb-2">
                         Description
                       </label>
                       <textarea
                         value={requirementForm.description}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, description: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                         rows={3}
                         placeholder="Brief description of the requirement"
                       />
@@ -7150,13 +7150,13 @@ function DataRoomPageInner() {
 
                     {/* Compliance Type */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="block text-sm font-medium text-white mb-2">
                         Compliance Type *
                       </label>
                       <select
                         value={requirementForm.compliance_type}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, compliance_type: e.target.value as any }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                       >
                         <option value="one-time">One-time</option>
                         <option value="monthly">Monthly</option>
@@ -7170,13 +7170,13 @@ function DataRoomPageInner() {
                       requirementForm.compliance_type === 'quarterly' || 
                       requirementForm.compliance_type === 'annual') && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-white mb-2">
                           Year *
                         </label>
                         <select
                           value={requirementForm.year}
                           onChange={(e) => setRequirementForm(prev => ({ ...prev, year: e.target.value }))}
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                         >
                           {Array.from({ length: 5 }, (_, i) => {
                             const year = new Date().getFullYear() - 2 + i
@@ -7187,7 +7187,7 @@ function DataRoomPageInner() {
                             )
                           })}
                         </select>
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-xs text-white mt-1">
                           Select the year for which this compliance applies
                         </p>
                       </div>
@@ -7195,17 +7195,17 @@ function DataRoomPageInner() {
 
                     {/* Due Date */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="block text-sm font-medium text-white mb-2">
                         Due Date *
                       </label>
                       <input
                         type="date"
                         value={requirementForm.due_date}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, due_date: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                       />
                       {requirementForm.compliance_type !== 'one-time' && (
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-xs text-white mt-1">
                           For {requirementForm.compliance_type} compliances, this is the base due date. The system will generate requirements for all applicable periods.
                         </p>
                       )}
@@ -7213,27 +7213,27 @@ function DataRoomPageInner() {
 
                     {/* Penalty */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="block text-sm font-medium text-white mb-2">
                         Penalty
                       </label>
                       <input
                         type="text"
                         value={requirementForm.penalty}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, penalty: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                         placeholder="e.g., Late fee ₹200/day"
                       />
                     </div>
 
                     {/* Financial Year */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="block text-sm font-medium text-white mb-2">
                         Financial Year
                       </label>
                       <select
                         value={requirementForm.financial_year}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, financial_year: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                       >
                         <option value="">Select Financial Year</option>
                         {financialYears.map((fy) => (
@@ -7245,13 +7245,13 @@ function DataRoomPageInner() {
                     {/* Status (only for edit) */}
                     {isEditModalOpen && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-white mb-2">
                           Status
                         </label>
                         <select
                           value={requirementForm.status}
                           onChange={(e) => setRequirementForm(prev => ({ ...prev, status: e.target.value as any }))}
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                         >
                           <option value="not_started">Not Started</option>
                           <option value="upcoming">Upcoming</option>
@@ -7269,9 +7269,9 @@ function DataRoomPageInner() {
                         id="is_critical"
                         checked={requirementForm.is_critical}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, is_critical: e.target.checked }))}
-                        className="w-4 h-4 text-primary-orange bg-gray-900 border-gray-700 rounded focus:ring-primary-orange"
+                        className="w-4 h-4 text-white bg-black border-white/30 rounded focus:ring-white"
                       />
-                      <label htmlFor="is_critical" className="text-sm font-medium text-gray-300">
+                      <label htmlFor="is_critical" className="text-sm font-medium text-white">
                         Mark as Critical
                       </label>
                     </div>
@@ -7328,7 +7328,7 @@ function DataRoomPageInner() {
                             alert(`Error: ${error.message}`)
                           }
                         }}
-                        className="flex-1 bg-primary-orange text-white px-6 py-3 rounded-lg hover:bg-primary-orange/90 transition-colors font-medium"
+                        className="flex-1 bg-white text-black px-6 py-3 rounded-lg hover:bg-white/90 transition-colors font-medium"
                       >
                         {isEditModalOpen ? 'Update' : 'Create'}
                       </button>
@@ -7350,7 +7350,7 @@ function DataRoomPageInner() {
                             year: new Date().getFullYear().toString()
                           })
                         }}
-                        className="px-6 py-3 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                        className="px-6 py-3 bg-black text-white rounded-lg hover:bg-black transition-colors font-medium"
                       >
                         Cancel
                       </button>
@@ -7368,12 +7368,12 @@ function DataRoomPageInner() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">Compliance Vault</h2>
-                <p className="text-gray-400 text-sm sm:text-base">Manage document categories and specific compliance folders.</p>
+                <p className="text-white text-sm sm:text-base">Manage document categories and specific compliance folders.</p>
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                 <button
                   onClick={() => setIsExportModalOpen(true)}
-                  className="bg-primary-dark-card border border-gray-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-primary-orange/50 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
+                  className="bg-black border border-white/30 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-white/50 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
                 >
                   <svg
                     width="16"
@@ -7395,7 +7395,7 @@ function DataRoomPageInner() {
                 </button>
                 <button
                   onClick={() => setIsSendModalOpen(true)}
-                  className="bg-primary-dark-card border border-gray-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-primary-orange/50 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
+                  className="bg-black border border-white/30 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-white/50 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
                 >
                   <svg
                     width="16"
@@ -7416,7 +7416,7 @@ function DataRoomPageInner() {
                 </button>
                 <button
                   onClick={() => setIsUploadModalOpen(true)}
-                  className="bg-primary-orange text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
+                  className="bg-white text-black px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-white/90 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
                 >
                   <svg
                     width="16"
@@ -7441,11 +7441,11 @@ function DataRoomPageInner() {
 
             {/* FY Filter */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-              <label className="text-sm font-medium text-gray-300">Financial Year:</label>
+              <label className="text-sm font-medium text-white">Financial Year:</label>
               <select
                 value={selectedFY}
                 onChange={(e) => setSelectedFY(e.target.value)}
-                className="px-3 sm:px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors appearance-none cursor-pointer"
+                className="px-3 sm:px-4 py-2 bg-black border border-white/30 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors appearance-none cursor-pointer"
               >
                 <option value="">All Financial Years</option>
                 {financialYears.map((fy) => (
@@ -7542,12 +7542,12 @@ function DataRoomPageInner() {
                     return 0
                   })
 
-                  const iconColor = folderName === 'Constitutional Documents' ? 'bg-primary-orange' : 
-                                   folderName === 'Financials and licenses' ? 'bg-purple-500' :
-                                   folderName === 'Taxation & GST Compliance' ? 'bg-green-500' : 'bg-blue-500'
+                  const iconColor = folderName === 'Constitutional Documents' ? 'bg-white' : 
+                                   folderName === 'Financials and licenses' ? 'bg-white' :
+                                   folderName === 'Taxation & GST Compliance' ? 'bg-white' : 'bg-white'
                   
                   return (
-                    <div key={folderName} className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                    <div key={folderName} className="bg-black border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
                         <div className={`w-8 h-8 sm:w-10 sm:h-10 ${iconColor} rounded-lg flex items-center justify-center flex-shrink-0`}>
                       <svg
@@ -7567,7 +7567,7 @@ function DataRoomPageInner() {
                       </div>
                     <div className="min-w-0 flex-1">
                           <h3 className="text-base sm:text-xl font-light text-white break-words">{folderName}</h3>
-                          <p className="text-gray-400 text-xs sm:text-sm">{folderDocs.filter((d: any) => d.status === 'uploaded').length} DOCUMENTS</p>
+                          <p className="text-white text-xs sm:text-sm">{folderDocs.filter((d: any) => d.status === 'uploaded').length} DOCUMENTS</p>
                       </div>
                     </div>
                       
@@ -7575,14 +7575,14 @@ function DataRoomPageInner() {
                         {folderDocs.length > 0 ? folderDocs.map((doc: any) => (
                           <div key={doc.id} className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border transition-colors ${
                             doc.status === 'uploaded' 
-                              ? 'bg-gray-900 border-gray-800 hover:border-primary-orange/50' 
-                              : 'bg-gray-900/30 border-gray-800/50 border-dashed opacity-60'
+                              ? 'bg-black border-white/20 hover:border-white/50' 
+                              : 'bg-black/30 border-white/20/50 border-dashed opacity-60'
                           }`}>
                       <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
                         <svg
                           width="16"
                           height="16"
-                          className={`sm:w-5 sm:h-5 flex-shrink-0 mt-0.5 sm:mt-0 ${doc.status === 'uploaded' ? 'text-gray-400' : 'text-gray-600'}`}
+                          className={`sm:w-5 sm:h-5 flex-shrink-0 mt-0.5 sm:mt-0 ${doc.status === 'uploaded' ? 'text-white' : 'text-white/70'}`}
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
@@ -7593,7 +7593,7 @@ function DataRoomPageInner() {
                         </svg>
                         <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className={`text-white text-sm sm:text-base break-words ${doc.status === 'pending' ? 'italic text-gray-500' : ''}`}>
+                                  <span className={`text-white text-sm sm:text-base break-words ${doc.status === 'pending' ? 'italic text-white/70' : ''}`}>
                                   {doc.document_type}
                                   {doc.status === 'pending' && ' (Pending Upload)'}
                                 </span>
@@ -7604,7 +7604,7 @@ function DataRoomPageInner() {
                                   )}
                                 </div>
                                 {doc.status === 'uploaded' && (
-                                  <div className="text-gray-500 text-xs mt-1 break-words">
+                                  <div className="text-white/70 text-xs mt-1 break-words">
                                     {doc.expiry_date ? `Expires: ${formatDateForDisplay(doc.expiry_date)}` : 'No expiry date'}
                                     {doc.frequency && !formatPeriodInfo(doc) && ` • ${doc.frequency.toUpperCase()}`}
                                     {doc.period_type && formatPeriodInfo(doc) && ` • ${doc.period_type.charAt(0).toUpperCase() + doc.period_type.slice(1)}`}
@@ -7617,19 +7617,19 @@ function DataRoomPageInner() {
                                 <>
                                   <button 
                                     onClick={() => handleView(doc.file_path)}
-                                    className="text-primary-orange hover:text-primary-orange/80 font-medium text-xs sm:text-sm border border-primary-orange/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-primary-orange/10 transition-colors flex-shrink-0"
+                                    className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/10 transition-colors flex-shrink-0"
                                   >
                           View
                         </button>
                                   <button 
                                     onClick={() => handleExport(doc.file_path, doc.file_name)}
-                                    className="text-primary-orange hover:text-primary-orange/80 font-medium text-xs sm:text-sm border border-primary-orange/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-primary-orange/10 transition-colors flex-shrink-0"
+                                    className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/10 transition-colors flex-shrink-0"
                                   >
                           Export
                         </button>
                                   <button 
                                     onClick={() => handleRemove(doc.id, doc.file_path)}
-                                    className="text-red-400 hover:text-red-300 font-medium text-xs sm:text-sm border border-red-500/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-red-500/10 transition-colors flex-shrink-0"
+                                    className="text-white hover:text-white font-medium text-xs sm:text-sm border border-white/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/10 transition-colors flex-shrink-0"
                                   >
                           Remove
                         </button>
@@ -7644,7 +7644,7 @@ function DataRoomPageInner() {
                                     }))
                                     setIsUploadModalOpen(true)
                                   }}
-                                  className="text-primary-orange hover:text-white font-medium text-xs sm:text-sm border border-primary-orange px-3 sm:px-4 py-1.5 rounded-lg hover:bg-primary-orange transition-colors w-full sm:w-auto"
+                                  className="text-white hover:text-white font-medium text-xs sm:text-sm border border-white px-3 sm:px-4 py-1.5 rounded-lg hover:bg-white transition-colors w-full sm:w-auto"
                                 >
                                   Upload Now
                         </button>
@@ -7652,8 +7652,8 @@ function DataRoomPageInner() {
                       </div>
                     </div>
                         )) : (
-                          <div className="p-6 sm:p-8 text-center bg-gray-900/50 rounded-lg border border-dashed border-gray-800">
-                            <p className="text-gray-500 text-xs sm:text-sm">No documents defined for this folder.</p>
+                          <div className="p-6 sm:p-8 text-center bg-black/50 rounded-lg border border-dashed border-white/20">
+                            <p className="text-white/70 text-xs sm:text-sm">No documents defined for this folder.</p>
                       </div>
                         )}
                       </div>
@@ -7665,12 +7665,12 @@ function DataRoomPageInner() {
               {/* Right Sidebar */}
               <div className="lg:col-span-1 space-y-4 sm:space-y-6">
                 {/* Storage Stats */}
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-black border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
                     <svg
                       width="16"
                       height="16"
-                      className="sm:w-5 sm:h-5 text-gray-400"
+                      className="sm:w-5 sm:h-5 text-white"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -7684,27 +7684,27 @@ function DataRoomPageInner() {
                     <h3 className="text-base sm:text-lg font-light text-white">Storage Stats</h3>
                   </div>
                   <div className="space-y-2 sm:space-y-3">
-                    <div className="w-full bg-gray-900 rounded-full h-2 sm:h-2.5">
+                    <div className="w-full bg-black rounded-full h-2 sm:h-2.5">
                       <div
-                        className="bg-primary-orange h-2 sm:h-2.5 rounded-full"
+                        className="bg-white h-2 sm:h-2.5 rounded-full"
                         style={{ width: '42%' }}
                       ></div>
                     </div>
-                    <div className="text-gray-400 text-xs sm:text-sm">4.2 GB / 10 GB</div>
+                    <div className="text-white text-xs sm:text-sm">4.2 GB / 10 GB</div>
                   </div>
                 </div>
 
                 {/* Recent Activity */}
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-black border border-white/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <h3 className="text-base sm:text-lg font-light text-white mb-3 sm:mb-4">Recent Activity</h3>
                   <div className="space-y-2 sm:space-y-3">
                     <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full flex-shrink-0"></div>
-                      <span className="text-gray-400 text-xs sm:text-sm">Encrypted vault synced</span>
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full flex-shrink-0"></div>
+                      <span className="text-white text-xs sm:text-sm">Encrypted vault synced</span>
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary-orange rounded-full flex-shrink-0"></div>
-                      <span className="text-gray-400 text-xs sm:text-sm">Audit logs updated</span>
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full flex-shrink-0"></div>
+                      <span className="text-white text-xs sm:text-sm">Audit logs updated</span>
                     </div>
                   </div>
                 </div>
@@ -7720,16 +7720,16 @@ function DataRoomPageInner() {
                 />
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
                   <div
-                    className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto opacity-100"
+                    className="bg-black border border-white/20 rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto opacity-100"
                     onClick={(e) => e.stopPropagation()}
                     style={{ backgroundColor: '#151515' }}
                   >
                     {/* Modal Header */}
-                    <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-800">
+                    <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/20">
                       <h2 className="text-xl sm:text-2xl font-light text-white">Upload Document</h2>
                       <button
                         onClick={() => setIsUploadModalOpen(false)}
-                        className="text-gray-400 hover:text-white transition-colors p-1"
+                        className="text-white hover:text-white transition-colors p-1"
                       >
                         <svg
                           width="20"
@@ -7752,13 +7752,13 @@ function DataRoomPageInner() {
                     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
                       {/* Adding To Section */}
                       <div>
-                        <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                        <label className="block text-xs sm:text-sm font-medium text-white mb-2">
                           Adding to:
                         </label>
                         <div className="relative">
                           <button
                             onClick={() => setIsFolderDropdownOpen(!isFolderDropdownOpen)}
-                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center justify-between font-medium text-sm sm:text-base"
+                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white text-black rounded-lg hover:bg-white/90 transition-colors flex items-center justify-between font-medium text-sm sm:text-base"
                           >
                             <span className="truncate">{uploadFormData.folder || 'Select folder'}</span>
                             <svg
@@ -7775,7 +7775,7 @@ function DataRoomPageInner() {
                                 className="fixed inset-0 z-10"
                                 onClick={() => setIsFolderDropdownOpen(false)}
                               />
-                              <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-gray-800 rounded-lg shadow-2xl z-20 max-h-64 overflow-y-auto">
+                              <div className="absolute top-full left-0 right-0 mt-1 bg-black border border-white/20 rounded-lg shadow-2xl z-20 max-h-64 overflow-y-auto">
                                 {documentFolders.map((folder) => (
                                   <button
                                     key={folder}
@@ -7783,7 +7783,7 @@ function DataRoomPageInner() {
                                       setUploadFormData((prev) => ({ ...prev, folder, documentName: '' }))
                                       setIsFolderDropdownOpen(false)
                                     }}
-                                    className="w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-gray-800 transition-colors text-white text-sm sm:text-base"
+                                    className="w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-black transition-colors text-white text-sm sm:text-base"
                                   >
                                     {folder}
                                   </button>
@@ -7796,8 +7796,8 @@ function DataRoomPageInner() {
 
                       {/* Document Name */}
                       <div>
-                        <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                          Document Name <span className="text-red-500">*</span>
+                        <label className="block text-xs sm:text-sm font-medium text-white mb-2">
+                          Document Name <span className="text-white">*</span>
                         </label>
                         <input
                           type="text"
@@ -7806,13 +7806,13 @@ function DataRoomPageInner() {
                             setUploadFormData((prev) => ({ ...prev, documentName: e.target.value }))
                           }
                           placeholder="Enter document name"
-                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-black border border-white/30 rounded-lg text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                         />
                       </div>
 
                       {/* Frequency Selection */}
                       <div>
-                        <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                        <label className="block text-xs sm:text-sm font-medium text-white mb-2">
                           Frequency
                         </label>
                         <select
@@ -7820,7 +7820,7 @@ function DataRoomPageInner() {
                           onChange={(e) =>
                             setUploadFormData((prev) => ({ ...prev, frequency: e.target.value }))
                           }
-                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors cursor-pointer"
+                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-black border border-white/30 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors cursor-pointer"
                         >
                           <option value="one-time">One-time</option>
                           <option value="monthly">Monthly</option>
@@ -7833,7 +7833,7 @@ function DataRoomPageInner() {
                       {/* Dates */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                         <div>
-                          <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                          <label className="block text-xs sm:text-sm font-medium text-white mb-2">
                             Date of Registration (Optional)
                           </label>
                           <input
@@ -7845,11 +7845,11 @@ function DataRoomPageInner() {
                                 registrationDate: e.target.value,
                               }))
                             }
-                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-black border border-white/30 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                           />
                         </div>
                       <div>
-                        <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                        <label className="block text-xs sm:text-sm font-medium text-white mb-2">
                             Expiry Date (Optional)
                         </label>
                           <input
@@ -7861,7 +7861,7 @@ function DataRoomPageInner() {
                                 expiryDate: e.target.value,
                               }))
                             }
-                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-black border border-white/30 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                           />
                         </div>
                       </div>
@@ -7875,11 +7875,11 @@ function DataRoomPageInner() {
                             onChange={(e) =>
                               setUploadFormData((prev) => ({ ...prev, hasNote: e.target.checked }))
                             }
-                            className="w-4 h-4 sm:w-5 sm:h-5 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2 mt-0.5 flex-shrink-0"
+                            className="w-4 h-4 sm:w-5 sm:h-5 text-white bg-black border-white/30 rounded focus:ring-white focus:ring-2 mt-0.5 flex-shrink-0"
                           />
                           <div>
                             <div className="text-white font-medium text-sm sm:text-base">Note</div>
-                            <div className="text-gray-400 text-xs sm:text-sm mt-1">
+                            <div className="text-white text-xs sm:text-sm mt-1">
                               Check this if you need to add external portal credentials
                             </div>
                           </div>
@@ -7888,10 +7888,10 @@ function DataRoomPageInner() {
 
                       {/* External Portal Credentials */}
                       {uploadFormData.hasNote && (
-                        <div className="bg-primary-orange/10 border border-primary-orange/30 rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4">
+                        <div className="bg-white/10 border border-white/30 rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4">
                           <h3 className="text-white font-medium text-sm sm:text-base">External Portal Credentials</h3>
                           <div>
-                            <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                            <label className="block text-xs sm:text-sm font-medium text-white mb-2">
                               External Portal Email
                             </label>
                             <input
@@ -7904,11 +7904,11 @@ function DataRoomPageInner() {
                                 }))
                               }
                               placeholder="portal@example.com"
-                              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-black border border-white/30 rounded-lg text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                            <label className="block text-xs sm:text-sm font-medium text-white mb-2">
                               External Portal Password
                             </label>
                             <input
@@ -7921,7 +7921,7 @@ function DataRoomPageInner() {
                                 }))
                               }
                               placeholder="Enter password"
-                              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-black border border-white/30 rounded-lg text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                             />
                           </div>
                         </div>
@@ -7929,18 +7929,18 @@ function DataRoomPageInner() {
 
                       {/* File Upload Area */}
                       <div>
-                        <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                        <label className="block text-xs sm:text-sm font-medium text-white mb-2">
                           Upload File
                         </label>
-                        <label className="flex flex-col items-center justify-center w-full h-32 sm:h-48 border-2 border-dashed border-gray-700 rounded-lg cursor-pointer hover:border-primary-orange transition-colors bg-gray-900/50">
+                        <label className="flex flex-col items-center justify-center w-full h-32 sm:h-48 border-2 border-dashed border-white/30 rounded-lg cursor-pointer hover:border-white transition-colors bg-black/50">
                           <div className="flex flex-col items-center justify-center pt-4 sm:pt-5 pb-4 sm:pb-6 px-4">
                             {isUploading ? (
-                              <div className="w-8 h-8 sm:w-12 sm:h-12 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mb-3 sm:mb-4"></div>
+                              <div className="w-8 h-8 sm:w-12 sm:h-12 border-4 border-white border-t-transparent rounded-full animate-spin mb-3 sm:mb-4"></div>
                             ) : (
                             <svg
                               width="32"
                               height="32"
-                              className="sm:w-12 sm:h-12 text-gray-400 mb-2 sm:mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                              className="sm:w-12 sm:h-12 text-white mb-2 sm:mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                             >
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                               <polyline points="17 8 12 3 7 8" />
@@ -7950,7 +7950,7 @@ function DataRoomPageInner() {
                             <p className="mb-1 sm:mb-2 text-xs sm:text-sm text-white font-medium text-center">
                               {isUploading ? 'Uploading...' : 'Click to upload or drag and drop'}
                             </p>
-                            <p className="text-[10px] sm:text-xs text-gray-400 text-center">
+                            <p className="text-[10px] sm:text-xs text-white text-center">
                               PDF, DOC, DOCX, or images (max. 10MB)
                             </p>
                           </div>
@@ -7968,25 +7968,25 @@ function DataRoomPageInner() {
                           />
                         </label>
                         {uploadFormData.file && (
-                          <div className="mt-2 text-xs sm:text-sm text-gray-400 break-words">
+                          <div className="mt-2 text-xs sm:text-sm text-white break-words">
                             Selected: {uploadFormData.file.name}
                           </div>
                         )}
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-4 pt-4 border-t border-gray-800">
+                      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-4 pt-4 border-t border-white/20">
                         <button
                           onClick={() => setIsUploadModalOpen(false)}
                           disabled={isUploading}
-                          className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 text-sm sm:text-base"
+                          className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-white/30 text-white rounded-lg hover:border-white/50 hover:text-white transition-colors disabled:opacity-50 text-sm sm:text-base"
                         >
                           Cancel
                         </button>
                         <button
                           onClick={handleUpload}
                           disabled={isUploading || !uploadFormData.file || !uploadFormData.folder || !uploadFormData.documentName}
-                          className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center justify-center gap-2 font-medium disabled:opacity-50 text-sm sm:text-base"
+                          className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-white text-black rounded-lg hover:bg-white/90 transition-colors flex items-center justify-center gap-2 font-medium disabled:opacity-50 text-sm sm:text-base"
                         >
                           {isUploading ? (
                             <>
@@ -8030,16 +8030,16 @@ function DataRoomPageInner() {
                 />
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                   <div
-                    className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto opacity-100"
+                    className="bg-black border border-white/20 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto opacity-100"
                     onClick={(e) => e.stopPropagation()}
                     style={{ backgroundColor: '#151515' }}
                   >
                     {/* Modal Header */}
-                    <div className="flex items-center justify-between p-6 border-b border-gray-800">
+                    <div className="flex items-center justify-between p-6 border-b border-white/20">
                       <h2 className="text-2xl font-light text-white">Export Files</h2>
                       <button
                         onClick={() => setIsExportModalOpen(false)}
-                        className="text-gray-400 hover:text-white transition-colors"
+                        className="text-white hover:text-white transition-colors"
                       >
                         <svg
                           width="24"
@@ -8060,18 +8060,18 @@ function DataRoomPageInner() {
                     {/* Modal Content */}
                     <div className="p-6 space-y-6">
                       {/* Select All */}
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-800">
+                      <div className="flex items-center justify-between pb-4 border-b border-white/20">
                         <label className={`flex items-center gap-3 ${allDocuments.length === 0 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                           <input
                             type="checkbox"
                             checked={allDocuments.length > 0 && selectedDocuments.size === allDocuments.length}
                             onChange={handleSelectAll}
                             disabled={allDocuments.length === 0}
-                            className="w-5 h-5 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="w-5 h-5 text-white bg-black border-white/30 rounded focus:ring-white focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50"
                           />
                           <span className="text-white font-medium">Select All</span>
                         </label>
-                        <span className="text-gray-400 text-sm">
+                        <span className="text-white text-sm">
                           {selectedDocuments.size} of {allDocuments.length} selected
                         </span>
                       </div>
@@ -8081,37 +8081,37 @@ function DataRoomPageInner() {
                         {allDocuments.map((doc) => (
                           <label
                             key={doc.id}
-                            className="flex items-center gap-3 p-4 bg-gray-900 rounded-lg border border-gray-800 hover:border-primary-orange/50 transition-colors cursor-pointer"
+                            className="flex items-center gap-3 p-4 bg-black rounded-lg border border-white/20 hover:border-white/50 transition-colors cursor-pointer"
                           >
                             <input
                               type="checkbox"
                               checked={selectedDocuments.has(doc.id)}
                               onChange={() => toggleDocumentSelection(doc.id)}
-                              className="w-5 h-5 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2"
+                              className="w-5 h-5 text-white bg-black border-white/30 rounded focus:ring-white focus:ring-2"
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-white font-medium">{doc.name}</span>
                                 {doc.period && (
-                                  <span className="px-2 py-0.5 text-xs rounded-full border bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                  <span className="px-2 py-0.5 text-xs rounded-full border bg-white/10 text-white border-white/30">
                                     {doc.period}
                                   </span>
                                 )}
                               </div>
-                              <div className="text-gray-400 text-sm mt-1">{doc.category}</div>
+                              <div className="text-white text-sm mt-1">{doc.category}</div>
                             </div>
                           </label>
                         ))}
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex justify-end gap-4 pt-4 border-t border-gray-800">
+                      <div className="flex justify-end gap-4 pt-4 border-t border-white/20">
                         <button
                           onClick={() => {
                             setIsExportModalOpen(false)
                             setSelectedDocuments(new Set())
                           }}
-                          className="px-6 py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors"
+                          className="px-6 py-3 bg-transparent border border-white/30 text-white rounded-lg hover:border-white/50 hover:text-white transition-colors"
                         >
                           Cancel
                         </button>
@@ -8224,7 +8224,7 @@ function DataRoomPageInner() {
                             }
                           }}
                           disabled={selectedDocuments.size === 0 || allDocuments.length === 0}
-                          className="px-6 py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-6 py-3 bg-white text-black rounded-lg hover:bg-white/90 transition-colors flex items-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <svg
                             width="18"
@@ -8258,16 +8258,16 @@ function DataRoomPageInner() {
                 />
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                   <div
-                    className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto opacity-100"
+                    className="bg-black border border-white/20 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto opacity-100"
                     onClick={(e) => e.stopPropagation()}
                     style={{ backgroundColor: '#151515' }}
                   >
                     {/* Modal Header */}
-                    <div className="flex items-center justify-between p-6 border-b border-gray-800">
+                    <div className="flex items-center justify-between p-6 border-b border-white/20">
                       <h2 className="text-2xl font-light text-white">Send Documents</h2>
                       <button
                         onClick={() => setIsSendModalOpen(false)}
-                        className="text-gray-400 hover:text-white transition-colors"
+                        className="text-white hover:text-white transition-colors"
                       >
                         <svg
                           width="24"
@@ -8288,17 +8288,17 @@ function DataRoomPageInner() {
                     {/* Modal Content */}
                     <div className="p-6 space-y-6">
                       {/* Select All */}
-                      <div className="flex items-center justify-between pb-4 border-b border-gray-800">
+                      <div className="flex items-center justify-between pb-4 border-b border-white/20">
                         <label className="flex items-center gap-3 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={selectedDocumentsToSend.size === allDocuments.length}
                             onChange={handleSelectAllForSend}
-                            className="w-5 h-5 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2"
+                            className="w-5 h-5 text-white bg-black border-white/30 rounded focus:ring-white focus:ring-2"
                           />
                           <span className="text-white font-medium">Select All</span>
                         </label>
-                        <span className="text-gray-400 text-sm">
+                        <span className="text-white text-sm">
                           {selectedDocumentsToSend.size} of {allDocuments.length} selected
                         </span>
                       </div>
@@ -8308,44 +8308,44 @@ function DataRoomPageInner() {
                         {allDocuments.map((doc) => (
                           <label
                             key={doc.id}
-                            className="flex items-center gap-3 p-4 bg-gray-900 rounded-lg border border-gray-800 hover:border-primary-orange/50 transition-colors cursor-pointer"
+                            className="flex items-center gap-3 p-4 bg-black rounded-lg border border-white/20 hover:border-white/50 transition-colors cursor-pointer"
                           >
                             <input
                               type="checkbox"
                               checked={selectedDocumentsToSend.has(doc.id)}
                               onChange={() => toggleDocumentSelectionForSend(doc.id)}
-                              className="w-5 h-5 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2"
+                              className="w-5 h-5 text-white bg-black border-white/30 rounded focus:ring-white focus:ring-2"
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-white font-medium">{doc.name}</span>
                                 {doc.period && (
-                                  <span className="px-2 py-0.5 text-xs rounded-full border bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                  <span className="px-2 py-0.5 text-xs rounded-full border bg-white/10 text-white border-white/30">
                                     {doc.period}
                                   </span>
                                 )}
                               </div>
-                              <div className="text-gray-400 text-sm mt-1">{doc.category}</div>
+                              <div className="text-white text-sm mt-1">{doc.category}</div>
                             </div>
                           </label>
                         ))}
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex justify-end gap-4 pt-4 border-t border-gray-800">
+                      <div className="flex justify-end gap-4 pt-4 border-t border-white/20">
                         <button
                           onClick={() => {
                             setIsSendModalOpen(false)
                             setSelectedDocumentsToSend(new Set())
                           }}
-                          className="px-6 py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors"
+                          className="px-6 py-3 bg-transparent border border-white/30 text-white rounded-lg hover:border-white/50 hover:text-white transition-colors"
                         >
                           Cancel
                         </button>
                         <button
                           onClick={handleSendNext}
                           disabled={selectedDocumentsToSend.size === 0}
-                          className="px-6 py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-6 py-3 bg-white text-black rounded-lg hover:bg-white/90 transition-colors flex items-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Next
                           <svg
@@ -8380,19 +8380,19 @@ function DataRoomPageInner() {
                 />
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                   <div
-                    className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto opacity-100"
+                    className="bg-black border border-white/20 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto opacity-100"
                     onClick={(e) => e.stopPropagation()}
                     style={{ backgroundColor: '#151515' }}
                   >
                     {/* Modal Header */}
-                    <div className="flex items-center justify-between p-6 border-b border-gray-800">
+                    <div className="flex items-center justify-between p-6 border-b border-white/20">
                       <h2 className="text-2xl font-light text-white">Send Email</h2>
                       <button
                         onClick={() => {
                           setIsEmailTemplateOpen(false)
                           setSelectedDocumentsToSend(new Set())
                         }}
-                        className="text-gray-400 hover:text-white transition-colors"
+                        className="text-white hover:text-white transition-colors"
                       >
                         <svg
                           width="24"
@@ -8413,8 +8413,8 @@ function DataRoomPageInner() {
                     {/* Modal Content */}
                     <div className="p-6 space-y-6">
                       {/* Selected Documents Info */}
-                      <div className="bg-gray-900 rounded-lg p-4 border border-gray-800">
-                        <div className="text-sm text-gray-400 mb-2">Selected Documents:</div>
+                      <div className="bg-black rounded-lg p-4 border border-white/20">
+                        <div className="text-sm text-white mb-2">Selected Documents:</div>
                         <div className="text-white">
                           {selectedDocumentsToSend.size} document
                           {selectedDocumentsToSend.size !== 1 ? 's' : ''} selected
@@ -8423,8 +8423,8 @@ function DataRoomPageInner() {
 
                       {/* Recipients */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Recipients <span className="text-red-500">*</span>
+                        <label className="block text-sm font-medium text-white mb-2">
+                          Recipients <span className="text-white">*</span>
                         </label>
                         <input
                           type="text"
@@ -8433,17 +8433,17 @@ function DataRoomPageInner() {
                             setEmailData((prev) => ({ ...prev, recipients: e.target.value }))
                           }
                           placeholder="Enter email addresses (comma separated)"
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                         />
-                        <p className="text-gray-500 text-xs mt-1">
+                        <p className="text-white/70 text-xs mt-1">
                           Separate multiple email addresses with commas
                         </p>
                       </div>
 
                       {/* Subject */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Subject <span className="text-red-500">*</span>
+                        <label className="block text-sm font-medium text-white mb-2">
+                          Subject <span className="text-white">*</span>
                         </label>
                         <input
                           type="text"
@@ -8452,14 +8452,14 @@ function DataRoomPageInner() {
                             setEmailData((prev) => ({ ...prev, subject: e.target.value }))
                           }
                           placeholder="Email subject"
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors"
                         />
                       </div>
 
                       {/* Email Content */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Email Content <span className="text-red-500">*</span>
+                        <label className="block text-sm font-medium text-white mb-2">
+                          Email Content <span className="text-white">*</span>
                         </label>
                         <textarea
                           value={emailData.content}
@@ -8468,12 +8468,12 @@ function DataRoomPageInner() {
                           }
                           rows={10}
                           placeholder="Write your email message here..."
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors resize-none"
+                          className="w-full px-4 py-3 bg-black border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-colors resize-none"
                         />
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex justify-end gap-4 pt-4 border-t border-gray-800">
+                      <div className="flex justify-end gap-4 pt-4 border-t border-white/20">
                         <button
                           onClick={() => {
                             setIsEmailTemplateOpen(false)
@@ -8484,7 +8484,7 @@ function DataRoomPageInner() {
                               content: 'Please find the attached documents from our Compliance Vault.',
                             })
                           }}
-                          className="px-6 py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors"
+                          className="px-6 py-3 bg-transparent border border-white/30 text-white rounded-lg hover:border-white/50 hover:text-white transition-colors"
                         >
                           Cancel
                         </button>
@@ -8545,7 +8545,7 @@ function DataRoomPageInner() {
                             !emailData.subject.trim() ||
                             !emailData.content.trim()
                           }
-                          className="px-6 py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-6 py-3 bg-white text-black rounded-lg hover:bg-white/90 transition-colors flex items-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isSendingEmail ? (
                             <>
@@ -8583,8 +8583,8 @@ function DataRoomPageInner() {
       {/* Document Upload Modal from Tracker */}
       {documentUploadModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-800">
+          <div className="bg-black border border-white/20 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-white/20">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-light text-white">Upload Document</h3>
                 <button
@@ -8592,7 +8592,7 @@ function DataRoomPageInner() {
                     setDocumentUploadModal(null)
                     setUploadFile(null)
                   }}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-white hover:text-white transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -8603,17 +8603,17 @@ function DataRoomPageInner() {
 
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Requirement</label>
+                <label className="block text-sm font-medium text-white mb-1">Requirement</label>
                 <div className="text-white">{documentUploadModal.requirement}</div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Document to Upload</label>
-                <div className="text-blue-400 font-medium">{documentUploadModal.documentName}</div>
+                <label className="block text-sm font-medium text-white mb-1">Document to Upload</label>
+                <div className="text-white font-medium">{documentUploadModal.documentName}</div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Select File</label>
+                <label className="block text-sm font-medium text-white mb-2">Select File</label>
                 <input
                   type="file"
                   accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
@@ -8623,30 +8623,30 @@ function DataRoomPageInner() {
                       setUploadFile(file)
                     }
                   }}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange"
+                  className="w-full px-4 py-2 bg-black border border-white/30 rounded-lg text-white text-sm focus:outline-none focus:border-white"
                 />
                 {uploadFile && (
-                  <div className="mt-2 text-sm text-gray-400">
+                  <div className="mt-2 text-sm text-white">
                     Selected: {uploadFile.name}
                   </div>
                 )}
               </div>
 
-              <div className="pt-4 border-t border-gray-800 flex justify-end gap-3">
+              <div className="pt-4 border-t border-white/20 flex justify-end gap-3">
                 <button
                   onClick={() => {
                     setDocumentUploadModal(null)
                     setUploadFile(null)
                   }}
                   disabled={uploadingDocument}
-                  className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-black text-white rounded-lg hover:bg-black transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleTrackerDocumentUpload}
                   disabled={!uploadFile || uploadingDocument}
-                  className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-white/90 transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
                   {uploadingDocument ? (
                     <>
@@ -8675,8 +8675,8 @@ export default function DataRoomPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-          <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
+        <div className="min-h-screen bg-black flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
         </div>
       }
     >
