@@ -44,7 +44,7 @@ export default function HomePage() {
               </svg>
             </div>
             <span className="text-white text-xl font-light">
-              Finnovate<span className="text-primary-orange">AI</span>
+              Finacra
             </span>
           </div>
           <Link
@@ -121,7 +121,7 @@ export default function HomePage() {
           <h1 className="text-6xl md:text-8xl font-thin text-white mb-6 tracking-tight text-center">
             Welcome to{' '}
             <span className="text-white inline-flex items-baseline gap-2">
-              <span className="font-light">Finnovate</span>
+              <span className="font-light">Finacra</span>
               <span className="bg-gradient-to-r from-primary-orange to-orange-600 text-white px-4 py-2 rounded-xl font-light shadow-lg">
                 AI
               </span>
@@ -272,7 +272,7 @@ export default function HomePage() {
               </svg>
             </div>
             <span className="text-gray-400 text-sm">
-              © 2024 FinnovateAI. All rights reserved.
+              © 2024 Finacra. All rights reserved.
             </span>
           </div>
             <div className="flex gap-8 text-sm">

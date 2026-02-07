@@ -135,18 +135,35 @@ function LoginPageInner() {
       {/* Top Navigation Bar */}
       <nav className="w-full px-6 py-4 flex items-center justify-between border-b border-gray-800/50">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary-orange rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="white" strokeWidth="1.5" fill="white" fillOpacity="0.1"/>
-              <path d="M14 2V8H20" stroke="white" strokeWidth="1.5"/>
+              {/* Outer circle */}
+              <circle
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="#1E3A5F"
+                strokeWidth="2"
+                fill="none"
+              />
+              {/* Inner overlapping circle */}
+              <circle
+                cx="12"
+                cy="12"
+                r="7"
+                stroke="#1E3A5F"
+                strokeWidth="1.5"
+                fill="none"
+                opacity="0.8"
+              />
             </svg>
           </div>
-          <span className="text-white text-lg font-light">Finnovate<span className="text-primary-orange">AI</span></span>
+          <span className="text-white text-lg font-light">Finacra</span>
         </div>
         <div className="flex items-center gap-6">
           <button 
             onClick={() => setActiveTab('login')}
-            className={`text-sm font-medium transition-colors pb-2 ${activeTab === 'login' ? 'text-primary-orange border-b-2 border-primary-orange' : 'text-gray-400 hover:text-white'}`}
+            className={`text-sm font-medium transition-colors pb-2 ${activeTab === 'login' ? 'text-white border-b-2 border-white/30' : 'text-gray-400 hover:text-white'}`}
           >
             Login
           </button>
@@ -178,57 +195,32 @@ function LoginPageInner() {
       <div className="relative z-10 w-full max-w-md">
         {/* Logo Icon */}
         <div className="mb-8 flex justify-center">
-          <div className="w-16 h-16 bg-primary-orange rounded-xl flex items-center justify-center shadow-lg shadow-primary-orange/30">
+          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg">
             <svg
-              width="28"
-              height="28"
+              width="32"
+              height="32"
               viewBox="0 0 24 24"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-              className="text-white"
             >
-              <path
-                d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
-                stroke="white"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="white"
-                fillOpacity="0.1"
+              {/* Outer circle */}
+              <circle
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="#1E3A5F"
+                strokeWidth="2"
+                fill="none"
               />
-              <path
-                d="M14 2V8H20"
-                stroke="white"
+              {/* Inner overlapping circle (slightly offset) */}
+              <circle
+                cx="12"
+                cy="12"
+                r="7"
+                stroke="#1E3A5F"
                 strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <line
-                x1="8"
-                y1="11"
-                x2="16"
-                y2="11"
-                stroke="white"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-              <line
-                x1="8"
-                y1="14"
-                x2="16"
-                y2="14"
-                stroke="white"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-              <line
-                x1="8"
-                y1="17"
-                x2="16"
-                y2="17"
-                stroke="white"
-                strokeWidth="1.5"
-                strokeLinecap="round"
+                fill="none"
+                opacity="0.8"
               />
             </svg>
           </div>
@@ -238,10 +230,7 @@ function LoginPageInner() {
         <h1 className="text-5xl font-thin text-white mb-2 text-center tracking-tight">
           Welcome to{' '}
           <span className="text-white inline-flex items-baseline gap-1">
-            <span className="font-light">Finnovate</span>
-            <span className="bg-primary-orange text-white px-2 py-0.5 rounded font-light">
-              AI
-            </span>
+            <span className="font-light">Finacra</span>
           </span>
         </h1>
         <p className="text-gray-400 mb-12 text-center">
@@ -249,7 +238,7 @@ function LoginPageInner() {
         </p>
 
         {/* Sign-in Card */}
-        <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-8 w-full backdrop-blur-sm">
+        <div className="bg-white/10 border border-white/20 rounded-2xl shadow-2xl p-8 w-full backdrop-blur-sm">
           {/* Google Sign-in Button */}
           <button
             onClick={handleGoogleSignIn}
@@ -373,7 +362,7 @@ function LoginPageInner() {
             <h1 className="text-6xl md:text-8xl font-thin text-white mb-6 tracking-tight text-center">
               Welcome to{' '}
               <span className="text-white inline-flex items-baseline gap-2">
-                <span className="font-light">Finnovate</span>
+                <span className="font-light">Finacra</span>
                 <span className="bg-gradient-to-r from-primary-orange to-orange-600 text-white px-4 py-2 rounded-xl font-light shadow-lg">AI</span>
               </span>
             </h1>
@@ -382,7 +371,7 @@ function LoginPageInner() {
               Streamline your regulatory compliance, track deadlines, manage documents, and stay ahead of financial obligations with AI-powered insights.
             </p>
             <div className="grid md:grid-cols-3 gap-8 mt-20">
-              <div className="bg-gradient-to-br from-primary-dark-card to-gray-900 border border-gray-800 rounded-2xl p-8">
+              <div className="bg-gradient-to-br from-white/10 to-white/5 border border-white/20 rounded-2xl p-8">
                 <div className="w-14 h-14 bg-gradient-to-br from-primary-orange/30 to-orange-600/30 rounded-xl flex items-center justify-center mb-6">
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-primary-orange">
                     <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2"/>
@@ -391,7 +380,7 @@ function LoginPageInner() {
                 <h3 className="text-2xl font-semibold text-white mb-4">Compliance Tracking</h3>
                 <p className="text-gray-400 leading-relaxed">Never miss a deadline. Track all your regulatory requirements, from Income Tax to GST to ROC filings, all in one centralized dashboard.</p>
               </div>
-              <div className="bg-gradient-to-br from-primary-dark-card to-gray-900 border border-gray-800 rounded-2xl p-8">
+              <div className="bg-gradient-to-br from-white/10 to-white/5 border border-white/20 rounded-2xl p-8">
                 <div className="w-14 h-14 bg-gradient-to-br from-primary-orange/30 to-orange-600/30 rounded-xl flex items-center justify-center mb-6">
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-primary-orange">
                     <path d="M9 12H15M9 16H15M17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3H12.5858C12.851 3 13.1054 3.10536 13.2929 3.29289L18.7071 8.70711C18.8946 8.89464 19 9.149 19 9.41421V19C19 20.1046 18.1046 21 17 21Z" stroke="currentColor" strokeWidth="2"/>
@@ -400,7 +389,7 @@ function LoginPageInner() {
                 <h3 className="text-2xl font-semibold text-white mb-4">Smart Reports</h3>
                 <p className="text-gray-400 leading-relaxed">Generate comprehensive compliance reports with AI-powered insights, penalty calculations, and business impact analysis.</p>
               </div>
-              <div className="bg-gradient-to-br from-primary-dark-card to-gray-900 border border-gray-800 rounded-2xl p-8">
+              <div className="bg-gradient-to-br from-white/10 to-white/5 border border-white/20 rounded-2xl p-8">
                 <div className="w-14 h-14 bg-gradient-to-br from-primary-orange/30 to-orange-600/30 rounded-xl flex items-center justify-center mb-6">
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-primary-orange">
                     <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" strokeWidth="2"/>
@@ -418,11 +407,11 @@ function LoginPageInner() {
           <div className="max-w-4xl mx-auto px-6 py-12">
             <h1 className="text-5xl font-light text-white mb-8">Privacy Policy</h1>
             <p className="text-gray-400 text-lg mb-8">Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-            <div className="space-y-8 bg-gradient-to-br from-primary-dark-card to-gray-900 p-8 md:p-12 rounded-2xl border border-gray-800">
+            <div className="space-y-8 bg-gradient-to-br from-white/10 to-white/5 p-8 md:p-12 rounded-2xl border border-white/20">
               <section>
                 <h2 className="text-3xl font-semibold text-white mb-4">1. Introduction</h2>
                 <p className="text-gray-300 leading-relaxed text-lg">
-                  Welcome to <span className="text-primary-orange font-medium">Finnovate AI</span> ("we," "our," or "us"). We respect your privacy and are committed to protecting your personal data.
+                  Welcome to <span className="text-primary-navy font-medium">Finacra</span> ("we," "our," or "us"). We respect your privacy and are committed to protecting your personal data.
                 </p>
               </section>
               <section className="pt-8 border-t border-gray-800">
@@ -447,7 +436,7 @@ function LoginPageInner() {
                 <h2 className="text-3xl font-semibold text-white mb-4">4. Contact Us</h2>
                 <p className="text-gray-300 leading-relaxed text-lg">If you have any questions, please contact us at:</p>
                 <div className="bg-gradient-to-r from-primary-orange/10 to-orange-600/10 border border-primary-orange/30 p-6 rounded-xl mt-4">
-                  <a href="mailto:support@finnovate.ai" className="text-primary-orange hover:text-primary-orange/80 text-lg">support@finnovate.ai</a>
+                  <a href="mailto:support@finacra.com" className="text-primary-navy hover:text-primary-navy/80 text-lg">support@finacra.com</a>
                 </div>
               </section>
             </div>
@@ -458,7 +447,7 @@ function LoginPageInner() {
           <div className="max-w-4xl mx-auto px-6 py-12">
             <h1 className="text-5xl font-light text-white mb-8">Terms of Service</h1>
             <p className="text-gray-400 text-lg mb-8">Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-            <div className="space-y-8 bg-gradient-to-br from-primary-dark-card to-gray-900 p-8 md:p-12 rounded-2xl border border-gray-800">
+            <div className="space-y-8 bg-gradient-to-br from-white/10 to-white/5 p-8 md:p-12 rounded-2xl border border-white/20">
               <section>
                 <h2 className="text-3xl font-semibold text-white mb-4">1. Agreement to Terms</h2>
                 <p className="text-gray-300 leading-relaxed text-lg">
@@ -467,17 +456,17 @@ function LoginPageInner() {
               </section>
               <section className="pt-8 border-t border-gray-800">
                 <h2 className="text-3xl font-semibold text-white mb-4">2. Use License</h2>
-                <p className="text-gray-300 leading-relaxed text-lg">Permission is granted to temporarily download one copy of the materials on Finnovate AI's website for personal, non-commercial transitory viewing only.</p>
+                <p className="text-gray-300 leading-relaxed text-lg">Permission is granted to temporarily download one copy of the materials on Finacra's website for personal, non-commercial transitory viewing only.</p>
               </section>
               <section className="pt-8 border-t border-gray-800">
                 <h2 className="text-3xl font-semibold text-white mb-4">3. Disclaimer</h2>
-                <p className="text-gray-300 leading-relaxed text-lg">The materials on Finnovate AI's website are provided on an 'as is' basis.</p>
+                <p className="text-gray-300 leading-relaxed text-lg">The materials on Finacra's website are provided on an 'as is' basis.</p>
               </section>
               <section className="pt-8 border-t border-gray-800">
                 <h2 className="text-3xl font-semibold text-white mb-4">4. Contact Us</h2>
                 <p className="text-gray-300 leading-relaxed text-lg">If you have any questions, please contact us at:</p>
                 <div className="bg-gradient-to-r from-primary-orange/10 to-orange-600/10 border border-primary-orange/30 p-6 rounded-xl mt-4">
-                  <a href="mailto:support@finnovate.ai" className="text-primary-orange hover:text-primary-orange/80 text-lg">support@finnovate.ai</a>
+                  <a href="mailto:support@finacra.com" className="text-primary-navy hover:text-primary-navy/80 text-lg">support@finacra.com</a>
                 </div>
               </section>
             </div>

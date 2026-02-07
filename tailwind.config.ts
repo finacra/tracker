@@ -10,14 +10,17 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          orange: '#FF6B35',
-          dark: '#0a0a0a',
-          'dark-gray': '#1a1a1a',
-          'dark-card': '#151515',
+          navy: '#1E3A5F',
+          'navy-light': '#2A4A6F',
+          'navy-dark': '#152A45',
+          orange: '#FF6B35', // Keep for accents/CTAs if needed
+          dark: '#1E3A5F', // Changed to navy
+          'dark-gray': '#2A4A6F',
+          'dark-card': '#1E3A5F',
         },
       },
       backgroundImage: {
-        'circuit-pattern': 'radial-gradient(circle at 20% 50%, rgba(255, 107, 53, 0.1) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(255, 107, 53, 0.15) 0%, transparent 50%)',
+        'circuit-pattern': 'radial-gradient(circle at 20% 50%, rgba(30, 58, 95, 0.2) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(30, 58, 95, 0.25) 0%, transparent 50%)',
       },
     },
   },

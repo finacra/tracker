@@ -10,7 +10,7 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: 'Finnovate AI - Financial Compliance Management',
+  title: 'Finacra - Financial Compliance Management',
   description: 'Sign in to manage your financial compliance',
 }
 
