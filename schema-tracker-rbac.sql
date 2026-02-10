@@ -643,9 +643,9 @@ BEGIN
            )
          ))
         -- Fallback to legacy industry column for backward compatibility
-        OR (c.industry IS NOT NULL AND LOWER(TRIM(c.industry)) = ANY(
-          SELECT LOWER(TRIM(unnest(v_template.industries)))
-        ))
+      OR (c.industry IS NOT NULL AND LOWER(TRIM(c.industry)) = ANY(
+        SELECT LOWER(TRIM(unnest(v_template.industries)))
+      ))
       )
     )
     AND
@@ -735,15 +735,15 @@ BEGIN
           END IF;
         ELSE
           -- Calendar Year (Gulf/USA): Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec
-          IF v_month <= 3 THEN
+        IF v_month <= 3 THEN
             v_quarter_start_month := 1;  -- Q1 starts in January
-          ELSIF v_month <= 6 THEN
+        ELSIF v_month <= 6 THEN
             v_quarter_start_month := 4;  -- Q2 starts in April
-          ELSIF v_month <= 9 THEN
+        ELSIF v_month <= 9 THEN
             v_quarter_start_month := 7;  -- Q3 starts in July
-          ELSE
+        ELSE
             v_quarter_start_month := 10;  -- Q4 starts in October
-          END IF;
+        END IF;
         END IF;
         
         -- Calculate quarter start date
@@ -774,15 +774,15 @@ BEGIN
             v_quarter_start_month := 1;
           END IF;
         ELSE
-          IF v_month <= 3 THEN
+        IF v_month <= 3 THEN
             v_quarter_start_month := 1;
-          ELSIF v_month <= 6 THEN
+        ELSIF v_month <= 6 THEN
             v_quarter_start_month := 4;
-          ELSIF v_month <= 9 THEN
+        ELSIF v_month <= 9 THEN
             v_quarter_start_month := 7;
-          ELSE
+        ELSE
             v_quarter_start_month := 10;
-          END IF;
+        END IF;
         END IF;
         
         v_fy_start := MAKE_DATE(v_year, v_quarter_start_month, 1);

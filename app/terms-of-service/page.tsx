@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
 
+// This page is public and accessible to unauthenticated users
 export default function TermsOfServicePage() {
   useEffect(() => {
     console.log('📄 [TERMS PAGE] Component mounted!')

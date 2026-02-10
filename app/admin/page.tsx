@@ -50,7 +50,7 @@ export default function AdminPage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [allRequirements, setAllRequirements] = useState<Requirement[]>([])
   const [selectedCompany, setSelectedCompany] = useState<string>('all')
-  const [activeTab, setActiveTab] = useState<'overview' | 'companies' | 'compliances' | 'subscriptions' | 'allusers' | 'templates' | 'financials' | 'transactions'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'companies' | 'compliances' | 'subscriptions' | 'allusers' | 'templates' | 'financials' | 'transactions' | 'vault'>('overview')
   const [templates, setTemplates] = useState<ComplianceTemplate[]>([])
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([])
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
@@ -377,6 +377,23 @@ export default function AdminPage() {
               <polyline points="10 9 9 9 8 9" />
             </svg>
             <span>Transaction History</span>
+          </button>
+          <button
+            onClick={() => {
+              router.push('/admin/vault')
+            }}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${
+              activeTab === 'vault'
+                ? 'border-primary-orange bg-primary-orange/20 text-white'
+                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+            }`}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <line x1="3" y1="9" x2="21" y2="9" />
+              <line x1="9" y1="21" x2="9" y2="9" />
+            </svg>
+            <span>Vault</span>
           </button>
         </div>
 

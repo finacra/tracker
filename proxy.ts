@@ -8,12 +8,17 @@ export default async function proxy(request: NextRequest) {
 
   // Skip auth check for static files, API routes, and auth routes
   const pathname = request.nextUrl.pathname
+  
+  // Public routes that should be accessible without authentication
+  const publicRoutes = ['/home', '/privacy-policy', '/terms-of-service', '/pricing']
+  
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
     pathname.startsWith('/auth') ||
     pathname.startsWith('/favicon.ico') ||
-    pathname.match(/\.(svg|png|jpg|jpeg|gif|webp)$/)
+    pathname.match(/\.(svg|png|jpg|jpeg|gif|webp)$/) ||
+    publicRoutes.includes(pathname)
   ) {
     return response
   }
