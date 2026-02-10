@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the Razorpay payment integration for Finnovate AI subscription management.
+This document describes the Razorpay payment integration for Finacra AI subscription management.
 
 ## Architecture
 

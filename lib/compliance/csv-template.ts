@@ -60,6 +60,7 @@ export const INDUSTRY_CATEGORIES = [
   'Real Estate & Construction',
   'IT & Technology Services',
   'Retail & Manufacturing',
+  'Food & Hospitality',
   'Ecommerce & D2C',
   'Other'
 ] as const
@@ -80,6 +81,7 @@ export interface CSVTemplateRow {
   due_month: string // number 1-12 for quarterly/annual
   due_day: string // number 1-31 for quarterly/annual
   due_date: string // YYYY-MM-DD for one-time
+  year_type: string // FY or CY (for quarterly compliance)
   penalty: string
   penalty_type: string // daily, flat, interest, percentage
   penalty_rate: string // number
@@ -102,6 +104,7 @@ export const CSV_COLUMNS: (keyof CSVTemplateRow)[] = [
   'due_month',
   'due_day',
   'due_date',
+  'year_type',
   'penalty',
   'penalty_type',
   'penalty_rate',
@@ -124,6 +127,7 @@ export const CSV_COLUMN_HEADERS: Record<keyof CSVTemplateRow, string> = {
   due_month: 'Due Month (1-12 for quarterly/annual)',
   due_day: 'Due Day (1-31 for quarterly/annual)',
   due_date: 'Due Date (YYYY-MM-DD for one-time)',
+  year_type: 'Year Type (FY or CY - for quarterly compliance)',
   penalty: 'Penalty Description',
   penalty_type: 'Penalty Type (daily/flat/interest/percentage)',
   penalty_rate: 'Penalty Rate (number)',
@@ -151,6 +155,7 @@ export const EXAMPLE_ROWS: CSVTemplateRow[] = [
     due_month: '',
     due_day: '',
     due_date: '',
+    year_type: '',
     penalty: '50/day (NIL: 20/day)',
     penalty_type: 'daily',
     penalty_rate: '50',
@@ -172,6 +177,7 @@ export const EXAMPLE_ROWS: CSVTemplateRow[] = [
     due_month: '1',
     due_day: '31',
     due_date: '',
+    year_type: 'FY',
     penalty: '200/day (max Rs. 1 Lakh)',
     penalty_type: 'daily',
     penalty_rate: '200',
@@ -193,6 +199,7 @@ export const EXAMPLE_ROWS: CSVTemplateRow[] = [
     due_month: '11',
     due_day: '30',
     due_date: '',
+    year_type: '',
     penalty: '100/day (max Rs. 5 Lakh)',
     penalty_type: 'daily',
     penalty_rate: '100',
@@ -214,6 +221,7 @@ export const EXAMPLE_ROWS: CSVTemplateRow[] = [
     due_month: '',
     due_day: '',
     due_date: '2025-03-31',
+    year_type: '',
     penalty: '',
     penalty_type: '',
     penalty_rate: '',
@@ -236,6 +244,7 @@ export const EXAMPLE_ROWS: CSVTemplateRow[] = [
     due_month: '4',
     due_day: '30',
     due_date: '',
+    year_type: 'FY',
     penalty: 'Rs. 25,000 to Rs. 3,00,000 (flat)',
     penalty_type: 'flat',
     penalty_rate: '25000',
@@ -258,6 +267,7 @@ export const EXAMPLE_ROWS: CSVTemplateRow[] = [
     due_month: '',
     due_day: '',
     due_date: '',
+    year_type: '',
     penalty: '12% p.a. interest + 5%-25% penal damages',
     penalty_type: 'interest',
     penalty_rate: '12',
@@ -280,6 +290,7 @@ export const EXAMPLE_ROWS: CSVTemplateRow[] = [
     due_month: '10',
     due_day: '31',
     due_date: '',
+    year_type: '',
     penalty: '0.5% of turnover (max Rs. 1,50,000)',
     penalty_type: 'percentage',
     penalty_rate: '0.5',
@@ -302,6 +313,7 @@ export const EXAMPLE_ROWS: CSVTemplateRow[] = [
     due_month: '',
     due_day: '',
     due_date: '',
+    year_type: '',
     penalty: '12% p.a. simple interest on delayed payment',
     penalty_type: 'interest',
     penalty_rate: '12',
@@ -445,6 +457,7 @@ export interface ParsedTemplate {
   due_month: number | null
   due_day: number | null
   due_date: string | null
+  year_type?: 'FY' | 'CY'
   penalty: string | null
   penalty_config: Record<string, unknown> | null
   required_documents: string[]
@@ -492,6 +505,13 @@ export function csvRowToTemplate(row: CSVTemplateRow): ParsedTemplate {
     }
   }
 
+  // Parse year_type (FY or CY, default to FY)
+  const parseYearType = (value: string): 'FY' | 'CY' | undefined => {
+    if (!value) return undefined
+    const upper = value.toUpperCase().trim()
+    return (upper === 'FY' || upper === 'CY') ? upper as 'FY' | 'CY' : undefined
+  }
+
   return {
     category: row.category,
     requirement: row.requirement,
@@ -504,6 +524,7 @@ export function csvRowToTemplate(row: CSVTemplateRow): ParsedTemplate {
     due_month: parseNumber(row.due_month),
     due_day: parseNumber(row.due_day),
     due_date: row.due_date || null,
+    year_type: parseYearType(row.year_type),
     penalty: row.penalty || null,
     penalty_config,
     required_documents: parseArray(row.required_documents),

@@ -152,6 +152,17 @@ const validators: Record<keyof CSVTemplateRow, FieldValidator> = {
     return { valid: true }
   },
 
+  year_type: (value, row) => {
+    // Year type is optional, but if provided for quarterly compliance, must be FY or CY
+    if (row.compliance_type === 'quarterly' && value) {
+      const upper = value.toUpperCase().trim()
+      if (upper !== 'FY' && upper !== 'CY') {
+        return { valid: false, message: 'Year type must be FY (Financial Year) or CY (Calendar Year)' }
+      }
+    }
+    return { valid: true }
+  },
+
   penalty: () => {
     // Penalty description is optional
     return { valid: true }
@@ -297,6 +308,7 @@ export function getColumnIndex(column: keyof CSVTemplateRow): number {
     'due_month',
     'due_day',
     'due_date',
+    'year_type',
     'penalty',
     'penalty_type',
     'penalty_rate',
@@ -325,6 +337,7 @@ export function getColumnName(index: number): keyof CSVTemplateRow | null {
     'due_month',
     'due_day',
     'due_date',
+    'year_type',
     'penalty',
     'penalty_type',
     'penalty_rate',

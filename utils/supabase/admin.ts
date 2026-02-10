@@ -17,7 +17,7 @@ export function createAdminClient() {
       schema: 'public'
     },
     global: {
-      headers: { 'x-my-custom-header': 'finnovate-admin' }
+      headers: { 'x-my-custom-header': 'finacra-admin' }
     }
   })
 }

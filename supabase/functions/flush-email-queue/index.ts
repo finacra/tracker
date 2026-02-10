@@ -87,7 +87,7 @@ function emailLayout(title: string, bodyHtml: string, preheader: string, unsubsc
                 <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#FFFFFF;border:1px solid ${border};border-radius:14px;overflow:hidden;">
                   <tr>
                     <td style="background:${navy};padding:18px 20px;" class="mobile-padding">
-                      <div style="font-size:16px;line-height:22px;color:#FFFFFF;font-weight:700;">Finnovate</div>
+                      <div style="font-size:16px;line-height:22px;color:#FFFFFF;font-weight:700;">Finacra</div>
                       <div style="font-size:12px;line-height:18px;color:rgba(255,255,255,0.85);margin-top:2px;">Compliance Tracker</div>
                     </td>
                   </tr>

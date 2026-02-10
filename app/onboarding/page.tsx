@@ -6,13 +6,13 @@ import { verifyCIN, verifyDIN, type CINDirectorData, type DINDirectorData } from
 import { 
   detectEntity, 
   mapEntitySubTypeToFormValue, 
-  mapIndustryToFormValue, 
   mapIndustryToCategories 
 } from '@/lib/utils/entity-detection'
 import { useAuth } from '@/hooks/useAuth'
 import { useUserSubscription } from '@/hooks/useCompanyAccess'
 import { createClient } from '@/utils/supabase/client'
 import { completeOnboarding } from './actions'
+import { INDUSTRIES } from '@/lib/compliance/csv-template'
 
 const DOCUMENT_TYPES = [
   'Certificate of Incorporation',
@@ -32,6 +32,7 @@ const INDUSTRY_CATEGORIES = [
   'Real Estate & Construction',
   'IT & Technology Services',
   'Retail & Manufacturing',
+  'Food & Hospitality',
   'Other',
 ]
 
@@ -73,7 +74,7 @@ export default function OnboardingPage() {
     companyType: '',
     panNumber: '',
     cinNumber: '',
-    industry: '',
+    industries: [] as string[],
     address: '',
     city: '',
     state: '',
@@ -85,6 +86,7 @@ export default function OnboardingPage() {
     dateOfIncorporation: '',
     industryCategories: [] as string[],
     otherIndustryCategory: '',
+    yearType: 'FY' as 'FY' | 'CY',  // Default to FY for Indian market
     documents: {} as Record<string, File | null>,
   })
 
@@ -225,7 +227,6 @@ export default function OnboardingPage() {
     
     // Map to form values
     const formCompanyType = mapEntitySubTypeToFormValue(detection.entitySubType)
-    const formIndustry = mapIndustryToFormValue(detection.industryPrimary)
     const formCategories = mapIndustryToCategories(detection.industryPrimary, detection.entitySubType)
     
     const cin = companyData.cin || formData.cinNumber
@@ -244,7 +245,10 @@ export default function OnboardingPage() {
       ...prev,
       companyName: companyData.company || prev.companyName,
       companyType: formCompanyType || prev.companyType,
-      industry: formIndustry || prev.industry,
+      // Use industryPrimary directly since it already returns correct industry names
+      industries: detection.industryPrimary && INDUSTRIES.includes(detection.industryPrimary as any)
+        ? [detection.industryPrimary as any]
+        : prev.industries,
       dateOfIncorporation: formatDate(companyData.dateOfIncorporation) || prev.dateOfIncorporation,
       address: address || prev.address,
       city: city || prev.city,
@@ -523,6 +527,17 @@ export default function OnboardingPage() {
     }
   }
 
+  const handleIndustryChange = (industry: string) => {
+    setFormData((prev) => {
+      const isCurrentlySelected = prev.industries.includes(industry)
+      const industries = isCurrentlySelected
+        ? prev.industries.filter((i) => i !== industry)
+        : [...prev.industries, industry]
+      
+      return { ...prev, industries }
+    })
+  }
+
   const handleIndustryCategoryChange = (category: string) => {
     setFormData((prev) => {
       const isCurrentlySelected = prev.industryCategories.includes(category)
@@ -556,8 +571,8 @@ export default function OnboardingPage() {
     if (!formData.cinNumber.trim()) {
       newErrors.cinNumber = 'CIN number is required'
     }
-    if (!formData.industry) {
-      newErrors.industry = 'Please select an industry'
+    if (formData.industries.length === 0) {
+      newErrors.industries = 'Please select at least one industry'
     }
     if (!formData.address.trim()) {
       newErrors.address = 'Address is required'
@@ -577,6 +592,9 @@ export default function OnboardingPage() {
     }
     if (!formData.dateOfIncorporation) {
       newErrors.dateOfIncorporation = 'Date of incorporation is required'
+    }
+    if (formData.industries.length === 0) {
+      newErrors.industries = 'Please select at least one industry'
     }
     if (formData.industryCategories.length === 0) {
       newErrors.industryCategories = 'Please select at least one industry category'
@@ -850,43 +868,56 @@ export default function OnboardingPage() {
                 )}
             </div>
 
-            {/* Industry */}
+            {/* Industries */}
             <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                Industry <span className="text-red-500">*</span>
-                {isCINVerified && (
-                  <span className="ml-2 text-[10px] sm:text-xs text-primary-orange flex items-center gap-1">
-                    <svg width="10" height="10" className="sm:w-3 sm:h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 16v-4" />
-                      <path d="M12 8h.01" />
-                    </svg>
-                    Detected from MCA records
-                  </span>
-                )}
-              </label>
-              <select
-                name="industry"
-                value={formData.industry}
-                onChange={handleInputChange}
-                disabled={isCINVerified}
-                className={`w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors appearance-none ${
-                  isCINVerified ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
-                }`}
-              >
-                <option value="">Select industry</option>
-                <option value="technology">Technology</option>
-                <option value="finance">Finance</option>
-                <option value="healthcare">Healthcare</option>
-                <option value="education">Education</option>
-                <option value="retail">Retail</option>
-                <option value="manufacturing">Manufacturing</option>
-                <option value="real-estate">Real Estate</option>
-                <option value="consulting">Consulting</option>
-                <option value="other">Other</option>
-              </select>
-              {errors.industry && (
-                <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.industry}</p>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-gray-300">
+                  Industries <span className="text-red-500">*</span> (Select at least one)
+                  {isCINVerified && (
+                    <span className="ml-2 text-[10px] sm:text-xs text-primary-orange flex items-center gap-1">
+                      <svg width="10" height="10" className="sm:w-3 sm:h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 16v-4" />
+                        <path d="M12 8h.01" />
+                      </svg>
+                      Detected from MCA records
+                    </span>
+                  )}
+                </label>
+                <label className="flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-900 border border-gray-700 rounded-lg hover:border-primary-orange/50 transition-colors cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={INDUSTRIES.every(industry => formData.industries.includes(industry))}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setFormData(prev => ({ ...prev, industries: [...INDUSTRIES] }))
+                      } else {
+                        setFormData(prev => ({ ...prev, industries: [] }))
+                      }
+                    }}
+                    className="w-3 h-3 sm:w-4 sm:h-4 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2"
+                  />
+                  <span className="text-gray-300 text-[10px] sm:text-xs font-medium">Select All</span>
+                </label>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 max-h-48 overflow-y-auto">
+                {INDUSTRIES.map((industry) => (
+                  <label
+                    key={industry}
+                    className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gray-900 border border-gray-700 rounded-lg transition-colors cursor-pointer hover:border-primary-orange/50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.industries.includes(industry)}
+                      onChange={() => handleIndustryChange(industry)}
+                      className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2 flex-shrink-0"
+                    />
+                    <span className="text-gray-300 text-xs sm:text-sm break-words">{industry}</span>
+                  </label>
+                ))}
+              </div>
+              {errors.industries && (
+                <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.industries}</p>
               )}
             </div>
 
@@ -909,18 +940,13 @@ export default function OnboardingPage() {
                 {INDUSTRY_CATEGORIES.map((category) => (
                   <label
                     key={category}
-                    className={`flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gray-900 border border-gray-700 rounded-lg transition-colors ${
-                      isCINVerified 
-                        ? 'opacity-60 cursor-not-allowed' 
-                        : 'cursor-pointer hover:border-primary-orange/50'
-                    }`}
+                    className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gray-900 border border-gray-700 rounded-lg transition-colors cursor-pointer hover:border-primary-orange/50"
                   >
                     <input
                       type="checkbox"
                       checked={formData.industryCategories.includes(category)}
                       onChange={() => handleIndustryCategoryChange(category)}
-                      disabled={isCINVerified}
-                      className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2 disabled:cursor-not-allowed flex-shrink-0"
+                      className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2 flex-shrink-0"
                     />
                     <span className="text-gray-300 text-xs sm:text-sm break-words">{category}</span>
                   </label>
@@ -995,6 +1021,25 @@ export default function OnboardingPage() {
               {errors.dateOfIncorporation && (
                 <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.dateOfIncorporation}</p>
               )}
+            </div>
+
+            {/* Year Type */}
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                Financial Year Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="yearType"
+                value={formData.yearType}
+                onChange={handleInputChange}
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+              >
+                <option value="FY">Financial Year (India) - Q1: Apr-Jun, Q2: Jul-Sep, Q3: Oct-Dec, Q4: Jan-Mar</option>
+                <option value="CY">Calendar Year (Gulf/USA) - Q1: Jan-Mar, Q2: Apr-Jun, Q3: Jul-Sep, Q4: Oct-Dec</option>
+              </select>
+              <p className="mt-1 text-xs text-gray-400">
+                Select the year type based on your company's jurisdiction. Indian companies use Financial Year (FY).
+              </p>
             </div>
 
             {/* Address */}
@@ -1471,8 +1516,8 @@ export default function OnboardingPage() {
                       if (!formData.cinNumber.trim()) {
                         newErrors.cinNumber = 'CIN number is required'
                       }
-                      if (!formData.industry) {
-                        newErrors.industry = 'Please select an industry'
+                      if (formData.industries.length === 0) {
+                        newErrors.industries = 'Please select at least one industry'
                       }
                       if (!formData.dateOfIncorporation) {
                         newErrors.dateOfIncorporation = 'Date of incorporation is required'

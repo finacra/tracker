@@ -141,7 +141,7 @@ function LoginPageInner() {
               <path d="M14 2V8H20" stroke="white" strokeWidth="1.5"/>
             </svg>
           </div>
-          <span className="text-white text-lg font-light">Finnovate<span className="text-primary-orange">AI</span></span>
+          <span className="text-white text-lg font-light">Finacra<span className="text-primary-orange">AI</span></span>
         </div>
         <div className="flex items-center gap-6">
           <button 
@@ -238,7 +238,7 @@ function LoginPageInner() {
         <h1 className="text-5xl font-thin text-white mb-2 text-center tracking-tight">
           Welcome to{' '}
           <span className="text-white inline-flex items-baseline gap-1">
-            <span className="font-light">Finnovate</span>
+            <span className="font-light">Finacra</span>
             <span className="bg-primary-orange text-white px-2 py-0.5 rounded font-light">
               AI
             </span>
@@ -373,7 +373,7 @@ function LoginPageInner() {
             <h1 className="text-6xl md:text-8xl font-thin text-white mb-6 tracking-tight text-center">
               Welcome to{' '}
               <span className="text-white inline-flex items-baseline gap-2">
-                <span className="font-light">Finnovate</span>
+                <span className="font-light">Finacra</span>
                 <span className="bg-gradient-to-r from-primary-orange to-orange-600 text-white px-4 py-2 rounded-xl font-light shadow-lg">AI</span>
               </span>
             </h1>
@@ -422,7 +422,7 @@ function LoginPageInner() {
               <section>
                 <h2 className="text-3xl font-semibold text-white mb-4">1. Introduction</h2>
                 <p className="text-gray-300 leading-relaxed text-lg">
-                  Welcome to <span className="text-primary-orange font-medium">Finnovate AI</span> ("we," "our," or "us"). We respect your privacy and are committed to protecting your personal data.
+                  Welcome to <span className="text-primary-orange font-medium">Finacra AI</span> ("we," "our," or "us"). We respect your privacy and are committed to protecting your personal data.
                 </p>
               </section>
               <section className="pt-8 border-t border-gray-800">
@@ -467,11 +467,11 @@ function LoginPageInner() {
               </section>
               <section className="pt-8 border-t border-gray-800">
                 <h2 className="text-3xl font-semibold text-white mb-4">2. Use License</h2>
-                <p className="text-gray-300 leading-relaxed text-lg">Permission is granted to temporarily download one copy of the materials on Finnovate AI's website for personal, non-commercial transitory viewing only.</p>
+                <p className="text-gray-300 leading-relaxed text-lg">Permission is granted to temporarily download one copy of the materials on Finacra AI's website for personal, non-commercial transitory viewing only.</p>
               </section>
               <section className="pt-8 border-t border-gray-800">
                 <h2 className="text-3xl font-semibold text-white mb-4">3. Disclaimer</h2>
-                <p className="text-gray-300 leading-relaxed text-lg">The materials on Finnovate AI's website are provided on an 'as is' basis.</p>
+                <p className="text-gray-300 leading-relaxed text-lg">The materials on Finacra AI's website are provided on an 'as is' basis.</p>
               </section>
               <section className="pt-8 border-t border-gray-800">
                 <h2 className="text-3xl font-semibold text-white mb-4">4. Contact Us</h2>

@@ -20,6 +20,7 @@ interface Company {
   name: string
   type: string
   year: string
+  yearType?: 'FY' | 'CY'  // Financial Year (India) or Calendar Year (Gulf/USA)
 }
 
 interface Director {
@@ -59,6 +60,7 @@ function DataRoomPageInner() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [entityDetails, setEntityDetails] = useState<EntityDetails | null>(null)
+  const [incorporationDate, setIncorporationDate] = useState<string | null>(null)
   const [vaultDocuments, setVaultDocuments] = useState<any[]>([])
   const [documentTemplates, setDocumentTemplates] = useState<any[]>([])
   const [regulatoryRequirements, setRegulatoryRequirements] = useState<RegulatoryRequirement[]>([])
@@ -193,7 +195,8 @@ function DataRoomPageInner() {
               id: c.id,
               name: c.name,
               type: c.type,
-              year: new Date(c.incorporation_date).getFullYear().toString()
+              year: new Date(c.incorporation_date).getFullYear().toString(),
+              yearType: (c as any).year_type || 'FY'  // Default to FY for backward compatibility
             })
           })
         }
@@ -205,7 +208,8 @@ function DataRoomPageInner() {
               id: c.id,
               name: c.name,
               type: c.type,
-              year: new Date(c.incorporation_date).getFullYear().toString()
+              year: new Date(c.incorporation_date).getFullYear().toString(),
+              yearType: (c as any).year_type || 'FY'  // Default to FY for backward compatibility
             })
           }
         })
@@ -297,7 +301,10 @@ function DataRoomPageInner() {
   // Fetch specific company details and directors when currentCompany changes
   useEffect(() => {
     async function fetchDetails() {
-      if (!currentCompany) return
+      if (!currentCompany) {
+        setIncorporationDate(null)
+        return
+      }
 
       setIsLoading(true)
       const startTime = performance.now()
@@ -320,6 +327,9 @@ function DataRoomPageInner() {
 
         // Map to EntityDetails structure
         if (company) {
+          // Store incorporation date for filtering requirements
+          setIncorporationDate(company.incorporation_date || null)
+          
           const mappedDetails: EntityDetails = {
             companyName: company.name,
             type: company.type.toUpperCase(),
@@ -1080,10 +1090,15 @@ function DataRoomPageInner() {
         setRegulatoryRequirements(result.requirements)
       } else {
         console.error('Failed to fetch requirements:', result.error)
+        // Show user-friendly error message
+        if (result.error && !result.error.includes('Not authenticated')) {
+          alert(`Failed to load compliance requirements: ${result.error}`)
+        }
         setRegulatoryRequirements([])
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching requirements:', error)
+      alert(`An error occurred while loading requirements: ${error.message || 'Please try again later.'}`)
       setRegulatoryRequirements([])
     } finally {
       setIsLoadingRequirements(false)
@@ -1179,15 +1194,49 @@ function DataRoomPageInner() {
       periodType = 'quarterly'
       const month = dueDate.getMonth() + 1
       const year = dueDate.getFullYear()
+      
+      // Get year_type from requirement or company, default to 'FY'
+      const yearType = (req as any).year_type || currentCompany?.yearType || 'FY'
+      
+      // Calculate quarter based on year_type
       let quarter = 1
-      if (month >= 4 && month <= 6) quarter = 1
-      else if (month >= 7 && month <= 9) quarter = 2
-      else if (month >= 10 && month <= 12) quarter = 3
-      else quarter = 4
+      let quarterStartMonth = 1
+      
+      if (yearType === 'FY') {
+        // Financial Year (India): Q1=Apr-Jun, Q2=Jul-Sep, Q3=Oct-Dec, Q4=Jan-Mar
+        if (month >= 4 && month <= 6) {
+          quarter = 1
+          quarterStartMonth = 4
+        } else if (month >= 7 && month <= 9) {
+          quarter = 2
+          quarterStartMonth = 7
+        } else if (month >= 10 && month <= 12) {
+          quarter = 3
+          quarterStartMonth = 10
+        } else {
+          quarter = 4
+          quarterStartMonth = 1
+        }
+      } else {
+        // Calendar Year (Gulf/USA): Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec
+        if (month <= 3) {
+          quarter = 1
+          quarterStartMonth = 1
+        } else if (month <= 6) {
+          quarter = 2
+          quarterStartMonth = 4
+        } else if (month <= 9) {
+          quarter = 3
+          quarterStartMonth = 7
+        } else {
+          quarter = 4
+          quarterStartMonth = 10
+        }
+      }
+      
       periodKey = `Q${quarter}-${year}`
-      const quarterStartMonth = (quarter - 1) * 3 + 1
       periodStart = `${year}-${String(quarterStartMonth).padStart(2, '0')}-01`
-      const quarterEndMonth = quarter * 3
+      const quarterEndMonth = quarterStartMonth + 2
       const lastDay = new Date(year, quarterEndMonth, 0).getDate()
       periodEnd = `${year}-${String(quarterEndMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
     } else if (complianceType === 'annual') {
@@ -1327,8 +1376,20 @@ function DataRoomPageInner() {
     }
   }
 
+  // Filter out requirements with due dates before incorporation date
+  const filteredRequirements = incorporationDate
+    ? regulatoryRequirements.filter(req => {
+        const reqDate = new Date(req.due_date)
+        const incorpDate = new Date(incorporationDate)
+        // Set time to midnight for accurate date comparison
+        reqDate.setHours(0, 0, 0, 0)
+        incorpDate.setHours(0, 0, 0, 0)
+        return reqDate >= incorpDate
+      })
+    : regulatoryRequirements
+
   // Convert database requirements to display format
-  const displayRequirements = regulatoryRequirements.map(req => ({
+  const displayRequirements = filteredRequirements.map(req => ({
     id: req.id,
     template_id: (req as any).template_id ?? null,
     category: req.category,
@@ -1343,7 +1404,9 @@ function DataRoomPageInner() {
     industry: (req as any).industry,
     industry_category: (req as any).industry_category,
     compliance_type: (req as any).compliance_type,
-    required_documents: req.required_documents || [],
+    required_documents: Array.isArray(req.required_documents) 
+      ? req.required_documents 
+      : (req.required_documents ? [req.required_documents] : []),
     possible_legal_action: req.possible_legal_action,
     penalty_config: req.penalty_config,
     penalty_base_amount: req.penalty_base_amount,
@@ -2433,7 +2496,7 @@ function DataRoomPageInner() {
             coverY += Math.min(companyLines.length, 3) * 18 + 10
             doc.setFont('helvetica', 'italic')
             doc.setFontSize(14)
-            doc.text('BY FINNOVATE AI', margin, coverY, { maxWidth: contentWidth })
+            doc.text('BY FINACRA AI', margin, coverY, { maxWidth: contentWidth })
 
             // Footer details (bottom-left)
             const footerBlockY = pageHeight - 70
@@ -3092,7 +3155,7 @@ function DataRoomPageInner() {
             // QR code
             try {
               const QRCode: any = await import('qrcode')
-              const qrUrl = 'https://www.finnovateai.com'
+              const qrUrl = 'https://www.finacraai.com'
               const qrDataUrl: string = await QRCode.toDataURL(qrUrl, {
                 margin: 1,
                 width: 260,
@@ -3116,7 +3179,7 @@ function DataRoomPageInner() {
               doc.setFontSize(10)
               doc.setTextColor(textGray[0], textGray[1], textGray[2])
               doc.text('Scan to visit', pageWidth / 2, qrY + qrSize + 32, { align: 'center' })
-              doc.text('www.finnovateai.com', pageWidth / 2, qrY + qrSize + 44, { align: 'center' })
+              doc.text('www.finacraai.com', pageWidth / 2, qrY + qrSize + 44, { align: 'center' })
             } catch (qrErr) {
               // Fallback if QR generation fails: show the URL + CTA text
               doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
@@ -3126,7 +3189,7 @@ function DataRoomPageInner() {
               doc.setFont('helvetica', 'normal')
               doc.setFontSize(10)
               doc.setTextColor(textGray[0], textGray[1], textGray[2])
-              doc.text('www.finnovateai.com', pageWidth / 2, pageHeight / 2 + 14, { align: 'center' })
+              doc.text('www.finacraai.com', pageWidth / 2, pageHeight / 2 + 14, { align: 'center' })
             }
 
             // Footer - Add to all pages with proper spacing
@@ -4483,7 +4546,7 @@ function DataRoomPageInner() {
                     </button>
 
                     <p className="text-center text-xs text-gray-500">
-                      By connecting, you agree to share your GST data securely with Finnovate
+                      By connecting, you agree to share your GST data securely with Finacra
                     </p>
                   </div>
                 </div>
@@ -6859,7 +6922,9 @@ function DataRoomPageInner() {
                                   <td className="px-6 py-4 hidden md:table-cell">
                                   {/* Documents Required Column */}
                                   {(() => {
-                                    const requiredDocs = req.required_documents || []
+                                    const requiredDocs = Array.isArray(req.required_documents)
+                                      ? req.required_documents
+                                      : (req.required_documents ? [req.required_documents] : [])
                                     // Debug logging
                                     if (req.requirement === 'GSTR-3B - Monthly Summary Return' || req.requirement === 'ESI Challan - Monthly ESI Payment') {
                                       console.log('[RENDER] Documents for', req.requirement, ':', {

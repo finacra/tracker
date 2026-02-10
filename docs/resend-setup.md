@@ -3,7 +3,7 @@
 ## Required environment variables
 
 - `RESEND_API_KEY`: Resend API key (do not commit).
-- `RESEND_FROM`: Verified sender (example: `Finnovate <noreply@yourdomain.com>`).
+- `RESEND_FROM`: Verified sender (example: `Finacra <noreply@yourdomain.com>`).
 - `NEXT_PUBLIC_SITE_URL`: Production site URL (example: `https://comptracker.vercel.app`).
 
 ## Security note

@@ -1,8 +1,8 @@
-# Financial Model & Pricing Strategy for Finnovate AI
+# Financial Model & Pricing Strategy for Finacra AI
 
 ## Executive Summary
 
-This document outlines the comprehensive financial model for Finnovate AI, a financial compliance management SaaS platform. The model is designed to achieve breakeven within 3-4 years while maintaining competitive pricing in the Indian market.
+This document outlines the comprehensive financial model for Finacra AI, a financial compliance management SaaS platform. The model is designed to achieve breakeven within 3-4 years while maintaining competitive pricing in the Indian market.
 
 ### Key Updates
 - **Breakeven Timeline**: Extended to 3-4 years (from 2 years)
@@ -378,7 +378,7 @@ Based on research of compliance management SaaS in India:
 
 | Competitor | Starter | Professional | Enterprise |
 |------------|---------|--------------|------------|
-| **Finnovate AI** | ₹3,500/mo | ₹8,000/mo | ₹18,000/mo |
+| **Finacra AI** | ₹3,500/mo | ₹8,000/mo | ₹18,000/mo |
 | Market Average | ₹2,500-5,000 | ₹6,000-12,000 | ₹15,000-30,000 |
 
 ### Value Proposition

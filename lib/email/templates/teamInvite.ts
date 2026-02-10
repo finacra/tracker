@@ -10,7 +10,7 @@ export type TeamInviteEmailArgs = {
 }
 
 export function renderTeamInviteEmail(args: TeamInviteEmailArgs): { subject: string; html: string } {
-  const subject = `You've been invited to ${args.companyName} on Finnovate`
+  const subject = `You've been invited to ${args.companyName} on Finacra`
 
   const bodyHtml = `
 <div style="font-size:13px;line-height:20px;color:#374151;">

@@ -11,7 +11,7 @@ export async function completeOnboarding(
     companyType: string
     panNumber?: string
     cinNumber: string
-    industry: string
+    industries: string[]
     address: string
     city: string
     state: string
@@ -23,6 +23,7 @@ export async function completeOnboarding(
     dateOfIncorporation: string
     industryCategories: string[]
     otherIndustryCategory?: string
+    yearType?: 'FY' | 'CY'
     companyStage?: string
     confidenceScore?: string
     documents: Array<{ type: string; path: string; name: string }>
@@ -38,6 +39,9 @@ export async function completeOnboarding(
   }
 
   // 1. Insert Company into public schema
+  // For backward compatibility, set industry to first industry from industries array
+  const firstIndustry = formData.industries.length > 0 ? formData.industries[0] : null
+  
   const { data: company, error: companyError } = await adminSupabase
     .from('companies')
     .insert({
@@ -46,7 +50,8 @@ export async function completeOnboarding(
       type: formData.companyType,
       pan: formData.panNumber || null,
       cin: formData.cinNumber,
-      industry: formData.industry,
+      industry: firstIndustry,  // Set for backward compatibility (NOT NULL constraint)
+      industries: formData.industries.length > 0 ? formData.industries : null,  // Store as array
       industry_categories: formData.industryCategories,
       other_industry_category: formData.otherIndustryCategory || null,
       incorporation_date: formData.dateOfIncorporation,
@@ -59,7 +64,8 @@ export async function completeOnboarding(
       landline: formData.landline || null,
       other_info: formData.other || null,
       stage: formData.companyStage || null,
-      confidence_score: formData.confidenceScore || null
+      confidence_score: formData.confidenceScore || null,
+      year_type: formData.yearType || 'FY'  // Default to FY for backward compatibility
     })
     .select()
     .single()
@@ -164,7 +170,7 @@ export async function updateCompany(
     companyName?: string
     companyType?: string
     panNumber?: string
-    industry?: string
+    industries?: string[]
     address?: string
     city?: string
     state?: string
@@ -186,24 +192,30 @@ export async function updateCompany(
   }
 
   // Update Company in public schema
+  const updateData: any = {
+    name: formData.companyName,
+    type: formData.companyType,
+    pan: formData.panNumber,
+    industry_categories: formData.industryCategories,
+    other_industry_category: formData.otherIndustryCategory,
+    address: formData.address,
+    city: formData.city,
+    state: formData.state,
+    pin_code: formData.pinCode,
+    phone_number: formData.phoneNumber,
+    email: formData.email,
+    landline: formData.landline,
+    other_info: formData.other
+  }
+  
+  // Add industries if provided
+  if (formData.industries !== undefined) {
+    updateData.industries = formData.industries.length > 0 ? formData.industries : null
+  }
+  
   const { error: companyError } = await adminSupabase
     .from('companies')
-    .update({
-      name: formData.companyName,
-      type: formData.companyType,
-      pan: formData.panNumber,
-      industry: formData.industry,
-      industry_categories: formData.industryCategories,
-      other_industry_category: formData.otherIndustryCategory,
-      address: formData.address,
-      city: formData.city,
-      state: formData.state,
-      pin_code: formData.pinCode,
-      phone_number: formData.phoneNumber,
-      email: formData.email,
-      landline: formData.landline,
-      other_info: formData.other
-    })
+    .update(updateData)
     .eq('id', companyId)
     .eq('user_id', user.id)
 

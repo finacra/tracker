@@ -56,7 +56,7 @@ function emailLayout(title: string, bodyHtml: string, preheader: string): string
           <table role="presentation" cellpadding="0" cellspacing="0" width="600" style="max-width:600px;background:#FFFFFF;border:1px solid ${border};border-radius:14px;overflow:hidden;">
             <tr>
               <td style="background:${navy};padding:18px 20px;">
-                <div style="font-size:16px;line-height:22px;color:#FFFFFF;font-weight:700;">Finnovate</div>
+                <div style="font-size:16px;line-height:22px;color:#FFFFFF;font-weight:700;">Finacra</div>
                 <div style="font-size:12px;line-height:18px;color:rgba(255,255,255,0.85);margin-top:2px;">Compliance Tracker</div>
               </td>
             </tr>
@@ -235,6 +235,26 @@ Deno.serve(async (req) => {
     companyAdmins.set(ur.company_id, list)
   }
 
+  // Include superadmins (platform-wide access) - they should receive reminders for all companies
+  const { data: superadmins, error: superadminError } = await supabase
+    .from('user_roles')
+    .select('user_id')
+    .eq('role', 'superadmin')
+    .is('company_id', null)
+
+  if (!superadminError && superadmins) {
+    // Add superadmins to all relevant companies
+    for (const sa of superadmins) {
+      for (const companyId of relevantCompanyIds) {
+        const list = companyAdmins.get(companyId) || []
+        if (!list.includes(sa.user_id)) {
+          list.push(sa.user_id)
+          companyAdmins.set(companyId, list)
+        }
+      }
+    }
+  }
+
   // Build per-user digest items
   const byUser = new Map<string, {
     due14: any[]
@@ -291,14 +311,36 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Resolve user emails
+  // Resolve user emails - batch lookup for better performance
   const userIds = Array.from(byUser.keys())
   const emailByUserId = new Map<string, string>()
 
-  for (const userId of userIds) {
-    const { data } = await supabase.auth.admin.getUserById(userId)
-    const email = data?.user?.email
-    if (email) emailByUserId.set(userId, email)
+  // Batch lookup all user emails at once
+  try {
+    const { data: users, error: usersError } = await supabase.auth.admin.listUsers()
+    if (!usersError && users?.users) {
+      for (const user of users.users) {
+        if (userIds.includes(user.id) && user.email) {
+          emailByUserId.set(user.id, user.email)
+        }
+      }
+    } else {
+      // Fallback to individual lookups if batch fails
+      console.warn('Batch user lookup failed, falling back to individual lookups:', usersError)
+      for (const userId of userIds) {
+        const { data } = await supabase.auth.admin.getUserById(userId)
+        const email = data?.user?.email
+        if (email) emailByUserId.set(userId, email)
+      }
+    }
+  } catch (error) {
+    console.error('Error in batch user lookup:', error)
+    // Fallback to individual lookups
+    for (const userId of userIds) {
+      const { data } = await supabase.auth.admin.getUserById(userId)
+      const email = data?.user?.email
+      if (email) emailByUserId.set(userId, email)
+    }
   }
 
   let sent = 0
@@ -312,15 +354,30 @@ Deno.serve(async (req) => {
       continue
     }
 
-    // Idempotency check
-    const { error: logErr } = await supabase
-      .from('notification_email_log')
-      .insert({ user_id: userId, run_date: runDate, kind: 'reminder_digest' })
+    // Check email preferences - skip if user unsubscribed
+    const { data: emailPrefs } = await supabase
+      .from('email_preferences')
+      .select('unsubscribe_reminders, unsubscribe_all')
+      .eq('user_id', userId)
+      .single()
 
-    if (logErr) {
-      // likely duplicate (already sent)
+    if (emailPrefs?.unsubscribe_all || emailPrefs?.unsubscribe_reminders) {
       skipped++
-      continue
+      continue // User unsubscribed from reminders
+    }
+
+    // Idempotency check - check if already sent today
+    const { data: existingLog } = await supabase
+      .from('notification_email_log')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('run_date', runDate)
+      .eq('kind', 'reminder_digest')
+      .maybeSingle()
+
+    if (existingLog) {
+      skipped++
+      continue // Already sent today
     }
 
     const sectionsHtml = [
@@ -340,8 +397,28 @@ Deno.serve(async (req) => {
 
     const html = emailLayout('Compliance reminders', bodyHtml, preheader)
 
-    await resendSend([toEmail], preheader, html)
-    sent++
+    // Send email with error handling - continue processing other users if one fails
+    try {
+      await resendSend([toEmail], preheader, html)
+      
+      // Only insert log entry AFTER successful email send
+      const { error: logErr } = await supabase
+        .from('notification_email_log')
+        .insert({ user_id: userId, run_date: runDate, kind: 'reminder_digest' })
+
+      if (logErr) {
+        // Log entry failed but email was sent - log warning but don't fail
+        console.warn(`Email sent to ${toEmail} but failed to log (user ${userId}):`, logErr)
+      }
+      
+      sent++
+    } catch (error) {
+      console.error(`Failed to send email to ${toEmail} (user ${userId}):`, error)
+      // Continue with next user instead of stopping
+      // Don't insert log entry if email failed - allows retry on next run
+      skipped++
+      continue
+    }
 
     // In-app notifications (best-effort)
     const notifications: any[] = []

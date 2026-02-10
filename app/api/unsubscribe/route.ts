@@ -139,7 +139,7 @@ function renderPage(title: string, message: string, showForm: boolean, token?: s
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} - Finnovate</title>
+  <title>${title} - Finacra</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -231,7 +231,7 @@ function renderPage(title: string, message: string, showForm: boolean, token?: s
 </head>
 <body>
   <div class="card">
-    <div class="logo">Finnovate</div>
+    <div class="logo">Finacra</div>
     <div class="subtitle">Compliance Tracker</div>
     
     ${success ? `

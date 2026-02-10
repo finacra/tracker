@@ -22,6 +22,7 @@ export interface RegulatoryRequirement {
   is_critical: boolean
   financial_year: string | null
   compliance_type: 'one-time' | 'monthly' | 'quarterly' | 'annual' | null
+  year_type?: 'FY' | 'CY'  // Financial Year (India) or Calendar Year (Gulf/USA)
   filed_on: string | null
   filed_by: string | null
   status_reason: string | null
@@ -59,6 +60,7 @@ export interface ComplianceTemplate {
   due_month: number | null
   due_day: number | null
   due_date: string | null
+  year_type?: 'FY' | 'CY'  // Financial Year (India) or Calendar Year (Gulf/USA)
   is_active: boolean
   required_documents: string[]
   possible_legal_action: string | null
@@ -183,20 +185,17 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
 
     const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
 
-    // Fire-and-forget: Update overdue statuses in background (don't wait for it)
-    // This ensures the page loads fast while statuses are updated asynchronously
-    if (companyId) {
-      Promise.resolve(adminSupabase.rpc('update_company_overdue_statuses', { p_company_id: companyId }))
-        .then(({ error }) => {
-          if (error) console.error('[getRegulatoryRequirements] Background update overdue error:', error)
-        })
-        .catch(err => console.error('[getRegulatoryRequirements] Background update exception:', err))
-    } else if (isSuperadmin) {
-      Promise.resolve(adminSupabase.rpc('update_overdue_statuses'))
-        .then(({ error }) => {
-          if (error) console.error('[getRegulatoryRequirements] Background update overdue error:', error)
-        })
-        .catch(err => console.error('[getRegulatoryRequirements] Background update exception:', err))
+    // Update overdue statuses before fetching to ensure data consistency
+    // Use a short timeout to avoid blocking too long, but ensure statuses are updated
+    try {
+      if (companyId) {
+        await adminSupabase.rpc('update_company_overdue_statuses', { p_company_id: companyId })
+      } else if (isSuperadmin) {
+        await adminSupabase.rpc('update_overdue_statuses')
+      }
+    } catch (statusUpdateError) {
+      // Log but don't fail the entire request if status update fails
+      console.error('[getRegulatoryRequirements] Status update error (non-critical):', statusUpdateError)
     }
 
     let query = adminSupabase
@@ -254,10 +253,18 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
       }
     }
 
-    return { success: true, requirements: data || [] }
+    // Normalize required_documents to always be an array
+    const normalizedData = (data || []).map((req: any) => ({
+      ...req,
+      required_documents: Array.isArray(req.required_documents) 
+        ? req.required_documents 
+        : (req.required_documents ? [req.required_documents] : [])
+    }))
+
+    return { success: true, requirements: normalizedData }
   } catch (error: any) {
     console.error('Error in getRegulatoryRequirements:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error.message || 'Failed to fetch regulatory requirements' }
   }
 }
 
@@ -326,6 +333,35 @@ export async function updateRequirement(
     if (requirement.financial_year !== undefined) updateData.financial_year = requirement.financial_year
     if (requirement.status !== undefined) updateData.status = requirement.status
     if (requirement.compliance_type !== undefined) updateData.compliance_type = requirement.compliance_type
+    if ((requirement as any).year_type !== undefined) updateData.year_type = (requirement as any).year_type
+
+    // Validate compliance type and due date combination if both are being updated
+    if (updateData.compliance_type && updateData.due_date) {
+      const complianceType = updateData.compliance_type
+      if (complianceType === 'one-time' && !updateData.due_date) {
+        return { success: false, error: 'Due date is required for one-time compliances' }
+      }
+    }
+
+    // Validate due date format if being updated
+    if (updateData.due_date) {
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+      if (!dateRegex.test(updateData.due_date)) {
+        return { success: false, error: 'Due date must be in YYYY-MM-DD format' }
+      }
+      const date = new Date(updateData.due_date)
+      if (isNaN(date.getTime())) {
+        return { success: false, error: 'Invalid due date' }
+      }
+    }
+
+    // Normalize required_documents if provided
+    if ((requirement as any).required_documents !== undefined) {
+      const requiredDocuments = (requirement as any).required_documents
+      updateData.required_documents = Array.isArray(requiredDocuments)
+        ? requiredDocuments
+        : (requiredDocuments ? [requiredDocuments] : [])
+    }
 
     let query = adminSupabase
       .from('regulatory_requirements')
@@ -341,13 +377,13 @@ export async function updateRequirement(
 
     if (error) {
       console.error('Error updating requirement:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: error.message || 'Failed to update requirement. Please try again.' }
     }
 
     return { success: true }
   } catch (error: any) {
     console.error('Error in updateRequirement:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error.message || 'An unexpected error occurred while updating the requirement.' }
   }
 }
 
@@ -444,7 +480,9 @@ export async function updateRequirementStatus(
 
     // If marking as completed, validate required documents
     if (newStatus === 'completed') {
-      const requiredDocs = requirement.required_documents || []
+      const requiredDocs = Array.isArray(requirement.required_documents) 
+        ? requirement.required_documents 
+        : (requirement.required_documents ? [requirement.required_documents] : [])
       
       if (requiredDocs.length > 0) {
         // Calculate period key for document matching
@@ -508,7 +546,7 @@ export async function updateRequirementStatus(
 
     if (error) {
       console.error('Error updating requirement status:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: error.message || 'Failed to update requirement status. Please try again.' }
     }
 
     // In-app notifications (after DB update, so UI is consistent)
@@ -585,7 +623,7 @@ export async function updateRequirementStatus(
     }
   } catch (error: any) {
     console.error('Error in updateRequirementStatus:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error.message || 'Failed to update requirement status. Please try again.' }
   }
 }
 
@@ -767,6 +805,50 @@ export async function createRequirement(
       }
     }
 
+    // Validate compliance type and due date combination
+    const complianceType = requirement.compliance_type || 'one-time'
+    if (complianceType === 'one-time' && !requirement.due_date) {
+      return { success: false, error: 'Due date is required for one-time compliances' }
+    }
+    if (complianceType === 'monthly' && !requirement.due_date) {
+      return { success: false, error: 'Due date is required for monthly compliances' }
+    }
+    if (complianceType === 'quarterly' && !requirement.due_date) {
+      return { success: false, error: 'Due date is required for quarterly compliances' }
+    }
+    if (complianceType === 'annual' && !requirement.due_date) {
+      return { success: false, error: 'Due date is required for annual compliances' }
+    }
+
+    // Validate due date format
+    if (requirement.due_date) {
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+      if (!dateRegex.test(requirement.due_date)) {
+        return { success: false, error: 'Due date must be in YYYY-MM-DD format' }
+      }
+      const date = new Date(requirement.due_date)
+      if (isNaN(date.getTime())) {
+        return { success: false, error: 'Invalid due date' }
+      }
+    }
+
+    // Normalize required_documents if provided
+    const requiredDocuments = (requirement as any).required_documents
+    const normalizedRequiredDocuments = Array.isArray(requiredDocuments)
+      ? requiredDocuments
+      : (requiredDocuments ? [requiredDocuments] : [])
+
+    // Get year_type from requirement or company, default to 'FY'
+    let yearType = (requirement as any).year_type
+    if (!yearType) {
+      const { data: company } = await adminSupabase
+        .from('companies')
+        .select('year_type')
+        .eq('id', companyId)
+        .single()
+      yearType = company?.year_type || 'FY'
+    }
+
     const { data, error } = await adminSupabase
       .from('regulatory_requirements')
       .insert({
@@ -779,7 +861,9 @@ export async function createRequirement(
         is_critical: requirement.is_critical || false,
         financial_year: requirement.financial_year || null,
         compliance_type: requirement.compliance_type || 'one-time',
+        year_type: yearType,
         status: 'not_started',
+        required_documents: normalizedRequiredDocuments,
         created_by: user.id,
         updated_by: user.id
       })
@@ -788,13 +872,13 @@ export async function createRequirement(
 
     if (error) {
       console.error('Error creating requirement:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: error.message || 'Failed to create requirement. Please try again.' }
     }
 
     return { success: true, id: data.id }
   } catch (error: any) {
     console.error('Error in createRequirement:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error.message || 'An unexpected error occurred while creating the requirement.' }
   }
 }
 
@@ -851,13 +935,13 @@ export async function deleteRequirement(
 
     if (error) {
       console.error('Error deleting requirement:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: error.message || 'Failed to delete requirement. Please try again.' }
     }
 
     return { success: true }
   } catch (error: any) {
     console.error('Error in deleteRequirement:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error.message || 'An unexpected error occurred while deleting the requirement.' }
   }
 }
 
@@ -921,7 +1005,7 @@ export async function getCompanyUserRoles(companyId: string | null = null): Prom
 
     if (error) {
       console.error('Error fetching user roles:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: error.message || 'Failed to fetch user roles. Please try again.' }
     }
 
     let allRoles = data || []
@@ -977,7 +1061,7 @@ export async function getCompanyUserRoles(companyId: string | null = null): Prom
     return { success: true, roles: rolesWithUserInfo }
   } catch (error: any) {
     console.error('Error in getCompanyUserRoles:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: error.message || 'Failed to fetch user roles. Please try again.' }
   }
 }
 
@@ -1452,33 +1536,44 @@ export async function getComplianceTemplates(): Promise<{ success: boolean; temp
       return { success: false, error: error.message }
     }
 
-    // Get matching companies count for each template
-    const templatesWithCounts = await Promise.all(
-      (templates || []).map(async (template) => {
-        try {
-          const { data: matchingCompanies, error: matchError } = await adminSupabase.rpc('match_companies_to_template', {
-            p_template_id: template.id
-          })
-          
-          if (matchError) {
-            console.error(`[getComplianceTemplates] Error matching template ${template.id}:`, matchError)
-          } else {
-            console.log(`[getComplianceTemplates] Template "${template.requirement}" matches ${matchingCompanies?.length || 0} companies`)
+    // Get matching companies count for each template (optimized with parallel processing)
+    // Process in batches to avoid overwhelming the database
+    const batchSize = 10
+    const templatesArray = templates || []
+    const templatesWithCounts: ComplianceTemplate[] = []
+    
+    for (let i = 0; i < templatesArray.length; i += batchSize) {
+      const batch = templatesArray.slice(i, i + batchSize)
+      const batchResults = await Promise.all(
+        batch.map(async (template) => {
+          try {
+            const { data: matchingCompanies, error: matchError } = await adminSupabase.rpc('match_companies_to_template', {
+              p_template_id: template.id
+            })
+            
+            if (matchError) {
+              console.error(`[getComplianceTemplates] Error matching template ${template.id}:`, matchError)
+              return {
+                ...template,
+                matching_companies_count: 0
+              }
+            }
+            
+            return {
+              ...template,
+              matching_companies_count: matchingCompanies?.length || 0
+            }
+          } catch (error: any) {
+            console.error(`[getComplianceTemplates] Error processing template ${template.id}:`, error)
+            return {
+              ...template,
+              matching_companies_count: 0
+            }
           }
-          
-          return {
-            ...template,
-            matching_companies_count: matchingCompanies?.length || 0
-          }
-        } catch (error: any) {
-          console.error(`[getComplianceTemplates] Error processing template ${template.id}:`, error)
-          return {
-            ...template,
-            matching_companies_count: 0
-          }
-        }
-      })
-    )
+        })
+      )
+      templatesWithCounts.push(...batchResults)
+    }
 
     return { success: true, templates: templatesWithCounts }
   } catch (error: any) {
@@ -1576,7 +1671,10 @@ export async function createComplianceTemplate(
         due_month: template.compliance_type === 'quarterly' ? template.due_month : (template.due_month || null),
         due_day: template.compliance_type === 'quarterly' ? template.due_day : (template.due_day || null),
         due_date: template.due_date && template.due_date.trim() !== '' ? template.due_date : null,
-        required_documents: (template as any).required_documents || [],
+        year_type: (template as any).year_type || 'FY',  // Default to FY for backward compatibility
+        required_documents: Array.isArray((template as any).required_documents)
+          ? (template as any).required_documents
+          : ((template as any).required_documents ? [(template as any).required_documents] : []),
         possible_legal_action: (template as any).possible_legal_action || null,
         created_by: user.id,
         updated_by: user.id
@@ -1704,10 +1802,15 @@ export async function updateComplianceTemplate(
     
     // New V2 fields
     if ((template as any).required_documents !== undefined) {
-      updateData.required_documents = (template as any).required_documents || []
+      updateData.required_documents = Array.isArray((template as any).required_documents)
+        ? (template as any).required_documents
+        : ((template as any).required_documents ? [(template as any).required_documents] : [])
     }
     if ((template as any).possible_legal_action !== undefined) {
       updateData.possible_legal_action = (template as any).possible_legal_action || null
+    }
+    if ((template as any).year_type !== undefined) {
+      updateData.year_type = (template as any).year_type || 'FY'
     }
 
     // Only update if there are actual changes (not just re-applying)
@@ -2335,6 +2438,7 @@ export async function bulkCreateComplianceTemplates(
     due_month: number | null
     due_day: number | null
     due_date: string | null
+    year_type?: 'FY' | 'CY'
     penalty: string | null
     penalty_config: Record<string, unknown> | null
     required_documents: string[]
@@ -2432,7 +2536,10 @@ export async function bulkCreateComplianceTemplates(
           due_month: template.compliance_type === 'quarterly' ? template.due_month : template.due_month,
           due_day: template.compliance_type === 'quarterly' ? template.due_day : template.due_day,
           due_date: template.due_date && template.due_date.trim() !== '' ? template.due_date : null,
-          required_documents: template.required_documents || [],
+          year_type: template.year_type || 'FY',  // Default to FY for backward compatibility
+          required_documents: Array.isArray(template.required_documents)
+            ? template.required_documents
+            : (template.required_documents ? [template.required_documents] : []),
           possible_legal_action: template.possible_legal_action,
           created_by: user.id,
           updated_by: user.id

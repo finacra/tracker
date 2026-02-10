@@ -99,7 +99,7 @@ export function emailLayout(args: EmailLayoutArgs): string {
                   <!-- Header -->
                   <tr>
                     <td style="background:${primaryNavy};padding:18px 20px;" class="mobile-padding">
-                      <div style="font-size:16px;line-height:22px;color:#FFFFFF;font-weight:700;">Finnovate</div>
+                      <div style="font-size:16px;line-height:22px;color:#FFFFFF;font-weight:700;">Finacra</div>
                       <div style="font-size:12px;line-height:18px;color:rgba(255,255,255,0.85);margin-top:2px;">Compliance Tracker</div>
                     </td>
                   </tr>

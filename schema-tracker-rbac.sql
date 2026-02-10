@@ -629,13 +629,24 @@ BEGIN
       ))
     )
     AND
-    -- Industry match: if template has industries specified, company industry must match (case-insensitive)
+    -- Industry match: if template has industries specified, company industries must overlap (case-insensitive)
     (
       v_template.industries IS NULL 
       OR array_length(v_template.industries, 1) IS NULL 
-      OR (c.industry IS NOT NULL AND LOWER(TRIM(c.industry)) = ANY(
-        SELECT LOWER(TRIM(unnest(v_template.industries)))
-      ))
+      OR (
+        -- Check new industries array column first
+        (c.industries IS NOT NULL AND array_length(c.industries, 1) > 0 AND
+         EXISTS (
+           SELECT 1 FROM unnest(c.industries) AS company_industry
+           WHERE LOWER(TRIM(company_industry)) = ANY(
+             SELECT LOWER(TRIM(unnest(v_template.industries)))
+           )
+         ))
+        -- Fallback to legacy industry column for backward compatibility
+        OR (c.industry IS NOT NULL AND LOWER(TRIM(c.industry)) = ANY(
+          SELECT LOWER(TRIM(unnest(v_template.industries)))
+        ))
+      )
     )
     AND
     -- Industry category match: if template has categories specified, company categories must overlap (case-insensitive)
@@ -664,7 +675,8 @@ CREATE OR REPLACE FUNCTION public.calculate_due_date(
   p_due_month INTEGER DEFAULT NULL,
   p_due_day INTEGER DEFAULT NULL,
   p_financial_year TEXT DEFAULT NULL,
-  p_base_date DATE DEFAULT CURRENT_DATE
+  p_base_date DATE DEFAULT CURRENT_DATE,
+  p_year_type TEXT DEFAULT 'FY'  -- NEW: 'FY' (Financial Year) or 'CY' (Calendar Year)
 )
 RETURNS DATE AS $$
 DECLARE
@@ -674,7 +686,14 @@ DECLARE
   v_year INTEGER;
   v_month INTEGER;
   v_day INTEGER;
+  v_quarter_start_month INTEGER;
+  v_year_type TEXT;
 BEGIN
+  -- Normalize year_type: default to 'FY' if NULL or invalid
+  v_year_type := COALESCE(NULLIF(p_year_type, ''), 'FY');
+  IF v_year_type NOT IN ('FY', 'CY') THEN
+    v_year_type := 'FY';
+  END IF;
   CASE p_compliance_type
     WHEN 'one-time' THEN
       -- Use provided due_date directly
@@ -695,22 +714,44 @@ BEGIN
     
     WHEN 'quarterly' THEN
       -- Calculate based on quarter, month in quarter, and day
-      -- If due_month and due_day are provided, use them (more intuitive)
-      -- Otherwise fall back to due_date_offset
+      -- Supports both Financial Year (FY) and Calendar Year (CY)
+      -- FY: Q1=Apr-Jun, Q2=Jul-Sep, Q3=Oct-Dec, Q4=Jan-Mar
+      -- CY: Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec
       IF p_due_month IS NOT NULL AND p_due_day IS NOT NULL THEN
-        -- Determine current quarter start
         v_month := EXTRACT(MONTH FROM p_base_date)::INTEGER;
-        IF v_month <= 3 THEN
-          v_fy_start := DATE_TRUNC('year', p_base_date)::DATE;
-        ELSIF v_month <= 6 THEN
-          v_fy_start := (DATE_TRUNC('year', p_base_date) + INTERVAL '3 months')::DATE;
-        ELSIF v_month <= 9 THEN
-          v_fy_start := (DATE_TRUNC('year', p_base_date) + INTERVAL '6 months')::DATE;
+        v_year := EXTRACT(YEAR FROM p_base_date)::INTEGER;
+        
+        -- Determine quarter start month based on year_type
+        IF v_year_type = 'FY' THEN
+          -- Financial Year (India): Q1=Apr-Jun, Q2=Jul-Sep, Q3=Oct-Dec, Q4=Jan-Mar
+          IF v_month >= 4 AND v_month <= 6 THEN
+            v_quarter_start_month := 4;  -- Q1 starts in April
+          ELSIF v_month >= 7 AND v_month <= 9 THEN
+            v_quarter_start_month := 7;  -- Q2 starts in July
+          ELSIF v_month >= 10 AND v_month <= 12 THEN
+            v_quarter_start_month := 10;  -- Q3 starts in October
+          ELSE
+            v_quarter_start_month := 1;  -- Q4 starts in January
+          END IF;
         ELSE
-          v_fy_start := (DATE_TRUNC('year', p_base_date) + INTERVAL '9 months')::DATE;
+          -- Calendar Year (Gulf/USA): Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec
+          IF v_month <= 3 THEN
+            v_quarter_start_month := 1;  -- Q1 starts in January
+          ELSIF v_month <= 6 THEN
+            v_quarter_start_month := 4;  -- Q2 starts in April
+          ELSIF v_month <= 9 THEN
+            v_quarter_start_month := 7;  -- Q3 starts in July
+          ELSE
+            v_quarter_start_month := 10;  -- Q4 starts in October
+          END IF;
         END IF;
+        
+        -- Calculate quarter start date
+        v_fy_start := MAKE_DATE(v_year, v_quarter_start_month, 1);
+        
         -- Calculate date: quarter start + (month_in_quarter - 1) months + (day - 1) days
         v_due_date := v_fy_start + (p_due_month - 1) * INTERVAL '1 month' + (p_due_day - 1) * INTERVAL '1 day';
+        
         -- If date has passed this quarter, move to next quarter
         IF v_due_date < p_base_date THEN
           v_due_date := v_due_date + INTERVAL '3 months';
@@ -719,16 +760,34 @@ BEGIN
       ELSIF p_due_date_offset IS NOT NULL THEN
         -- Fallback to offset-based calculation (legacy support)
         v_month := EXTRACT(MONTH FROM p_base_date)::INTEGER;
-        IF v_month <= 3 THEN
-          v_fy_start := DATE_TRUNC('year', p_base_date)::DATE;
-        ELSIF v_month <= 6 THEN
-          v_fy_start := (DATE_TRUNC('year', p_base_date) + INTERVAL '3 months')::DATE;
-        ELSIF v_month <= 9 THEN
-          v_fy_start := (DATE_TRUNC('year', p_base_date) + INTERVAL '6 months')::DATE;
+        v_year := EXTRACT(YEAR FROM p_base_date)::INTEGER;
+        
+        -- Determine quarter start month based on year_type
+        IF v_year_type = 'FY' THEN
+          IF v_month >= 4 AND v_month <= 6 THEN
+            v_quarter_start_month := 4;
+          ELSIF v_month >= 7 AND v_month <= 9 THEN
+            v_quarter_start_month := 7;
+          ELSIF v_month >= 10 AND v_month <= 12 THEN
+            v_quarter_start_month := 10;
+          ELSE
+            v_quarter_start_month := 1;
+          END IF;
         ELSE
-          v_fy_start := (DATE_TRUNC('year', p_base_date) + INTERVAL '9 months')::DATE;
+          IF v_month <= 3 THEN
+            v_quarter_start_month := 1;
+          ELSIF v_month <= 6 THEN
+            v_quarter_start_month := 4;
+          ELSIF v_month <= 9 THEN
+            v_quarter_start_month := 7;
+          ELSE
+            v_quarter_start_month := 10;
+          END IF;
         END IF;
+        
+        v_fy_start := MAKE_DATE(v_year, v_quarter_start_month, 1);
         v_due_date := v_fy_start + (p_due_date_offset - 1);
+        
         -- If date has passed this quarter, move to next quarter
         IF v_due_date < p_base_date THEN
           v_due_date := v_due_date + INTERVAL '3 months';
@@ -783,6 +842,8 @@ DECLARE
   v_company_type TEXT;
   v_company_industry TEXT;
   v_company_category TEXT;
+  v_company_year_type TEXT;
+  v_year_type TEXT;  -- Final year_type to use: template > company > 'FY'
   v_fy_year INTEGER;
   v_fy_start_month INTEGER := 4; -- April (Indian FY starts in April)
   v_due_month INTEGER;
@@ -802,7 +863,8 @@ BEGIN
     due_date_offset,
     due_month,
     due_day,
-    created_by
+    created_by,
+    year_type
   INTO v_template
   FROM public.compliance_templates
   WHERE id = p_template_id;
@@ -821,11 +883,14 @@ BEGIN
     SELECT company_id FROM public.match_companies_to_template(p_template_id)
   LOOP
     RAISE NOTICE 'apply_template_to_companies: Processing company %', v_company_id;
-    -- Get company details for metadata
-    SELECT type, industry, industry_categories[1]
-    INTO v_company_type, v_company_industry, v_company_category
+    -- Get company details for metadata and year_type
+    SELECT type, industry, industry_categories[1], COALESCE(year_type, 'FY')
+    INTO v_company_type, v_company_industry, v_company_category, v_company_year_type
     FROM public.companies
     WHERE id = v_company_id;
+    
+    -- Determine year_type: template > company > 'FY'
+    v_year_type := COALESCE(v_template.year_type, v_company_year_type, 'FY');
 
     -- Handle different compliance types
     IF v_template.compliance_type = 'monthly' THEN
@@ -838,7 +903,8 @@ BEGIN
           v_template.due_month,
           v_template.due_day,
           v_template.financial_year,
-          (CURRENT_DATE + (v_i || ' months')::INTERVAL)::DATE
+          (CURRENT_DATE + (v_i || ' months')::INTERVAL)::DATE,
+          v_year_type
         );
 
         -- Calculate financial year for this due date
@@ -866,6 +932,7 @@ BEGIN
           penalty,
           is_critical,
           financial_year,
+          year_type,
           created_by,
           updated_by
         ) VALUES (
@@ -883,6 +950,7 @@ BEGIN
           v_template.penalty,
           v_template.is_critical,
           'FY ' || v_fy_year || '-' || SUBSTRING((v_fy_year + 1)::TEXT, 3, 2),
+          v_year_type,
           v_user_id,
           v_user_id
         )
@@ -904,7 +972,8 @@ BEGIN
           v_template.due_month,
           v_template.due_day,
           v_template.financial_year,
-          (CURRENT_DATE + (v_i * 3 || ' months')::INTERVAL)::DATE
+          (CURRENT_DATE + (v_i * 3 || ' months')::INTERVAL)::DATE,
+          v_year_type
         );
 
         -- Calculate financial year for this due date
@@ -932,6 +1001,7 @@ BEGIN
           penalty,
           is_critical,
           financial_year,
+          year_type,
           created_by,
           updated_by
         ) VALUES (
@@ -949,6 +1019,7 @@ BEGIN
           v_template.penalty,
           v_template.is_critical,
           'FY ' || v_fy_year || '-' || SUBSTRING((v_fy_year + 1)::TEXT, 3, 2),
+          v_year_type,
           v_user_id,
           v_user_id
         )
@@ -970,7 +1041,8 @@ BEGIN
           v_template.due_month,
           v_template.due_day,
           v_template.financial_year,
-          (CURRENT_DATE + (v_i || ' years')::INTERVAL)::DATE
+          (CURRENT_DATE + (v_i || ' years')::INTERVAL)::DATE,
+          v_year_type
         );
 
         -- Calculate financial year for this due date
@@ -998,6 +1070,7 @@ BEGIN
           penalty,
           is_critical,
           financial_year,
+          year_type,
           created_by,
           updated_by
         ) VALUES (
@@ -1015,6 +1088,7 @@ BEGIN
           v_template.penalty,
           v_template.is_critical,
           'FY ' || v_fy_year || '-' || SUBSTRING((v_fy_year + 1)::TEXT, 3, 2),
+          v_year_type,
           v_user_id,
           v_user_id
         )
@@ -1035,7 +1109,8 @@ BEGIN
         v_template.due_month,
         v_template.due_day,
         v_template.financial_year,
-        CURRENT_DATE
+        CURRENT_DATE,
+        v_year_type
       );
 
       INSERT INTO public.regulatory_requirements (
@@ -1053,6 +1128,7 @@ BEGIN
         penalty,
         is_critical,
         financial_year,
+        year_type,
         created_by,
         updated_by
       ) VALUES (
@@ -1070,6 +1146,7 @@ BEGIN
         v_template.penalty,
         v_template.is_critical,
         v_template.financial_year,
+        v_year_type,
         v_user_id,
         v_user_id
       )

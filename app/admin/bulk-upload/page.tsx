@@ -23,6 +23,8 @@ import {
   getColumnName
 } from '@/lib/compliance/validators'
 import { bulkCreateComplianceTemplates } from '@/app/data-room/actions'
+import { resolveErrorsWithAI } from './actions'
+import { createClient } from '@/utils/supabase/client'
 
 const STORAGE_KEY_PREFIX = 'bulk_upload_spreadsheet_data'
 
@@ -53,6 +55,7 @@ function formatCommaList(values: string[], optionsOrder: string[]): string {
 export default function BulkUploadPage() {
   const router = useRouter()
   const { user } = useAuth()
+  const supabase = createClient()
   const [data, setData] = useState<string[][]>([])
   const [validation, setValidation] = useState<ValidationResult | null>(null)
   const [cellErrors, setCellErrors] = useState<Map<string, string>>(new Map())
@@ -62,9 +65,12 @@ export default function BulkUploadPage() {
   const [isInitialized, setIsInitialized] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isSuperadmin, setIsSuperadmin] = useState(false)
+  const [isResolvingErrors, setIsResolvingErrors] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const initRef = useRef(false) // Prevent double initialization
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const cellErrorsRef = useRef<Map<string, string>>(new Map()) // Ref to track errors for cells function
 
   // Multi-select dropdown state (entity_types, industries, industry_categories)
   const [msOpen, setMsOpen] = useState(false)
@@ -255,6 +261,11 @@ export default function BulkUploadPage() {
       errors.set(`${error.row}-${error.columnIndex}`, error.message || 'Invalid')
     })
     setCellErrors(errors)
+    cellErrorsRef.current = errors
+    // Re-render to update error highlighting
+    if (hotInstance) {
+      hotInstance.render()
+    }
   }, [dataToRows])
 
   // Initialize Handsontable on client side only
@@ -337,6 +348,7 @@ export default function BulkUploadPage() {
           case 'entity_types': return [...ENTITY_TYPES]
           case 'industries': return [...INDUSTRIES]
           case 'industry_categories': return [...INDUSTRY_CATEGORIES]
+          case 'year_type': return ['FY', 'CY']
           case 'penalty_type': return ['daily', 'flat', 'interest', 'percentage']
           case 'is_critical':
           case 'is_active': return ['true', 'false']
@@ -348,7 +360,7 @@ export default function BulkUploadPage() {
       const columns = CSV_COLUMNS.map((col, idx) => {
         const base: any = { data: idx }
         
-        const dropdownColumns = ['category', 'compliance_type', 'penalty_type', 'is_critical', 'is_active']
+        const dropdownColumns = ['category', 'compliance_type', 'year_type', 'penalty_type', 'is_critical', 'is_active']
         const multiSelectColumns = ['entity_types', 'industries', 'industry_categories']
         const numericColumns = ['due_date_offset', 'due_month', 'due_day', 'penalty_rate', 'penalty_cap']
         
@@ -438,11 +450,46 @@ export default function BulkUploadPage() {
             errors.set(`${error.row}-${error.columnIndex}`, error.message || 'Invalid')
           })
           setCellErrors(errors)
+          cellErrorsRef.current = errors // Update ref for cells function
+          // Re-render cells to update error highlighting
+          // Use 'hot' (the instance variable) instead of hotInstance (state)
+          setTimeout(() => {
+            hot.render()
+          }, 0)
         },
         cells: function(row, col) {
           const cellProperties: any = {}
           const errorKey = `${row}-${col}`
-          // This would require re-rendering which is complex in vanilla Handsontable
+          
+          // Check if this cell has an error - use ref which is always current
+          const hasError = cellErrorsRef.current.has(errorKey)
+          
+          if (hasError) {
+            // Add className for error cells
+            cellProperties.className = 'htErrorCell'
+          } else {
+            // Explicitly remove error class if no error
+            cellProperties.className = ''
+          }
+          
+          // Add custom renderer to ensure error state is applied on every render
+          const originalRenderer = cellProperties.renderer || Handsontable.renderers.TextRenderer
+          cellProperties.renderer = function(instance: any, td: HTMLElement, row: number, col: number, prop: any, value: any, cellProps: any) {
+            // Call original renderer
+            originalRenderer.apply(this, arguments)
+            
+            // Check error state on every render
+            const errorKey = `${row}-${col}`
+            const hasError = cellErrorsRef.current.has(errorKey)
+            
+            // Apply or remove error class
+            if (hasError) {
+              td.classList.add('htErrorCell')
+            } else {
+              td.classList.remove('htErrorCell')
+            }
+          }
+          
           return cellProperties
         }
       })
@@ -578,7 +625,12 @@ export default function BulkUploadPage() {
       hotInstance.loadData(emptyData)
       setData(emptyData)
       setValidation(null)
-      setCellErrors(new Map())
+      const emptyErrors = new Map()
+      setCellErrors(emptyErrors)
+      cellErrorsRef.current = emptyErrors
+      if (hotInstance) {
+        hotInstance.render()
+      }
       // Clear localStorage and save empty data
       clearLocalStorage()
       saveToLocalStorage(emptyData)
@@ -646,7 +698,12 @@ export default function BulkUploadPage() {
         hotInstance.loadData(emptyData)
         setData(emptyData)
         setValidation(null)
-        setCellErrors(new Map())
+        const emptyErrors = new Map()
+        setCellErrors(emptyErrors)
+        cellErrorsRef.current = emptyErrors
+        if (hotInstance) {
+          hotInstance.render()
+        }
         alert(`Successfully created ${result.created} templates!`)
       }
     } catch (error) {
@@ -655,6 +712,145 @@ export default function BulkUploadPage() {
       setIsUploading(false)
     }
   }, [hotInstance, dataToRows, clearLocalStorage])
+
+  // Check if user is superadmin
+  useEffect(() => {
+    async function checkSuperadmin() {
+      if (!user) {
+        setIsSuperadmin(false)
+        return
+      }
+
+      try {
+        const { data: rpcData, error: rpcError } = await supabase.rpc('is_superadmin', {
+          p_user_id: user.id
+        })
+
+        if (!rpcError && rpcData !== null) {
+          setIsSuperadmin(!!rpcData)
+          return
+        }
+
+        // Fallback: Check user_roles table
+        const { data: rolesData, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('role, company_id')
+          .eq('user_id', user.id)
+          .eq('role', 'superadmin')
+
+        if (!rolesError && rolesData) {
+          const isPlatformSuperadmin = rolesData.some(role => role.company_id === null)
+          setIsSuperadmin(!!isPlatformSuperadmin)
+        }
+      } catch (error) {
+        console.error('Error checking superadmin:', error)
+        setIsSuperadmin(false)
+      }
+    }
+
+    checkSuperadmin()
+  }, [user, supabase])
+
+  // Handle AI error resolution
+  const handleResolveErrors = useCallback(async () => {
+    if (!hotInstance || !validation || validation.valid) {
+      alert('No errors to resolve')
+      return
+    }
+
+    setIsResolvingErrors(true)
+    try {
+      const currentData = hotInstance.getData() as string[][]
+      const result = await resolveErrorsWithAI(currentData, validation)
+
+      if (result.success && result.fixes.length > 0) {
+        // Update spreadsheet cell-by-cell to preserve editability
+        // Disable rendering during batch updates for performance
+        hotInstance.suspendRender()
+        
+        try {
+          // Apply fixes one by one using setDataAtCell to preserve instance state
+          result.fixes.forEach((fix, index) => {
+            hotInstance.setDataAtCell(fix.row, fix.columnIndex, fix.fixedValue)
+          })
+          
+          // Re-enable rendering
+          hotInstance.resumeRender()
+          
+          // Get updated data from instance
+          const updatedData = hotInstance.getData() as string[][]
+          setData(updatedData)
+          
+          // Re-validate
+          const nonEmptyData = updatedData.filter(row => row.some(cell => cell && cell.trim()))
+          const rows = dataToRows(nonEmptyData)
+          const newValidation = validateAll(rows)
+          setValidation(newValidation)
+          
+          // Update cell errors
+          const errors = new Map<string, string>()
+          newValidation.errors.forEach(error => {
+            errors.set(`${error.row}-${error.columnIndex}`, error.message || 'Invalid')
+          })
+          setCellErrors(errors)
+          cellErrorsRef.current = errors
+          // Re-render to update error highlighting
+          setTimeout(() => {
+            hotInstance.render()
+          }, 0)
+          
+          // Auto-save
+          autoSave(updatedData)
+          
+          // Show success message with details
+          const remainingErrors = newValidation.errors.length
+          if (remainingErrors === 0) {
+            alert(`Successfully fixed all ${result.fixes.length} error(s) with AI! The spreadsheet is now error-free.`)
+          } else {
+            alert(`Fixed ${result.fixes.length} error(s) with AI. ${remainingErrors} error(s) remain. Please review and fix manually.`)
+          }
+        } catch (updateError) {
+          // If cell-by-cell update fails, fall back to loadData but preserve instance
+          console.warn('Cell-by-cell update failed, using loadData fallback:', updateError)
+          hotInstance.resumeRender()
+          hotInstance.loadData(result.fixedData)
+          setData(result.fixedData)
+          
+          // Re-validate
+          const nonEmptyData = result.fixedData.filter(row => row.some(cell => cell && cell.trim()))
+          const rows = dataToRows(nonEmptyData)
+          const newValidation = validateAll(rows)
+          setValidation(newValidation)
+          
+          // Update cell errors
+          const errors = new Map<string, string>()
+          newValidation.errors.forEach(error => {
+            errors.set(`${error.row}-${error.columnIndex}`, error.message || 'Invalid')
+          })
+          setCellErrors(errors)
+          cellErrorsRef.current = errors
+          // Re-render to update error highlighting - use setTimeout to ensure state is updated
+          setTimeout(() => {
+            hotInstance.render()
+          }, 0)
+          
+          // Auto-save
+          autoSave(result.fixedData)
+          
+          alert(`Successfully fixed ${result.fixes.length} error(s) with AI!`)
+        }
+      } else if (result.error) {
+        alert(`Failed to resolve errors: ${result.error}`)
+      } else {
+        alert('No fixes were applied')
+      }
+    } catch (error: any) {
+      console.error('Error resolving errors:', error)
+      alert(`Error: ${error.message || 'Failed to resolve errors'}`)
+    } finally {
+      setIsResolvingErrors(false)
+    }
+  }, [hotInstance, validation, dataToRows, autoSave])
 
   // Get non-empty row count
   const nonEmptyRowCount = data.filter(row => row.some(cell => cell && cell.trim())).length
@@ -730,6 +926,31 @@ export default function BulkUploadPage() {
                 className="hidden"
               />
             </label>
+            {isSuperadmin && validation && !validation.valid && validation.errors.length > 0 && (
+              <button
+                onClick={handleResolveErrors}
+                disabled={isResolvingErrors}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 shadow-md ${
+                  !isResolvingErrors
+                    ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-700 hover:shadow-lg'
+                    : 'bg-purple-400 text-white cursor-not-allowed'
+                }`}
+              >
+                {isResolvingErrors ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Resolving...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    Resolve Errors with Finacra
+                  </>
+                )}
+              </button>
+            )}
             <button
               onClick={handleUpload}
               disabled={isUploading || !validation?.valid || nonEmptyRowCount === 0}
@@ -924,6 +1145,21 @@ export default function BulkUploadPage() {
         .handsontable .htCore td.htInvalid {
           background: #ffeaea !important;
           border-color: #ff6b6b !important;
+        }
+        /* Error cells - red background with border */
+        .handsontable .htCore td.htErrorCell {
+          background: #ffebee !important;
+          border: 2px solid #f44336 !important;
+          color: #c62828 !important;
+          font-weight: 500;
+        }
+        .handsontable .htCore td.htErrorCell:hover {
+          background: #ffcdd2 !important;
+        }
+        /* Error cells when selected */
+        .handsontable .htCore td.htErrorCell.current {
+          background: #ffcdd2 !important;
+          border: 2px solid #d32f2f !important;
         }
         /* Input styling - Excel blue border */
         .handsontable input,

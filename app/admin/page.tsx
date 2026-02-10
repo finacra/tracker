@@ -73,6 +73,7 @@ export default function AdminPage() {
     due_month: undefined as number | undefined,
     due_day: undefined as number | undefined,
     due_date: '',
+    year_type: 'FY' as 'FY' | 'CY',  // Financial Year (India) or Calendar Year (Gulf/USA)
     is_active: true,
     // New fields for V2
     required_documents: [] as string[],
@@ -596,6 +597,7 @@ export default function AdminPage() {
                     due_month: undefined,
                     due_day: undefined,
                     due_date: '',
+                    year_type: 'FY',
                     is_active: true,
                     required_documents: [],
                     possible_legal_action: '',
@@ -812,6 +814,7 @@ export default function AdminPage() {
                                       due_month: template.due_month || undefined,
                                       due_day: template.due_day || undefined,
                                       due_date: template.due_date || '',
+                                      year_type: (template as any).year_type || 'FY',
                                       is_active: template.is_active,
                                       required_documents: (template as any).required_documents || [],
                                       possible_legal_action: (template as any).possible_legal_action || '',
@@ -1197,6 +1200,7 @@ export default function AdminPage() {
                         due_month: undefined,
                         due_day: undefined,
                         due_date: '',
+                        year_type: 'FY',
                         is_active: true,
                         required_documents: [],
                         possible_legal_action: '',
@@ -1279,6 +1283,26 @@ export default function AdminPage() {
                   </select>
                 </div>
 
+                {/* Year Type - Only show for quarterly compliance */}
+                {templateForm.compliance_type === 'quarterly' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Financial Year Type *
+                    </label>
+                    <select
+                      value={templateForm.year_type}
+                      onChange={(e) => setTemplateForm(prev => ({ ...prev, year_type: e.target.value as 'FY' | 'CY' }))}
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    >
+                      <option value="FY">Financial Year (India) - Q1: Apr-Jun, Q2: Jul-Sep, Q3: Oct-Dec, Q4: Jan-Mar</option>
+                      <option value="CY">Calendar Year (Gulf/USA) - Q1: Jan-Mar, Q2: Apr-Jun, Q3: Jul-Sep, Q4: Oct-Dec</option>
+                    </select>
+                    <p className="mt-1 text-xs text-gray-400">
+                      Select the year type for quarterly compliance calculations. Indian companies use Financial Year (FY).
+                    </p>
+                  </div>
+                )}
+
                 {/* Entity Types - Multi-select */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -1358,9 +1382,9 @@ export default function AdminPage() {
                     <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-lg hover:border-primary-orange/50 transition-colors cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={['Startups & MSMEs', 'Large Enterprises', 'NGOs & Section 8 Companies', 'Healthcare & Education', 'Real Estate & Construction', 'IT & Technology Services', 'Retail & Manufacturing', 'Ecommerce & D2C', 'Other'].every(category => templateForm.industry_categories.includes(category))}
+                        checked={['Startups & MSMEs', 'Large Enterprises', 'NGOs & Section 8 Companies', 'Healthcare & Education', 'Real Estate & Construction', 'IT & Technology Services', 'Retail & Manufacturing', 'Food & Hospitality', 'Ecommerce & D2C', 'Other'].every(category => templateForm.industry_categories.includes(category))}
                         onChange={(e) => {
-                          const allCategories = ['Startups & MSMEs', 'Large Enterprises', 'NGOs & Section 8 Companies', 'Healthcare & Education', 'Real Estate & Construction', 'IT & Technology Services', 'Retail & Manufacturing', 'Ecommerce & D2C', 'Other']
+                          const allCategories = ['Startups & MSMEs', 'Large Enterprises', 'NGOs & Section 8 Companies', 'Healthcare & Education', 'Real Estate & Construction', 'IT & Technology Services', 'Retail & Manufacturing', 'Food & Hospitality', 'Ecommerce & D2C', 'Other']
                           if (e.target.checked) {
                             setTemplateForm(prev => ({ ...prev, industry_categories: allCategories }))
                           } else {
@@ -1373,7 +1397,7 @@ export default function AdminPage() {
                     </label>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    {['Startups & MSMEs', 'Large Enterprises', 'NGOs & Section 8 Companies', 'Healthcare & Education', 'Real Estate & Construction', 'IT & Technology Services', 'Retail & Manufacturing', 'Ecommerce & D2C', 'Other'].map((category) => (
+                    {['Startups & MSMEs', 'Large Enterprises', 'NGOs & Section 8 Companies', 'Healthcare & Education', 'Real Estate & Construction', 'IT & Technology Services', 'Retail & Manufacturing', 'Food & Hospitality', 'Ecommerce & D2C', 'Other'].map((category) => (
                       <label key={category} className="flex items-center gap-2 p-3 bg-gray-900 border border-gray-700 rounded-lg hover:border-primary-orange/50 transition-colors cursor-pointer">
                         <input
                           type="checkbox"
@@ -1733,6 +1757,7 @@ export default function AdminPage() {
                             due_month: undefined,
                             due_day: undefined,
                             due_date: '',
+                            year_type: 'FY',
                             is_active: true,
                             required_documents: [],
                             possible_legal_action: '',
@@ -1773,6 +1798,7 @@ export default function AdminPage() {
                         due_month: undefined,
                         due_day: undefined,
                         due_date: '',
+                        year_type: 'FY',
                         is_active: true,
                         required_documents: [],
                         possible_legal_action: '',

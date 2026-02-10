@@ -10,6 +10,7 @@ export default function Header() {
   const [showNotifications, setShowNotifications] = useState(false)
   const [isSuperadmin, setIsSuperadmin] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false)
@@ -159,9 +160,9 @@ export default function Header() {
   const userEmail = user?.email || ''
 
   return (
-    <header className="bg-primary-dark-card border-b border-gray-800 sticky top-0 z-50">
-      <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
-        <div className="flex items-center justify-between">
+    <header className="bg-primary-dark-card border-b border-gray-800 sticky top-0 z-50" style={{ overflow: 'visible' }}>
+      <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4" style={{ overflow: 'visible' }}>
+        <div className="flex items-center justify-between" style={{ overflow: 'visible' }}>
           {/* Logo */}
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-orange rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-primary-orange/30 flex-shrink-0">
@@ -220,7 +221,7 @@ export default function Header() {
             </div>
             <div>
               <div className="text-white font-medium text-sm sm:text-base md:text-lg">
-                Finnovate <span className="bg-primary-orange text-white px-1 py-0.5 rounded text-[10px] sm:text-xs md:text-sm">AI</span>
+                Finacra
               </div>
               <div className="text-gray-400 text-[10px] sm:text-xs">Smart Compliance</div>
             </div>
@@ -439,26 +440,115 @@ export default function Header() {
               )}
             </button>
 
-            {/* User Profile */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-orange rounded-full flex items-center justify-center text-white font-medium text-xs sm:text-sm">
-                {userInitials}
-              </div>
-              <div className="hidden lg:block">
-                <div className="text-white text-sm font-medium">{userName}</div>
-                <div className="text-gray-400 text-xs">{userEmail}</div>
-              </div>
+            {/* User Profile with Dropdown */}
+            <div className="relative" style={{ zIndex: 100 }}>
               <button
-                onClick={handleSignOut}
-                className="hidden sm:block ml-2 px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
-                title="Sign out"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  console.log('[Header] User menu clicked, current state:', showUserMenu)
+                  const newState = !showUserMenu
+                  setShowUserMenu(newState)
+                  console.log('[Header] User menu state after toggle:', newState)
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  console.log('[Header] User menu mousedown')
+                }}
+                className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity cursor-pointer relative z-50"
+                type="button"
+                aria-expanded={showUserMenu}
+                aria-haspopup="true"
+                style={{ 
+                  pointerEvents: 'auto',
+                  zIndex: 100,
+                  position: 'relative'
+                }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-orange rounded-full flex items-center justify-center text-white font-medium text-xs sm:text-sm pointer-events-none">
+                  {userInitials}
+                </div>
+                <div className="hidden lg:block pointer-events-none">
+                  <div className="text-white text-sm font-medium">{userName}</div>
+                  <div className="text-gray-400 text-xs">{userEmail}</div>
+                </div>
+                <svg 
+                  className={`w-4 h-4 text-gray-400 transition-transform pointer-events-none ${showUserMenu ? 'rotate-180' : ''}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
+
+              {/* User Menu Dropdown */}
+              {showUserMenu && (
+                <>
+                  {/* Backdrop */}
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowUserMenu(false)
+                    }} 
+                  />
+                  {/* Dropdown */}
+                  <div 
+                    className="absolute right-0 top-full mt-2 w-56 bg-primary-dark-card border border-gray-700 rounded-xl shadow-2xl z-[100] overflow-hidden"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ position: 'absolute' }}
+                  >
+                    <div className="p-2">
+                      {/* Email Preferences */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setShowUserMenu(false)
+                          router.push('/settings/email-preferences')
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors text-left"
+                        type="button"
+                      >
+                        <svg 
+                          className="w-5 h-5" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-sm font-medium">Email Preferences</span>
+                      </button>
+                      
+                      {/* Divider */}
+                      <div className="my-1 border-t border-gray-700"></div>
+                      
+                      {/* Sign Out */}
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation()
+                          setShowUserMenu(false)
+                          await handleSignOut()
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors text-left"
+                        type="button"
+                      >
+                        <svg 
+                          className="w-5 h-5" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        <span className="text-sm font-medium">Sign Out</span>
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -505,7 +595,7 @@ export default function Header() {
                     </svg>
                   </div>
                   <div className="text-white font-medium text-sm">
-                    Finnovate <span className="bg-primary-orange text-white px-1 py-0.5 rounded text-xs">AI</span>
+                    Finacra
                   </div>
                 </div>
                 <button
@@ -566,6 +656,16 @@ export default function Header() {
                     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                   </svg>
                   Team
+                </a>
+                <a
+                  href="/settings/email-preferences"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  Email Preferences
                 </a>
               </nav>
 

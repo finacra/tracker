@@ -1,5 +1,5 @@
 /**
- * Pricing Tier Definitions for Finnovate AI
+ * Pricing Tier Definitions for Finacra AI
  * 
  * Defines all pricing tiers (Starter, Professional, Enterprise)
  * and billing cycles (monthly, quarterly, half-yearly, annual)

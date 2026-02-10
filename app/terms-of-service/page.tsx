@@ -46,7 +46,7 @@ export default function TermsOfServicePage() {
               Agreement to Terms
             </h2>
             <p className="text-gray-300 leading-relaxed text-lg">
-              By accessing our website and using our services, you agree to be bound by these Terms of Service and to comply with all applicable laws and regulations. If you do not agree with these terms, you are prohibited from using or accessing this site or using any other services provided by <span className="text-primary-orange font-medium">Finnovate AI</span>.
+              By accessing our website and using our services, you agree to be bound by these Terms of Service and to comply with all applicable laws and regulations. If you do not agree with these terms, you are prohibited from using or accessing this site or using any other services provided by <span className="text-primary-orange font-medium">Finacra AI</span>.
             </p>
           </section>
 
@@ -56,7 +56,7 @@ export default function TermsOfServicePage() {
               Use License
             </h2>
             <p className="text-gray-300 leading-relaxed text-lg mb-4">
-              Permission is granted to temporarily download one copy of the materials (information or software) on Finnovate AI's website for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:
+              Permission is granted to temporarily download one copy of the materials (information or software) on Finacra AI's website for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:
             </p>
             <div className="space-y-3">
               <div className="flex items-start gap-3 bg-gray-900/50 p-4 rounded-lg border border-gray-800">
@@ -69,7 +69,7 @@ export default function TermsOfServicePage() {
               </div>
               <div className="flex items-start gap-3 bg-gray-900/50 p-4 rounded-lg border border-gray-800">
                 <span className="text-red-400 mt-1">✗</span>
-                <span className="text-gray-300">Attempt to decompile or reverse engineer any software contained on Finnovate AI's website</span>
+                <span className="text-gray-300">Attempt to decompile or reverse engineer any software contained on Finacra AI's website</span>
               </div>
               <div className="flex items-start gap-3 bg-gray-900/50 p-4 rounded-lg border border-gray-800">
                 <span className="text-red-400 mt-1">✗</span>
@@ -88,7 +88,7 @@ export default function TermsOfServicePage() {
               Service Description
             </h2>
             <p className="text-gray-300 leading-relaxed text-lg mb-4">
-              Finnovate AI provides financial compliance management services, including but not limited to:
+              Finacra AI provides financial compliance management services, including but not limited to:
             </p>
             <div className="grid md:grid-cols-2 gap-4">
               <div className="bg-gray-900/50 p-5 rounded-xl border border-gray-800">
@@ -150,11 +150,11 @@ export default function TermsOfServicePage() {
               Disclaimer
             </h2>
             <p className="text-gray-300 leading-relaxed text-lg">
-              The materials on Finnovate AI's website are provided on an 'as is' basis. Finnovate AI makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.
+              The materials on Finacra AI's website are provided on an 'as is' basis. Finacra AI makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.
             </p>
             <div className="bg-yellow-500/10 border border-yellow-500/30 p-5 rounded-xl mt-4">
               <p className="text-gray-300">
-                <strong className="text-yellow-400">Important:</strong> While we strive to provide accurate compliance information, you should always verify regulatory requirements with qualified professionals. Finnovate AI is not a substitute for professional legal or financial advice.
+                <strong className="text-yellow-400">Important:</strong> While we strive to provide accurate compliance information, you should always verify regulatory requirements with qualified professionals. Finacra AI is not a substitute for professional legal or financial advice.
               </p>
             </div>
           </section>
@@ -165,7 +165,7 @@ export default function TermsOfServicePage() {
               Limitations
             </h2>
             <p className="text-gray-300 leading-relaxed text-lg">
-              In no event shall Finnovate AI or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on Finnovate AI's website, even if Finnovate AI or a Finnovate AI authorized representative has been notified orally or in writing of the possibility of such damage.
+              In no event shall Finacra AI or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on Finacra AI's website, even if Finacra AI or a Finacra AI authorized representative has been notified orally or in writing of the possibility of such damage.
             </p>
           </section>
 

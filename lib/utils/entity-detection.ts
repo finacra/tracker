@@ -156,6 +156,16 @@ function mapNICToPrimaryIndustry(nicCode: string, companyName?: string): string 
     if (mfgKeywords.some(kw => nameLower.includes(kw))) {
       return 'Manufacturing'
     }
+    
+    // Food keywords
+    const foodKeywords = ['food', 'foods', 'restaurant', 'restaurants', 'cafe', 'café', 'bakery', 'bakeries', 'catering', 'hospitality', 'hotel', 'hotels', 'dining', 'beverage', 'beverages']
+    if (foodKeywords.some(kw => nameLower.includes(kw))) {
+      // Check if it's more likely food manufacturing or hospitality
+      if (nameLower.includes('manufacturing') || nameLower.includes('production') || nameLower.includes('factory')) {
+        return 'Food Manufacturing'
+      }
+      return 'Food & Hospitality'
+    }
   }
   
   return 'Other'
@@ -359,8 +369,8 @@ export function mapIndustryToCategories(industryPrimary: string, entitySubType: 
     'Construction': ['Real Estate & Construction'],
     'Manufacturing': ['Retail & Manufacturing'],
     'Retail & Trading': ['Retail & Manufacturing'],
-    'Food Manufacturing': ['Retail & Manufacturing'],
-    'Food & Hospitality': ['Retail & Manufacturing'],
+    'Food Manufacturing': ['Food & Hospitality'],
+    'Food & Hospitality': ['Food & Hospitality'],
     'Professional Services': ['IT & Technology Services'], // Professional services often tech-related
   }
   
