@@ -141,7 +141,9 @@ export function calculateRevenueFromMix(customerMix: CustomerMix[]): {
   const byTier: Record<string, number> = {}
 
   for (const mix of customerMix) {
-    const tier = getTierById(mix.tier)
+    // Filter out 'professional' tier if it doesn't exist in PricingTier
+    if (mix.tier === 'professional') continue
+    const tier = getTierById(mix.tier as 'starter' | 'enterprise')
     if (!tier) continue
 
     const annualRevenue = calculateAnnualRevenue(tier, mix.billingCycle)

@@ -576,6 +576,7 @@ function DataRoomPageInner() {
   const [isSendModalOpen, setIsSendModalOpen] = useState(false)
   const [isEmailTemplateOpen, setIsEmailTemplateOpen] = useState(false)
   const [selectedFY, setSelectedFY] = useState<string>('')
+  const [selectedVaultMonth, setSelectedVaultMonth] = useState<string>('')
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set())
   const [selectedDocumentsToSend, setSelectedDocumentsToSend] = useState<Set<string>>(new Set())
   const [isSendingEmail, setIsSendingEmail] = useState(false)
@@ -585,12 +586,29 @@ function DataRoomPageInner() {
     content: 'Please find the attached documents from our Compliance Vault.',
   })
 
-  // Generate financial years from 2019 to current year
+  // Generate financial years from 2019 to current year + 1 (for future years)
   const currentYear = new Date().getFullYear()
-  const financialYears = Array.from({ length: currentYear - 2018 }, (_, i) => {
+  const financialYears = Array.from({ length: currentYear - 2018 + 1 }, (_, i) => {
     const year = 2019 + i
     return `FY ${year}-${(year + 1).toString().slice(-2)}`
   }).reverse()
+
+  // Generate months for vault filter (All + Jan-Dec)
+  const vaultMonths = [
+    { value: '', label: 'All Months' },
+    { value: '01', label: 'January' },
+    { value: '02', label: 'February' },
+    { value: '03', label: 'March' },
+    { value: '04', label: 'April' },
+    { value: '05', label: 'May' },
+    { value: '06', label: 'June' },
+    { value: '07', label: 'July' },
+    { value: '08', label: 'August' },
+    { value: '09', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' },
+  ]
   const [uploadFormData, setUploadFormData] = useState({
     folder: '',
     documentName: '',
@@ -758,6 +776,13 @@ function DataRoomPageInner() {
     } else {
       return `FY ${year - 1}-${year.toString().slice(-2)}`
     }
+  }
+
+  const getMonthFromDate = (dateStr: string): string => {
+    if (!dateStr) return ''
+    const date = new Date(dateStr)
+    const month = (date.getMonth() + 1).toString().padStart(2, '0') // 01-12
+    return month
   }
 
   // Helper function to format period information for display
@@ -1444,7 +1469,7 @@ function DataRoomPageInner() {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-400 text-sm">Checking access...</p>
         </div>
       </div>
@@ -1456,7 +1481,7 @@ function DataRoomPageInner() {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-400 text-sm">Redirecting to subscription...</p>
         </div>
       </div>
@@ -1473,19 +1498,19 @@ function DataRoomPageInner() {
 
       {/* Trial Banner */}
       {accessType === 'trial' && trialDaysRemaining !== null && currentCompany && (
-        <div className="relative z-20 bg-gradient-to-r from-primary-orange/20 to-orange-600/20 border-b border-primary-orange/30">
+        <div className="relative z-20 bg-gradient-to-r from-gray-800/50 to-gray-700/50 border-b border-gray-700">
           <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm">
-              <svg className="w-4 h-4 text-primary-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span className="text-gray-300">
-                <span className="text-primary-orange font-semibold">{trialDaysRemaining} days</span> left in your trial
+                <span className="text-gray-300 font-light">{trialDaysRemaining} days</span> left in your trial
               </span>
             </div>
             <button
               onClick={() => router.push(`/subscribe?company_id=${currentCompany.id}`)}
-              className="text-xs sm:text-sm bg-primary-orange text-white px-3 py-1 rounded-lg hover:bg-primary-orange/90 transition-colors"
+              className="text-xs sm:text-sm bg-gray-700 text-white px-3 py-1 rounded-lg hover:bg-gray-600 transition-colors font-light"
             >
               Upgrade Now
             </button>
@@ -1496,8 +1521,8 @@ function DataRoomPageInner() {
       {/* Main Content */}
       <div className="relative z-10 container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Company Selector */}
-        <div className="mb-4 sm:mb-6">
-          <h2 className="text-gray-400 text-sm font-medium mb-2 sm:mb-3">My companies</h2>
+        <div className="mb-8 sm:mb-10">
+          <h2 className="text-gray-400 text-sm font-light mb-4 sm:mb-5">My companies</h2>
           <CompanySelector
             companies={companies}
             currentCompany={currentCompany}
@@ -1512,10 +1537,10 @@ function DataRoomPageInner() {
         <div className="flex items-center gap-2 mb-4 sm:mb-8 overflow-x-auto pb-2 -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 font-light ${
               activeTab === 'overview'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+                ? 'border-gray-600 bg-gray-800 text-white'
+                : 'border-gray-700 bg-[#1a1a1a] text-gray-400 hover:text-white hover:border-gray-600'
             }`}
           >
             <svg
@@ -1538,10 +1563,10 @@ function DataRoomPageInner() {
           </button>
           <button
             onClick={() => setActiveTab('tracker')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 font-light ${
               activeTab === 'tracker'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+                ? 'border-gray-600 bg-gray-800 text-white'
+                : 'border-gray-700 bg-[#1a1a1a] text-gray-400 hover:text-white hover:border-gray-600'
             }`}
           >
             <svg
@@ -1561,10 +1586,10 @@ function DataRoomPageInner() {
           </button>
           <button
             onClick={() => setActiveTab('documents')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 font-light ${
               activeTab === 'documents'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+                ? 'border-gray-600 bg-gray-800 text-white'
+                : 'border-gray-700 bg-[#1a1a1a] text-gray-400 hover:text-white hover:border-gray-600'
             }`}
           >
             <svg
@@ -1615,10 +1640,10 @@ function DataRoomPageInner() {
           </button>
           <button
             onClick={() => setActiveTab('notices')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 font-light ${
               activeTab === 'notices'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+                ? 'border-gray-600 bg-gray-800 text-white'
+                : 'border-gray-700 bg-[#1a1a1a] text-gray-400 hover:text-white hover:border-gray-600'
             }`}
           >
             <svg
@@ -1639,10 +1664,10 @@ function DataRoomPageInner() {
           </button>
           <button
             onClick={() => setActiveTab('gst')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 font-light ${
               activeTab === 'gst'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+                ? 'border-gray-600 bg-gray-800 text-white'
+                : 'border-gray-700 bg-[#1a1a1a] text-gray-400 hover:text-white hover:border-gray-600'
             }`}
           >
             <svg
@@ -1663,10 +1688,10 @@ function DataRoomPageInner() {
           </button>
           <button
             onClick={() => setActiveTab('dsc')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 font-light ${
               activeTab === 'dsc'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+                ? 'border-gray-600 bg-gray-800 text-white'
+                : 'border-gray-700 bg-[#1a1a1a] text-gray-400 hover:text-white hover:border-gray-600'
             }`}
           >
             <svg
@@ -1689,44 +1714,48 @@ function DataRoomPageInner() {
 
         {/* Content based on active tab */}
         {activeTab === 'overview' && (
-          <div>
-            <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8">
-              {/* Card Header - Stack on Mobile */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-3 mb-4 sm:mb-6">
+          <div className="space-y-6">
+            {/* Main Entity Details Card */}
+            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-6 sm:p-10">
+              {/* Card Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-orange rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
                     <svg
-                      width="16"
-                      height="16"
-                      className="sm:w-5 sm:h-5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
-                      stroke="white"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M14 2V8H20"
-                      stroke="white"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
-                  <h2 className="text-xl sm:text-2xl font-light text-white">Entity Details</h2>
+                      width="20"
+                      height="20"
+                      className="sm:w-6 sm:h-6"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
+                        stroke="white"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M14 2V8H20"
+                        stroke="white"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl sm:text-3xl font-light text-white">Entity Details</h2>
+                    <p className="text-gray-400 text-sm font-light mt-1">Company information and registration details</p>
+                  </div>
                 </div>
                 <div className="sm:ml-auto w-full sm:w-auto">
                   <button
                     onClick={() => router.push('/manage-company')}
-                    className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-primary-orange/20 border border-primary-orange text-primary-orange rounded-lg hover:bg-primary-orange/30 transition-colors text-xs sm:text-sm flex items-center justify-center gap-2"
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all text-sm flex items-center justify-center gap-2 font-light"
                   >
-                    <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                     </svg>
@@ -1736,162 +1765,173 @@ function DataRoomPageInner() {
               </div>
 
               {isLoading ? (
-                <div className="py-8 sm:py-12 flex flex-col items-center justify-center">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mb-4"></div>
-                  <p className="text-gray-400 text-sm sm:text-base">Loading company details...</p>
+                <div className="py-16 flex flex-col items-center justify-center">
+                  <div className="w-10 h-10 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mb-4"></div>
+                  <p className="text-gray-400 text-sm font-light">Loading company details...</p>
                 </div>
               ) : entityDetails ? (
-              <div className="space-y-3 sm:space-y-4">
-                {/* Company Name */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Company Name</label>
-                  <div className="text-white text-base sm:text-lg font-medium break-words">{entityDetails.companyName}</div>
-                </div>
-
-                {/* Type */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Type</label>
-                  <span className="inline-block bg-primary-orange text-white px-3 py-1 rounded-full text-xs sm:text-sm font-medium w-fit">
-                    {entityDetails.type}
-                  </span>
-                </div>
-
-                {/* Reg Date */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Reg Date</label>
-                  <div className="text-white text-base sm:text-lg font-medium">{entityDetails.regDate}</div>
-                </div>
-
-                {/* PAN */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">PAN</label>
-                  <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.pan}</div>
-                </div>
-
-                {/* CIN */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">CIN</label>
-                  <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.cin}</div>
-                </div>
-
-                {/* Address */}
-                <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-0.5">Address</label>
-                  <div className="text-white text-base sm:text-lg font-medium break-words flex-1">{entityDetails.address}</div>
-                </div>
-
-                {/* Phone Number */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Phone Number</label>
-                  <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.phoneNumber}</div>
-                </div>
-
-                {/* Industry Category */}
-                <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-0.5">Industry Category</label>
-                  <div className="text-white text-base sm:text-lg font-medium break-words flex-1">{entityDetails.industryCategory}</div>
-                </div>
-
-                {/* Directors */}
-                <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-1">Directors</label>
-                    <div className="flex-1 space-y-3 sm:space-y-4">
-                      {/* Directors Dropdown */}
-                      <div>
-                        <select
-                          value={selectedDirectorId || ''}
-                          onChange={(e) => setSelectedDirectorId(e.target.value || null)}
-                          className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors appearance-none cursor-pointer"
-                        >
-                          <option value="">Select a director to view profile</option>
-                          {entityDetails.directors.map((director) => (
-                            <option key={director.id} value={director.id}>
-                              {director.firstName} {director.middleName} {director.lastName} {director.din ? `(DIN: ${director.din})` : ''}
-                            </option>
-                          ))}
-                        </select>
+              <div className="space-y-6">
+                {/* Grid Layout for Company Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Company Name - Full Width */}
+                  <div className="md:col-span-2">
+                    <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-5">
+                      <label className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2 block">Company Name</label>
+                      <div className="text-white text-lg font-light break-words">{entityDetails.companyName}</div>
+                    </div>
                   </div>
 
-                      {/* Director Profile */}
-                      {selectedDirectorId && (() => {
-                        const director = entityDetails.directors.find(d => d.id === selectedDirectorId)
-                        if (!director) return null
-                        
-                        return (
-                          <div className={`p-4 sm:p-6 bg-gray-900 border rounded-lg ${
-                            director.verified
-                              ? 'border-green-500/50 bg-green-500/5'
-                              : 'border-gray-700'
-                          }`}>
-                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-4">
-                              <div className="flex-1">
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-                                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-orange/20 rounded-full flex items-center justify-center flex-shrink-0">
-                                    <span className="text-primary-orange font-semibold text-base sm:text-lg">
-                                      {director.firstName?.[0] || ''}{director.lastName?.[0] || ''}
-                                    </span>
-                </div>
-                                  <div className="flex-1 min-w-0">
-                                    <h3 className="text-white font-semibold text-base sm:text-lg break-words">
-                                      {director.firstName} {director.middleName} {director.lastName}
-                                    </h3>
-                                    {director.designation && (
-                                      <p className="text-gray-400 text-xs sm:text-sm break-words">{director.designation}</p>
-                                    )}
-              </div>
-                                  <div className="sm:ml-auto flex items-center gap-2 flex-shrink-0">
-                                    {director.verified && (
-                                      <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded flex items-center gap-1">
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                                          <polyline points="22 4 12 14.01 9 11.01" />
-                                        </svg>
-                                        Verified
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
+                  {/* Type */}
+                  <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-5">
+                    <label className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2 block">Type</label>
+                    <span className="inline-block bg-gray-800 border border-gray-700 text-white px-3 py-1.5 rounded-md text-sm font-light">
+                      {entityDetails.type}
+                    </span>
+                  </div>
 
-                                {/* Director Details Grid */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                  {director.din && (
-                                    <div className="p-3 bg-gray-800 rounded-lg">
-                                      <div className="text-xs text-gray-500 mb-1">DIN Number</div>
-                                      <div className="text-white font-mono text-sm sm:text-base break-all">{director.din}</div>
-                                    </div>
-                                  )}
-                                  {director.pan && (
-                                    <div className="p-3 bg-gray-800 rounded-lg">
-                                      <div className="text-xs text-gray-500 mb-1">PAN Number</div>
-                                      <div className="text-white font-mono text-sm sm:text-base break-all">{director.pan}</div>
-                                    </div>
-                                  )}
-                                  {director.dob && (
-                                    <div className="p-3 bg-gray-800 rounded-lg">
-                                      <div className="text-xs text-gray-500 mb-1">Date of Birth</div>
-                                      <div className="text-white text-sm sm:text-base">{formatDateForDisplay(director.dob)}</div>
-                                    </div>
-                                  )}
-                                  {director.email && (
-                                    <div className="p-3 bg-gray-800 rounded-lg">
-                                      <div className="text-xs text-gray-500 mb-1">Email Address</div>
-                                      <div className="text-white text-sm sm:text-base break-all">{director.email}</div>
-                                    </div>
-                                  )}
-                                  {director.mobile && (
-                                    <div className="p-3 bg-gray-800 rounded-lg">
-                                      <div className="text-xs text-gray-500 mb-1">Mobile Number</div>
-                                      <div className="text-white text-sm sm:text-base break-all">{director.mobile}</div>
-                                    </div>
+                  {/* Reg Date */}
+                  <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-5">
+                    <label className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2 block">Registration Date</label>
+                    <div className="text-white text-base font-light">{entityDetails.regDate}</div>
+                  </div>
+
+                  {/* PAN */}
+                  <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-5">
+                    <label className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2 block">PAN Number</label>
+                    <div className="text-white text-base font-mono font-light break-all">{entityDetails.pan}</div>
+                  </div>
+
+                  {/* CIN */}
+                  <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-5">
+                    <label className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2 block">CIN Number</label>
+                    <div className="text-white text-base font-mono font-light break-all">{entityDetails.cin}</div>
+                  </div>
+
+                  {/* Address - Full Width */}
+                  <div className="md:col-span-2">
+                    <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-5">
+                      <label className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2 block">Registered Address</label>
+                      <div className="text-white text-base font-light break-words leading-relaxed">{entityDetails.address}</div>
+                    </div>
+                  </div>
+
+                  {/* Phone Number */}
+                  <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-5">
+                    <label className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2 block">Phone Number</label>
+                    <div className="text-white text-base font-light break-all">{entityDetails.phoneNumber || 'Not provided'}</div>
+                  </div>
+
+                  {/* Industry Category */}
+                  <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-5">
+                    <label className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2 block">Industry Category</label>
+                    <div className="text-white text-base font-light break-words">{entityDetails.industryCategory}</div>
+                  </div>
+                </div>
+
+                {/* Directors Section */}
+                <div className="border-t border-gray-800 pt-6">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-light text-white mb-2">Directors</h3>
+                    <p className="text-gray-400 text-sm font-light">View and manage company directors</p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    {/* Directors Dropdown */}
+                    <div>
+                      <label className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2 block">Select Director</label>
+                      <select
+                        value={selectedDirectorId || ''}
+                        onChange={(e) => setSelectedDirectorId(e.target.value || null)}
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-all appearance-none cursor-pointer font-light"
+                      >
+                        <option value="">Select a director to view profile</option>
+                        {entityDetails.directors.map((director) => (
+                          <option key={director.id} value={director.id}>
+                            {director.firstName} {director.middleName} {director.lastName} {director.din ? `(DIN: ${director.din})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Director Profile */}
+                    {selectedDirectorId && (() => {
+                      const director = entityDetails.directors.find(d => d.id === selectedDirectorId)
+                      if (!director) return null
+                      
+                      return (
+                        <div className={`bg-gray-900/50 border rounded-xl p-6 ${
+                          director.verified
+                            ? 'border-green-500/30 bg-green-500/5'
+                            : 'border-gray-800'
+                        }`}>
+                          {/* Director Header */}
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+                            <div className="flex items-start gap-4">
+                              <div className="w-14 h-14 bg-gray-800 border border-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
+                                <span className="text-gray-300 font-light text-lg">
+                                  {director.firstName?.[0] || ''}{director.lastName?.[0] || ''}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                                  <h3 className="text-white font-light text-lg break-words">
+                                    {director.firstName} {director.middleName} {director.lastName}
+                                  </h3>
+                                  {director.verified && (
+                                    <span className="px-2.5 py-1 bg-green-500/20 border border-green-500/30 text-green-400 text-xs rounded-md flex items-center gap-1.5 w-fit">
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                        <polyline points="22 4 12 14.01 9 11.01" />
+                                      </svg>
+                                      Verified
+                                    </span>
                                   )}
                                 </div>
+                                {director.designation && (
+                                  <p className="text-gray-400 text-sm break-words font-light">{director.designation}</p>
+                                )}
                               </div>
                             </div>
                           </div>
-                        )
-                      })()}
-                    </div>
+
+                          {/* Director Details Grid */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {director.din && (
+                              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                                <div className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2">DIN Number</div>
+                                <div className="text-white font-mono text-base break-all font-light">{director.din}</div>
+                              </div>
+                            )}
+                            {director.pan && (
+                              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                                <div className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2">PAN Number</div>
+                                <div className="text-white font-mono text-base break-all font-light">{director.pan}</div>
+                              </div>
+                            )}
+                            {director.dob && (
+                              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                                <div className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2">Date of Birth</div>
+                                <div className="text-white text-base font-light">{formatDateForDisplay(director.dob)}</div>
+                              </div>
+                            )}
+                            {director.email && (
+                              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                                <div className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2">Email Address</div>
+                                <div className="text-white text-base break-all font-light">{director.email}</div>
+                              </div>
+                            )}
+                            {director.mobile && (
+                              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                                <div className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2">Mobile Number</div>
+                                <div className="text-white text-base break-all font-light">{director.mobile}</div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </div>
+                </div>
                 </div>
               ) : (
                 <div className="py-12 text-center">
@@ -3218,14 +3258,17 @@ function DataRoomPageInner() {
           return (
             <div className="space-y-4 sm:space-y-6">
               {/* Header */}
-              <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-3 sm:mb-4">
-                  <h2 className="text-xl sm:text-2xl font-light text-white">Compliance Reports</h2>
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-light text-white mb-1">Compliance Reports</h2>
+                    <p className="text-gray-400 text-sm font-light">Comprehensive compliance analytics and insights</p>
+                  </div>
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                     <button
                       onClick={exportPDFReport}
                       disabled={isGeneratingEnhancedPDF}
-                      className="px-3 sm:px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3 sm:px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center justify-center gap-2 font-light text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isGeneratingEnhancedPDF ? (
                         <>
@@ -3251,7 +3294,7 @@ function DataRoomPageInner() {
                     </button>
                     <button
                       onClick={exportComplianceReport}
-                      className="px-3 sm:px-4 py-2 bg-primary-orange/20 border border-primary-orange text-primary-orange rounded-lg hover:bg-primary-orange/30 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+                      className="px-3 sm:px-4 py-2 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 hover:border-gray-600 hover:text-white transition-colors flex items-center justify-center gap-2 text-sm sm:text-base font-light"
                     >
                       <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -3265,7 +3308,7 @@ function DataRoomPageInner() {
                     {overdueCompliances.length > 0 && (
                       <button
                         onClick={exportOverdueReport}
-                        className="px-3 sm:px-4 py-2 bg-red-500/20 border border-red-500 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+                        className="px-3 sm:px-4 py-2 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 hover:border-gray-600 hover:text-white transition-colors flex items-center justify-center gap-2 text-sm sm:text-base font-light"
                       >
                         <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -3279,9 +3322,9 @@ function DataRoomPageInner() {
                     )}
               </div>
                   {isGeneratingEnhancedPDF && (
-                    <div className="mt-4 p-4 bg-primary-orange/10 border border-primary-orange/30 rounded-lg">
+                    <div className="mt-4 p-4 bg-gray-800/50 border border-gray-700 rounded-lg">
                       <div className="flex items-center gap-3">
-                        <svg className="animate-spin h-5 w-5 text-primary-orange" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
@@ -3297,20 +3340,19 @@ function DataRoomPageInner() {
                       <div className="mt-2 text-xs text-gray-400">
                         This may take a few moments as we research legal sections and analyze business impact...
             </div>
-          </div>
+            </div>
         )}
                 </div>
-                <p className="text-gray-400 text-sm sm:text-base">Comprehensive compliance analytics and insights</p>
               </div>
 
               {/* Statistics Overview */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {/* Total Compliances */}
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Total Compliances</h3>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <h3 className="text-xs sm:text-sm font-light text-gray-400 uppercase tracking-wider">Total Compliances</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M9 11l3 3L22 4" />
                         <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7" />
                       </svg>
@@ -3321,27 +3363,27 @@ function DataRoomPageInner() {
                 </div>
 
                 {/* Completed */}
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Completed</h3>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <h3 className="text-xs sm:text-sm font-light text-gray-400 uppercase tracking-wider">Completed</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                     </div>
                   </div>
                   <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{completed}</div>
-                  <p className="text-xs sm:text-sm text-gray-400">
+                  <p className="text-xs sm:text-sm text-gray-400 font-light">
                     {totalCompliances > 0 ? `${Math.round((completed / totalCompliances) * 100)}% completion rate` : 'No compliances'}
                   </p>
                 </div>
 
                 {/* Overdue */}
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Overdue</h3>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <h3 className="text-xs sm:text-sm font-light text-gray-400 uppercase tracking-wider">Overdue</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="8" x2="12" y2="12" />
                         <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -3349,17 +3391,17 @@ function DataRoomPageInner() {
                     </div>
                   </div>
                   <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{overdue}</div>
-                  <p className="text-xs sm:text-sm text-gray-400">
+                  <p className="text-xs sm:text-sm text-gray-400 font-light">
                     {totalCompliances > 0 ? `${Math.round((overdue / totalCompliances) * 100)}% overdue rate` : 'No compliances'}
                   </p>
                 </div>
 
                 {/* Pending */}
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Pending</h3>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-yellow-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <h3 className="text-xs sm:text-sm font-light text-gray-400 uppercase tracking-wider">Pending</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="8" x2="12" y2="12" />
                         <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -3367,14 +3409,14 @@ function DataRoomPageInner() {
                     </div>
                   </div>
                   <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{pending}</div>
-                  <p className="text-xs sm:text-sm text-gray-400">In progress</p>
+                  <p className="text-xs sm:text-sm text-gray-400 font-light">In progress</p>
                 </div>
 
                 {/* Not Started */}
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Not Started</h3>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <h3 className="text-xs sm:text-sm font-light text-gray-400 uppercase tracking-wider">Not Started</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
                       <svg width="20" height="20" className="sm:w-6 sm:h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="8" x2="12" y2="12" />
@@ -3383,15 +3425,15 @@ function DataRoomPageInner() {
                     </div>
                   </div>
                   <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{notStarted}</div>
-                  <p className="text-xs sm:text-sm text-gray-400">Awaiting action</p>
+                  <p className="text-xs sm:text-sm text-gray-400 font-light">Awaiting action</p>
                 </div>
 
               {/* Compliance Score */}
-              <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <h3 className="text-base sm:text-lg font-medium text-gray-300">Compliance Score</h3>
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <svg width="20" height="20" className="sm:w-6 sm:h-6 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <h3 className="text-xs sm:text-sm font-light text-gray-400 uppercase tracking-wider">Compliance Score</h3>
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg width="20" height="20" className="sm:w-6 sm:h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M12 2L2 7l10 5 10-5-10-5z" />
                       <path d="M2 17l10 5 10-5" />
                       <path d="M2 12l10 5 10-5" />
@@ -3403,20 +3445,20 @@ function DataRoomPageInner() {
                     {totalCompliances === 0 ? '—' : `${complianceScore}`}
                   </div>
                   {totalCompliances > 0 && (
-                    <div className="text-xs sm:text-sm text-gray-400">/ 100</div>
+                    <div className="text-xs sm:text-sm text-gray-400 font-light">/ 100</div>
                   )}
                 </div>
-                <p className="text-xs sm:text-sm text-gray-400">
+                <p className="text-xs sm:text-sm text-gray-400 font-light">
                   Overall compliance health based on completion and overdue items
                 </p>
               </div>
 
               {/* Total Penalty */}
-              <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Total Penalty</h3>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <h3 className="text-xs sm:text-sm font-light text-gray-400 uppercase tracking-wider">Total Penalty</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="8" x2="12" y2="12" />
                         <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -3426,35 +3468,27 @@ function DataRoomPageInner() {
                   <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">
                     {totalPenalty > 0 ? `₹${totalPenalty.toLocaleString('en-IN')}` : '₹0'}
                   </div>
-                  <p className="text-xs sm:text-sm text-gray-400">Accumulated penalties</p>
+                  <p className="text-xs sm:text-sm text-gray-400 font-light">Accumulated penalties</p>
                 </div>
               </div>
 
               {/* Status Breakdown Chart */}
-              <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
                 <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Status Breakdown</h3>
                 <div className="space-y-3 sm:space-y-4">
                   {Object.entries(statusBreakdown).map(([status, count]) => {
                     const percentage = totalCompliances > 0 ? (count / totalCompliances) * 100 : 0
-                    const statusColors: Record<string, { bg: string; text: string; bar: string }> = {
-                      completed: { bg: 'bg-green-500/20', text: 'text-green-400', bar: 'bg-green-500' },
-                      pending: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', bar: 'bg-yellow-500' },
-                      overdue: { bg: 'bg-red-500/20', text: 'text-red-400', bar: 'bg-red-500' },
-                      notStarted: { bg: 'bg-gray-500/20', text: 'text-gray-400', bar: 'bg-gray-500' },
-                      upcoming: { bg: 'bg-blue-500/20', text: 'text-blue-400', bar: 'bg-blue-500' }
-                    }
-                    const colors = statusColors[status] || statusColors.notStarted
                     const statusLabel = status === 'notStarted' ? 'Not Started' : status.charAt(0).toUpperCase() + status.slice(1)
                     
                     return (
                       <div key={status}>
                         <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                          <span className={`text-xs sm:text-sm font-medium ${colors.text}`}>{statusLabel}</span>
-                          <span className="text-xs sm:text-sm text-gray-400">{count} ({Math.round(percentage)}%)</span>
+                          <span className="text-xs sm:text-sm font-light text-gray-300">{statusLabel}</span>
+                          <span className="text-xs sm:text-sm text-gray-400 font-light">{count} ({Math.round(percentage)}%)</span>
                         </div>
                         <div className="w-full bg-gray-800 rounded-full h-1.5 sm:h-2">
                           <div
-                            className={`h-1.5 sm:h-2 rounded-full ${colors.bar} transition-all duration-300`}
+                            className="h-1.5 sm:h-2 rounded-full bg-gray-600 transition-all duration-300"
                             style={{ width: `${percentage}%` }}
                           />
                         </div>
@@ -3465,7 +3499,7 @@ function DataRoomPageInner() {
               </div>
 
               {/* Category Breakdown */}
-              <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
                 <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Category Breakdown</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   {Object.entries(categoryBreakdown)
@@ -3473,18 +3507,18 @@ function DataRoomPageInner() {
                     .map(([category, count]) => {
                       const percentage = totalCompliances > 0 ? (count / totalCompliances) * 100 : 0
                       return (
-                        <div key={category} className="border border-gray-700 rounded-lg p-3 sm:p-4">
+                        <div key={category} className="border border-gray-800 rounded-lg p-3 sm:p-4 bg-gray-900/50">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-white font-medium text-sm sm:text-base break-words">{category}</span>
-                            <span className="text-primary-orange font-semibold text-sm sm:text-base flex-shrink-0 ml-2">{count}</span>
+                            <span className="text-white font-light text-sm sm:text-base break-words">{category}</span>
+                            <span className="text-gray-300 font-light text-sm sm:text-base flex-shrink-0 ml-2">{count}</span>
                           </div>
                           <div className="w-full bg-gray-800 rounded-full h-1 sm:h-1.5">
                             <div
-                              className="bg-primary-orange h-1 sm:h-1.5 rounded-full transition-all duration-300"
+                              className="bg-gray-600 h-1 sm:h-1.5 rounded-full transition-all duration-300"
                               style={{ width: `${percentage}%` }}
                             />
                           </div>
-                          <p className="text-[10px] sm:text-xs text-gray-400 mt-1">{Math.round(percentage)}% of total</p>
+                          <p className="text-[10px] sm:text-xs text-gray-400 mt-1 font-light">{Math.round(percentage)}% of total</p>
                         </div>
                       )
                     })}
@@ -3492,7 +3526,7 @@ function DataRoomPageInner() {
               </div>
 
               {/* Compliance Type Breakdown */}
-              <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
                 <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Compliance Type Breakdown</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                   {Object.entries(complianceTypeBreakdown)
@@ -3504,47 +3538,40 @@ function DataRoomPageInner() {
                         'quarterly': 'Quarterly',
                         'annual': 'Annual'
                       }
-                      const typeColors: Record<string, { bg: string; text: string; border: string; bar: string }> = {
-                        'one-time': { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', bar: 'bg-blue-400' },
-                        'monthly': { bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/30', bar: 'bg-purple-400' },
-                        'quarterly': { bg: 'bg-indigo-500/20', text: 'text-indigo-400', border: 'border-indigo-500/30', bar: 'bg-indigo-400' },
-                        'annual': { bg: 'bg-cyan-500/20', text: 'text-cyan-400', border: 'border-cyan-500/30', bar: 'bg-cyan-400' }
-                      }
-                      const colors = typeColors[type] || typeColors['one-time']
                       const completionRate = data.total > 0 ? (data.completed / data.total) * 100 : 0
                       
                       return (
-                        <div key={type} className={`border ${colors.border} rounded-lg p-3 sm:p-4 ${colors.bg}`}>
+                        <div key={type} className="border border-gray-800 rounded-lg p-3 sm:p-4 bg-gray-900/50">
                           <div className="flex items-center justify-between mb-2 sm:mb-3">
-                            <h4 className={`font-semibold text-sm sm:text-base ${colors.text}`}>{typeLabels[type]}</h4>
-                            <span className="text-white font-bold text-base sm:text-lg flex-shrink-0 ml-2">{data.total}</span>
+                            <h4 className="font-light text-sm sm:text-base text-white">{typeLabels[type]}</h4>
+                            <span className="text-white font-light text-base sm:text-lg flex-shrink-0 ml-2">{data.total}</span>
                           </div>
                           <div className="space-y-1.5 sm:space-y-2">
                             <div className="flex items-center justify-between text-xs sm:text-sm">
-                              <span className="text-gray-400">Completed</span>
-                              <span className="text-green-400 font-medium">{data.completed}</span>
+                              <span className="text-gray-400 font-light">Completed</span>
+                              <span className="text-gray-300 font-light">{data.completed}</span>
                             </div>
                             <div className="flex items-center justify-between text-xs sm:text-sm">
-                              <span className="text-gray-400">Overdue</span>
-                              <span className="text-red-400 font-medium">{data.overdue}</span>
+                              <span className="text-gray-400 font-light">Overdue</span>
+                              <span className="text-gray-300 font-light">{data.overdue}</span>
                             </div>
                             <div className="flex items-center justify-between text-xs sm:text-sm">
-                              <span className="text-gray-400">Pending</span>
-                              <span className="text-yellow-400 font-medium">{data.pending}</span>
+                              <span className="text-gray-400 font-light">Pending</span>
+                              <span className="text-gray-300 font-light">{data.pending}</span>
                             </div>
                             <div className="flex items-center justify-between text-xs sm:text-sm">
-                              <span className="text-gray-400">Not Started</span>
-                              <span className="text-gray-400 font-medium">{data.notStarted}</span>
+                              <span className="text-gray-400 font-light">Not Started</span>
+                              <span className="text-gray-300 font-light">{data.notStarted}</span>
                             </div>
                           </div>
-                          <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-700">
+                          <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-800">
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10px] sm:text-xs text-gray-400">Completion Rate</span>
-                              <span className={`text-[10px] sm:text-xs font-semibold ${colors.text}`}>{Math.round(completionRate)}%</span>
+                              <span className="text-[10px] sm:text-xs text-gray-400 font-light">Completion Rate</span>
+                              <span className="text-[10px] sm:text-xs font-light text-gray-300">{Math.round(completionRate)}%</span>
                             </div>
                             <div className="w-full bg-gray-800 rounded-full h-1 sm:h-1.5">
                               <div
-                                className={`h-1 sm:h-1.5 rounded-full ${colors.bar} transition-all duration-300`}
+                                className="h-1 sm:h-1.5 rounded-full bg-gray-600 transition-all duration-300"
                                 style={{ width: `${completionRate}%` }}
                               />
                             </div>
@@ -3557,7 +3584,7 @@ function DataRoomPageInner() {
 
               {/* Financial Year Breakdown */}
               {Object.keys(fyBreakdown).length > 0 && (
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
                   <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Financial Year Breakdown</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     {Object.entries(fyBreakdown)
@@ -3571,9 +3598,9 @@ function DataRoomPageInner() {
                         return getYear(b) - getYear(a)
                       })
                       .map(([fy, count]) => (
-                        <div key={fy} className="border border-gray-700 rounded-lg p-3 sm:p-4 text-center">
+                        <div key={fy} className="border border-gray-800 rounded-lg p-3 sm:p-4 text-center bg-gray-900/50">
                           <div className="text-xl sm:text-2xl font-light text-white mb-1">{count}</div>
-                          <div className="text-xs sm:text-sm text-gray-400 break-words">{fy}</div>
+                          <div className="text-xs sm:text-sm text-gray-400 break-words font-light">{fy}</div>
                         </div>
                       ))}
                   </div>
@@ -3693,7 +3720,7 @@ function DataRoomPageInner() {
                 <select
                   value={noticesFilter}
                   onChange={(e) => setNoticesFilter(e.target.value as any)}
-                  className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange"
+                  className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 >
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
@@ -3704,7 +3731,7 @@ function DataRoomPageInner() {
                 <select
                   value={noticesTypeFilter}
                   onChange={(e) => setNoticesTypeFilter(e.target.value)}
-                  className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange"
+                  className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 >
                   <option value="all">All Types</option>
                   <option value="Income Tax">Income Tax</option>
@@ -3714,7 +3741,7 @@ function DataRoomPageInner() {
                 </select>
                 <button 
                   onClick={() => setIsAddNoticeModalOpen(true)}
-                  className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2 text-sm"
+                  className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm font-light"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 5v14M5 12h14" />
@@ -3794,8 +3821,8 @@ function DataRoomPageInner() {
                   <div
                     key={notice.id}
                     onClick={() => setSelectedNotice(notice)}
-                    className={`bg-primary-dark-card border rounded-xl p-4 cursor-pointer transition-all hover:border-primary-orange/50 ${
-                      selectedNotice?.id === notice.id ? 'border-primary-orange' : 'border-gray-800'
+                    className={`bg-[#1a1a1a] border rounded-xl p-4 cursor-pointer transition-all hover:border-gray-600 ${
+                      selectedNotice?.id === notice.id ? 'border-gray-600' : 'border-gray-800'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3 mb-2">
@@ -3804,7 +3831,7 @@ function DataRoomPageInner() {
                           notice.type === 'Income Tax' ? 'bg-blue-500/20 text-blue-400' :
                           notice.type === 'GST' ? 'bg-green-500/20 text-green-400' :
                           notice.type === 'MCA/RoC' ? 'bg-purple-500/20 text-purple-400' :
-                          'bg-orange-500/20 text-orange-400'
+                          'bg-gray-500/20 text-gray-400'
                         }`}>
                           {notice.type}
                         </span>
@@ -3841,7 +3868,7 @@ function DataRoomPageInner() {
                             selectedNotice.type === 'Income Tax' ? 'bg-blue-500/20' :
                             selectedNotice.type === 'GST' ? 'bg-green-500/20' :
                             selectedNotice.type === 'MCA/RoC' ? 'bg-purple-500/20' :
-                            'bg-orange-500/20'
+                            'bg-gray-500/20'
                           }`}>
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={
                               selectedNotice.type === 'Income Tax' ? '#3B82F6' :
@@ -3915,7 +3942,7 @@ function DataRoomPageInner() {
                           {selectedNotice.timeline.map((event: any, idx: number) => (
                             <div key={idx} className="flex items-start gap-3">
                               <div className="flex flex-col items-center">
-                                <div className={`w-3 h-3 rounded-full ${idx === 0 ? 'bg-primary-orange' : 'bg-gray-600'}`}></div>
+                                <div className={`w-3 h-3 rounded-full ${idx === 0 ? 'bg-gray-500' : 'bg-gray-600'}`}></div>
                                 {idx < selectedNotice.timeline.length - 1 && (
                                   <div className="w-0.5 h-8 bg-gray-700"></div>
                                 )}
@@ -3941,7 +3968,7 @@ function DataRoomPageInner() {
                             onChange={(e) => setNoticeResponse(e.target.value)}
                             placeholder="Enter your response or remarks..."
                             rows={4}
-                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors resize-none"
+                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors resize-none font-light"
                           />
                           <div className="flex items-center justify-between mt-4">
                             <button className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm">
@@ -3959,7 +3986,7 @@ function DataRoomPageInner() {
                                 setIsSubmittingResponse(false)
                               }}
                               disabled={isSubmittingResponse || !noticeResponse.trim()}
-                              className="px-6 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed font-light"
                             >
                               {isSubmittingResponse ? (
                                 <>
@@ -4077,7 +4104,7 @@ function DataRoomPageInner() {
                     <select
                       value={newNoticeForm.type}
                       onChange={(e) => setNewNoticeForm({ ...newNoticeForm, type: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                     >
                       <option value="Income Tax">Income Tax</option>
                       <option value="GST">GST</option>
@@ -4096,7 +4123,7 @@ function DataRoomPageInner() {
                       value={newNoticeForm.subType}
                       onChange={(e) => setNewNoticeForm({ ...newNoticeForm, subType: e.target.value })}
                       placeholder="e.g., Scrutiny Notice, Show Cause Notice"
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                     />
                   </div>
                 </div>
@@ -4112,7 +4139,7 @@ function DataRoomPageInner() {
                       value={newNoticeForm.section}
                       onChange={(e) => setNewNoticeForm({ ...newNoticeForm, section: e.target.value })}
                       placeholder="e.g., Section 143(2), Section 73"
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                     />
                   </div>
 
@@ -4123,7 +4150,7 @@ function DataRoomPageInner() {
                     <select
                       value={newNoticeForm.priority}
                       onChange={(e) => setNewNoticeForm({ ...newNoticeForm, priority: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                     >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
@@ -4143,7 +4170,7 @@ function DataRoomPageInner() {
                     value={newNoticeForm.subject}
                     onChange={(e) => setNewNoticeForm({ ...newNoticeForm, subject: e.target.value })}
                     placeholder="Enter the notice subject/title"
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                   />
                 </div>
 
@@ -4158,7 +4185,7 @@ function DataRoomPageInner() {
                       value={newNoticeForm.issuedBy}
                       onChange={(e) => setNewNoticeForm({ ...newNoticeForm, issuedBy: e.target.value })}
                       placeholder="e.g., Income Tax Department"
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                     />
                   </div>
 
@@ -4182,7 +4209,7 @@ function DataRoomPageInner() {
                           }
                         }}
                         placeholder="Select date"
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors cursor-pointer pr-10"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors cursor-pointer pr-10"
                       />
                       <input
                         type="date"
@@ -4223,7 +4250,7 @@ function DataRoomPageInner() {
                           }
                         }}
                         placeholder="Select date"
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors cursor-pointer pr-10"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors cursor-pointer pr-10"
                       />
                       <input
                         type="date"
@@ -4255,7 +4282,7 @@ function DataRoomPageInner() {
                     onChange={(e) => setNewNoticeForm({ ...newNoticeForm, description: e.target.value })}
                     placeholder="Enter the full notice description and requirements..."
                     rows={5}
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors resize-none"
+                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors resize-none"
                   />
                 </div>
 
@@ -4310,7 +4337,7 @@ function DataRoomPageInner() {
                           }
                         }}
                         placeholder="Enter document name and press Enter"
-                        className="flex-1 px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="flex-1 px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                       />
                       <button
                         onClick={() => {
@@ -4322,7 +4349,7 @@ function DataRoomPageInner() {
                             setNewDocument('')
                           }
                         }}
-                        className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2"
+                        className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2 font-light"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M12 5v14M5 12h14" />
@@ -4417,7 +4444,7 @@ function DataRoomPageInner() {
                       setIsSubmittingNotice(false)
                     }}
                     disabled={isSubmittingNotice}
-                    className="px-6 py-2.5 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-6 py-2.5 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-light"
                   >
                     {isSubmittingNotice ? (
                       <>
@@ -4458,7 +4485,7 @@ function DataRoomPageInner() {
                   {/* Progress Steps */}
                   <div className="flex items-center justify-center gap-4 mb-8">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-primary-orange rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
+                      <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-white text-sm font-light">1</div>
                       <span className="text-white text-sm">Connect</span>
                     </div>
                     <div className="h-px w-12 bg-gray-700"></div>
@@ -4485,7 +4512,7 @@ function DataRoomPageInner() {
                         onChange={(e) => setGstCredentials({ ...gstCredentials, gstin: e.target.value.toUpperCase() })}
                         placeholder="Enter your 15-digit GSTIN"
                         maxLength={15}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors font-mono tracking-wider"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-mono tracking-wider"
                       />
                       <p className="mt-1 text-xs text-gray-500">Example: 27AQOPD9471C3ZM</p>
                     </div>
@@ -4499,7 +4526,7 @@ function DataRoomPageInner() {
                         value={gstCredentials.gstUsername}
                         onChange={(e) => setGstCredentials({ ...gstCredentials, gstUsername: e.target.value })}
                         placeholder="Enter your GST portal username"
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                       />
                     </div>
 
@@ -4580,7 +4607,7 @@ function DataRoomPageInner() {
                     </div>
                     <div className="h-px w-12 bg-green-500"></div>
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-primary-orange rounded-full flex items-center justify-center text-white text-sm font-bold">2</div>
+                      <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-white text-sm font-light">2</div>
                       <span className="text-white text-sm">Verify OTP</span>
                     </div>
                     <div className="h-px w-12 bg-gray-700"></div>
@@ -4615,10 +4642,10 @@ function DataRoomPageInner() {
                         onChange={(e) => setGstOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="Enter 6-digit OTP"
                         maxLength={6}
-                        className="w-full px-4 py-4 bg-gray-900 border border-gray-700 rounded-lg text-white text-center text-2xl font-mono tracking-[0.5em] placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-4 bg-gray-900 border border-gray-700 rounded-lg text-white text-center text-2xl font-mono tracking-[0.5em] placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                       />
                       <p className="mt-2 text-center text-xs text-gray-500">
-                        OTP expires in <span className="text-primary-orange">5:00</span> minutes
+                        OTP expires in <span className="text-gray-400">5:00</span> minutes
                       </p>
                     </div>
 
@@ -4711,7 +4738,7 @@ function DataRoomPageInner() {
                       </button>
                     </div>
 
-                    <button className="w-full text-center text-sm text-primary-orange hover:text-primary-orange/80 transition-colors">
+                    <button className="w-full text-center text-sm text-gray-400 hover:text-gray-300 transition-colors font-light">
                       Didn't receive OTP? Resend
                     </button>
                   </div>
@@ -4741,7 +4768,7 @@ function DataRoomPageInner() {
                       <select
                         value={selectedGstPeriod}
                         onChange={(e) => setSelectedGstPeriod(e.target.value)}
-                        className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                       >
                         <option value="012026">January 2026</option>
                         <option value="122025">December 2025</option>
@@ -4779,8 +4806,8 @@ function DataRoomPageInner() {
                       onClick={() => setGstActiveSection(tab.id as any)}
                       className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap ${
                         gstActiveSection === tab.id
-                          ? 'bg-primary-orange text-white'
-                          : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                          ? 'bg-gray-700 text-white font-light'
+                          : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 font-light'
                       }`}
                     >
                       <span>{tab.icon}</span>
@@ -5103,9 +5130,9 @@ function DataRoomPageInner() {
                         </div>
                       </div>
 
-                      <div className="bg-primary-orange/10 border border-primary-orange/30 rounded-xl p-6">
-                        <h4 className="text-gray-400 text-sm mb-4">Tax Paid</h4>
-                        <p className="text-3xl font-light text-primary-orange mb-2">₹{gstData.gstr3b.taxPaid.toLocaleString('en-IN')}</p>
+                      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+                        <h4 className="text-gray-400 text-sm mb-4 font-light">Tax Paid</h4>
+                        <p className="text-3xl font-light text-gray-300 mb-2">₹{gstData.gstr3b.taxPaid.toLocaleString('en-IN')}</p>
                         <div className="text-xs text-gray-500 space-y-1">
                           <div className="flex justify-between"><span>Cash</span><span>₹81,400</span></div>
                           <div className="flex justify-between"><span>ITC</span><span>₹81,400</span></div>
@@ -5237,7 +5264,7 @@ function DataRoomPageInner() {
                         value={dscCredentials.name}
                         onChange={(e) => setDscCredentials({ ...dscCredentials, name: e.target.value })}
                         placeholder="Enter certificate name"
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                       />
                     </div>
 
@@ -5250,7 +5277,7 @@ function DataRoomPageInner() {
                         value={dscCredentials.certificateNumber}
                         onChange={(e) => setDscCredentials({ ...dscCredentials, certificateNumber: e.target.value })}
                         placeholder="Enter certificate number"
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                       />
                     </div>
 
@@ -5263,7 +5290,7 @@ function DataRoomPageInner() {
                         value={dscCredentials.issuer}
                         onChange={(e) => setDscCredentials({ ...dscCredentials, issuer: e.target.value })}
                         placeholder="e.g., eMudhra, Sify, etc."
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                       />
                     </div>
 
@@ -5275,7 +5302,7 @@ function DataRoomPageInner() {
                         type="date"
                         value={dscCredentials.expiryDate}
                         onChange={(e) => setDscCredentials({ ...dscCredentials, expiryDate: e.target.value })}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                       />
                     </div>
                   </div>
@@ -5293,7 +5320,7 @@ function DataRoomPageInner() {
                         value="1"
                         checked={dscCredentials.frequency === '1'}
                         onChange={(e) => setDscCredentials({ ...dscCredentials, frequency: e.target.value as '1' | '2' | 'custom' })}
-                        className="w-5 h-5 text-primary-orange bg-gray-900 border-gray-700 focus:ring-primary-orange focus:ring-2"
+                        className="w-5 h-5 text-gray-400 bg-gray-900 border-gray-700 focus:ring-gray-500 focus:ring-2"
                       />
                       <div>
                         <span className="text-white font-medium">1 Year</span>
@@ -5308,7 +5335,7 @@ function DataRoomPageInner() {
                         value="2"
                         checked={dscCredentials.frequency === '2'}
                         onChange={(e) => setDscCredentials({ ...dscCredentials, frequency: e.target.value as '1' | '2' | 'custom' })}
-                        className="w-5 h-5 text-primary-orange bg-gray-900 border-gray-700 focus:ring-primary-orange focus:ring-2"
+                        className="w-5 h-5 text-gray-400 bg-gray-900 border-gray-700 focus:ring-gray-500 focus:ring-2"
                       />
                       <div>
                         <span className="text-white font-medium">2 Years</span>
@@ -5323,7 +5350,7 @@ function DataRoomPageInner() {
                         value="custom"
                         checked={dscCredentials.frequency === 'custom'}
                         onChange={(e) => setDscCredentials({ ...dscCredentials, frequency: e.target.value as '1' | '2' | 'custom' })}
-                        className="w-5 h-5 text-primary-orange bg-gray-900 border-gray-700 focus:ring-primary-orange focus:ring-2"
+                        className="w-5 h-5 text-gray-400 bg-gray-900 border-gray-700 focus:ring-gray-500 focus:ring-2"
                       />
                       <div>
                         <span className="text-white font-medium">Custom</span>
@@ -5350,7 +5377,7 @@ function DataRoomPageInner() {
                           }
                         }}
                         placeholder="Enter number of years (1-10)"
-                        className="w-full sm:w-64 px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full sm:w-64 px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                       />
                       <p className="mt-2 text-xs text-gray-500">Enter a number between 1 and 10 years</p>
                     </div>
@@ -5392,7 +5419,7 @@ function DataRoomPageInner() {
                           onChange={(e) => setDscCredentials({ ...dscCredentials, inHouseNotifications: e.target.checked })}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-orange rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-orange"></div>
+                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gray-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-600"></div>
                       </label>
                     </div>
 
@@ -5426,7 +5453,7 @@ function DataRoomPageInner() {
                           onChange={(e) => setDscCredentials({ ...dscCredentials, emailNotifications: e.target.checked })}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-orange rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-orange"></div>
+                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gray-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-600"></div>
                       </label>
                     </div>
 
@@ -5443,7 +5470,7 @@ function DataRoomPageInner() {
                               {dscCredentials.notificationEmails.map((email, index) => (
                                 <div
                                   key={index}
-                                  className="flex items-center gap-2 px-3 py-1.5 bg-primary-orange/20 border border-primary-orange/30 rounded-lg text-sm text-white"
+                                  className="flex items-center gap-2 px-3 py-1.5 bg-gray-800/50 border border-gray-700 rounded-lg text-sm text-white font-light"
                                 >
                                   <span>{email}</span>
                                   <button
@@ -5452,7 +5479,7 @@ function DataRoomPageInner() {
                                       updated.splice(index, 1)
                                       setDscCredentials({ ...dscCredentials, notificationEmails: updated })
                                     }}
-                                    className="text-primary-orange hover:text-primary-orange/80 transition-colors"
+                                    className="text-gray-400 hover:text-gray-300 transition-colors"
                                   >
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                       <line x1="18" y1="6" x2="6" y2="18" />
@@ -5471,7 +5498,7 @@ function DataRoomPageInner() {
                               value={newEmail}
                               onChange={(e) => setNewEmail(e.target.value)}
                               placeholder="Enter email address"
-                              className="flex-1 px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors text-sm"
+                              className="flex-1 px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors text-sm"
                               onKeyPress={(e) => {
                                 if (e.key === 'Enter' && newEmail.trim() && newEmail.includes('@')) {
                                   if (!dscCredentials.notificationEmails.includes(newEmail.trim())) {
@@ -5497,7 +5524,7 @@ function DataRoomPageInner() {
                                 }
                               }}
                               disabled={!newEmail.trim() || !newEmail.includes('@') || dscCredentials.notificationEmails.includes(newEmail.trim())}
-                              className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                              className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-light"
                             >
                               Add
                             </button>
@@ -5561,7 +5588,7 @@ function DataRoomPageInner() {
                             value={dscCredentials.platformEmail}
                             onChange={(e) => setDscCredentials({ ...dscCredentials, platformEmail: e.target.value })}
                             placeholder="Enter platform email address"
-                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                           />
                         </div>
 
@@ -5574,7 +5601,7 @@ function DataRoomPageInner() {
                             value={dscCredentials.platformPassword}
                             onChange={(e) => setDscCredentials({ ...dscCredentials, platformPassword: e.target.value })}
                             placeholder="Enter platform password"
-                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                           />
                         </div>
                       </div>
@@ -5667,8 +5694,8 @@ function DataRoomPageInner() {
                     onClick={() => setTrackerView('list')}
                     className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${
                       trackerView === 'list'
-                        ? 'bg-primary-orange text-white'
-                        : 'text-gray-400 hover:text-white'
+                        ? 'bg-gray-700 text-white font-light'
+                        : 'text-gray-400 hover:text-white font-light'
                     }`}
                     title="List View"
                   >
@@ -5686,8 +5713,8 @@ function DataRoomPageInner() {
                     onClick={() => setTrackerView('calendar')}
                     className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${
                       trackerView === 'calendar'
-                        ? 'bg-primary-orange text-white'
-                        : 'text-gray-400 hover:text-white'
+                        ? 'bg-gray-700 text-white font-light'
+                        : 'text-gray-400 hover:text-white font-light'
                     }`}
                     title="Calendar View"
                   >
@@ -5737,7 +5764,7 @@ function DataRoomPageInner() {
                       })
                       setIsCreateModalOpen(true)
                     }}
-                    className="bg-primary-orange text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-1.5 sm:gap-2 font-medium text-xs sm:text-base"
+                    className="bg-gray-700 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-1.5 sm:gap-2 font-light text-xs sm:text-base"
                   >
                     <svg
                       width="14"
@@ -5757,7 +5784,7 @@ function DataRoomPageInner() {
                     <span className="sm:hidden">Add</span>
                   </button>
                 )}
-                <button className="bg-primary-dark-card border border-gray-700 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-primary-orange/50 transition-colors flex items-center gap-1.5 sm:gap-2 font-medium text-xs sm:text-base">
+                <button className="bg-[#1a1a1a] border border-gray-700 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-gray-600 transition-colors flex items-center gap-1.5 sm:gap-2 font-light text-xs sm:text-base">
                 <svg
                   width="14"
                   height="14"
@@ -5790,9 +5817,9 @@ function DataRoomPageInner() {
                     const newFY = e.target.value
                     setSelectedTrackerFY(newFY)
                   }}
-                  className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange appearance-none cursor-pointer ${
+                  className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 appearance-none cursor-pointer ${
                     selectedTrackerFY 
-                      ? 'border-primary-orange bg-primary-orange/20 text-white' 
+                      ? 'border-gray-600 bg-gray-800 text-white' 
                       : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
                   }`}
                 >
@@ -5814,7 +5841,7 @@ function DataRoomPageInner() {
                   }}
                   className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors flex items-center justify-between sm:justify-start gap-2 text-sm sm:text-base ${
                     selectedMonth
-                      ? 'border-primary-orange bg-primary-orange/20 text-white'
+                      ? 'border-gray-600 bg-gray-800 text-white'
                       : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
                   }`}
                 >
@@ -5848,7 +5875,7 @@ function DataRoomPageInner() {
                         }}
                         className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${
                           selectedMonth === null
-                            ? 'bg-primary-orange/20 text-white'
+                            ? 'bg-gray-800 text-white'
                             : 'text-gray-300'
                         }`}
                       >
@@ -5865,7 +5892,7 @@ function DataRoomPageInner() {
                           }}
                           className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${
                             selectedMonth === month
-                              ? 'bg-primary-orange/20 text-white'
+                              ? 'bg-gray-800 text-white'
                               : 'text-gray-300'
                           }`}
                         >
@@ -5886,7 +5913,7 @@ function DataRoomPageInner() {
                   }}
                   className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors flex items-center justify-between sm:justify-start gap-2 text-sm sm:text-base ${
                     selectedQuarter
-                      ? 'border-primary-orange bg-primary-orange/20 text-white'
+                      ? 'border-gray-600 bg-gray-800 text-white'
                       : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
                   }`}
                 >
@@ -5920,7 +5947,7 @@ function DataRoomPageInner() {
                         }}
                         className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${
                           selectedQuarter === null
-                            ? 'bg-primary-orange/20 text-white'
+                            ? 'bg-gray-800 text-white'
                             : 'text-gray-300'
                         }`}
                       >
@@ -5937,7 +5964,7 @@ function DataRoomPageInner() {
                           }}
                           className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${
                             selectedQuarter === quarter.value
-                              ? 'bg-primary-orange/20 text-white'
+                              ? 'bg-gray-800 text-white'
                               : 'text-gray-300'
                           }`}
                         >
@@ -5958,7 +5985,7 @@ function DataRoomPageInner() {
                   onClick={() => setCategoryFilter(filter)}
                   className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 transition-colors capitalize text-xs sm:text-sm whitespace-nowrap flex-shrink-0 ${
                     categoryFilter === filter
-                      ? 'border-primary-orange bg-primary-orange/20 text-white'
+                      ? 'border-gray-600 bg-gray-800 text-white'
                       : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
                   }`}
                 >
@@ -5980,7 +6007,7 @@ function DataRoomPageInner() {
             <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden">
               {isLoadingRequirements ? (
                 <div className="py-8 sm:py-12 flex flex-col items-center justify-center">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mb-4"></div>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-gray-400 border-t-transparent rounded-full animate-spin mb-4"></div>
                   <p className="text-gray-400 text-sm sm:text-base">Loading requirements...</p>
                 </div>
               ) : displayRequirements.length === 0 ? (
@@ -6008,7 +6035,32 @@ function DataRoomPageInner() {
               ) : (
               <div className="sm:overflow-x-auto scrollbar-hide">
                 {(() => {
-                  const categoryOrder = ['Income Tax', 'GST', 'Payroll', 'RoC', 'Renewals', 'Others']
+                  // Get unique categories from requirements
+                  const uniqueCategories = Array.from(new Set(displayRequirements.map(req => req.category)))
+                  
+                  // Normalize category names (handle "Other" vs "Others")
+                  const normalizedCategories = uniqueCategories.map(cat => {
+                    if (cat === 'Other' || cat === 'Others') return 'Other'
+                    return cat
+                  })
+                  
+                  // Define preferred order for known categories
+                  const preferredOrder = ['Income Tax', 'GST', 'Prof. Tax', 'Payroll', 'RoC', 'Renewals', 'Other']
+                  
+                  // Sort categories: preferred order first, then any others alphabetically
+                  const categoryOrder = [
+                    ...preferredOrder.filter(cat => normalizedCategories.includes(cat)),
+                    ...normalizedCategories.filter(cat => !preferredOrder.includes(cat)).sort()
+                  ]
+                  
+                  // Map back to original category names for filtering
+                  const categoryMap = new Map<string, string>()
+                  uniqueCategories.forEach(cat => {
+                    const normalized = (cat === 'Other' || cat === 'Others') ? 'Other' : cat
+                    if (!categoryMap.has(normalized)) {
+                      categoryMap.set(normalized, cat)
+                    }
+                  })
                   
                   // Helper function to parse date and get month/quarter
                   const getMonthFromDate = (dateStr: string) => {
@@ -6292,10 +6344,16 @@ function DataRoomPageInner() {
                   })
 
                   const groupedByCategory = categoryOrder.map((category) => {
+                    // Get the original category name from the map, or use the normalized one
+                    const originalCategory = categoryMap.get(category) || category
                     const items = filteredRequirements
-                      .filter((req) => req.category === category)
+                      .filter((req) => {
+                        // Match both normalized and original category names
+                        const reqCategory = req.category === 'Other' || req.category === 'Others' ? 'Other' : req.category
+                        return reqCategory === category || req.category === originalCategory
+                      })
                       .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
-                    return { category, items }
+                    return { category: originalCategory, items }
                   }).filter((group) => group.items.length > 0)
 
                   // Calendar view helper functions
@@ -7173,7 +7231,7 @@ function DataRoomPageInner() {
                       <select
                         value={requirementForm.category}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, category: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                       >
                         <option value="">Select Category</option>
                         <option value="Income Tax">Income Tax</option>
@@ -7194,7 +7252,7 @@ function DataRoomPageInner() {
                         type="text"
                         value={requirementForm.requirement}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, requirement: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                         placeholder="e.g., TDS Payment - Monthly"
                       />
                     </div>
@@ -7207,7 +7265,7 @@ function DataRoomPageInner() {
                       <textarea
                         value={requirementForm.description}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, description: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                         rows={3}
                         placeholder="Brief description of the requirement"
                       />
@@ -7221,7 +7279,7 @@ function DataRoomPageInner() {
                       <select
                         value={requirementForm.compliance_type}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, compliance_type: e.target.value as any }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                       >
                         <option value="one-time">One-time</option>
                         <option value="monthly">Monthly</option>
@@ -7241,7 +7299,7 @@ function DataRoomPageInner() {
                         <select
                           value={requirementForm.year}
                           onChange={(e) => setRequirementForm(prev => ({ ...prev, year: e.target.value }))}
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                         >
                           {Array.from({ length: 5 }, (_, i) => {
                             const year = new Date().getFullYear() - 2 + i
@@ -7267,7 +7325,7 @@ function DataRoomPageInner() {
                         type="date"
                         value={requirementForm.due_date}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, due_date: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                       />
                       {requirementForm.compliance_type !== 'one-time' && (
                         <p className="text-xs text-gray-400 mt-1">
@@ -7285,7 +7343,7 @@ function DataRoomPageInner() {
                         type="text"
                         value={requirementForm.penalty}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, penalty: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                         placeholder="e.g., Late fee ₹200/day"
                       />
                     </div>
@@ -7298,7 +7356,7 @@ function DataRoomPageInner() {
                       <select
                         value={requirementForm.financial_year}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, financial_year: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                       >
                         <option value="">Select Financial Year</option>
                         {financialYears.map((fy) => (
@@ -7316,7 +7374,7 @@ function DataRoomPageInner() {
                         <select
                           value={requirementForm.status}
                           onChange={(e) => setRequirementForm(prev => ({ ...prev, status: e.target.value as any }))}
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                         >
                           <option value="not_started">Not Started</option>
                           <option value="upcoming">Upcoming</option>
@@ -7433,12 +7491,12 @@ function DataRoomPageInner() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">Compliance Vault</h2>
-                <p className="text-gray-400 text-sm sm:text-base">Manage document categories and specific compliance folders.</p>
+                <p className="text-gray-400 text-sm sm:text-base font-light">Manage document categories and specific compliance folders.</p>
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                 <button
                   onClick={() => setIsExportModalOpen(true)}
-                  className="bg-primary-dark-card border border-gray-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-primary-orange/50 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
+                  className="bg-transparent border border-gray-700 text-gray-300 px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-gray-600 hover:text-white transition-colors flex items-center justify-center gap-2 font-light text-sm sm:text-base"
                 >
                   <svg
                     width="16"
@@ -7460,7 +7518,7 @@ function DataRoomPageInner() {
                 </button>
                 <button
                   onClick={() => setIsSendModalOpen(true)}
-                  className="bg-primary-dark-card border border-gray-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-primary-orange/50 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
+                  className="bg-transparent border border-gray-700 text-gray-300 px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-gray-600 hover:text-white transition-colors flex items-center justify-center gap-2 font-light text-sm sm:text-base"
                 >
                   <svg
                     width="16"
@@ -7481,7 +7539,7 @@ function DataRoomPageInner() {
                 </button>
                 <button
                   onClick={() => setIsUploadModalOpen(true)}
-                  className="bg-primary-orange text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
+                  className="bg-gray-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-gray-600 transition-colors flex items-center justify-center gap-2 font-light text-sm sm:text-base"
                 >
                   <svg
                     width="16"
@@ -7504,18 +7562,31 @@ function DataRoomPageInner() {
               </div>
             </div>
 
-            {/* FY Filter */}
+            {/* FY and Month Filters */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-              <label className="text-sm font-medium text-gray-300">Financial Year:</label>
+              <label className="text-xs sm:text-sm font-light text-gray-400 uppercase tracking-wider">Financial Year:</label>
               <select
                 value={selectedFY}
                 onChange={(e) => setSelectedFY(e.target.value)}
-                className="px-3 sm:px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors appearance-none cursor-pointer"
+                className="px-3 sm:px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none cursor-pointer"
               >
                 <option value="">All Financial Years</option>
                 {financialYears.map((fy) => (
                   <option key={fy} value={fy}>
                     {fy}
+                  </option>
+                ))}
+              </select>
+              
+              <label className="text-xs sm:text-sm font-light text-gray-400 uppercase tracking-wider sm:ml-4">Month:</label>
+              <select
+                value={selectedVaultMonth}
+                onChange={(e) => setSelectedVaultMonth(e.target.value)}
+                className="px-3 sm:px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none cursor-pointer"
+              >
+                {vaultMonths.map((month) => (
+                  <option key={month.value} value={month.value}>
+                    {month.label}
                   </option>
                 ))}
               </select>
@@ -7526,22 +7597,38 @@ function DataRoomPageInner() {
               <div className="lg:col-span-2 space-y-4 sm:space-y-6">
                 {documentFolders.map((folderName) => {
                   const filteredVaultDocs = vaultDocuments.filter(doc => {
-                    // If no FY selected, show all documents
-                    if (!selectedFY) return true
-                    
-                    // Prefer period_financial_year if available (for tracker-uploaded docs)
-                    if (doc.period_financial_year) {
-                      return doc.period_financial_year === selectedFY
+                    // FY Filter
+                    if (selectedFY) {
+                      // Prefer period_financial_year if available (for tracker-uploaded docs)
+                      if (doc.period_financial_year) {
+                        if (doc.period_financial_year !== selectedFY) return false
+                      } else if (doc.registration_date) {
+                        // Fallback to registration_date for older documents
+                        const docFY = getFinancialYear(doc.registration_date)
+                        if (docFY !== selectedFY) return false
+                      } else {
+                        // If no period or registration date, don't show when FY is selected
+                        return false
+                      }
                     }
                     
-                    // Fallback to registration_date for older documents
-                    if (doc.registration_date) {
-                    const docFY = getFinancialYear(doc.registration_date)
-                    return docFY === selectedFY
+                    // Month Filter
+                    if (selectedVaultMonth) {
+                      // Check period_month if available (for tracker-uploaded docs)
+                      if (doc.period_month) {
+                        const docMonth = doc.period_month.toString().padStart(2, '0')
+                        if (docMonth !== selectedVaultMonth) return false
+                      } else if (doc.registration_date) {
+                        // Fallback to registration_date
+                        const docMonth = getMonthFromDate(doc.registration_date)
+                        if (docMonth !== selectedVaultMonth) return false
+                      } else {
+                        // If no period or registration date, don't show when month is selected
+                        return false
+                      }
                     }
                     
-                    // If no period or registration date, don't show when FY is selected
-                    return false
+                    return true
                   })
                   
                   // Filter uploaded docs by folder, but move PAN and TAN to Financials and licenses
@@ -7607,21 +7694,19 @@ function DataRoomPageInner() {
                     return 0
                   })
 
-                  const iconColor = folderName === 'Constitutional Documents' ? 'bg-primary-orange' : 
-                                   folderName === 'Financials and licenses' ? 'bg-purple-500' :
-                                   folderName === 'Taxation & GST Compliance' ? 'bg-green-500' : 'bg-blue-500'
+                  const iconColor = 'bg-gray-800 border border-gray-700'
                   
                   return (
-                    <div key={folderName} className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                    <div key={folderName} className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
                   <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
                         <div className={`w-8 h-8 sm:w-10 sm:h-10 ${iconColor} rounded-lg flex items-center justify-center flex-shrink-0`}>
                       <svg
                         width="16"
                         height="16"
-                        className="sm:w-5 sm:h-5"
+                        className="sm:w-5 sm:h-5 text-gray-400"
                         viewBox="0 0 24 24"
                         fill="none"
-                        stroke="white"
+                        stroke="currentColor"
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -7632,7 +7717,7 @@ function DataRoomPageInner() {
                       </div>
                     <div className="min-w-0 flex-1">
                           <h3 className="text-base sm:text-xl font-light text-white break-words">{folderName}</h3>
-                          <p className="text-gray-400 text-xs sm:text-sm">{folderDocs.filter((d: any) => d.status === 'uploaded').length} DOCUMENTS</p>
+                          <p className="text-gray-400 text-xs sm:text-sm font-light">{folderDocs.filter((d: any) => d.status === 'uploaded').length} DOCUMENTS</p>
                       </div>
                     </div>
                       
@@ -7640,7 +7725,7 @@ function DataRoomPageInner() {
                         {folderDocs.length > 0 ? folderDocs.map((doc: any) => (
                           <div key={doc.id} className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border transition-colors ${
                             doc.status === 'uploaded' 
-                              ? 'bg-gray-900 border-gray-800 hover:border-primary-orange/50' 
+                              ? 'bg-gray-900/50 border-gray-800 hover:border-gray-700' 
                               : 'bg-gray-900/30 border-gray-800/50 border-dashed opacity-60'
                           }`}>
                       <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
@@ -7682,19 +7767,19 @@ function DataRoomPageInner() {
                                 <>
                                   <button 
                                     onClick={() => handleView(doc.file_path)}
-                                    className="text-primary-orange hover:text-primary-orange/80 font-medium text-xs sm:text-sm border border-primary-orange/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-primary-orange/10 transition-colors flex-shrink-0"
+                                    className="text-gray-300 hover:text-white font-light text-xs sm:text-sm border border-gray-700 px-2 sm:px-3 py-1 rounded-lg hover:border-gray-600 transition-colors flex-shrink-0"
                                   >
                           View
                         </button>
                                   <button 
                                     onClick={() => handleExport(doc.file_path, doc.file_name)}
-                                    className="text-primary-orange hover:text-primary-orange/80 font-medium text-xs sm:text-sm border border-primary-orange/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-primary-orange/10 transition-colors flex-shrink-0"
+                                    className="text-gray-300 hover:text-white font-light text-xs sm:text-sm border border-gray-700 px-2 sm:px-3 py-1 rounded-lg hover:border-gray-600 transition-colors flex-shrink-0"
                                   >
                           Export
                         </button>
                                   <button 
                                     onClick={() => handleRemove(doc.id, doc.file_path)}
-                                    className="text-red-400 hover:text-red-300 font-medium text-xs sm:text-sm border border-red-500/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-red-500/10 transition-colors flex-shrink-0"
+                                    className="text-gray-400 hover:text-gray-300 font-light text-xs sm:text-sm border border-gray-700 px-2 sm:px-3 py-1 rounded-lg hover:border-gray-600 transition-colors flex-shrink-0"
                                   >
                           Remove
                         </button>
@@ -7709,7 +7794,7 @@ function DataRoomPageInner() {
                                     }))
                                     setIsUploadModalOpen(true)
                                   }}
-                                  className="text-primary-orange hover:text-white font-medium text-xs sm:text-sm border border-primary-orange px-3 sm:px-4 py-1.5 rounded-lg hover:bg-primary-orange transition-colors w-full sm:w-auto"
+                                  className="text-gray-300 hover:text-white font-light text-xs sm:text-sm border border-gray-700 px-3 sm:px-4 py-1.5 rounded-lg hover:border-gray-600 transition-colors w-full sm:w-auto"
                                 >
                                   Upload Now
                         </button>
@@ -7730,7 +7815,7 @@ function DataRoomPageInner() {
               {/* Right Sidebar */}
               <div className="lg:col-span-1 space-y-4 sm:space-y-6">
                 {/* Storage Stats */}
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
                   <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
                     <svg
                       width="16"
@@ -7751,25 +7836,25 @@ function DataRoomPageInner() {
                   <div className="space-y-2 sm:space-y-3">
                     <div className="w-full bg-gray-900 rounded-full h-2 sm:h-2.5">
                       <div
-                        className="bg-primary-orange h-2 sm:h-2.5 rounded-full"
+                        className="bg-gray-600 h-2 sm:h-2.5 rounded-full"
                         style={{ width: '42%' }}
                       ></div>
                     </div>
-                    <div className="text-gray-400 text-xs sm:text-sm">4.2 GB / 10 GB</div>
+                    <div className="text-gray-400 text-xs sm:text-sm font-light">4.2 GB / 10 GB</div>
                   </div>
                 </div>
 
                 {/* Recent Activity */}
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
                   <h3 className="text-base sm:text-lg font-light text-white mb-3 sm:mb-4">Recent Activity</h3>
                   <div className="space-y-2 sm:space-y-3">
                     <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full flex-shrink-0"></div>
-                      <span className="text-gray-400 text-xs sm:text-sm">Encrypted vault synced</span>
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-500 rounded-full flex-shrink-0"></div>
+                      <span className="text-gray-400 text-xs sm:text-sm font-light">Encrypted vault synced</span>
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary-orange rounded-full flex-shrink-0"></div>
-                      <span className="text-gray-400 text-xs sm:text-sm">Audit logs updated</span>
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-500 rounded-full flex-shrink-0"></div>
+                      <span className="text-gray-400 text-xs sm:text-sm font-light">Audit logs updated</span>
                     </div>
                   </div>
                 </div>
@@ -7871,7 +7956,7 @@ function DataRoomPageInner() {
                             setUploadFormData((prev) => ({ ...prev, documentName: e.target.value }))
                           }
                           placeholder="Enter document name"
-                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                         />
                       </div>
 
@@ -7885,7 +7970,7 @@ function DataRoomPageInner() {
                           onChange={(e) =>
                             setUploadFormData((prev) => ({ ...prev, frequency: e.target.value }))
                           }
-                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors cursor-pointer"
+                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors cursor-pointer"
                         >
                           <option value="one-time">One-time</option>
                           <option value="monthly">Monthly</option>
@@ -7910,7 +7995,7 @@ function DataRoomPageInner() {
                                 registrationDate: e.target.value,
                               }))
                             }
-                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                           />
                         </div>
                       <div>
@@ -7926,7 +8011,7 @@ function DataRoomPageInner() {
                                 expiryDate: e.target.value,
                               }))
                             }
-                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                           />
                         </div>
                       </div>
@@ -7969,7 +8054,7 @@ function DataRoomPageInner() {
                                 }))
                               }
                               placeholder="portal@example.com"
-                              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                             />
                           </div>
                           <div>
@@ -7986,7 +8071,7 @@ function DataRoomPageInner() {
                                 }))
                               }
                               placeholder="Enter password"
-                              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                             />
                           </div>
                         </div>
@@ -8132,11 +8217,11 @@ function DataRoomPageInner() {
                             checked={allDocuments.length > 0 && selectedDocuments.size === allDocuments.length}
                             onChange={handleSelectAll}
                             disabled={allDocuments.length === 0}
-                            className="w-5 h-5 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="w-5 h-5 text-gray-400 bg-gray-800 border-gray-600 rounded focus:ring-gray-500 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50"
                           />
-                          <span className="text-white font-medium">Select All</span>
+                          <span className="text-white font-light">Select All</span>
                         </label>
-                        <span className="text-gray-400 text-sm">
+                        <span className="text-gray-400 text-sm font-light">
                           {selectedDocuments.size} of {allDocuments.length} selected
                         </span>
                       </div>
@@ -8146,24 +8231,24 @@ function DataRoomPageInner() {
                         {allDocuments.map((doc) => (
                           <label
                             key={doc.id}
-                            className="flex items-center gap-3 p-4 bg-gray-900 rounded-lg border border-gray-800 hover:border-primary-orange/50 transition-colors cursor-pointer"
+                            className="flex items-center gap-3 p-4 bg-gray-900 rounded-lg border border-gray-800 hover:border-gray-700 transition-colors cursor-pointer"
                           >
                             <input
                               type="checkbox"
                               checked={selectedDocuments.has(doc.id)}
                               onChange={() => toggleDocumentSelection(doc.id)}
-                              className="w-5 h-5 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2"
+                              className="w-5 h-5 text-gray-400 bg-gray-800 border-gray-600 rounded focus:ring-gray-500 focus:ring-2"
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-white font-medium">{doc.name}</span>
+                                <span className="text-white font-light">{doc.name}</span>
                                 {doc.period && (
-                                  <span className="px-2 py-0.5 text-xs rounded-full border bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                  <span className="px-2 py-0.5 text-xs rounded-full border bg-gray-800/50 text-gray-400 border-gray-700">
                                     {doc.period}
                                   </span>
                                 )}
                               </div>
-                              <div className="text-gray-400 text-sm mt-1">{doc.category}</div>
+                              <div className="text-gray-400 text-sm mt-1 font-light">{doc.category}</div>
                             </div>
                           </label>
                         ))}
@@ -8176,7 +8261,7 @@ function DataRoomPageInner() {
                             setIsExportModalOpen(false)
                             setSelectedDocuments(new Set())
                           }}
-                          className="px-6 py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors"
+                          className="px-6 py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors font-light"
                         >
                           Cancel
                         </button>
@@ -8498,7 +8583,7 @@ function DataRoomPageInner() {
                             setEmailData((prev) => ({ ...prev, recipients: e.target.value }))
                           }
                           placeholder="Enter email addresses (comma separated)"
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                         />
                         <p className="text-gray-500 text-xs mt-1">
                           Separate multiple email addresses with commas
@@ -8517,7 +8602,7 @@ function DataRoomPageInner() {
                             setEmailData((prev) => ({ ...prev, subject: e.target.value }))
                           }
                           placeholder="Email subject"
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                         />
                       </div>
 
@@ -8533,7 +8618,7 @@ function DataRoomPageInner() {
                           }
                           rows={10}
                           placeholder="Write your email message here..."
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors resize-none"
+                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors resize-none"
                         />
                       </div>
 

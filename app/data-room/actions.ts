@@ -188,9 +188,9 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
     // Update overdue statuses before fetching to ensure data consistency
     // Use a short timeout to avoid blocking too long, but ensure statuses are updated
     try {
-      if (companyId) {
+    if (companyId) {
         await adminSupabase.rpc('update_company_overdue_statuses', { p_company_id: companyId })
-      } else if (isSuperadmin) {
+    } else if (isSuperadmin) {
         await adminSupabase.rpc('update_overdue_statuses')
       }
     } catch (statusUpdateError) {
@@ -805,22 +805,7 @@ export async function createRequirement(
       }
     }
 
-    // Validate compliance type and due date combination
-    const complianceType = requirement.compliance_type || 'one-time'
-    if (complianceType === 'one-time' && !requirement.due_date) {
-      return { success: false, error: 'Due date is required for one-time compliances' }
-    }
-    if (complianceType === 'monthly' && !requirement.due_date) {
-      return { success: false, error: 'Due date is required for monthly compliances' }
-    }
-    if (complianceType === 'quarterly' && !requirement.due_date) {
-      return { success: false, error: 'Due date is required for quarterly compliances' }
-    }
-    if (complianceType === 'annual' && !requirement.due_date) {
-      return { success: false, error: 'Due date is required for annual compliances' }
-    }
-
-    // Validate due date format
+    // Validate due date format if provided (due dates are now optional)
     if (requirement.due_date) {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/
       if (!dateRegex.test(requirement.due_date)) {
@@ -1546,32 +1531,32 @@ export async function getComplianceTemplates(): Promise<{ success: boolean; temp
       const batch = templatesArray.slice(i, i + batchSize)
       const batchResults = await Promise.all(
         batch.map(async (template) => {
-          try {
-            const { data: matchingCompanies, error: matchError } = await adminSupabase.rpc('match_companies_to_template', {
-              p_template_id: template.id
-            })
-            
-            if (matchError) {
-              console.error(`[getComplianceTemplates] Error matching template ${template.id}:`, matchError)
+        try {
+          const { data: matchingCompanies, error: matchError } = await adminSupabase.rpc('match_companies_to_template', {
+            p_template_id: template.id
+          })
+          
+          if (matchError) {
+            console.error(`[getComplianceTemplates] Error matching template ${template.id}:`, matchError)
               return {
                 ...template,
                 matching_companies_count: 0
               }
-            }
-            
-            return {
-              ...template,
-              matching_companies_count: matchingCompanies?.length || 0
-            }
-          } catch (error: any) {
-            console.error(`[getComplianceTemplates] Error processing template ${template.id}:`, error)
-            return {
-              ...template,
-              matching_companies_count: 0
-            }
           }
-        })
-      )
+          
+          return {
+            ...template,
+            matching_companies_count: matchingCompanies?.length || 0
+          }
+        } catch (error: any) {
+          console.error(`[getComplianceTemplates] Error processing template ${template.id}:`, error)
+          return {
+            ...template,
+            matching_companies_count: 0
+          }
+        }
+      })
+    )
       templatesWithCounts.push(...batchResults)
     }
 
@@ -1637,18 +1622,34 @@ export async function createComplianceTemplate(
       return { success: false, error: 'At least one industry category must be selected' }
     }
 
-    // Validate compliance type specific fields
-    if (template.compliance_type === 'one-time' && !template.due_date) {
-      return { success: false, error: 'Due date is required for one-time compliances' }
+    // Validate compliance type specific fields (all optional - allow compliances without due dates)
+    // Only validate format if values are provided
+    if (template.compliance_type === 'one-time' && template.due_date) {
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+      if (!dateRegex.test(template.due_date)) {
+        return { success: false, error: 'Due date must be in YYYY-MM-DD format' }
+      }
     }
-    if (template.compliance_type === 'monthly' && template.due_date_offset === undefined) {
-      return { success: false, error: 'Due date offset is required for monthly compliances' }
+    if (template.compliance_type === 'monthly' && template.due_date_offset !== undefined && template.due_date_offset !== null) {
+      if (template.due_date_offset < 1 || template.due_date_offset > 28) {
+        return { success: false, error: 'Due date offset must be 1-28 for monthly' }
+      }
     }
-    if (template.compliance_type === 'quarterly' && (template.due_month === undefined || template.due_day === undefined)) {
-      return { success: false, error: 'Month in quarter and day are required for quarterly compliances' }
+    if (template.compliance_type === 'quarterly') {
+      if (template.due_month !== undefined && template.due_month !== null && (template.due_month < 1 || template.due_month > 12)) {
+        return { success: false, error: 'Due month must be 1-12' }
+      }
+      if (template.due_day !== undefined && template.due_day !== null && (template.due_day < 1 || template.due_day > 31)) {
+        return { success: false, error: 'Due day must be 1-31' }
+      }
     }
-    if (template.compliance_type === 'annual' && (template.due_month === undefined || template.due_day === undefined)) {
-      return { success: false, error: 'Due month and day are required for annual compliances' }
+    if (template.compliance_type === 'annual') {
+      if (template.due_month !== undefined && template.due_month !== null && (template.due_month < 1 || template.due_month > 12)) {
+        return { success: false, error: 'Due month must be 1-12' }
+      }
+      if (template.due_day !== undefined && template.due_day !== null && (template.due_day < 1 || template.due_day > 31)) {
+        return { success: false, error: 'Due day must be 1-31' }
+      }
     }
 
     // Insert template
@@ -2500,22 +2501,40 @@ export async function bulkCreateComplianceTemplates(
           return null
         }
 
-        // Validate compliance type specific fields
-        if (template.compliance_type === 'one-time' && !template.due_date) {
-          errors.push(`Row ${rowNum}: Due date required for one-time compliance`)
+        // Validate compliance type specific fields (all optional - allow compliances without due dates)
+        // Only validate format if values are provided
+        if (template.compliance_type === 'one-time' && template.due_date) {
+          const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+          if (!dateRegex.test(template.due_date)) {
+            errors.push(`Row ${rowNum}: Due date must be in YYYY-MM-DD format`)
           return null
         }
-        if (template.compliance_type === 'monthly' && template.due_date_offset === null) {
-          errors.push(`Row ${rowNum}: Due date offset required for monthly compliance`)
+        }
+        if (template.compliance_type === 'monthly' && template.due_date_offset !== null && template.due_date_offset !== undefined) {
+          if (template.due_date_offset < 1 || template.due_date_offset > 28) {
+            errors.push(`Row ${rowNum}: Due date offset must be 1-28 for monthly`)
           return null
         }
-        if (template.compliance_type === 'quarterly' && (template.due_month === null || template.due_day === null)) {
-          errors.push(`Row ${rowNum}: Month and day required for quarterly compliance`)
+        }
+        if (template.compliance_type === 'quarterly') {
+          if (template.due_month !== null && template.due_month !== undefined && (template.due_month < 1 || template.due_month > 12)) {
+            errors.push(`Row ${rowNum}: Due month must be 1-12`)
           return null
         }
-        if (template.compliance_type === 'annual' && (template.due_month === null || template.due_day === null)) {
-          errors.push(`Row ${rowNum}: Month and day required for annual compliance`)
+          if (template.due_day !== null && template.due_day !== undefined && (template.due_day < 1 || template.due_day > 31)) {
+            errors.push(`Row ${rowNum}: Due day must be 1-31`)
           return null
+          }
+        }
+        if (template.compliance_type === 'annual') {
+          if (template.due_month !== null && template.due_month !== undefined && (template.due_month < 1 || template.due_month > 12)) {
+            errors.push(`Row ${rowNum}: Due month must be 1-12`)
+            return null
+          }
+          if (template.due_day !== null && template.due_day !== undefined && (template.due_day < 1 || template.due_day > 31)) {
+            errors.push(`Row ${rowNum}: Due day must be 1-31`)
+            return null
+          }
         }
 
         return {

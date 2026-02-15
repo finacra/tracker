@@ -67,6 +67,9 @@ export default function BulkUploadPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isSuperadmin, setIsSuperadmin] = useState(false)
   const [isResolvingErrors, setIsResolvingErrors] = useState(false)
+  const [resolveMode, setResolveMode] = useState<'auto' | 'custom'>('auto')
+  const [customInstructions, setCustomInstructions] = useState<string>('')
+  const [showResolveModal, setShowResolveModal] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const initRef = useRef(false) // Prevent double initialization
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -369,11 +372,13 @@ export default function BulkUploadPage() {
           base.source = getDropdownSource(col)
           base.strict = col === 'category' || col === 'compliance_type'
         } else if (multiSelectColumns.includes(col)) {
-          // Multi-select columns: text display with dropdown arrow indicator
-          // Editing is handled by our React dropdown (via afterOnCellMouseDown)
+          // Multi-select columns: use text type to enable copy/paste and drag-fill
+          // Multi-select dropdown opens on double-click (via afterOnCellMouseDown)
           base.type = 'text'
-          base.readOnly = true  // Prevent default text editor, our dropdown handles it
+          base.editor = 'text'  // Explicitly use text editor
           base.className = 'htAutocomplete'  // Show dropdown arrow
+          base.allowInvalid = true  // Allow any text to be pasted (even if not in options)
+          base.readOnly = false  // Explicitly allow editing and paste
         } else if (numericColumns.includes(col)) {
           base.type = 'numeric'
         } else if (col === 'due_date') {
@@ -415,24 +420,51 @@ export default function BulkUploadPage() {
           return 120
         }),
         afterOnCellMouseDown: (event, coords) => {
-          // For multi-select columns, open our React dropdown
+          // For multi-select columns, open our React dropdown on double-click only
+          // This allows single-click selection for copy/paste operations
           const colName = getColumnName(coords.col)
           if (!colName) return
           if (!(MULTI_SELECT_COLUMNS as readonly string[]).includes(colName)) return
           if (coords.row < 0 || coords.col < 0) return
 
           const e = event as MouseEvent
-          // Don't hijack selection gestures or right-click
+          // Only handle double-click for multi-select dropdown
+          // Single-click, right-click, and modifier keys are ignored to allow normal operations
           if (e.button !== 0) return
           if ((e as any).ctrlKey || (e as any).metaKey || (e as any).shiftKey || (e as any).altKey) return
 
-          // Get the cell element
+          // Only open dropdown on double-click (detail === 2)
+          if ((e as any).detail === 2) {
           const td = hot.getCell(coords.row, coords.col)
           if (td) {
             e.preventDefault()
             e.stopPropagation()
             openMultiSelect(coords.row, coords.col, colName, td)
           }
+          }
+          // For single-click, do nothing - allow normal selection and paste operations
+        },
+        afterPaste: () => {
+          // Trigger validation and save after paste
+          // Paste works naturally - no interference
+          setTimeout(() => {
+            if (hotInstance) {
+              const newData = hotInstance.getData() as string[][]
+              setData(newData)
+              const nonEmptyData = newData.filter(row => row.some(cell => cell && cell.trim()))
+              const rows = dataToRows(nonEmptyData)
+              const result = validateAll(rows)
+              setValidation(result)
+              const errors = new Map<string, string>()
+              result.errors.forEach(error => {
+                errors.set(`${error.row}-${error.columnIndex}`, error.message || 'Invalid')
+              })
+              setCellErrors(errors)
+              cellErrorsRef.current = errors
+              hotInstance.render()
+              autoSave(newData)
+            }
+          }, 100)
         },
         afterChange: (changes, source) => {
           if (!changes) return
@@ -751,17 +783,23 @@ export default function BulkUploadPage() {
     checkSuperadmin()
   }, [user, supabase])
 
-  // Handle AI error resolution
-  const handleResolveErrors = useCallback(async () => {
+  // Execute the actual error resolution
+  const executeResolveErrors = useCallback(async () => {
     if (!hotInstance || !validation || validation.valid) {
-      alert('No errors to resolve')
       return
     }
 
     setIsResolvingErrors(true)
+    setShowResolveModal(false)
+    
     try {
       const currentData = hotInstance.getData() as string[][]
-      const result = await resolveErrorsWithAI(currentData, validation)
+      const result = await resolveErrorsWithAI(
+        currentData, 
+        validation,
+        resolveMode,
+        resolveMode === 'custom' ? customInstructions : undefined
+      )
 
       if (result.success && result.fixes.length > 0) {
         // Update spreadsheet cell-by-cell to preserve editability
@@ -850,7 +888,24 @@ export default function BulkUploadPage() {
     } finally {
       setIsResolvingErrors(false)
     }
-  }, [hotInstance, validation, dataToRows, autoSave])
+  }, [hotInstance, validation, dataToRows, autoSave, resolveMode, customInstructions])
+
+  // Handle AI error resolution
+  const handleResolveErrors = useCallback(async () => {
+    if (!hotInstance || !validation || validation.valid) {
+      alert('No errors to resolve')
+      return
+    }
+
+    // If custom mode, show modal first
+    if (resolveMode === 'custom') {
+      setShowResolveModal(true)
+      return
+    }
+
+    // Auto mode - proceed directly
+    await executeResolveErrors()
+  }, [hotInstance, validation, resolveMode, executeResolveErrors])
 
   // Get non-empty row count
   const nonEmptyRowCount = data.filter(row => row.some(cell => cell && cell.trim())).length
@@ -927,29 +982,41 @@ export default function BulkUploadPage() {
               />
             </label>
             {isSuperadmin && validation && !validation.valid && validation.errors.length > 0 && (
-              <button
-                onClick={handleResolveErrors}
-                disabled={isResolvingErrors}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 shadow-md ${
-                  !isResolvingErrors
-                    ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-700 hover:shadow-lg'
-                    : 'bg-purple-400 text-white cursor-not-allowed'
-                }`}
-              >
-                {isResolvingErrors ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Resolving...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                    Resolve Errors with Finacra
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Mode Selector */}
+                <select
+                  value={resolveMode}
+                  onChange={(e) => setResolveMode(e.target.value as 'auto' | 'custom')}
+                  className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded border border-white/20 focus:outline-none focus:border-white/40 transition-colors"
+                >
+                  <option value="auto">Auto Resolve</option>
+                  <option value="custom">Custom Resolver</option>
+                </select>
+                
+                <button
+                  onClick={handleResolveErrors}
+                  disabled={isResolvingErrors}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 shadow-md ${
+                    !isResolvingErrors
+                      ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-700 hover:shadow-lg'
+                      : 'bg-purple-400 text-white cursor-not-allowed'
+                  }`}
+                >
+                  {isResolvingErrors ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Resolving...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                      {resolveMode === 'auto' ? 'Resolve Errors with Finacra' : 'Resolve with Custom Instructions'}
+                    </>
+                  )}
+                </button>
+              </div>
             )}
             <button
               onClick={handleUpload}
@@ -1362,6 +1429,93 @@ export default function BulkUploadPage() {
                 style={{ padding: '8px 14px', fontSize: 12, borderRadius: 8, border: '1px solid #217346', background: '#217346', color: '#fff', cursor: 'pointer', fontWeight: 600 }}
               >
                 Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Error Resolver Modal */}
+      {showResolveModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowResolveModal(false)}>
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Custom Error Resolver</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Provide specific instructions for the AI to resolve errors. The AI has full access to the entire spreadsheet.
+              </p>
+            </div>
+            
+            <div className="px-6 py-4 flex-1 overflow-y-auto">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Your Instructions <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={customInstructions}
+                  onChange={(e) => setCustomInstructions(e.target.value)}
+                  placeholder="Example: Fix all case sensitivity errors in the 'category' column. Convert 'gst' to 'GST', 'income tax' to 'Income Tax', etc."
+                  rows={8}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none text-sm text-gray-900"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Be specific about which errors to fix and how. The AI can see all {data.length} rows of data.
+                </p>
+              </div>
+
+              {validation && validation.errors.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">Current Errors Summary:</h3>
+                  <div className="text-xs text-gray-600 space-y-1">
+                    <p>Total errors: <span className="font-semibold">{validation.errors.length}</span></p>
+                    <p>Rows with errors: <span className="font-semibold">{new Set(validation.errors.map(e => e.row)).size}</span></p>
+                    <div className="mt-2">
+                      <p className="font-medium mb-1">Errors by column:</p>
+                      <ul className="list-disc list-inside space-y-0.5">
+                        {Array.from(new Set(validation.errors.map(e => e.column))).map(col => {
+                          const colErrors = validation.errors.filter(e => e.column === col)
+                          return (
+                            <li key={col}>
+                              <span className="font-medium">{col}</span>: {colErrors.length} error{colErrors.length > 1 ? 's' : ''}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowResolveModal(false)
+                  setCustomInstructions('')
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={executeResolveErrors}
+                disabled={!customInstructions.trim() || isResolvingErrors}
+                className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+                  customInstructions.trim() && !isResolvingErrors
+                    ? 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700'
+                    : 'bg-gray-400 cursor-not-allowed'
+                }`}
+              >
+                {isResolvingErrors ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2"></div>
+                    Resolving...
+                  </>
+                ) : (
+                  'Resolve with Instructions'
+                )}
               </button>
             </div>
           </div>

@@ -27,6 +27,7 @@ export async function completeOnboarding(
     companyStage?: string
     confidenceScore?: string
     documents: Array<{ type: string; path: string; name: string }>
+    exDirectors?: string
   },
   directors: any[]
 ) {
@@ -41,6 +42,14 @@ export async function completeOnboarding(
   // 1. Insert Company into public schema
   // For backward compatibility, set industry to first industry from industries array
   const firstIndustry = formData.industries.length > 0 ? formData.industries[0] : null
+  
+  // Parse ex-directors: split by comma or newline, trim, and filter empty strings
+  const exDirectorsArray = formData.exDirectors
+    ? formData.exDirectors
+        .split(/[,\n]/)
+        .map(name => name.trim())
+        .filter(name => name.length > 0)
+    : null
   
   const { data: company, error: companyError } = await adminSupabase
     .from('companies')
@@ -65,7 +74,8 @@ export async function completeOnboarding(
       other_info: formData.other || null,
       stage: formData.companyStage || null,
       confidence_score: formData.confidenceScore || null,
-      year_type: formData.yearType || 'FY'  // Default to FY for backward compatibility
+      year_type: formData.yearType || 'FY',  // Default to FY for backward compatibility
+      ex_directors: exDirectorsArray  // Store as TEXT[] array
     })
     .select()
     .single()
@@ -181,6 +191,8 @@ export async function updateCompany(
     other?: string
     industryCategories?: string[]
     otherIndustryCategory?: string
+    directors?: any[]
+    exDirectors?: string
   }
 ) {
   const supabase = await createClient()
@@ -193,19 +205,19 @@ export async function updateCompany(
 
   // Update Company in public schema
   const updateData: any = {
-    name: formData.companyName,
-    type: formData.companyType,
-    pan: formData.panNumber,
-    industry_categories: formData.industryCategories,
-    other_industry_category: formData.otherIndustryCategory,
-    address: formData.address,
-    city: formData.city,
-    state: formData.state,
-    pin_code: formData.pinCode,
-    phone_number: formData.phoneNumber,
-    email: formData.email,
-    landline: formData.landline,
-    other_info: formData.other
+      name: formData.companyName,
+      type: formData.companyType,
+      pan: formData.panNumber,
+      industry_categories: formData.industryCategories,
+      other_industry_category: formData.otherIndustryCategory,
+      address: formData.address,
+      city: formData.city,
+      state: formData.state,
+      pin_code: formData.pinCode,
+      phone_number: formData.phoneNumber,
+      email: formData.email,
+      landline: formData.landline,
+      other_info: formData.other
   }
   
   // Add industries if provided
@@ -213,6 +225,17 @@ export async function updateCompany(
     updateData.industries = formData.industries.length > 0 ? formData.industries : null
   }
   
+  // Add ex-directors if provided
+  if (formData.exDirectors !== undefined) {
+    const exDirectorsArray = formData.exDirectors
+      ? formData.exDirectors
+          .split(/[,\n]/)
+          .map(name => name.trim())
+          .filter(name => name.length > 0)
+      : null
+    updateData.ex_directors = exDirectorsArray
+  }
+
   const { error: companyError } = await adminSupabase
     .from('companies')
     .update(updateData)
@@ -224,7 +247,88 @@ export async function updateCompany(
     throw new Error('Failed to update company: ' + companyError.message)
   }
 
+  // Update directors if provided
+  if (formData.directors !== undefined) {
+    // First, delete all existing directors for this company
+    const { error: deleteError } = await adminSupabase
+      .from('directors')
+      .delete()
+      .eq('company_id', companyId)
+
+    if (deleteError) {
+      console.error('Director deletion error:', deleteError)
+      // Don't throw - continue with insert
+    }
+
+    // Then insert the new directors
+    if (formData.directors.length > 0) {
+      const directorsToInsert = formData.directors.map(dir => ({
+        company_id: companyId,
+        first_name: dir.firstName,
+        last_name: dir.lastName,
+        middle_name: dir.middleName || null,
+        din: dir.din || null,
+        designation: dir.designation || null,
+        dob: dir.dob || null,
+        pan: dir.pan || null,
+        email: dir.email || null,
+        mobile: dir.mobile || null,
+        is_verified: dir.verified || false,
+        source: dir.source || 'manual'
+      }))
+
+      const { error: dirError } = await adminSupabase
+        .from('directors')
+        .insert(directorsToInsert)
+
+      if (dirError) {
+        console.error('Director insertion error:', dirError)
+        // Don't throw - company update succeeded
+      }
+    }
+  }
+
   return { success: true }
+}
+
+// Get directors for a company
+export async function getCompanyDirectors(companyId: string) {
+  const supabase = await createClient()
+  const adminSupabase = createAdminClient()
+  
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { success: false, directors: [], error: 'Unauthorized' }
+  }
+
+  const { data: directors, error } = await adminSupabase
+    .from('directors')
+    .select('*')
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching directors:', error)
+    return { success: false, directors: [], error: error.message }
+  }
+
+  // Transform to match frontend Director interface
+  const transformedDirectors = (directors || []).map(dir => ({
+    id: dir.id,
+    firstName: dir.first_name || '',
+    lastName: dir.last_name || '',
+    middleName: dir.middle_name || '',
+    din: dir.din || '',
+    designation: dir.designation || '',
+    dob: dir.dob || '',
+    pan: dir.pan || '',
+    email: dir.email || '',
+    mobile: dir.mobile || '',
+    verified: dir.is_verified || false,
+    source: (dir.source as 'cin' | 'din' | 'manual') || 'manual'
+  }))
+
+  return { success: true, directors: transformedDirectors }
 }
 
 export async function uploadDocument(

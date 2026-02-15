@@ -160,11 +160,37 @@ function SubscribePageInner() {
       }
 
       // Starter/Professional: company-first trial
-      // Require company selection
+      // If user has no companies, create a user-level trial first (allows creating first company)
+      if (currentCompanyCount === 0) {
+        // Create user-level trial for Starter/Professional (similar to Enterprise)
+        // This allows them to create their first company
+        const { data, error: rpcError } = await supabase
+          .rpc('create_user_trial', { target_user_id: user.id })
+
+        if (rpcError) {
+          throw new Error(rpcError.message || 'Failed to create trial')
+        }
+
+        // Success - redirect to onboarding to create first company
+        router.push('/onboarding')
+        return
+      }
+      
+      // Require company selection if user has companies
       const targetCompanyId = selectedCompanyForSubscription || companyId
-      if (!targetCompanyId) {
+      if (!targetCompanyId && currentCompanyCount > 0) {
         setError('Please select a company for the trial')
         setIsStartingTrial(false)
+        return
+      }
+      
+      // If still no company selected but user has companies, select the first one
+      if (!targetCompanyId && userCompanies.length > 0) {
+        setSelectedCompanyForSubscription(userCompanies[0].id)
+        // Retry with first company
+        setTimeout(() => {
+          handleStartTrial(tier)
+        }, 100)
         return
       }
 
@@ -198,7 +224,7 @@ function SubscribePageInner() {
   if (authLoading || subLoading) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -212,17 +238,17 @@ function SubscribePageInner() {
         <div className="relative z-10 container mx-auto px-4 py-12">
           {/* Trial Banner */}
           <div className="max-w-2xl mx-auto mb-8">
-            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-6 text-center">
+            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 text-center">
               <div className="flex items-center justify-center gap-2 mb-3">
-                <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-xl font-semibold text-white">Trial Active</span>
+                <span className="text-xl font-light text-white">Trial Active</span>
               </div>
-              <p className="text-gray-300 mb-2">
-                You have <span className="text-yellow-400 font-bold">{trialDaysRemaining} days</span> remaining in your trial.
+              <p className="text-gray-300 mb-2 font-light">
+                You have <span className="text-gray-300 font-light">{trialDaysRemaining} days</span> remaining in your trial.
               </p>
-              <p className="text-gray-400 text-sm">
+              <p className="text-gray-400 text-sm font-light">
                 Your trial is active. You can upgrade anytime to continue uninterrupted after it ends.
               </p>
             </div>
@@ -230,10 +256,10 @@ function SubscribePageInner() {
 
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">
+            <h1 className="text-4xl md:text-5xl font-light mb-4 text-white">
               Upgrade Your Plan
             </h1>
-            <p className="text-gray-400">
+            <p className="text-gray-400 font-light">
               Choose a plan to unlock unlimited access
             </p>
           </div>
@@ -261,9 +287,9 @@ function SubscribePageInner() {
             <button
               key={cycle.value}
               onClick={() => setSelectedBillingCycle(cycle.value)}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+              className={`px-4 py-2 rounded-lg font-light transition-all ${
                 selectedBillingCycle === cycle.value
-                  ? 'bg-orange-500 text-white'
+                  ? 'bg-gray-700 text-white'
                   : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
               }`}
             >
@@ -283,16 +309,16 @@ function SubscribePageInner() {
             return (
               <div
                 key={tier.id}
-                className={`relative rounded-2xl border-2 p-8 transition-all ${
+                className={`relative rounded-xl border p-8 transition-all bg-[#1a1a1a] ${
                   tier.popular
-                    ? 'border-orange-500 bg-gradient-to-b from-gray-900 to-gray-800 md:scale-105 shadow-2xl shadow-orange-500/20'
-                    : 'border-gray-700 bg-gray-900 hover:border-gray-600'
+                    ? 'border-gray-600 md:scale-105'
+                    : 'border-gray-800 hover:border-gray-700'
                 }`}
               >
                 {/* Popular Badge */}
                 {tier.popular && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-orange-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                    <span className="bg-gray-700 text-white px-4 py-1 rounded-full text-sm font-light">
                       Most Popular
                     </span>
                   </div>
@@ -300,13 +326,13 @@ function SubscribePageInner() {
 
                 {/* Tier Header */}
                 <div className="mb-6">
-                  <h3 className="text-2xl font-bold mb-2 text-white">{tier.name}</h3>
-                  <p className="text-gray-400 text-sm mb-4">{tier.description}</p>
+                  <h3 className="text-2xl font-light mb-2 text-white">{tier.name}</h3>
+                  <p className="text-gray-400 text-sm mb-4 font-light">{tier.description}</p>
 
                   {/* Price */}
                   <div className="mb-4">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-bold text-white">
+                      <span className="text-4xl font-light text-white">
                         {formatPrice(selectedPricing.price)}
                       </span>
                       {selectedBillingCycle !== 'monthly' && (
@@ -329,7 +355,7 @@ function SubscribePageInner() {
                     )}
                     {selectedPricing.discount > 0 && (
                       <div className="mt-1">
-                        <span className="text-orange-400 text-sm font-medium">
+                        <span className="text-gray-400 text-sm font-light">
                           {selectedPricing.discount}% discount
                         </span>
                       </div>
@@ -353,16 +379,16 @@ function SubscribePageInner() {
                       ? undefined // Enterprise: user-first, no company_id
                       : (selectedCompanyForSubscription || companyId || undefined) // Starter/Pro: company-first
                   }
-                  className={`w-full py-3 px-6 rounded-lg font-semibold transition-all mb-6 ${
+                  className={`w-full py-3 px-6 rounded-lg font-light transition-all mb-6 ${
                     tier.popular
-                      ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                      : 'bg-gray-800 hover:bg-gray-700 text-white border border-gray-700'
+                      ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                      : 'bg-transparent border border-gray-700 text-gray-300 hover:border-gray-600 hover:text-white'
                   }`}
                 />
 
                 {/* Features */}
                 <div className="space-y-3">
-                  <div className="text-sm font-semibold text-gray-300 mb-3">Features:</div>
+                  <div className="text-sm font-light text-gray-400 mb-3">Features:</div>
                   {tier.features.slice(0, 5).map((feature, index) => (
                     <div key={index} className="flex items-start gap-2">
                       <svg
@@ -378,7 +404,7 @@ function SubscribePageInner() {
                           d="M5 13l4 4L19 7"
                         />
                       </svg>
-                      <span className="text-gray-300 text-sm">{feature}</span>
+                      <span className="text-gray-300 text-sm font-light">{feature}</span>
                     </div>
                   ))}
                   {tier.features.length > 5 && (
@@ -400,11 +426,11 @@ function SubscribePageInner() {
       <SubtleCircuitBackground />
       
       <div className="relative z-10 container mx-auto px-4 py-12">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">
-            Choose Your Plan
-          </h1>
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl md:text-5xl font-light mb-4 text-white">
+              Choose Your Plan
+            </h1>
           {companyName && (
             <p className="text-gray-400 text-lg mb-2">
               Subscribe to manage <span className="text-white font-medium">{companyName}</span>
@@ -424,7 +450,7 @@ function SubscribePageInner() {
             <select
               value={selectedCompanyForSubscription || ''}
               onChange={(e) => setSelectedCompanyForSubscription(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange"
+              className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
             >
               {userCompanies.map((company) => (
                 <option key={company.id} value={company.id}>
@@ -440,19 +466,21 @@ function SubscribePageInner() {
           </div>
         )}
 
-        {/* Pay Later / Trial Option - Only show if company doesn't have active subscription */}
-        {!companyHasActiveSubscription && (selectedCompanyForSubscription || companyId) && (
+        {/* Pay Later / Trial Option - Show if no company subscription or user has no companies */}
+        {(!companyHasActiveSubscription && (selectedCompanyForSubscription || companyId || currentCompanyCount === 0)) && (
           <div className="max-w-2xl mx-auto mb-12">
-            <div className="bg-gradient-to-r from-primary-orange/10 to-orange-600/10 border border-primary-orange/30 rounded-2xl p-6 text-center">
+            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 text-center">
               <div className="flex items-center justify-center gap-2 mb-3">
-                <svg className="w-6 h-6 text-primary-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-xl font-semibold text-white">Not ready to commit?</span>
+                <span className="text-xl font-light text-white">Not ready to commit?</span>
               </div>
-              <p className="text-gray-400 mb-4">
-                Start with a <span className="text-primary-orange font-semibold">15-day free trial</span> — no credit card required.
-                {selectedCompanyForSubscription ? (
+              <p className="text-gray-400 mb-4 font-light">
+                Start with a <span className="text-gray-300 font-light">15-day free trial</span> — no credit card required.
+                {currentCompanyCount === 0 ? (
+                  <> You'll be able to create your first company after starting the trial.</>
+                ) : selectedCompanyForSubscription ? (
                   <> This trial is for <span className="text-white font-medium">{userCompanies.find(c => c.id === selectedCompanyForSubscription)?.name || 'selected company'}</span> only.</>
                 ) : (
                   <> Enterprise trial covers all your companies.</>
@@ -461,15 +489,15 @@ function SubscribePageInner() {
               <div className="flex items-center justify-center gap-3">
                 <button
                   onClick={() => handleStartTrial('starter')}
-                  disabled={isStartingTrial || isCheckingCompanySubscription || (userCompanies.length > 0 && !selectedCompanyForSubscription)}
-                  className="bg-primary-orange text-white px-6 py-2 rounded-lg font-semibold hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  disabled={isStartingTrial || isCheckingCompanySubscription}
+                  className="bg-gray-700 text-white px-6 py-2 rounded-lg font-light hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
-                  {isStartingTrial ? 'Starting...' : 'Trial for Starter'}
+                  {isStartingTrial ? 'Starting...' : currentCompanyCount === 0 ? 'Start Trial' : 'Trial for Starter'}
                 </button>
                 <button
                   onClick={() => handleStartTrial('enterprise')}
                   disabled={isStartingTrial || isCheckingCompanySubscription}
-                  className="bg-gray-800 text-white px-6 py-2 rounded-lg font-semibold hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm border border-gray-700"
+                  className="bg-transparent border border-gray-700 text-gray-300 px-6 py-2 rounded-lg font-light hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                   {isStartingTrial ? 'Starting...' : 'Trial for Enterprise'}
                 </button>
@@ -507,7 +535,7 @@ function SubscribePageInner() {
         <div className="text-center mt-12">
           <button
             onClick={() => handleStartTrial('starter')}
-            disabled={isStartingTrial || (userCompanies.length > 0 && !selectedCompanyForSubscription)}
+            disabled={isStartingTrial}
             className="text-gray-500 hover:text-gray-400 text-sm underline transition-colors disabled:opacity-50"
           >
             Skip for now and start free trial

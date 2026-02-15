@@ -103,124 +103,58 @@ function LoginPageInner() {
   return (
     <div className="min-h-screen bg-primary-dark flex flex-col relative overflow-hidden">
       {/* Top Navigation Bar */}
-      <nav className="w-full px-6 py-4 flex items-center justify-between border-b border-gray-800/50">
+      <nav className="relative z-10 w-full px-6 py-6 border-b border-gray-800">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary-orange rounded-lg flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="white" strokeWidth="1.5" fill="white" fillOpacity="0.1"/>
-              <path d="M14 2V8H20" stroke="white" strokeWidth="1.5"/>
-            </svg>
+            <span className="text-white text-xl font-light">
+              FINACRA
+            </span>
           </div>
-          <span className="text-white text-lg font-light">Finacra<span className="text-primary-orange">AI</span></span>
-        </div>
-        <div className="flex items-center gap-6">
-          <Link 
-            href="/home"
-            className="text-sm font-medium transition-colors text-gray-400 hover:text-white"
+          <div className="flex items-center gap-8">
+            <Link 
+              href="/home"
+              className="text-sm font-light transition-colors text-gray-400 hover:text-white"
           >
             Home
-          </Link>
-          <Link 
-            href="/privacy-policy"
-            className="text-sm font-medium transition-colors text-gray-400 hover:text-white"
+            </Link>
+            <Link 
+              href="/privacy-policy"
+              className="text-sm font-light transition-colors text-gray-400 hover:text-white"
           >
             Privacy
-          </Link>
-          <Link 
-            href="/terms-of-service"
-            className="text-sm font-medium transition-colors text-gray-400 hover:text-white"
+            </Link>
+            <Link 
+              href="/terms-of-service"
+              className="text-sm font-light transition-colors text-gray-400 hover:text-white"
           >
             Terms
-          </Link>
+            </Link>
+          </div>
         </div>
       </nav>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="flex items-center justify-center px-4 py-8">
-          <div className="relative z-10 w-full max-w-md">
-            {/* Logo Icon */}
-            <div className="mb-8 flex justify-center">
-          <div className="w-16 h-16 bg-primary-orange rounded-xl flex items-center justify-center shadow-lg shadow-primary-orange/30">
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="text-white"
-            >
-              <path
-                d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
-                stroke="white"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="white"
-                fillOpacity="0.1"
-              />
-              <path
-                d="M14 2V8H20"
-                stroke="white"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <line
-                x1="8"
-                y1="11"
-                x2="16"
-                y2="11"
-                stroke="white"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-              <line
-                x1="8"
-                y1="14"
-                x2="16"
-                y2="14"
-                stroke="white"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-              <line
-                x1="8"
-                y1="17"
-                x2="16"
-                y2="17"
-                stroke="white"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-            </div>
-          </div>
+        <div className="flex items-center justify-center px-4 py-20">
+      <div className="relative z-10 w-full max-w-md">
+        {/* Title */}
+            <h1 className="text-4xl md:text-5xl font-light text-white mb-3 text-center tracking-tight">
+              Welcome to Finacra
+        </h1>
+            <p className="text-gray-400 mb-12 text-center font-light">
+          Sign in to manage your financial compliance
+        </p>
 
-          {/* Title */}
-          <h1 className="text-5xl font-thin text-white mb-2 text-center tracking-tight">
-          Welcome to{' '}
-          <span className="text-white inline-flex items-baseline gap-1">
-            <span className="font-light">Finacra</span>
-            <span className="bg-primary-orange text-white px-2 py-0.5 rounded font-light">
-              AI
-            </span>
-          </span>
-          </h1>
-          <p className="text-gray-400 mb-12 text-center">
-            Sign in to manage your financial compliance
-          </p>
-
-          {/* Sign-in Card */}
-          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-8 w-full backdrop-blur-sm">
+        {/* Sign-in Card */}
+            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-10 w-full">
           {/* Google Sign-in Button */}
           <button
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className="w-full flex items-center justify-center gap-3 px-6 py-4 border-2 border-gray-700 rounded-xl hover:border-gray-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white hover:bg-gray-50 group"
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 border border-gray-700 rounded-lg hover:border-gray-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white hover:bg-gray-50 group"
           >
             {isLoading ? (
-              <div className="w-5 h-5 border-2 border-primary-orange border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
             ) : (
               <>
                 {/* Google Logo */}
@@ -242,7 +176,7 @@ function LoginPageInner() {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                   />
                 </svg>
-                <span className="text-gray-700 font-medium text-base group-hover:text-gray-900">
+                    <span className="text-gray-700 font-light text-base group-hover:text-gray-900">
                   Continue with Google
                 </span>
               </>
@@ -251,56 +185,56 @@ function LoginPageInner() {
 
           {/* Info Text */}
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-400 mb-1">
+                <p className="text-sm text-gray-400 mb-1 font-light">
               Secure sign-in with your Google account
             </p>
-            <p className="text-sm text-gray-400">No password required!</p>
-          </div>
-          </div>
-
-          {/* Footer */}
-          <div className="mt-8 space-y-4">
-            <p className="text-sm text-gray-500 text-center">
-              By signing in, you agree to our{' '}
-            <Link
-              href="/terms-of-service"
-              className="text-primary-orange hover:text-primary-orange/80 underline transition-colors"
-            >
-              Terms of Service
-            </Link>{' '}
-          and{' '}
-            <Link
-              href="/privacy-policy"
-              className="text-primary-orange hover:text-primary-orange/80 underline transition-colors"
-            >
-              Privacy Policy
-            </Link>
-            </p>
-            <div className="flex items-center justify-center gap-4 text-sm">
-              <Link
-                href="/home"
-                className="text-gray-400 hover:text-primary-orange transition-colors"
-              >
-                Learn More
-              </Link>
-              <span className="text-gray-600">•</span>
-              <Link
-                href="/privacy-policy"
-                className="text-gray-400 hover:text-primary-orange transition-colors"
-              >
-                Privacy
-              </Link>
-              <span className="text-gray-600">•</span>
-              <Link
-                href="/terms-of-service"
-                className="text-gray-400 hover:text-primary-orange transition-colors"
-              >
-                Terms
-              </Link>
-            </div>
-          </div>
+                <p className="text-sm text-gray-400 font-light">No password required!</p>
           </div>
         </div>
+
+        {/* Footer */}
+        <div className="mt-8 space-y-4">
+              <p className="text-sm text-gray-500 text-center font-light">
+          By signing in, you agree to our{' '}
+                <Link
+                  href="/terms-of-service"
+                  className="text-gray-400 hover:text-white transition-colors underline"
+          >
+            Terms of Service
+                </Link>{' '}
+          and{' '}
+                <Link
+                  href="/privacy-policy"
+                  className="text-gray-400 hover:text-white transition-colors underline"
+          >
+            Privacy Policy
+                </Link>
+          </p>
+          <div className="flex items-center justify-center gap-4 text-sm">
+                <Link
+                  href="/home"
+                  className="text-gray-400 hover:text-white transition-colors font-light"
+            >
+              Learn More
+                </Link>
+            <span className="text-gray-600">•</span>
+                <Link
+                  href="/privacy-policy"
+                  className="text-gray-400 hover:text-white transition-colors font-light"
+            >
+              Privacy
+                </Link>
+            <span className="text-gray-600">•</span>
+                <Link
+                  href="/terms-of-service"
+                  className="text-gray-400 hover:text-white transition-colors font-light"
+            >
+              Terms
+                </Link>
+              </div>
+            </div>
+            </div>
+          </div>
       </div>
     </div>
   )

@@ -1,13 +1,13 @@
 /**
  * Pricing Tier Definitions for Finacra AI
  * 
- * Defines all pricing tiers (Starter, Professional, Enterprise)
+ * Defines all pricing tiers (Starter, Enterprise)
  * and billing cycles (monthly, quarterly, half-yearly, annual)
  * with discount calculations.
  */
 
 export type BillingCycle = 'monthly' | 'quarterly' | 'half-yearly' | 'annual'
-export type PricingTier = 'starter' | 'professional' | 'enterprise'
+export type PricingTier = 'starter' | 'enterprise'
 
 export interface PricingTierConfig {
   id: PricingTier
@@ -73,33 +73,6 @@ export const PRICING_TIERS: PricingTierConfig[] = [
       users: 3,
       apiAccess: false,
       support: 'email',
-    },
-  },
-  {
-    id: 'professional',
-    name: 'Professional',
-    description: 'Ideal for growing businesses',
-    monthlyPrice: 6000, // Per company pricing - competitive for single company
-    features: [
-      '1 company per subscription',
-      'Up to 10 team members per company',
-      'Advanced CIN/DIN verification',
-      'Document storage (50GB per company)',
-      'Priority email support',
-      'Advanced compliance tracking',
-      'Team collaboration tools',
-      'API access',
-      'Advanced reporting & analytics',
-      'Custom workflows',
-      'Invited members get free access',
-    ],
-    popular: true,
-    limits: {
-      companies: 1, // Company-first: 1 company per subscription
-      storage: '50GB',
-      users: 10,
-      apiAccess: true,
-      support: 'priority',
     },
   },
   {

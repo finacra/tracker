@@ -336,10 +336,10 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Error in batch user lookup:', error)
     // Fallback to individual lookups
-    for (const userId of userIds) {
-      const { data } = await supabase.auth.admin.getUserById(userId)
-      const email = data?.user?.email
-      if (email) emailByUserId.set(userId, email)
+  for (const userId of userIds) {
+    const { data } = await supabase.auth.admin.getUserById(userId)
+    const email = data?.user?.email
+    if (email) emailByUserId.set(userId, email)
     }
   }
 
@@ -399,7 +399,7 @@ Deno.serve(async (req) => {
 
     // Send email with error handling - continue processing other users if one fails
     try {
-      await resendSend([toEmail], preheader, html)
+    await resendSend([toEmail], preheader, html)
       
       // Only insert log entry AFTER successful email send
       const { error: logErr } = await supabase
@@ -411,7 +411,7 @@ Deno.serve(async (req) => {
         console.warn(`Email sent to ${toEmail} but failed to log (user ${userId}):`, logErr)
       }
       
-      sent++
+    sent++
     } catch (error) {
       console.error(`Failed to send email to ${toEmail} (user ${userId}):`, error)
       // Continue with next user instead of stopping

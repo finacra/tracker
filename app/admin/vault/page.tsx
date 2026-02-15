@@ -6,65 +6,192 @@ import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import {
+  getFolders,
   createFolder,
   updateFolder,
   deleteFolder,
-  getFolders,
-  uploadFile,
-  getFiles,
-  updateFile,
-  deleteFile,
-  getFileDownloadUrl,
-  type VaultFolder,
-  type VaultFile,
+  getDocumentTemplates,
+  createDocumentTemplate,
+  updateDocumentTemplate,
+  deleteDocumentTemplate,
+  testServerAction,
+  type FolderInfo,
+  type DocumentTemplate,
 } from './actions'
+import {
+  parseFolderPath,
+  buildBreadcrumb,
+  getFolderName,
+  getParentPath,
+} from '@/lib/vault/folder-utils'
 
 export default function VaultManagementPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const [folders, setFolders] = useState<VaultFolder[]>([])
-  const [files, setFiles] = useState<VaultFile[]>([])
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null)
+  const [folders, setFolders] = useState<FolderInfo[]>([])
+  const [templates, setTemplates] = useState<DocumentTemplate[]>([])
+  const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
-  const [isUploadingFile, setIsUploadingFile] = useState(false)
+  const [isCreatingTemplate, setIsCreatingTemplate] = useState(false)
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false)
-  const [showUploadFileModal, setShowUploadFileModal] = useState(false)
-  const [editingFolder, setEditingFolder] = useState<VaultFolder | null>(null)
-  const [editingFile, setEditingFile] = useState<VaultFile | null>(null)
+  const [showCreateTemplateModal, setShowCreateTemplateModal] = useState(false)
+  const [editingFolder, setEditingFolder] = useState<FolderInfo | null>(null)
+  const [editingTemplate, setEditingTemplate] = useState<DocumentTemplate | null>(null)
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
 
   // Form states
   const [folderForm, setFolderForm] = useState({ name: '', description: '' })
-  const [fileForm, setFileForm] = useState({ name: '', description: '', tags: '', file: null as File | null })
+  const [templateForm, setTemplateForm] = useState({
+    name: '',
+    frequency: 'monthly' as 'one-time' | 'monthly' | 'quarterly' | 'yearly',
+    category: '',
+    description: '',
+    isMandatory: false,
+  })
 
   useEffect(() => {
+    console.log('[VAULT PAGE] useEffect triggered:', {
+      hasUser: !!user,
+      userId: user?.id,
+      selectedFolderPath,
+      pathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
+    })
+
     if (!user) {
+      console.log('[VAULT PAGE] No user, redirecting to /')
       router.push('/')
       return
     }
+    
+    console.log('[VAULT PAGE] User exists, loading data...')
+    // Only load data if user exists, don't redirect immediately
+    // Let loadData handle the superadmin check and redirect
     loadData()
-  }, [user, router, selectedFolderId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, selectedFolderPath]) // Removed router from dependencies to prevent infinite loops
 
   const loadData = async () => {
+    console.log('[VAULT PAGE] loadData called')
     setIsLoading(true)
     try {
-      const [foldersResult, filesResult] = await Promise.all([
-        getFolders(),
-        getFiles(selectedFolderId),
+      // Test if server actions work at all
+      console.log('[VAULT PAGE] Testing server action...')
+      try {
+        const testResult = await testServerAction()
+        console.log('[VAULT PAGE] Test server action result:', testResult)
+      } catch (testErr) {
+        console.error('[VAULT PAGE] Test server action failed:', testErr)
+      }
+      
+      console.log('[VAULT PAGE] Calling getFolders and getDocumentTemplates...')
+      console.log('[VAULT PAGE] Selected folder path:', selectedFolderPath)
+      
+      console.log('[VAULT PAGE] About to call getFolders...')
+      const foldersPromise = getFolders().catch((err) => {
+        console.error('[VAULT PAGE] getFolders promise rejected:', err)
+        return { success: false, error: err.message || 'Unknown error' }
+      })
+      
+      console.log('[VAULT PAGE] About to call getDocumentTemplates...')
+      const templatesPromise = getDocumentTemplates(selectedFolderPath).catch((err) => {
+        console.error('[VAULT PAGE] getDocumentTemplates promise rejected:', err)
+        return { success: false, error: err.message || 'Unknown error' }
+      })
+      
+      console.log('[VAULT PAGE] Promises created, awaiting...')
+      console.log('[VAULT PAGE] Promise objects:', {
+        foldersPromise: typeof foldersPromise,
+        templatesPromise: typeof templatesPromise,
+        foldersPromiseThen: typeof foldersPromise.then,
+        templatesPromiseThen: typeof templatesPromise.then,
+      })
+      
+      // Use Promise.allSettled with a timeout wrapper
+      const timeout = 30000 // 30 seconds
+      const resultsPromise = Promise.allSettled([
+        foldersPromise,
+        templatesPromise,
       ])
+      
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Request timeout after ${timeout}ms`)), timeout)
+      })
+      
+      let results: PromiseSettledResult<any>[]
+      try {
+        results = await Promise.race([resultsPromise, timeoutPromise])
+      } catch (error) {
+        // Timeout occurred
+        throw error
+      }
+      
+      const foldersResult = results[0].status === 'fulfilled' 
+        ? results[0].value 
+        : { success: false, error: results[0].status === 'rejected' ? results[0].reason?.message || 'Unknown error' : 'Promise rejected' }
+      const templatesResult = results[1].status === 'fulfilled'
+        ? results[1].value
+        : { success: false, error: results[1].status === 'rejected' ? results[1].reason?.message || 'Unknown error' : 'Promise rejected' }
+      
+      console.log('[VAULT PAGE] Promise results status:', {
+        foldersStatus: results[0].status,
+        templatesStatus: results[1].status,
+        foldersError: results[0].status === 'rejected' ? results[0].reason : null,
+        templatesError: results[1].status === 'rejected' ? results[1].reason : null,
+      })
 
-      if (foldersResult.success && foldersResult.folders) {
-        setFolders(foldersResult.folders)
+      console.log('[VAULT PAGE] Results received:', {
+        foldersSuccess: foldersResult.success,
+        foldersError: foldersResult.error,
+        foldersCount: 'folders' in foldersResult ? foldersResult.folders?.length || 0 : 0,
+        templatesSuccess: templatesResult.success,
+        templatesError: templatesResult.error,
+        templatesCount: 'templates' in templatesResult ? templatesResult.templates?.length || 0 : 0,
+      })
+
+      // Check if user is not superadmin and redirect
+      if (!foldersResult.success && foldersResult.error?.includes('superadmin')) {
+        console.log('[VAULT PAGE] User is not superadmin, redirecting to data-room')
+        router.push('/data-room')
+        return
       }
 
-      if (filesResult.success && filesResult.files) {
-        setFiles(filesResult.files)
+      // Check for other errors
+      if (!foldersResult.success) {
+        console.error('[VAULT PAGE] Failed to load folders:', foldersResult.error)
+        alert(`Failed to load folders: ${foldersResult.error}`)
+      }
+
+      if (!templatesResult.success) {
+        console.error('[VAULT PAGE] Failed to load templates:', templatesResult.error)
+        // Don't alert for template errors, just log
+      }
+
+      if (foldersResult.success && 'folders' in foldersResult && foldersResult.folders) {
+        console.log('[VAULT PAGE] Setting folders:', foldersResult.folders.length)
+        setFolders(foldersResult.folders)
+      } else {
+        console.log('[VAULT PAGE] No folders to set')
+        setFolders([])
+      }
+
+      if (templatesResult.success && 'templates' in templatesResult && templatesResult.templates) {
+        console.log('[VAULT PAGE] Setting templates:', templatesResult.templates.length)
+        setTemplates(templatesResult.templates)
+      } else {
+        console.log('[VAULT PAGE] No templates to set')
+        setTemplates([])
       }
     } catch (error) {
-      console.error('Error loading vault data:', error)
+      console.error('[VAULT PAGE] Error loading vault data:', error)
+      console.error('[VAULT PAGE] Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      })
+      alert(`Error loading vault data: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsLoading(false)
+      console.log('[VAULT PAGE] loadData completed, isLoading set to false')
     }
   }
 
@@ -78,7 +205,7 @@ export default function VaultManagementPage() {
     try {
       const result = await createFolder(
         folderForm.name.trim(),
-        selectedFolderId,
+        selectedFolderPath,
         folderForm.description.trim() || null
       )
 
@@ -104,15 +231,25 @@ export default function VaultManagementPage() {
 
     setIsCreatingFolder(true)
     try {
+      // Build new path
+      const parentPath = getParentPath(editingFolder.path)
+      const newPath = parentPath 
+        ? `${parentPath}/${folderForm.name.trim()}`
+        : folderForm.name.trim()
+
       const result = await updateFolder(
-        editingFolder.id,
-        folderForm.name.trim(),
+        editingFolder.path,
+        newPath,
         folderForm.description.trim() || null
       )
 
       if (result.success) {
         setEditingFolder(null)
         setFolderForm({ name: '', description: '' })
+        // If we renamed the selected folder, update selection
+        if (selectedFolderPath === editingFolder.path) {
+          setSelectedFolderPath(newPath)
+        }
         loadData()
       } else {
         alert(result.error || 'Failed to update folder')
@@ -125,17 +262,17 @@ export default function VaultManagementPage() {
     }
   }
 
-  const handleDeleteFolder = async (folderId: string) => {
-    if (!confirm('Are you sure you want to delete this folder? This action cannot be undone.')) {
+  const handleDeleteFolder = async (folderPath: string) => {
+    if (!confirm('Are you sure you want to delete this folder? This will delete all document templates in this folder and subfolders. This action cannot be undone.')) {
       return
     }
 
     try {
-      const result = await deleteFolder(folderId)
+      const result = await deleteFolder(folderPath)
 
       if (result.success) {
-        if (selectedFolderId === folderId) {
-          setSelectedFolderId(null)
+        if (selectedFolderPath === folderPath) {
+          setSelectedFolderPath(null)
         }
         loadData()
       } else {
@@ -147,149 +284,131 @@ export default function VaultManagementPage() {
     }
   }
 
-  const handleUploadFile = async () => {
-    if (!fileForm.file || !fileForm.name.trim()) {
-      alert('Please select a file and enter a name')
+  const handleCreateTemplate = async () => {
+    if (!templateForm.name.trim()) {
+      alert('Please enter a document name')
       return
     }
 
-    setIsUploadingFile(true)
+    setIsCreatingTemplate(true)
     try {
-      const tags = fileForm.tags
-        .split(',')
-        .map(tag => tag.trim())
-        .filter(tag => tag.length > 0)
-
-      const result = await uploadFile(
-        fileForm.file,
-        selectedFolderId,
-        fileForm.name.trim(),
-        fileForm.description.trim() || null,
-        tags
+      const result = await createDocumentTemplate(
+        templateForm.name.trim(),
+        selectedFolderPath,
+        templateForm.frequency,
+        templateForm.category.trim() || null,
+        templateForm.description.trim() || null,
+        templateForm.isMandatory
       )
 
       if (result.success) {
-        setShowUploadFileModal(false)
-        setFileForm({ name: '', description: '', tags: '', file: null })
+        setShowCreateTemplateModal(false)
+        setTemplateForm({
+          name: '',
+          frequency: 'monthly',
+          category: '',
+          description: '',
+          isMandatory: false,
+        })
         loadData()
       } else {
-        alert(result.error || 'Failed to upload file')
+        alert(result.error || 'Failed to create document template')
       }
     } catch (error) {
-      console.error('Error uploading file:', error)
-      alert('Failed to upload file')
+      console.error('Error creating document template:', error)
+      alert('Failed to create document template')
     } finally {
-      setIsUploadingFile(false)
+      setIsCreatingTemplate(false)
     }
   }
 
-  const handleUpdateFile = async () => {
-    if (!editingFile || !fileForm.name.trim()) {
+  const handleUpdateTemplate = async () => {
+    if (!editingTemplate || !templateForm.name.trim()) {
       return
     }
 
-    setIsUploadingFile(true)
+    setIsCreatingTemplate(true)
     try {
-      const tags = fileForm.tags
-        .split(',')
-        .map(tag => tag.trim())
-        .filter(tag => tag.length > 0)
-
-      const result = await updateFile(
-        editingFile.id,
-        fileForm.name.trim(),
-        fileForm.description.trim() || null,
-        tags
+      const result = await updateDocumentTemplate(
+        editingTemplate.id!,
+        templateForm.name.trim(),
+        selectedFolderPath,
+        templateForm.frequency,
+        templateForm.category.trim() || null,
+        templateForm.description.trim() || null,
+        templateForm.isMandatory
       )
 
       if (result.success) {
-        setEditingFile(null)
-        setFileForm({ name: '', description: '', tags: '', file: null })
+        setEditingTemplate(null)
+        setTemplateForm({
+          name: '',
+          frequency: 'monthly',
+          category: '',
+          description: '',
+          isMandatory: false,
+        })
         loadData()
       } else {
-        alert(result.error || 'Failed to update file')
+        alert(result.error || 'Failed to update document template')
       }
     } catch (error) {
-      console.error('Error updating file:', error)
-      alert('Failed to update file')
+      console.error('Error updating document template:', error)
+      alert('Failed to update document template')
     } finally {
-      setIsUploadingFile(false)
+      setIsCreatingTemplate(false)
     }
   }
 
-  const handleDeleteFile = async (fileId: string) => {
-    if (!confirm('Are you sure you want to delete this file? This action cannot be undone.')) {
+  const handleDeleteTemplate = async (templateId: string) => {
+    if (!confirm('Are you sure you want to delete this document template? This action cannot be undone.')) {
       return
     }
 
     try {
-      const result = await deleteFile(fileId)
+      const result = await deleteDocumentTemplate(templateId)
 
       if (result.success) {
         loadData()
       } else {
-        alert(result.error || 'Failed to delete file')
+        alert(result.error || 'Failed to delete document template')
       }
     } catch (error) {
-      console.error('Error deleting file:', error)
-      alert('Failed to delete file')
+      console.error('Error deleting document template:', error)
+      alert('Failed to delete document template')
     }
   }
 
-  const handleDownloadFile = async (file: VaultFile) => {
-    try {
-      const result = await getFileDownloadUrl(file.file_path)
-
-      if (result.success && result.url) {
-        window.open(result.url, '_blank')
-      } else {
-        alert(result.error || 'Failed to get file URL')
-      }
-    } catch (error) {
-      console.error('Error downloading file:', error)
-      alert('Failed to download file')
-    }
-  }
-
-  const toggleFolderExpansion = (folderId: string) => {
+  const toggleFolderExpansion = (folderPath: string) => {
     const newExpanded = new Set(expandedFolders)
-    if (newExpanded.has(folderId)) {
-      newExpanded.delete(folderId)
+    if (newExpanded.has(folderPath)) {
+      newExpanded.delete(folderPath)
     } else {
-      newExpanded.add(folderId)
+      newExpanded.add(folderPath)
     }
     setExpandedFolders(newExpanded)
   }
 
-  const buildFolderTree = (parentId: string | null = null): VaultFolder[] => {
-    return folders
-      .filter(f => f.parent_id === parentId)
-      .map(folder => ({
-        ...folder,
-        children: buildFolderTree(folder.id),
-      }))
-  }
-
-  const renderFolderTree = (folderList: VaultFolder[], level: number = 0) => {
+  const renderFolderTree = (folderList: FolderInfo[], level: number = 0) => {
     return folderList.map(folder => {
-      const isExpanded = expandedFolders.has(folder.id)
-      const isSelected = selectedFolderId === folder.id
+      const isExpanded = expandedFolders.has(folder.path)
+      const isSelected = selectedFolderPath === folder.path
       const hasChildren = folder.children && folder.children.length > 0
 
       return (
-        <div key={folder.id}>
+        <div key={folder.path}>
           <div
             className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors ${
               isSelected ? 'bg-primary-orange/20 border border-primary-orange/50' : ''
             }`}
             style={{ paddingLeft: `${level * 20 + 8}px` }}
-            onClick={() => setSelectedFolderId(folder.id)}
+            onClick={() => setSelectedFolderPath(folder.path)}
           >
             {hasChildren && (
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  toggleFolderExpansion(folder.id)
+                  toggleFolderExpansion(folder.path)
                 }}
                 className="w-4 h-4 flex items-center justify-center text-gray-400 hover:text-white"
               >
@@ -309,13 +428,13 @@ export default function VaultManagementPage() {
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
             </svg>
             <span className="flex-1 text-sm text-white">{folder.name}</span>
-            <span className="text-xs text-gray-500">({folder.file_count || 0})</span>
+            <span className="text-xs text-gray-500">({folder.documentCount})</span>
             <div className="flex items-center gap-1">
               <button
                 onClick={(e) => {
                   e.stopPropagation()
                   setEditingFolder(folder)
-                  setFolderForm({ name: folder.name, description: folder.description || '' })
+                  setFolderForm({ name: folder.name, description: '' })
                 }}
                 className="p-1 text-gray-400 hover:text-primary-orange transition-colors"
                 title="Edit folder"
@@ -328,7 +447,7 @@ export default function VaultManagementPage() {
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  handleDeleteFolder(folder.id)
+                  handleDeleteFolder(folder.path)
                 }}
                 className="p-1 text-gray-400 hover:text-red-400 transition-colors"
                 title="Delete folder"
@@ -348,14 +467,47 @@ export default function VaultManagementPage() {
     })
   }
 
-  const formatFileSize = (bytes: number | null) => {
-    if (!bytes) return 'Unknown'
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`
-    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+  const getFrequencyBadgeColor = (frequency: string) => {
+    switch (frequency) {
+      case 'one-time':
+        return 'bg-gray-600'
+      case 'monthly':
+        return 'bg-blue-600'
+      case 'quarterly':
+        return 'bg-purple-600'
+      case 'yearly':
+        return 'bg-green-600'
+      default:
+        return 'bg-gray-600'
+    }
   }
 
+  const getFrequencyLabel = (frequency: string) => {
+    switch (frequency) {
+      case 'one-time':
+        return 'One-Time'
+      case 'monthly':
+        return 'Monthly'
+      case 'quarterly':
+        return 'Quarterly'
+      case 'yearly':
+        return 'Yearly'
+      default:
+        return frequency
+    }
+  }
+
+  console.log('[VAULT PAGE] Render state:', {
+    isLoading,
+    hasUser: !!user,
+    foldersCount: folders.length,
+    templatesCount: templates.length,
+    selectedFolderPath,
+    pathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
+  })
+
   if (isLoading) {
+    console.log('[VAULT PAGE] Rendering loading state')
     return (
       <div className="min-h-screen bg-primary-dark">
         <Header />
@@ -366,8 +518,8 @@ export default function VaultManagementPage() {
     )
   }
 
-  const rootFolders = buildFolderTree()
-  const currentFolder = folders.find(f => f.id === selectedFolderId)
+  const breadcrumb = selectedFolderPath ? buildBreadcrumb(selectedFolderPath) : []
+  const currentFolderName = selectedFolderPath ? getFolderName(selectedFolderPath) : 'Root'
 
   return (
     <div className="min-h-screen bg-primary-dark">
@@ -376,7 +528,7 @@ export default function VaultManagementPage() {
       <div className="container mx-auto px-4 py-8 relative z-10">
         <div className="mb-6">
           <h1 className="text-3xl font-light text-white mb-2">Compliance Vault</h1>
-          <p className="text-gray-400">Manage folders and files for compliance documents</p>
+          <p className="text-gray-400">Manage global folder structure and document templates for all companies</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -399,9 +551,9 @@ export default function VaultManagementPage() {
 
               {/* Root level button */}
               <button
-                onClick={() => setSelectedFolderId(null)}
+                onClick={() => setSelectedFolderPath(null)}
                 className={`w-full flex items-center gap-2 p-2 rounded-lg hover:bg-gray-800 transition-colors mb-2 ${
-                  selectedFolderId === null ? 'bg-primary-orange/20 border border-primary-orange/50' : ''
+                  selectedFolderPath === null ? 'bg-primary-orange/20 border border-primary-orange/50' : ''
                 }`}
               >
                 <svg
@@ -420,36 +572,54 @@ export default function VaultManagementPage() {
               </button>
 
               <div className="space-y-1 max-h-[600px] overflow-y-auto">
-                {renderFolderTree(rootFolders)}
+                {renderFolderTree(folders)}
               </div>
             </div>
           </div>
 
-          {/* Files List */}
+          {/* Document Templates List */}
           <div className="lg:col-span-2">
             <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-lg font-semibold text-white">
-                    {currentFolder ? currentFolder.name : 'Root'} Files
+                    {currentFolderName} Documents
                   </h2>
-                  {currentFolder?.description && (
-                    <p className="text-sm text-gray-400 mt-1">{currentFolder.description}</p>
+                  {breadcrumb.length > 0 && (
+                    <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
+                      {breadcrumb.map((crumb, idx) => (
+                        <span key={crumb.path}>
+                          {idx > 0 && <span className="mx-1">/</span>}
+                          <button
+                            onClick={() => setSelectedFolderPath(crumb.path)}
+                            className="hover:text-primary-orange transition-colors"
+                          >
+                            {crumb.name}
+                          </button>
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </div>
                 <button
                   onClick={() => {
-                    setEditingFile(null)
-                    setFileForm({ name: '', description: '', tags: '', file: null })
-                    setShowUploadFileModal(true)
+                    setEditingTemplate(null)
+                    setTemplateForm({
+                      name: '',
+                      frequency: 'monthly',
+                      category: '',
+                      description: '',
+                      isMandatory: false,
+                    })
+                    setShowCreateTemplateModal(true)
                   }}
                   className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors text-sm font-medium"
                 >
-                  + Upload File
+                  + New Document
                 </button>
               </div>
 
-              {files.length === 0 ? (
+              {templates.length === 0 ? (
                 <div className="text-center py-12">
                   <svg
                     width="48"
@@ -465,71 +635,48 @@ export default function VaultManagementPage() {
                     <line x1="16" y1="13" x2="8" y2="13" />
                     <line x1="16" y1="17" x2="8" y2="17" />
                   </svg>
-                  <p className="text-gray-400">No files in this folder</p>
+                  <p className="text-gray-400">No document templates in this folder</p>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {files.map(file => (
+                  {templates.map(template => (
                     <div
-                      key={file.id}
+                      key={template.id || template.document_name}
                       className="flex items-center gap-4 p-4 bg-gray-900/50 rounded-lg border border-gray-800 hover:border-gray-700 transition-colors"
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            className="text-primary-orange flex-shrink-0"
-                          >
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                            <polyline points="14 2 14 8 20 8" />
-                          </svg>
-                          <h3 className="text-white font-medium truncate">{file.name}</h3>
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-white font-medium truncate">{template.document_name}</h3>
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium text-white ${getFrequencyBadgeColor(template.default_frequency)}`}>
+                            {getFrequencyLabel(template.default_frequency)}
+                          </span>
+                          {template.is_mandatory && (
+                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-600 text-white">
+                              Mandatory
+                            </span>
+                          )}
                         </div>
-                        {file.description && (
-                          <p className="text-sm text-gray-400 truncate">{file.description}</p>
+                        {template.description && (
+                          <p className="text-sm text-gray-400 truncate mb-2">{template.description}</p>
                         )}
-                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                          <span>{formatFileSize(file.file_size)}</span>
-                          {file.mime_type && <span>{file.mime_type}</span>}
-                          {file.tags && file.tags.length > 0 && (
-                            <div className="flex items-center gap-1">
-                              {file.tags.map((tag, idx) => (
-                                <span
-                                  key={idx}
-                                  className="px-2 py-0.5 bg-primary-orange/20 text-primary-orange rounded"
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          {template.category && (
+                            <span className="px-2 py-0.5 bg-primary-orange/20 text-primary-orange rounded">
+                              {template.category}
+                            </span>
                           )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleDownloadFile(file)}
-                          className="p-2 text-gray-400 hover:text-primary-orange transition-colors"
-                          title="Download"
-                        >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="7 10 12 15 17 10" />
-                            <line x1="12" y1="15" x2="12" y2="3" />
-                          </svg>
-                        </button>
-                        <button
                           onClick={() => {
-                            setEditingFile(file)
-                            setFileForm({
-                              name: file.name,
-                              description: file.description || '',
-                              tags: file.tags.join(', '),
-                              file: null,
+                            setEditingTemplate(template)
+                            setTemplateForm({
+                              name: template.document_name,
+                              frequency: (template.default_frequency === 'annually' ? 'yearly' : template.default_frequency) as 'one-time' | 'monthly' | 'quarterly' | 'yearly',
+                              category: template.category || '',
+                              description: template.description || '',
+                              isMandatory: template.is_mandatory,
                             })
                           }}
                           className="p-2 text-gray-400 hover:text-primary-orange transition-colors"
@@ -541,7 +688,7 @@ export default function VaultManagementPage() {
                           </svg>
                         </button>
                         <button
-                          onClick={() => handleDeleteFile(file.id)}
+                          onClick={() => template.id && handleDeleteTemplate(template.id)}
                           className="p-2 text-gray-400 hover:text-red-400 transition-colors"
                           title="Delete"
                         >
@@ -588,6 +735,11 @@ export default function VaultManagementPage() {
                   rows={3}
                 />
               </div>
+              {selectedFolderPath && !editingFolder && (
+                <div className="text-sm text-gray-400">
+                  Creating in: <span className="text-primary-orange">{selectedFolderPath}</span>
+                </div>
+              )}
               <div className="flex items-center gap-3">
                 <button
                   onClick={editingFolder ? handleUpdateFolder : handleCreateFolder}
@@ -612,72 +764,96 @@ export default function VaultManagementPage() {
         </div>
       )}
 
-      {/* Upload/Edit File Modal */}
-      {(showUploadFileModal || editingFile) && (
+      {/* Create/Edit Document Template Modal */}
+      {(showCreateTemplateModal || editingTemplate) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6 w-full max-w-md">
             <h2 className="text-xl font-semibold text-white mb-4">
-              {editingFile ? 'Edit File' : 'Upload New File'}
+              {editingTemplate ? 'Edit Document Template' : 'Create New Document Template'}
             </h2>
             <div className="space-y-4">
-              {!editingFile && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Select File</label>
-                  <input
-                    type="file"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) {
-                        setFileForm({ ...fileForm, file, name: fileForm.name || file.name })
-                      }
-                    }}
-                    className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
-                  />
-                </div>
-              )}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">File Name</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Document Name</label>
                 <input
                   type="text"
-                  value={fileForm.name}
-                  onChange={(e) => setFileForm({ ...fileForm, name: e.target.value })}
+                  value={templateForm.name}
+                  onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
                   className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
-                  placeholder="Enter file name"
+                  placeholder="e.g., GSTR-3B Filed Copy"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Frequency</label>
+                  <select
+                  value={templateForm.frequency}
+                  onChange={(e) => {
+                    const value = e.target.value as 'one-time' | 'monthly' | 'quarterly' | 'yearly'
+                    setTemplateForm({ ...templateForm, frequency: value })
+                  }}
+                  className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                >
+                  <option value="one-time">One-Time</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Category (Optional)</label>
+                <input
+                  type="text"
+                  value={templateForm.category}
+                  onChange={(e) => setTemplateForm({ ...templateForm, category: e.target.value })}
+                  className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                  placeholder="e.g., GST, Income Tax"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Description (Optional)</label>
                 <textarea
-                  value={fileForm.description}
-                  onChange={(e) => setFileForm({ ...fileForm, description: e.target.value })}
+                  value={templateForm.description}
+                  onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
                   className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
-                  placeholder="Enter file description"
+                  placeholder="Enter document description"
                   rows={3}
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Tags (comma-separated)</label>
+              <div className="flex items-center gap-2">
                 <input
-                  type="text"
-                  value={fileForm.tags}
-                  onChange={(e) => setFileForm({ ...fileForm, tags: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
-                  placeholder="e.g., tax, gst, compliance"
+                  type="checkbox"
+                  id="isMandatory"
+                  checked={templateForm.isMandatory}
+                  onChange={(e) => setTemplateForm({ ...templateForm, isMandatory: e.target.checked })}
+                  className="w-4 h-4 text-primary-orange bg-gray-900 border-gray-700 rounded focus:ring-primary-orange"
                 />
+                <label htmlFor="isMandatory" className="text-sm text-gray-300">
+                  Mandatory Document
+                </label>
               </div>
+              {selectedFolderPath && (
+                <div className="text-sm text-gray-400">
+                  Creating in: <span className="text-primary-orange">{selectedFolderPath}</span>
+                </div>
+              )}
               <div className="flex items-center gap-3">
                 <button
-                  onClick={editingFile ? handleUpdateFile : handleUploadFile}
-                  disabled={isUploadingFile || !fileForm.name.trim() || (!editingFile && !fileForm.file)}
+                  onClick={editingTemplate ? handleUpdateTemplate : handleCreateTemplate}
+                  disabled={isCreatingTemplate || !templateForm.name.trim()}
                   className="flex-1 px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isUploadingFile ? 'Saving...' : editingFile ? 'Update' : 'Upload'}
+                  {isCreatingTemplate ? 'Saving...' : editingTemplate ? 'Update' : 'Create'}
                 </button>
                 <button
                   onClick={() => {
-                    setShowUploadFileModal(false)
-                    setEditingFile(null)
-                    setFileForm({ name: '', description: '', tags: '', file: null })
+                    setShowCreateTemplateModal(false)
+                    setEditingTemplate(null)
+                    setTemplateForm({
+                      name: '',
+                      frequency: 'monthly',
+                      category: '',
+                      description: '',
+                      isMandatory: false,
+                    })
                   }}
                   className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
                 >

@@ -1,288 +1,1674 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import EmbeddedPricing from '@/components/EmbeddedPricing'
 
-// This page is public and accessible to unauthenticated users
 export default function HomePage() {
+  const [hoveredProduct, setHoveredProduct] = useState<string | null>(null)
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+  const [isHoveringGraphic, setIsHoveringGraphic] = useState(false)
+  const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set())
+
   useEffect(() => {
     console.log('🏠 [HOME PAGE] Component mounted!')
-    console.log('🏠 [HOME PAGE] Current URL:', window.location.href)
-    console.log('🏠 [HOME PAGE] Pathname:', window.location.pathname)
+    
+    // Detect mobile/tablet for optimized animation settings
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024
+    
+    // Intersection Observer for scroll animations
+    // On mobile: trigger earlier with positive rootMargin, lower threshold
+    // On desktop: keep original settings for smoother experience
+    const observerOptions = isMobile
+      ? {
+          threshold: 0.05,
+          rootMargin: '0px 0px 200px 0px' // Trigger 200px before section enters viewport
+        }
+      : {
+          threshold: 0.15,
+          rootMargin: '0px 0px -50px 0px'
+        }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const sectionId = (entry.target as HTMLElement).dataset.animateSection || entry.target.id
+          if (sectionId) {
+            setVisibleSections((prev) => new Set(prev).add(sectionId))
+          }
+        }
+      })
+    }, observerOptions)
+
+    let sections: NodeListOf<Element> | null = null
+
+    // Reduced delay for faster initial load, especially on mobile
+    const timeoutId = setTimeout(() => {
+      // Observe all sections with data-animate-section
+      sections = document.querySelectorAll('[data-animate-section]')
+      sections.forEach((section) => {
+        const sectionId = (section as HTMLElement).dataset.animateSection
+        // Check if section is already in viewport on load
+        // On mobile/tablet: be more aggressive, show sections that are close to viewport
+        const rect = section.getBoundingClientRect()
+        const viewportThreshold = isMobile ? window.innerHeight * 1.5 : window.innerHeight * 0.8
+        const bottomThreshold = isMobile ? -100 : 0
+        const isInViewport = rect.top < viewportThreshold && rect.bottom > bottomThreshold
+        if (isInViewport && sectionId) {
+          setVisibleSections((prev) => new Set(prev).add(sectionId))
+        }
+        observer.observe(section)
+      })
+    }, isMobile ? 50 : 150)
+
+    return () => {
+      clearTimeout(timeoutId)
+      if (sections) {
+        sections.forEach((section) => observer.unobserve(section))
+      }
+    }
   }, [])
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const centerX = rect.width / 2
+    const centerY = rect.height / 2
+    
+    // Calculate relative position from center (-1 to 1)
+    const relativeX = (x - centerX) / centerX
+    const relativeY = (y - centerY) / centerY
+    
+    setMousePosition({ x: relativeX, y: relativeY })
+  }
+
+  const handleMouseLeave = () => {
+    setIsHoveringGraphic(false)
+    setMousePosition({ x: 0, y: 0 })
+  }
+
+  const handleMouseEnter = () => {
+    setIsHoveringGraphic(true)
+  }
 
   return (
     <div className="min-h-screen bg-primary-dark flex flex-col relative overflow-hidden">
-      {/* Navigation */}
-      <nav className="relative z-10 w-full px-6 py-6 border-b border-gray-800">
+      <style jsx global>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        @keyframes slideInLeft {
+          from {
+            opacity: 0;
+            transform: translateX(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        @keyframes slideInRight {
+          from {
+            opacity: 0;
+            transform: translateX(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        .animate-fade-in-up {
+          animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .animate-fade-in {
+          animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .animate-slide-in-left {
+          animation: slideInLeft 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .animate-slide-in-right {
+          animation: slideInRight 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .animate-scale-in {
+          animation: scaleIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .section-hidden {
+          opacity: 0;
+          transform: translateY(30px);
+          transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+          will-change: opacity, transform;
+        }
+        @media (max-width: 1023px) {
+          .section-hidden {
+            transform: translateY(15px);
+            transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+        }
+        .section-visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        .card-hidden {
+          opacity: 0;
+          transform: translateY(20px);
+          transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+          will-change: opacity, transform;
+        }
+        @media (max-width: 1023px) {
+          .card-hidden {
+            transform: translateY(10px);
+            transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+        }
+        .card-visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        * {
+          transition-property: color, background-color, border-color, opacity, transform;
+          transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+          transition-duration: 300ms;
+        }
+
+        /* Infinite scroll animation for clients */
+        @keyframes scroll {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(-50%);
+          }
+        }
+        .animate-scroll {
+          animation: scroll 30s linear infinite;
+          display: flex;
+          width: fit-content;
+        }
+      `}</style>
+      {/* Navigation Bar */}
+      <nav className="relative z-10 w-full px-4 sm:px-6 py-4 sm:py-6 animate-fade-in">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-primary-orange rounded-lg flex items-center justify-center shadow-lg shadow-primary-orange/30">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="text-white"
-              >
-                <path
-                  d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
-                  stroke="white"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  fill="white"
-                  fillOpacity="0.1"
-                />
-                <path
-                  d="M14 2V8H20"
-                  stroke="white"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-            <span className="text-white text-xl font-light">
-              Finacra<span className="text-primary-orange">AI</span>
+            <span className="text-white text-lg sm:text-xl font-light">
+              FINACRA
             </span>
           </div>
-          <Link
-            href="/"
-            className="px-6 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors font-medium"
-          >
-            Sign In
-          </Link>
+          <div className="hidden md:flex items-center gap-8">
+            <Link href="#products" className="text-gray-300 hover:text-white transition-colors font-light text-sm">
+              Products
+            </Link>
+            <Link href="#features" className="text-gray-300 hover:text-white transition-colors font-light text-sm">
+              Features
+            </Link>
+            <Link href="#plans" className="text-gray-300 hover:text-white transition-colors font-light text-sm">
+              Plans
+            </Link>
+            <Link href="#clients" className="text-gray-300 hover:text-white transition-colors font-light text-sm">
+              Customers
+            </Link>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Link
+              href="/subscribe"
+              className="px-3 sm:px-4 py-2 bg-black border border-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors font-light text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2"
+            >
+              <span className="hidden sm:inline">Start Trial for free</span>
+              <span className="sm:hidden">Trial</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="hidden sm:block">
+                <path d="M1 11L11 1M11 1H1M11 1V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </Link>
+            <Link
+              href="/"
+              className="text-gray-300 hover:text-white transition-colors font-light text-xs sm:text-sm"
+            >
+              Log In
+            </Link>
+          </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-20">
-        <div className="max-w-6xl mx-auto">
-          {/* Logo Icon */}
-          <div className="mb-8 flex justify-center">
-            <div className="w-24 h-24 bg-gradient-to-br from-primary-orange to-orange-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-primary-orange/40 animate-pulse">
-              <svg
-                width="40"
-                height="40"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="text-white"
-              >
-                <path
-                  d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
-                  stroke="white"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  fill="white"
-                  fillOpacity="0.1"
-                />
-                <path
-                  d="M14 2V8H20"
-                  stroke="white"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <line
-                  x1="8"
-                  y1="11"
-                  x2="16"
-                  y2="11"
-                  stroke="white"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="8"
-                  y1="14"
-                  x2="16"
-                  y2="14"
-                  stroke="white"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="8"
-                  y1="17"
-                  x2="16"
-                  y2="17"
-                  stroke="white"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
+      <section 
+        id="hero"
+        data-animate-section="hero"
+        className={`relative z-10 px-4 sm:px-6 md:px-12 py-8 sm:py-12 md:py-20 ${visibleSections.has('hero') || true ? 'section-visible' : 'section-hidden'}`}
+      >
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-6 sm:gap-8 md:gap-16 items-center">
+            {/* Left: Content */}
+            <div className="max-w-2xl animate-slide-in-left" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
+              <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-light mb-4 sm:mb-6 leading-[1.05] tracking-tight">
+                <span className="bg-gradient-to-r from-cyan-400/70 via-purple-400/70 to-pink-400/70 bg-clip-text text-transparent">
+                  Compliance from
+                </span>
+                <br />
+                <span className="text-white">
+                  Track to Execute
+                </span>
+              </h1>
+              <p className="text-sm sm:text-base md:text-lg text-gray-400 mb-6 sm:mb-10 font-light leading-relaxed animate-fade-in" style={{ animationDelay: '0.4s', opacity: 0, animationFillMode: 'forwards' }}>
+                Finacra delivers proven compliance tracking, document management, and financial oversight to businesses, finance operators, and consulting firms.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 animate-fade-in" style={{ animationDelay: '0.6s', opacity: 0, animationFillMode: 'forwards' }}>
+                <Link
+                  href="/subscribe"
+                  className="px-5 sm:px-6 py-2.5 sm:py-3 bg-black border border-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors font-light text-xs sm:text-sm flex items-center justify-center gap-2 min-h-[44px]"
+                >
+                  Start Trial for free
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="hidden sm:block">
+                    <path d="M1 11L11 1M11 1H1M11 1V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </Link>
+                <Link
+                  href="#contact"
+                  className="px-5 sm:px-6 py-2.5 sm:py-3 text-white hover:text-gray-300 transition-colors font-light text-xs sm:text-sm flex items-center justify-center gap-2 min-h-[44px]"
+                >
+                  Build Compliance
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="hidden sm:block">
+                    <path d="M1 11L11 1M11 1H1M11 1V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
+                </Link>
+              </div>
             </div>
-          </div>
 
-          {/* Main Heading */}
-          <h1 className="text-6xl md:text-8xl font-thin text-white mb-6 tracking-tight text-center">
-            Welcome to{' '}
-            <span className="text-white inline-flex items-baseline gap-2">
-              <span className="font-light">Finacra</span>
-              <span className="bg-gradient-to-r from-primary-orange to-orange-600 text-white px-4 py-2 rounded-xl font-light shadow-lg">
-                AI
-              </span>
-            </span>
-          </h1>
-
-          {/* Subheading */}
-          <p className="text-2xl md:text-4xl text-gray-300 mb-4 font-light text-center">
-            Intelligent Financial Compliance Management
-          </p>
-          <p className="text-lg md:text-xl text-gray-400 mb-12 max-w-3xl mx-auto text-center leading-relaxed">
-            Streamline your regulatory compliance, track deadlines, manage documents, and stay ahead of financial obligations with AI-powered insights.
-          </p>
-
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20">
-            <Link
-              href="/"
-              className="px-10 py-5 bg-gradient-to-r from-primary-orange to-orange-600 text-white rounded-xl hover:from-primary-orange/90 hover:to-orange-600/90 transition-all font-medium text-lg shadow-2xl shadow-primary-orange/40 hover:shadow-primary-orange/60 transform hover:scale-105"
+            {/* Right: Custom Graphic */}
+            <div 
+              className="hidden md:flex relative w-full h-[300px] sm:h-[400px] md:h-[500px] lg:h-[600px] items-center justify-center order-first md:order-last"
+              onMouseMove={handleMouseMove}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+              style={{
+                perspective: '1000px',
+                transformStyle: 'preserve-3d'
+              }}
             >
-              Get Started Free
-            </Link>
-            <Link
-              href="#features"
-              className="px-10 py-5 border-2 border-gray-700 text-gray-300 rounded-xl hover:border-primary-orange hover:text-primary-orange transition-all font-medium text-lg"
-            >
-              Learn More
-            </Link>
-          </div>
-
-          {/* Features Section */}
-          <div id="features" className="mt-32 grid md:grid-cols-3 gap-8">
-            <div className="bg-gradient-to-br from-primary-dark-card to-gray-900 border border-gray-800 rounded-2xl p-8 hover:border-primary-orange/50 transition-all hover:shadow-xl hover:shadow-primary-orange/10 transform hover:-translate-y-1">
-              <div className="w-14 h-14 bg-gradient-to-br from-primary-orange/30 to-orange-600/30 rounded-xl flex items-center justify-center mb-6">
+              <div
+                style={{
+                  transform: isHoveringGraphic
+                    ? `perspective(1000px) rotateY(${mousePosition.x * 20}deg) rotateX(${-mousePosition.y * 20}deg) translateZ(${Math.abs(mousePosition.x) * 30 + Math.abs(mousePosition.y) * 30}px) scale(${1 + (Math.abs(mousePosition.x) * 0.05 + Math.abs(mousePosition.y) * 0.05)})`
+                    : 'perspective(1000px) rotateY(0deg) rotateX(0deg) translateZ(0px) scale(1)',
+                  transition: isHoveringGraphic ? 'none' : 'transform 0.6s ease-out',
+                  transformStyle: 'preserve-3d',
+                  willChange: 'transform'
+                }}
+                className="w-full h-full"
+              >
+              <style>{`
+                @keyframes rotate {
+                  from {
+                    transform: rotate(0deg);
+                  }
+                  to {
+                    transform: rotate(360deg);
+                  }
+                }
+                @keyframes rotateReverse {
+                  from {
+                    transform: rotate(360deg);
+                  }
+                  to {
+                    transform: rotate(0deg);
+                  }
+                }
+                @keyframes glowPulse {
+                  0%, 100% {
+                    opacity: 0.4;
+                    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.3));
+                  }
+                  50% {
+                    opacity: 0.8;
+                    filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.6));
+                  }
+                }
+                @keyframes glowPulseStrong {
+                  0%, 100% {
+                    opacity: 0.5;
+                    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4));
+                  }
+                  50% {
+                    opacity: 0.9;
+                    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.7));
+                  }
+                }
+                .ring-rotate-1 {
+                  animation: rotate 20s linear infinite;
+                  transform-origin: 200px 200px;
+                }
+                .ring-rotate-2 {
+                  animation: rotateReverse 15s linear infinite;
+                  transform-origin: 200px 200px;
+                }
+                .ring-rotate-3 {
+                  animation: rotate 10s linear infinite;
+                  transform-origin: 200px 200px;
+                }
+                .glow-pulse {
+                  animation: glowPulse 3s ease-in-out infinite;
+                }
+                .glow-pulse-strong {
+                  animation: glowPulseStrong 3s ease-in-out infinite;
+                }
+              `}</style>
+              <div className="relative w-full h-full">
+                {/* Geometric shapes with gradient */}
                 <svg
-                  width="28"
-                  height="28"
-                  viewBox="0 0 24 24"
+                  className="w-full h-full"
+                  viewBox="0 0 400 400"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
-                  className="text-primary-orange"
                 >
-                  <path
-                    d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
-                    stroke="currentColor"
+                  <defs>
+                    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#ffffff" stopOpacity="0.5" />
+                      <stop offset="100%" stopColor="#ffffff" stopOpacity="0.7" />
+                    </linearGradient>
+                    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#ffffff" stopOpacity="0.5" />
+                      <stop offset="100%" stopColor="#ffffff" stopOpacity="0.7" />
+                    </linearGradient>
+                    <filter id="glow">
+                      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                      <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+                    <filter id="glow-strong">
+                      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+                      <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+                    <filter id="glow-intense">
+                      <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+                      <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+                  </defs>
+                  
+                  {/* Rotating group for large circle */}
+                  <g className="ring-rotate-1">
+                    <circle
+                      cx="200"
+                      cy="200"
+                      r="120"
+                      stroke="rgba(255, 255, 255, 0.8)"
+                      strokeWidth="2.5"
+                      fill="none"
+                      filter="url(#glow-intense)"
+                      className="glow-pulse"
+                    />
+                  </g>
+                  
+                  {/* Rotating group for medium circle */}
+                  <g className="ring-rotate-2">
+                    <circle
+                      cx="200"
+                      cy="200"
+                      r="80"
+                      stroke="rgba(255, 255, 255, 0.85)"
+                      strokeWidth="3"
+                      fill="none"
+                      filter="url(#glow-intense)"
+                      className="glow-pulse-strong"
+                    />
+                  </g>
+                  
+                  {/* Rotating group for small circle */}
+                  <g className="ring-rotate-3">
+                    <circle
+                      cx="200"
+                      cy="200"
+                      r="40"
+                      stroke="rgba(255, 255, 255, 0.9)"
+                      strokeWidth="3.5"
+                      fill="none"
+                      filter="url(#glow-strong)"
+                      className="glow-pulse-strong"
+                    />
+                  </g>
+                  
+                  {/* Diagonal lines with glow */}
+                  <line
+                    x1="80"
+                    y1="80"
+                    x2="320"
+                    y2="320"
+                    stroke="rgba(255, 255, 255, 0.4)"
                     strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                    filter="url(#glow)"
+                  />
+                  <line
+                    x1="320"
+                    y1="80"
+                    x2="80"
+                    y2="320"
+                    stroke="rgba(255, 255, 255, 0.4)"
+                    strokeWidth="2"
+                    filter="url(#glow)"
+                  />
+                  
+                  {/* Corner dots - static */}
+                  <circle 
+                    cx="100" 
+                    cy="100" 
+                    r="5" 
+                    fill="rgba(255, 255, 255, 0.8)" 
+                    filter="url(#glow)"
+                  />
+                  <circle 
+                    cx="300" 
+                    cy="100" 
+                    r="5" 
+                    fill="rgba(255, 255, 255, 0.8)" 
+                    filter="url(#glow)"
+                  />
+                  <circle 
+                    cx="100" 
+                    cy="300" 
+                    r="5" 
+                    fill="rgba(255, 255, 255, 0.8)" 
+                    filter="url(#glow)"
+                  />
+                  <circle 
+                    cx="300" 
+                    cy="300" 
+                    r="5" 
+                    fill="rgba(255, 255, 255, 0.8)" 
+                    filter="url(#glow)"
+                  />
+                  
+                  {/* Floating elements - static */}
+                  <circle
+                    cx="150"
+                    cy="150"
+                    r="12"
+                    fill="url(#grad1)"
+                    filter="url(#glow-strong)"
+                    opacity="0.85"
+                  />
+                  <circle
+                    cx="250"
+                    cy="250"
+                    r="10"
+                    fill="url(#grad2)"
+                    filter="url(#glow-strong)"
+                    opacity="0.85"
                   />
                 </svg>
               </div>
-              <h3 className="text-2xl font-semibold text-white mb-4">Compliance Tracking</h3>
-              <p className="text-gray-400 leading-relaxed">
-                Never miss a deadline. Track all your regulatory requirements, from Income Tax to GST to ROC filings, all in one centralized dashboard.
-              </p>
-            </div>
-
-            <div className="bg-gradient-to-br from-primary-dark-card to-gray-900 border border-gray-800 rounded-2xl p-8 hover:border-primary-orange/50 transition-all hover:shadow-xl hover:shadow-primary-orange/10 transform hover:-translate-y-1">
-              <div className="w-14 h-14 bg-gradient-to-br from-primary-orange/30 to-orange-600/30 rounded-xl flex items-center justify-center mb-6">
-                <svg
-                  width="28"
-                  height="28"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="text-primary-orange"
-                >
-                  <path
-                    d="M9 12H15M9 16H15M17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3H12.5858C12.851 3 13.1054 3.10536 13.2929 3.29289L18.7071 8.70711C18.8946 8.89464 19 9.149 19 9.41421V19C19 20.1046 18.1046 21 17 21Z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
               </div>
-              <h3 className="text-2xl font-semibold text-white mb-4">Smart Reports</h3>
-              <p className="text-gray-400 leading-relaxed">
-                Generate comprehensive compliance reports with AI-powered insights, penalty calculations, and business impact analysis.
-              </p>
-            </div>
-
-            <div className="bg-gradient-to-br from-primary-dark-card to-gray-900 border border-gray-800 rounded-2xl p-8 hover:border-primary-orange/50 transition-all hover:shadow-xl hover:shadow-primary-orange/10 transform hover:-translate-y-1">
-              <div className="w-14 h-14 bg-gradient-to-br from-primary-orange/30 to-orange-600/30 rounded-xl flex items-center justify-center mb-6">
-                <svg
-                  width="28"
-                  height="28"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="text-primary-orange"
-                >
-                  <path
-                    d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M19.4 15C19.2669 15.3016 19.2272 15.6362 19.286 15.9606C19.3448 16.285 19.4995 16.5843 19.73 16.82L19.79 16.88C19.976 17.0657 20.1235 17.2863 20.2241 17.5291C20.3248 17.7719 20.3766 18.0322 20.3766 18.295C20.3766 18.5578 20.3248 18.8181 20.2241 19.0609C20.1235 19.3037 19.976 19.5243 19.79 19.71C19.6043 19.896 19.3837 20.0435 19.1409 20.1441C18.8981 20.2448 18.6378 20.2966 18.375 20.2966C18.1122 20.2966 17.8519 20.2448 17.6091 20.1441C17.3663 20.0435 17.1457 19.896 16.96 19.71L16.9 19.65C16.6643 19.4195 16.365 19.2648 16.0406 19.206C15.7162 19.1472 15.3816 19.1869 15.08 19.32C14.7842 19.4468 14.532 19.6572 14.3543 19.9255C14.1766 20.1938 14.0813 20.5082 14.08 20.83V21C14.08 21.5304 13.8693 22.0391 13.4942 22.4142C13.1191 22.7893 12.6104 23 12.08 23C11.5496 23 11.0409 22.7893 10.6658 22.4142C10.2907 22.0391 10.08 21.5304 10.08 21V20.91C10.0723 20.579 9.96512 20.258 9.77251 19.9887C9.5799 19.7194 9.31074 19.5143 9 19.4C8.69838 19.2669 8.36381 19.2272 8.03941 19.286C7.71502 19.3448 7.41568 19.4995 7.18 19.73L7.12 19.79C6.93425 19.976 6.71368 20.1235 6.47088 20.2241C6.22808 20.3248 5.96783 20.2966 5.705 20.2966C5.44217 20.2966 5.18192 20.2448 4.93912 20.1441C4.69632 20.0435 4.47575 19.896 4.29 19.71C4.10405 19.5243 3.95653 19.3037 3.85588 19.0609C3.75523 18.8181 3.70343 18.5578 3.70343 18.295C3.70343 18.0322 3.75523 17.7719 3.85588 17.5291C3.95653 17.2863 4.10405 17.0657 4.29 16.88L4.35 16.82C4.58054 16.5843 4.73519 16.285 4.794 15.9606C4.85282 15.6362 4.81312 15.3016 4.68 15C4.55324 14.7042 4.34276 14.452 4.07447 14.2743C3.80618 14.0966 3.49179 14.0013 3.17 14H3C2.46957 14 1.96086 13.7893 1.58579 13.4142C1.21071 13.0391 1 12.5304 1 12C1 11.4696 1.21071 10.9609 1.58579 10.5858C1.96086 10.2107 2.46957 10 3 10H3.09C3.42099 9.99231 3.742 9.88512 4.01131 9.69251C4.28062 9.4999 4.48574 9.23074 4.6 8.92C4.73312 8.61838 4.77282 8.28381 4.714 7.95941C4.65519 7.63502 4.50054 7.33568 4.27 7.1L4.21 7.04C4.02405 6.85425 3.87653 6.63368 3.77588 6.39088C3.67523 6.14808 3.62343 5.88783 3.62343 5.625C3.62343 5.36217 3.67523 5.10192 3.77588 4.85912C3.87653 4.61632 4.02405 4.39575 4.21 4.21C4.39575 4.02405 4.61632 3.87653 4.85912 3.77588C5.10192 3.67523 5.36217 3.62343 5.625 3.62343C5.88783 3.62343 6.14808 3.67523 6.39088 3.77588C6.63368 3.87653 6.85425 4.02405 7.04 4.21L7.1 4.27C7.33568 4.50054 7.63502 4.65519 7.95941 4.714C8.28381 4.77282 8.61838 4.73312 8.92 4.6H9C9.29577 4.47324 9.54802 4.26276 9.72569 3.99447C9.90337 3.72618 9.99872 3.41179 10 3.09V3C10 2.46957 10.2107 1.96086 10.5858 1.58579C10.9609 1.21071 11.4696 1 12 1C12.5304 1 13.0391 1.21071 13.4142 1.58579C13.7893 1.96086 14 2.46957 14 3V3.09C14.0013 3.41179 14.0966 3.72618 14.2743 3.99447C14.452 4.26276 14.7042 4.47324 15 4.6C15.3016 4.73312 15.6362 4.77282 15.9606 4.714C16.285 4.65519 16.5843 4.50054 16.82 4.27L16.88 4.21C17.0657 4.02405 17.2863 3.87653 17.5291 3.77588C17.7719 3.67523 18.0322 3.62343 18.295 3.62343C18.5578 3.62343 18.8181 3.67523 19.0609 3.77588C19.3037 3.87653 19.5243 4.02405 19.71 4.21C19.896 4.39575 20.0435 4.61632 20.1441 4.85912C20.2448 5.10192 20.2966 5.36217 20.2966 5.625C20.2966 5.88783 20.2448 6.14808 20.1441 6.39088C20.0435 6.63368 19.896 6.85425 19.71 7.04L19.65 7.1C19.4195 7.33568 19.2648 7.63502 19.206 7.95941C19.1472 8.28381 19.1869 8.61838 19.32 8.92V9C19.4468 9.29577 19.6572 9.54802 19.9255 9.72569C20.1938 9.90337 20.5082 9.99872 20.83 10H21C21.5304 10 22.0391 10.2107 22.4142 10.5858C22.7893 10.9609 23 11.4696 23 12C23 12.5304 22.7893 13.0391 22.4142 13.4142C22.0391 13.7893 21.5304 14 21 14H20.91C20.5882 14.0013 20.2738 14.0966 20.0055 14.2743C19.7372 14.452 19.5268 14.7042 19.4 15Z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-2xl font-semibold text-white mb-4">Document Vault</h3>
-              <p className="text-gray-400 leading-relaxed">
-                Securely store and organize all your compliance documents in one centralized, searchable vault with advanced encryption.
-              </p>
             </div>
           </div>
         </div>
-      </main>
+      </section>
 
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-gray-800 px-6 py-12">
+      {/* Clients Section */}
+      <section 
+        id="clients" 
+        data-animate-section="clients"
+        className={`relative z-10 px-4 sm:px-6 py-12 sm:py-16 md:py-20 border-t border-gray-800 ${visibleSections.has('clients') ? 'section-visible' : 'section-hidden'}`}
+      >
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary-orange rounded-lg flex items-center justify-center">
+          <p className="text-xs sm:text-sm text-gray-400 mb-8 sm:mb-12 text-center font-light px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('clients') ? 1 : 0, animationFillMode: 'forwards' }}>
+            Finacra works with <span className="underline">growing businesses, finance operators, and consulting firms</span>
+          </p>
+          {/* Infinite Scrolling Client List */}
+          <div className="overflow-hidden relative">
+            <div className="flex items-center gap-4 sm:gap-8 md:gap-16 animate-scroll">
+              {/* First set */}
+              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">CA Muneer & Associates</div>
+              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">RAZR Business</div>
+              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">CaterKraft</div>
+              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">IcePulse</div>
+              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">Dine Desk</div>
+              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">Ureserve</div>
+              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">Radiant Sage Ventures</div>
+              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">GTM</div>
+              {/* Duplicate set for seamless loop */}
+              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">CA Muneer & Associates</div>
+              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">RAZR Business</div>
+              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">CaterKraft</div>
+              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">IcePulse</div>
+              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">Dine Desk</div>
+              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">Ureserve</div>
+              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">Radiant Sage Ventures</div>
+              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">GTM</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Positioning Section */}
+      <section className="relative z-10 px-6 py-20 md:py-32 border-t border-gray-800">
+        <div className="max-w-4xl mx-auto text-center">
+          <p className="text-sm uppercase tracking-wider text-gray-400 mb-8 font-light">
+            COMPLIANCE FOR THE ENTERPRISE
+          </p>
+          <h2 className="text-4xl md:text-6xl font-light text-white mb-6">
+            Your Virtual CFO
+          </h2>
+          <p className="text-lg text-gray-400 leading-relaxed font-light max-w-2xl mx-auto">
+            Finacra gives businesses visibility into compliance, documentation, and financial responsibilities without relying entirely on manual tracking or external reminders.
+          </p>
+        </div>
+      </section>
+
+      {/* Our Products Section */}
+      <section 
+        id="products"
+        data-animate-section="products"
+        className={`relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32 border-t border-gray-800 ${visibleSections.has('products') ? 'section-visible' : 'section-hidden'}`}
+      >
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-8 sm:mb-12 md:mb-16 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('products') ? 1 : 0 }}>
+            Our Products
+          </h2>
+          <div className="grid md:grid-cols-2 gap-8 sm:gap-12 md:gap-16 items-start">
+            {/* Left: Text Content */}
+            <div className="space-y-0">
+              {/* Compliance Tracker */}
+              <div
+                className={`border-b border-gray-800 pb-12 mb-12 cursor-pointer transition-all duration-300 ${
+                  hoveredProduct && hoveredProduct !== 'compliance' ? 'opacity-30' : 'opacity-100'
+                }`}
+                onMouseEnter={() => setHoveredProduct('compliance')}
+                onMouseLeave={() => setHoveredProduct(null)}
+              >
+                <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
+                  Compliance Tracker
+                </h3>
+                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light">
+                  Track statutory and regulatory requirements across GST, Income Tax, RoC, payroll, and renewals with structured status management and due-date monitoring.
+                </p>
+              </div>
+
+              {/* Document Vault */}
+              <div
+                className={`border-b border-gray-800 pb-8 sm:pb-12 mb-8 sm:mb-12 cursor-pointer transition-all duration-300 ${
+                  hoveredProduct && hoveredProduct !== 'vault' ? 'opacity-30' : 'opacity-100'
+                }`}
+                onMouseEnter={() => setHoveredProduct('vault')}
+                onMouseLeave={() => setHoveredProduct(null)}
+              >
+                <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
+                  Document Vault
+                </h3>
+                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light">
+                  Secure storage and structured organization of financial and legal documents with role-based access.
+                </p>
+              </div>
+
+              {/* Finacra Web Services */}
+              <div
+                className={`pt-8 sm:pt-12 pb-8 sm:pb-12 cursor-pointer transition-all duration-300 ${
+                  hoveredProduct && hoveredProduct !== 'services' ? 'opacity-30' : 'opacity-100'
+                }`}
+                onMouseEnter={() => setHoveredProduct('services')}
+                onMouseLeave={() => setHoveredProduct(null)}
+              >
+                <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
+                  Finacra Web Services <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
+                </h3>
+                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light">
+                  Infrastructure layer that supports company onboarding, entity detection, compliance workflows, and administrative control.
+                </p>
+              </div>
+            </div>
+
+            {/* Right: Architecture Graphic */}
+            <div className="relative h-full min-h-[700px] flex items-center justify-center">
               <svg
-                  width="20"
-                  height="20"
-                viewBox="0 0 24 24"
+                className="w-full h-full"
+                viewBox="0 0 1000 700"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
-                className="text-white"
               >
-                <path
-                  d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
-                  stroke="white"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  fill="white"
-                  fillOpacity="0.1"
-                />
-                <path
-                  d="M14 2V8H20"
-                  stroke="white"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+                <defs>
+                  <linearGradient id="boxGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.15" />
+                    <stop offset="100%" stopColor="#888888" stopOpacity="0.25" />
+                  </linearGradient>
+                  <linearGradient id="boxGradActive" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0.35" />
+                  </linearGradient>
+                </defs>
+
+                {/* Master Architecture (default) */}
+                <g 
+                  opacity={!hoveredProduct ? 1 : 0} 
+                  style={{ 
+                    pointerEvents: !hoveredProduct ? 'auto' : 'none',
+                    transition: 'opacity 0.5s ease-in-out'
+                  }}
+                >
+                    {/* Central Hub */}
+                    <rect x="350" y="250" width="300" height="120" rx="8" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.6)" strokeWidth="3.5" />
+                    <text x="500" y="320" fill="white" fontSize="24" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Finacra Core</text>
+                    
+                    {/* Compliance Tracker */}
+                    <rect x="80" y="180" width="220" height="100" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="3" />
+                    <text x="190" y="240" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Compliance</text>
+                    <line x1="300" y1="230" x2="350" y2="280" stroke="rgba(255,255,255,0.4)" strokeWidth="3" />
+                    
+                    {/* Document Vault */}
+                    <rect x="80" y="440" width="220" height="100" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="3" />
+                    <text x="190" y="500" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Document</text>
+                    <line x1="300" y1="490" x2="350" y2="370" stroke="rgba(255,255,255,0.4)" strokeWidth="3" />
+                    
+                    {/* Web Services */}
+                    <rect x="700" y="250" width="220" height="120" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="3" />
+                    <text x="810" y="320" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Services</text>
+                    <line x1="650" y1="310" x2="700" y2="310" stroke="rgba(255,255,255,0.4)" strokeWidth="3" />
+                  </g>
+
+                {/* Compliance Tracker Architecture */}
+                <g 
+                  opacity={hoveredProduct === 'compliance' ? 1 : 0} 
+                  style={{ 
+                    pointerEvents: hoveredProduct === 'compliance' ? 'auto' : 'none',
+                    transition: 'opacity 0.5s ease-in-out'
+                  }}
+                >
+                    {/* Central Compliance Engine */}
+                    <rect x="350" y="280" width="300" height="110" rx="8" fill="url(#boxGradActive)" stroke="rgba(255,255,255,0.7)" strokeWidth="3.5" />
+                    <text x="500" y="345" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Compliance Engine</text>
+                    
+                    {/* Due Date Management */}
+                    <rect x="80" y="120" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+                    <text x="170" y="155" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Due Date</text>
+                    <text x="170" y="175" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Tracking</text>
+                    <line x1="260" y1="155" x2="380" y2="310" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
+                    
+                    {/* Compliance Type */}
+                    <rect x="740" y="120" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+                    <text x="830" y="155" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Compliance</text>
+                    <text x="830" y="175" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Type</text>
+                    <line x1="740" y1="155" x2="620" y2="310" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
+                    
+                    {/* Filing Status */}
+                    <rect x="80" y="240" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+                    <text x="170" y="275" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Filing</text>
+                    <text x="170" y="295" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Status</text>
+                    <line x1="260" y1="275" x2="380" y2="320" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
+                    
+                    {/* Penalty Calculation */}
+                    <rect x="740" y="240" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+                    <text x="830" y="275" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Penalty</text>
+                    <text x="830" y="295" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Calculation</text>
+                    <line x1="740" y1="275" x2="620" y2="320" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
+                    
+                    {/* Status Management */}
+                    <rect x="80" y="510" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+                    <text x="170" y="545" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Status</text>
+                    <text x="170" y="565" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Management</text>
+                    <line x1="260" y1="545" x2="380" y2="350" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
+                    
+                    {/* Category Tracking */}
+                    <rect x="740" y="510" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+                    <text x="830" y="545" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Category</text>
+                    <text x="830" y="565" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Tracking</text>
+                    <line x1="740" y1="545" x2="620" y2="350" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
+                </g>
+
+                {/* Document Vault Architecture */}
+                <g 
+                  opacity={hoveredProduct === 'vault' ? 1 : 0} 
+                  style={{ 
+                    pointerEvents: hoveredProduct === 'vault' ? 'auto' : 'none',
+                    transition: 'opacity 0.5s ease-in-out'
+                  }}
+                >
+                    {/* Central Vault */}
+                    <rect x="300" y="270" width="400" height="110" rx="8" fill="url(#boxGradActive)" stroke="rgba(255,255,255,0.7)" strokeWidth="3.5" />
+                    <text x="500" y="330" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Document Vault</text>
+                    
+                    {/* Document Storage */}
+                    <rect x="80" y="120" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+                    <text x="170" y="155" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Document</text>
+                    <text x="170" y="175" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Storage</text>
+                    <line x1="260" y1="155" x2="320" y2="300" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
+                    
+                    {/* Folder Structure */}
+                    <rect x="740" y="120" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+                    <text x="830" y="155" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Folder</text>
+                    <text x="830" y="175" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Structure</text>
+                    <line x1="740" y1="155" x2="680" y2="300" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
+                    
+                    {/* Role-Based Access */}
+                    <rect x="80" y="240" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+                    <text x="170" y="275" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Role-Based</text>
+                    <text x="170" y="295" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Access</text>
+                    <line x1="260" y1="275" x2="320" y2="320" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
+                    
+                    {/* Document Templates */}
+                    <rect x="740" y="240" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+                    <text x="830" y="275" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Document</text>
+                    <text x="830" y="295" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Templates</text>
+                    <line x1="740" y1="275" x2="680" y2="320" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
+                    
+                    {/* Search & Filter */}
+                    <rect x="80" y="510" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+                    <text x="170" y="545" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Search &</text>
+                    <text x="170" y="565" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Filter</text>
+                    <line x1="260" y1="545" x2="320" y2="340" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
+                    
+                    {/* Document Categories */}
+                    <rect x="740" y="510" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+                    <text x="830" y="545" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Document</text>
+                    <text x="830" y="565" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Categories</text>
+                    <line x1="740" y1="545" x2="680" y2="340" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
+                </g>
+
+                {/* Finacra Web Services Architecture */}
+                <g 
+                  opacity={hoveredProduct === 'services' ? 1 : 0} 
+                  style={{ 
+                    pointerEvents: hoveredProduct === 'services' ? 'auto' : 'none',
+                    transition: 'opacity 0.5s ease-in-out'
+                  }}
+                >
+                    {/* Central Platform */}
+                    <rect x="300" y="280" width="400" height="110" rx="8" fill="url(#boxGradActive)" stroke="rgba(255,255,255,0.7)" strokeWidth="3.5" />
+                    <text x="500" y="340" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">FWS Platform</text>
+                    
+                    {/* Order Management */}
+                    <rect x="80" y="120" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+                    <text x="170" y="155" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Order</text>
+                    <text x="170" y="175" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Management</text>
+                    <line x1="260" y1="155" x2="320" y2="310" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
+                    
+                    {/* Practice Management */}
+                    <rect x="740" y="120" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+                    <text x="830" y="155" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Practice</text>
+                    <text x="830" y="175" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Management</text>
+                    <line x1="740" y1="155" x2="680" y2="310" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
+                    
+                    {/* Client Management */}
+                    <rect x="80" y="240" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+                    <text x="170" y="275" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Client</text>
+                    <text x="170" y="295" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Management</text>
+                    <line x1="260" y1="275" x2="320" y2="330" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
+                    
+                    {/* Process Automation */}
+                    <rect x="740" y="240" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+                    <text x="830" y="275" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Process</text>
+                    <text x="830" y="295" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Automation</text>
+                    <line x1="740" y1="275" x2="680" y2="330" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
+                    
+                    {/* Company Onboarding */}
+                    <rect x="80" y="510" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+                    <text x="170" y="545" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Company</text>
+                    <text x="170" y="565" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Onboarding</text>
+                    <line x1="260" y1="545" x2="320" y2="350" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
+                    
+                    {/* Workflow Engine */}
+                    <rect x="740" y="510" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
+                    <text x="830" y="545" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Workflow</text>
+                    <text x="830" y="565" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Engine</text>
+                    <line x1="740" y1="545" x2="680" y2="350" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
+                </g>
               </svg>
             </div>
-            <span className="text-gray-400 text-sm">
-              © 2024 FinacraAI. All rights reserved.
-            </span>
           </div>
-            <div className="flex gap-8 text-sm">
-              <Link href="/privacy-policy" className="text-gray-400 hover:text-primary-orange transition-colors">
-              Privacy Policy
+        </div>
+      </section>
+
+      {/* The Finacra Solution Section */}
+      <section
+        data-animate-section="solution"
+        className={`relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32 border-t border-gray-800 ${visibleSections.has('solution') ? 'section-visible' : 'section-hidden'}`}
+      >
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-6 sm:mb-8 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('solution') ? 1 : 0 }}>
+            The Finacra Solution
+          </h2>
+          <p className="text-base sm:text-lg md:text-xl text-gray-400 mb-8 sm:mb-12 md:mb-16 text-center font-light max-w-3xl mx-auto px-4 animate-fade-in-up" style={{ animationDelay: '0.2s', opacity: visibleSections.has('solution') ? 1 : 0 }}>
+            A centralized system designed to manage:
+          </p>
+          <div className="grid md:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto px-4 sm:px-0">
+            {/* Companies Card */}
+            <div 
+              className={`bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
+              style={{ transitionDelay: visibleSections.has('solution') ? '0.3s' : '0s' }}
+            >
+              <div className="mb-4 sm:mb-6">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Companies</div>
+                <p className="text-gray-400 font-light text-xs sm:text-sm">Multi-entity management</p>
+              </div>
+              <div className="flex-1 space-y-4">
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Entity Structure</div>
+                  <div className="text-white text-sm font-light">Manage multiple companies under a unified dashboard with structured hierarchies and relationships.</div>
+                </div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Company Profiles</div>
+                  <div className="text-white text-sm font-light">Auto-fill company details from MCA, track directors, and maintain comprehensive entity records.</div>
+                </div>
+              </div>
+              {/* Company Management UI Preview */}
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs text-gray-400 font-light">Company List</div>
+                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="text-xs text-white font-light">Acme Corp Pvt Ltd</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">CIN: U12345MH2020PTC123456</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="text-xs text-white font-light">Tech Solutions LLP</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">LLPIN: AAB-1234</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
+                    <div className="text-xs text-white font-light">Global Industries Ltd</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">CIN: U67890DL2021PLC789012</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Documents Card */}
+            <div 
+              className={`bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
+              style={{ transitionDelay: visibleSections.has('solution') ? '0.4s' : '0s' }}
+            >
+              <div className="mb-4 sm:mb-6">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Documents</div>
+                <p className="text-gray-400 font-light text-xs sm:text-sm">Secure storage</p>
+              </div>
+              <div className="flex-1 space-y-4">
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Document Vault</div>
+                  <div className="text-white text-sm font-light">Organize financial and legal documents with structured folders, categories, and metadata.</div>
+                </div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Access Control</div>
+                  <div className="text-white text-sm font-light">Role-based permissions ensure secure access with viewer, editor, and admin level controls.</div>
+                </div>
+              </div>
+              {/* Document Vault UI Preview */}
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs text-gray-400 font-light">Document Vault</div>
+                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-gray-600 rounded"></div>
+                      <div className="flex-1">
+                        <div className="text-xs text-white font-light">ITR_2024-25.pdf</div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">Income Tax • 2.3 MB</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-gray-600 rounded"></div>
+                      <div className="flex-1">
+                        <div className="text-xs text-white font-light">GST_Returns_Q4.pdf</div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">GST • 1.8 MB</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-gray-600 rounded"></div>
+                      <div className="flex-1">
+                        <div className="text-xs text-white font-light">AOC-4_Form.pdf</div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">RoC • 956 KB</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Compliance Card */}
+            <div 
+              className={`bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
+              style={{ transitionDelay: visibleSections.has('solution') ? '0.5s' : '0s' }}
+            >
+              <div className="mb-4 sm:mb-6">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Compliance</div>
+                <p className="text-gray-400 font-light text-xs sm:text-sm">Regulatory tracking</p>
+              </div>
+              <div className="flex-1 space-y-4">
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Due Date Tracking</div>
+                  <div className="text-white text-sm font-light">Monitor upcoming, pending, and overdue compliance tasks across GST, Income Tax, RoC, and more.</div>
+                </div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Status Management</div>
+                  <div className="text-white text-sm font-light">Track filing status, penalty risks, and compliance health with automated alerts and reminders.</div>
+                </div>
+              </div>
+              {/* Compliance Tracker UI Preview */}
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs text-gray-400 font-light">Compliance Tracker</div>
+                  <div className="flex gap-1">
+                    <div className="w-1.5 h-1.5 bg-green-500/50 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 bg-yellow-500/50 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 bg-red-500/50 rounded-full"></div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-white font-light">GSTR-3B</div>
+                      <div className="px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded text-[10px]">✓</div>
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Due: 20 Jan 2025</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-white font-light">TDS Return</div>
+                      <div className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-[10px]">⏳</div>
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Due: 31 Jan 2025</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-red-800/30">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-white font-light">AOC-4 Filing</div>
+                      <div className="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px]">!</div>
+                    </div>
+                    <div className="text-[10px] text-red-400 mt-0.5">Overdue: 15 Jan 2025</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p className="text-lg text-gray-400 mt-16 text-center font-light">
+            From onboarding to tracking to execution all in one place.
+          </p>
+        </div>
+      </section>
+
+          {/* Features Section */}
+      <section 
+        id="features" 
+        data-animate-section="features"
+        className={`relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32 border-t border-gray-800 ${visibleSections.has('features') ? 'section-visible' : 'section-hidden'}`}
+      >
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-4 sm:mb-6 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('features') ? 1 : 0 }}>
+            Introducing our Compliance Tracker
+          </h2>
+          <p className="text-base sm:text-lg md:text-xl text-gray-400 mb-8 sm:mb-12 md:mb-16 text-center font-light px-4">
+            Move from scattered tracking to structured financial oversight.
+          </p>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto px-4 sm:px-0">
+            {/* Business Impact Visibility */}
+            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
+              <div className="mb-4 sm:mb-6">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Business Impact Visibility</div>
+                <p className="text-gray-400 font-light text-xs sm:text-sm">Understand compliance status across categories</p>
+              </div>
+              <div className="flex-1 space-y-4">
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Category Coverage</div>
+                  <div className="text-white text-sm font-light">Track compliance across Income Tax, GST, Payroll, RoC, and Renewals in one unified view.</div>
+                </div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Status Overview</div>
+                  <div className="text-white text-sm font-light">Get real-time visibility into compliance health across all regulatory requirements.</div>
+                </div>
+              </div>
+              {/* UI Preview */}
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs text-gray-400 font-light">Categories</div>
+                  <div className="flex gap-1">
+                    <div className="w-1.5 h-1.5 bg-blue-500/50 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 bg-green-500/50 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 bg-yellow-500/50 rounded-full"></div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="text-xs text-white font-light">Income Tax</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">12 active • 3 pending</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="text-xs text-white font-light">GST</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">8 active • 2 overdue</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
+                    <div className="text-xs text-white font-light">RoC</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">5 active • 1 pending</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Automated Due-Date Tracking */}
+            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
+              <div className="mb-4 sm:mb-6">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Automated Due-Date Tracking</div>
+                <p className="text-gray-400 font-light text-xs sm:text-sm">Monitor tasks and deadlines</p>
+              </div>
+              <div className="flex-1 space-y-4">
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Task Monitoring</div>
+                  <div className="text-white text-sm font-light">Automatically track upcoming tasks, pending items, and overdue compliance requirements.</div>
+                </div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Smart Alerts</div>
+                  <div className="text-white text-sm font-light">Receive timely notifications before deadlines to ensure nothing falls through the cracks.</div>
+                </div>
+              </div>
+              {/* UI Preview */}
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs text-gray-400 font-light">Upcoming Tasks</div>
+                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-white font-light">TDS Payment</div>
+                      <div className="text-[10px] text-gray-400">7 days</div>
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Due: 25 Jan 2025</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-white font-light">GSTR-1 Filing</div>
+                      <div className="text-[10px] text-gray-400">14 days</div>
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Due: 1 Feb 2025</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-white font-light">AOC-4 Filing</div>
+                      <div className="text-[10px] text-red-400">Overdue</div>
+                    </div>
+                    <div className="text-[10px] text-red-400 mt-0.5">Due: 15 Jan 2025</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Penalty Risk Awareness */}
+            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
+              <div className="mb-4 sm:mb-6">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Penalty Risk Awareness</div>
+                <p className="text-gray-400 font-light text-xs sm:text-sm">Identify risks before they escalate</p>
+              </div>
+              <div className="flex-1 space-y-4">
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Risk Detection</div>
+                  <div className="text-white text-sm font-light">Identify delays and compliance gaps before they escalate into penalties or legal issues.</div>
+                </div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Penalty Calculation</div>
+                  <div className="text-white text-sm font-light">Automatically calculate potential penalties based on delay periods and regulatory rules.</div>
+                </div>
+              </div>
+              {/* UI Preview */}
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs text-gray-400 font-light">Risk Alerts</div>
+                  <div className="flex gap-1">
+                    <div className="w-1.5 h-1.5 bg-red-500/50 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 bg-yellow-500/50 rounded-full"></div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-red-800/30">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-white font-light">AOC-4 Filing</div>
+                      <div className="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px]">High</div>
+                    </div>
+                    <div className="text-[10px] text-red-400 mt-0.5">₹15,000 penalty risk</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-yellow-800/30">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-white font-light">GSTR-3B</div>
+                      <div className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-[10px]">Medium</div>
+                    </div>
+                    <div className="text-[10px] text-yellow-400 mt-0.5">₹5,000 penalty risk</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-white font-light">TDS Return</div>
+                      <div className="px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded text-[10px]">Low</div>
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">On track</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Role-Based Access */}
+            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
+              <div className="mb-4 sm:mb-6">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Role-Based Access</div>
+                <p className="text-gray-400 font-light text-xs sm:text-sm">Structured permissions and control</p>
+              </div>
+              <div className="flex-1 space-y-4">
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Permission Levels</div>
+                  <div className="text-white text-sm font-light">Structured permissions across Viewer, Editor, Admin, and Superadmin roles.</div>
+                </div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Access Control</div>
+                  <div className="text-white text-sm font-light">Granular control over who can view, edit, or manage compliance data and documents.</div>
+                </div>
+              </div>
+              {/* UI Preview */}
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs text-gray-400 font-light">Team Roles</div>
+                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-white font-light">Admin</div>
+                      <div className="text-[10px] text-blue-400">Full Access</div>
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">2 members</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-white font-light">Editor</div>
+                      <div className="text-[10px] text-green-400">Edit Access</div>
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">3 members</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-white font-light">Viewer</div>
+                      <div className="text-[10px] text-gray-400">Read Only</div>
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">1 member</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Multi-Company Management */}
+            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 md:col-span-2">
+              <div className="mb-4 sm:mb-6">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Multi-Company Management</div>
+                <p className="text-gray-400 font-light text-xs sm:text-sm">Unified dashboard for all entities</p>
+              </div>
+              <div className="flex-1 space-y-4">
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Unified Dashboard</div>
+                  <div className="text-white text-sm font-light">Operate across multiple entities under one dashboard with seamless switching.</div>
+                </div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Entity Switching</div>
+                  <div className="text-white text-sm font-light">Quickly switch between companies and maintain separate compliance tracking for each entity.</div>
+                </div>
+              </div>
+              {/* UI Preview */}
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs text-gray-400 font-light">Active Companies</div>
+                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="text-xs text-white font-light">Acme Corp Pvt Ltd</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">15 active compliances</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="text-xs text-white font-light">Tech Solutions LLP</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">8 active compliances</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
+                    <div className="text-xs text-white font-light">Global Industries Ltd</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">12 active compliances</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Company Onboarding Engine Section */}
+      <section
+        data-animate-section="onboarding"
+        className={`relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32 border-t border-gray-800 ${visibleSections.has('onboarding') ? 'section-visible' : 'section-hidden'}`}
+      >
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-8 sm:mb-12 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('onboarding') ? 1 : 0 }}>
+            Company Onboarding Engine
+          </h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto px-4 sm:px-0">
+            {/* CIN Verification Card */}
+            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
+              <div className="mb-4 sm:mb-6">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">CIN Verification</div>
+                <p className="text-gray-400 font-light text-xs sm:text-sm">MCA auto-fill</p>
+              </div>
+              <div className="flex-1 space-y-4">
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Auto-Fill</div>
+                  <div className="text-white text-sm font-light">Automatically fetch and populate company details from MCA database using CIN.</div>
+                </div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Verification</div>
+                  <div className="text-white text-sm font-light">Verify company authenticity and retrieve comprehensive registration information.</div>
+                </div>
+              </div>
+              {/* UI Preview */}
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs text-gray-400 font-light">Company Details</div>
+                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="text-xs text-white font-light">CIN: U12345MH2020PTC</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Status: Verified</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="text-xs text-white font-light">Company Name</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Auto-filled from MCA</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
+                    <div className="text-xs text-white font-light">Registration Date</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">15 Jan 2020</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* DIN Verification Card */}
+            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
+              <div className="mb-4 sm:mb-6">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">DIN Verification</div>
+                <p className="text-gray-400 font-light text-xs sm:text-sm">Director identification</p>
+              </div>
+              <div className="flex-1 space-y-4">
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Director Details</div>
+                  <div className="text-white text-sm font-light">Verify director DIN and automatically fetch director information from MCA records.</div>
+                </div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Identity Check</div>
+                  <div className="text-white text-sm font-light">Ensure director authenticity and validate their association with the company.</div>
+                </div>
+              </div>
+              {/* UI Preview */}
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs text-gray-400 font-light">Directors</div>
+                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="text-xs text-white font-light">John Doe</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">DIN: 01234567</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="text-xs text-white font-light">Jane Smith</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">DIN: 01234568</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
+                    <div className="text-xs text-white font-light">Robert Brown</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">DIN: 01234569</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Auto-Detection Card */}
+            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
+              <div className="mb-4 sm:mb-6">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Auto-Detection</div>
+                <p className="text-gray-400 font-light text-xs sm:text-sm">Company type & industry</p>
+              </div>
+              <div className="flex-1 space-y-4">
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Type Detection</div>
+                  <div className="text-white text-sm font-light">Automatically identify company type (Pvt Ltd, LLP, Public Ltd) from registration data.</div>
+                </div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Industry Classification</div>
+                  <div className="text-white text-sm font-light">Detect and classify industry category based on business activities and registration details.</div>
+                </div>
+              </div>
+              {/* UI Preview */}
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs text-gray-400 font-light">Classification</div>
+                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="text-xs text-white font-light">Type: Private Limited</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Detected from CIN</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="text-xs text-white font-light">Industry: Technology</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Software Development</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
+                    <div className="text-xs text-white font-light">Category: IT Services</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Auto-classified</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Director Management Card */}
+            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
+              <div className="mb-4 sm:mb-6">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Director Management</div>
+                <p className="text-gray-400 font-light text-xs sm:text-sm">Comprehensive director tracking</p>
+              </div>
+              <div className="flex-1 space-y-4">
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Director Profiles</div>
+                  <div className="text-white text-sm font-light">Maintain detailed director information including designation, appointment date, and contact details.</div>
+                </div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Role Assignment</div>
+                  <div className="text-white text-sm font-light">Assign and track director roles, responsibilities, and designations within the company structure.</div>
+                </div>
+              </div>
+              {/* UI Preview */}
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs text-gray-400 font-light">Directors</div>
+                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="text-xs text-white font-light">Managing Director</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">John Doe • Active</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="text-xs text-white font-light">Director</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Jane Smith • Active</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
+                    <div className="text-xs text-white font-light">Director</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Robert Brown • Active</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Entity Structuring Card */}
+            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 md:col-span-2">
+              <div className="mb-4 sm:mb-6">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Entity Structuring</div>
+                <p className="text-gray-400 font-light text-xs sm:text-sm">Organize company hierarchy</p>
+              </div>
+              <div className="flex-1 space-y-4">
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Hierarchy Management</div>
+                  <div className="text-white text-sm font-light">Create and manage complex entity structures with parent-subsidiary relationships and group hierarchies.</div>
+                </div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
+                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Relationship Mapping</div>
+                  <div className="text-white text-sm font-light">Visualize and track relationships between entities, subsidiaries, and associated companies.</div>
+                </div>
+              </div>
+              {/* UI Preview */}
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs text-gray-400 font-light">Entity Structure</div>
+                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                    <div className="text-xs text-white font-light">Parent Company</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Acme Holdings Pvt Ltd</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 ml-4">
+                    <div className="text-xs text-white font-light">Subsidiary</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Acme Corp Pvt Ltd</div>
+                  </div>
+                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 ml-4 opacity-60">
+                    <div className="text-xs text-white font-light">Subsidiary</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Tech Solutions LLP</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* IAM Section */}
+      <section 
+        data-animate-section="iam"
+        className={`relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32 border-t border-gray-800 ${visibleSections.has('iam') ? 'section-visible' : 'section-hidden'}`}
+      >
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-0 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('iam') ? 1 : 0 }}>
+            IAM (Identity Access Management)
+          </h2>
+          <div className="max-w-7xl mx-auto -mt-2 sm:-mt-4 overflow-x-auto">
+            {/* Flowchart Mindmap */}
+            <div className="relative w-full" style={{ minHeight: '400px', minWidth: '800px' }}>
+              <svg viewBox="0 0 1200 550" className="w-full h-auto -mt-2">
+                <defs>
+                  <marker id="arrowhead" markerWidth="12" markerHeight="12" refX="11" refY="4" orient="auto">
+                    <polygon points="0 0, 12 4, 0 8" fill="rgba(255,255,255,0.5)" />
+                  </marker>
+                  <linearGradient id="nodeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#2a2a2a" />
+                    <stop offset="100%" stopColor="#1a1a1a" />
+                  </linearGradient>
+                  <linearGradient id="subNodeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#2f2f2f" />
+                    <stop offset="100%" stopColor="#252525" />
+                  </linearGradient>
+                </defs>
+
+                {/* Step 1: Invite team members */}
+                <rect x="50" y="200" width="180" height="100" rx="8" fill="url(#nodeGrad)" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" />
+                <text x="140" y="240" fill="white" fontSize="18" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Invite</text>
+                <text x="140" y="265" fill="white" fontSize="18" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Team Members</text>
+
+                {/* Curved Arrow 1: Invite → Assign */}
+                <path d="M 230 250 Q 350 220, 470 250" stroke="rgba(255,255,255,0.5)" strokeWidth="3" fill="none" markerEnd="url(#arrowhead)" />
+
+                {/* Step 2: Assign roles */}
+                <rect x="470" y="200" width="180" height="100" rx="8" fill="url(#nodeGrad)" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" />
+                <text x="560" y="240" fill="white" fontSize="18" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Assign</text>
+                <text x="560" y="265" fill="white" fontSize="18" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Roles</text>
+
+                {/* Sub-nodes: Admin, Editor, Viewer */}
+                {/* Admin */}
+                <rect x="420" y="340" width="120" height="70" rx="6" fill="url(#subNodeGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2" />
+                <text x="480" y="375" fill="white" fontSize="15" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Admin</text>
+                <path d="M 560 300 Q 560 320, 480 340" stroke="rgba(255,255,255,0.4)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
+
+                {/* Editor */}
+                <rect x="550" y="340" width="120" height="70" rx="6" fill="url(#subNodeGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2" />
+                <text x="610" y="375" fill="white" fontSize="15" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Editor</text>
+                <path d="M 560 300 Q 560 320, 610 340" stroke="rgba(255,255,255,0.4)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
+
+                {/* Viewer */}
+                <rect x="680" y="340" width="120" height="70" rx="6" fill="url(#subNodeGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2" />
+                <text x="740" y="375" fill="white" fontSize="15" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Viewer</text>
+                <path d="M 650 300 Q 650 320, 740 340" stroke="rgba(255,255,255,0.4)" strokeWidth="2" fill="none" markerEnd="url(#arrowhead)" />
+
+                {/* Curved Arrow 2: Assign → Track */}
+                <path d="M 650 250 Q 800 220, 950 250" stroke="rgba(255,255,255,0.5)" strokeWidth="3" fill="none" markerEnd="url(#arrowhead)" />
+
+                {/* Step 3: Track responsibility */}
+                <rect x="950" y="200" width="180" height="100" rx="8" fill="url(#nodeGrad)" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" />
+                <text x="1040" y="240" fill="white" fontSize="18" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Track</text>
+                <text x="1040" y="265" fill="white" fontSize="18" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Responsibility</text>
+
+                {/* Curved Arrow 3: Track → Revoke (downward curve) */}
+                <path d="M 1040 300 Q 1040 350, 1040 400" stroke="rgba(255,255,255,0.5)" strokeWidth="3" fill="none" markerEnd="url(#arrowhead)" />
+
+                {/* Step 4: Revoke access */}
+                <rect x="950" y="400" width="180" height="100" rx="8" fill="url(#nodeGrad)" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" />
+                <text x="1040" y="440" fill="white" fontSize="18" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Revoke</text>
+                <text x="1040" y="465" fill="white" fontSize="18" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Access</text>
+
+                {/* Curved Arrow 4: Revoke → Assign (feedback loop - curved path) */}
+                <path d="M 950 450 Q 700 450, 470 450 Q 470 350, 470 300" stroke="rgba(255,255,255,0.5)" strokeWidth="3" fill="none" markerEnd="url(#arrowhead)" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Plans Section */}
+      <section
+        id="plans"
+        data-animate-section="plans"
+        className={`relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32 border-t border-gray-800 ${visibleSections.has('plans') ? 'section-visible' : 'section-hidden'}`}
+      >
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-8 sm:mb-12 md:mb-16 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('plans') ? 1 : 0 }}>
+            Plans
+          </h2>
+          <EmbeddedPricing />
+        </div>
+      </section>
+
+      {/* What's Next Section */}
+      <section 
+        data-animate-section="whats-next"
+        className={`relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32 border-t border-gray-800 ${visibleSections.has('whats-next') ? 'section-visible' : 'section-hidden'}`}
+      >
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-4 sm:mb-6 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('whats-next') ? 1 : 0 }}>
+            What's Next??
+          </h2>
+          <p className="text-base sm:text-lg md:text-xl text-gray-400 mb-8 sm:mb-12 md:mb-16 text-center font-light px-4 animate-fade-in-up" style={{ animationDelay: '0.2s', opacity: visibleSections.has('whats-next') ? 1 : 0 }}>
+            Finacra is evolving into an intelligent compliance system.
+          </p>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto px-4 sm:px-0">
+            {[
+              { title: 'AI document analysis', desc: 'Extract key information automatically.' },
+              { title: 'Semantic document search', desc: 'Search by meaning, not just file names.' },
+              { title: 'Automated alerts', desc: 'Email reminders and compliance notifications.' },
+              { title: 'Reporting & analytics', desc: 'Compliance health dashboards and trends.' },
+              { title: 'Calendar sync', desc: 'Due dates integrated into workflows.' },
+              { title: 'Integrations', desc: 'GST, MCA, accounting tools, and financial systems.' }
+            ].map((item, index) => (
+              <div 
+                key={index}
+                className={`bg-[#1a1a1a] border border-gray-800 rounded-xl p-5 sm:p-6 md:p-8 card-hidden hover:border-gray-700 transition-all duration-300 ${visibleSections.has('whats-next') ? 'card-visible' : ''}`}
+                style={{ transitionDelay: visibleSections.has('whats-next') ? `${0.3 + index * 0.08}s` : '0s' }}
+              >
+                <h3 className="text-lg sm:text-xl font-light text-white mb-2 sm:mb-3">{item.title}</h3>
+                <p className="text-gray-400 text-xs sm:text-sm font-light">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA Section */}
+      <section
+        id="contact"
+        data-animate-section="cta"
+        className={`relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32 border-t border-gray-800 ${visibleSections.has('cta') ? 'section-visible' : 'section-hidden'}`}
+      >
+        <div className="max-w-4xl mx-auto text-center px-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-8 sm:mb-12 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('cta') ? 1 : 0 }}>
+            Automate compliance. Structure your financial operations. Reduce dependency on manual tracking.
+          </h2>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center animate-fade-in-up" style={{ animationDelay: '0.3s', opacity: visibleSections.has('cta') ? 1 : 0 }}>
+            <Link
+              href="/subscribe"
+              className="px-6 sm:px-8 py-3 sm:py-4 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm sm:text-base min-h-[44px] flex items-center justify-center"
+            >
+              Start Trial for free
             </Link>
-              <Link href="/terms-of-service" className="text-gray-400 hover:text-primary-orange transition-colors">
-              Terms of Service
+            <Link
+              href="/contact"
+              className="px-6 sm:px-8 py-3 sm:py-4 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm sm:text-base min-h-[44px] flex items-center justify-center"
+            >
+              Talk to Us
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer 
+        data-animate-section="footer"
+        className={`relative z-10 border-t border-gray-800 px-4 sm:px-6 py-12 sm:py-16 ${visibleSections.has('footer') ? 'section-visible' : 'section-hidden'}`}
+      >
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6 sm:gap-8 md:gap-12 mb-6 sm:mb-8 md:mb-12">
+            <div>
+              <h3 className="text-white text-base sm:text-lg font-light mb-3 sm:mb-4">Finnogenius Consulting Private Limited</h3>
+              <p className="text-gray-400 text-xs sm:text-sm font-light">Hyderabad, India</p>
+            </div>
+            <div>
+              <p className="text-gray-400 text-xs sm:text-sm font-light mb-2">
+                <a href="mailto:info@finacra.com" className="hover:text-white transition-colors">
+                  info@finacra.com
+                </a>
+              </p>
+              <p className="text-gray-400 text-xs sm:text-sm font-light">
+                <a href="tel:+919652974428" className="hover:text-white transition-colors">
+                  +91 96529 74428
+                </a>
+              </p>
+            </div>
+            <div>
+              <p className="text-gray-400 text-xs sm:text-sm font-light mb-3 sm:mb-4">Social Media Links</p>
+              {/* Add social media links here when available */}
+            </div>
+          </div>
+          <div className="border-t border-gray-800 pt-6 sm:pt-8">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-3 sm:gap-4">
+              <span className="text-gray-400 text-xs sm:text-sm font-light text-center md:text-left">
+                © 2024 FinacraAI. All rights reserved.
+              </span>
+              <div className="flex gap-6 sm:gap-8 text-xs sm:text-sm">
+                <Link href="/privacy-policy" className="text-gray-400 hover:text-white transition-colors font-light">
+                  Privacy Policy
+                </Link>
+                <Link href="/terms-of-service" className="text-gray-400 hover:text-white transition-colors font-light">
+                  Terms of Service
+                </Link>
+              </div>
             </div>
           </div>
         </div>

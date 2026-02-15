@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { getNotifications, markNotificationsRead, markAllNotificationsRead, type Notification } from '@/app/data-room/actions'
 
@@ -18,6 +18,7 @@ export default function Header() {
   const [showAllNotifications, setShowAllNotifications] = useState(false)
   const { user, signOut } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
   const supabase = createClient()
 
   // Fetch notifications
@@ -160,12 +161,12 @@ export default function Header() {
   const userEmail = user?.email || ''
 
   return (
-    <header className="bg-primary-dark-card border-b border-gray-800 sticky top-0 z-50" style={{ overflow: 'visible' }}>
+    <header className="bg-primary-dark border-b border-gray-800/50 sticky top-0 z-50" style={{ overflow: 'visible' }}>
       <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4" style={{ overflow: 'visible' }}>
         <div className="flex items-center justify-between" style={{ overflow: 'visible' }}>
           {/* Logo */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-orange rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-primary-orange/30 flex-shrink-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
               <svg
                 width="16"
                 height="16"
@@ -180,8 +181,6 @@ export default function Header() {
                   strokeWidth="1.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  fill="white"
-                  fillOpacity="0.1"
                 />
                 <path
                   d="M14 2V8H20"
@@ -220,24 +219,45 @@ export default function Header() {
               </svg>
             </div>
             <div>
-              <div className="text-white font-medium text-sm sm:text-base md:text-lg">
+              <div className="text-white font-light text-sm sm:text-base md:text-lg">
                 Finacra
               </div>
-              <div className="text-gray-400 text-[10px] sm:text-xs">Smart Compliance</div>
+              <div className="text-gray-400 text-[10px] sm:text-xs font-light">Smart Compliance</div>
             </div>
           </div>
 
           {/* Navigation (Desktop) */}
           <nav className="hidden md:flex items-center gap-6">
-            <a href="/data-room" className="text-white font-medium border-b-2 border-primary-orange pb-1">
+            <a 
+              href="/data-room" 
+              className={`font-light pb-1 transition-colors ${
+                pathname === '/data-room' 
+                  ? 'text-white border-b-2 border-gray-600' 
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
               Data Room
             </a>
             {isSuperadmin && (
-              <a href="/admin" className="text-gray-400 hover:text-white transition-colors">
+              <a 
+                href="/admin" 
+                className={`font-light transition-colors ${
+                  pathname?.startsWith('/admin') 
+                    ? 'text-white border-b-2 border-gray-600 pb-1' 
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
                 Admin
               </a>
             )}
-            <a href="/team" className="text-gray-400 hover:text-white transition-colors">
+            <a 
+              href="/team" 
+              className={`font-light transition-colors ${
+                pathname === '/team' 
+                  ? 'text-white border-b-2 border-gray-600 pb-1' 
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
               Team
             </a>
           </nav>
@@ -266,7 +286,7 @@ export default function Header() {
               </svg>
                 {/* Unread Badge */}
                 {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-gray-600 text-white text-[10px] font-light rounded-full flex items-center justify-center">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
@@ -281,14 +301,14 @@ export default function Header() {
                     onClick={() => setShowNotifications(false)} 
                   />
                   {/* Dropdown */}
-                  <div className="absolute right-0 top-full mt-2 w-80 max-h-96 bg-primary-dark-card border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden">
+                  <div className="absolute right-0 top-full mt-2 w-80 max-h-96 bg-[#1a1a1a] border border-gray-800 rounded-xl shadow-2xl z-50 overflow-hidden">
                     {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-                      <h3 className="text-white font-medium">Notifications</h3>
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
+                      <h3 className="text-white font-light">Notifications</h3>
                       {unreadCount > 0 && (
                         <button
                           onClick={handleMarkAllRead}
-                          className="text-xs text-primary-orange hover:text-orange-400 transition-colors"
+                          className="text-xs text-gray-400 hover:text-white transition-colors font-light"
                         >
                           Mark all read
                         </button>
@@ -299,7 +319,7 @@ export default function Header() {
                     <div className="max-h-72 overflow-y-auto">
                       {isLoadingNotifications ? (
                         <div className="p-4 text-center text-gray-400">
-                          <div className="animate-spin w-6 h-6 border-2 border-primary-orange border-t-transparent rounded-full mx-auto"></div>
+                          <div className="animate-spin w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full mx-auto"></div>
                         </div>
                       ) : notifications.length === 0 ? (
                         <div className="p-6 text-center text-gray-400">
@@ -307,7 +327,7 @@ export default function Header() {
                             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                           </svg>
-                          <p className="text-sm">No notifications yet</p>
+                          <p className="text-sm font-light">No notifications yet</p>
                         </div>
                       ) : (
                         notifications.map((notification) => (
@@ -320,8 +340,8 @@ export default function Header() {
                             }}
                             className={`px-4 py-3 border-b border-gray-800 cursor-pointer transition-colors ${
                               notification.is_read 
-                                ? 'bg-transparent hover:bg-gray-800/50' 
-                                : 'bg-primary-orange/5 hover:bg-primary-orange/10'
+                                ? 'bg-transparent hover:bg-gray-900/50' 
+                                : 'bg-gray-900/30 hover:bg-gray-900/50'
                             }`}
                           >
                             <div className="flex items-start gap-3">
@@ -353,13 +373,13 @@ export default function Header() {
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className={`text-sm font-medium ${notification.is_read ? 'text-gray-300' : 'text-white'}`}>
+                                <p className={`text-sm font-light ${notification.is_read ? 'text-gray-300' : 'text-white'}`}>
                                   {notification.title}
                                 </p>
-                                <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">
+                                <p className="text-xs text-gray-400 mt-0.5 line-clamp-2 font-light">
                                   {notification.message}
                                 </p>
-                                <p className="text-[10px] text-gray-500 mt-1">
+                                <p className="text-[10px] text-gray-500 mt-1 font-light">
                                   {new Date(notification.created_at).toLocaleString('en-GB', {
                                     day: 'numeric',
                                     month: 'short',
@@ -370,7 +390,7 @@ export default function Header() {
                               </div>
                               {/* Unread indicator */}
                               {!notification.is_read && (
-                                <div className="w-2 h-2 bg-primary-orange rounded-full flex-shrink-0 mt-1.5"></div>
+                                <div className="w-2 h-2 bg-gray-400 rounded-full flex-shrink-0 mt-1.5"></div>
                               )}
                             </div>
                           </div>
@@ -380,7 +400,7 @@ export default function Header() {
 
                     {/* Footer */}
                     {notifications.length > 0 && (
-                      <div className="px-4 py-2 border-t border-gray-700">
+                      <div className="px-4 py-2 border-t border-gray-800">
                         <button
                           onClick={async () => {
                             setShowNotifications(false)
@@ -391,7 +411,7 @@ export default function Header() {
                               setShowAllNotifications(true)
                             }
                           }}
-                          className="w-full text-center text-sm text-primary-orange hover:text-orange-400 transition-colors"
+                          className="w-full text-center text-sm text-gray-400 hover:text-white transition-colors font-light"
                         >
                           View all in Data Room
                         </button>
@@ -466,15 +486,15 @@ export default function Header() {
                   position: 'relative'
                 }}
               >
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-orange rounded-full flex items-center justify-center text-white font-medium text-xs sm:text-sm pointer-events-none">
-                  {userInitials}
-                </div>
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-800 border border-gray-700 rounded-full flex items-center justify-center text-white font-light text-xs sm:text-sm pointer-events-none">
+                {userInitials}
+              </div>
                 <div className="hidden lg:block pointer-events-none">
-                  <div className="text-white text-sm font-medium">{userName}</div>
-                  <div className="text-gray-400 text-xs">{userEmail}</div>
-                </div>
+                <div className="text-white text-sm font-light">{userName}</div>
+                <div className="text-gray-400 text-xs font-light">{userEmail}</div>
+              </div>
                 <svg 
-                  className={`w-4 h-4 text-gray-400 transition-transform pointer-events-none ${showUserMenu ? 'rotate-180' : ''}`}
+                  className={`w-4 h-4 text-gray-500 transition-transform pointer-events-none ${showUserMenu ? 'rotate-180' : ''}`}
                   fill="none" 
                   stroke="currentColor" 
                   viewBox="0 0 24 24"
@@ -496,21 +516,21 @@ export default function Header() {
                   />
                   {/* Dropdown */}
                   <div 
-                    className="absolute right-0 top-full mt-2 w-56 bg-primary-dark-card border border-gray-700 rounded-xl shadow-2xl z-[100] overflow-hidden"
+                    className="absolute right-0 top-full mt-2 w-56 bg-[#1a1a1a] border border-gray-800 rounded-xl shadow-2xl z-[100] overflow-hidden"
                     onClick={(e) => e.stopPropagation()}
                     style={{ position: 'absolute' }}
                   >
                     <div className="p-2">
                       {/* Email Preferences */}
-                      <button
+              <button
                         onClick={(e) => {
                           e.stopPropagation()
                           setShowUserMenu(false)
                           router.push('/settings/email-preferences')
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors text-left"
+                        className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-900/50 rounded-lg transition-colors text-left font-light"
                         type="button"
-                      >
+              >
                         <svg 
                           className="w-5 h-5" 
                           fill="none" 
@@ -518,12 +538,12 @@ export default function Header() {
                           viewBox="0 0 24 24"
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                        <span className="text-sm font-medium">Email Preferences</span>
+                </svg>
+                        <span className="text-sm">Email Preferences</span>
                       </button>
                       
                       {/* Divider */}
-                      <div className="my-1 border-t border-gray-700"></div>
+                      <div className="my-1 border-t border-gray-800"></div>
                       
                       {/* Sign Out */}
                       <button
@@ -532,7 +552,7 @@ export default function Header() {
                           setShowUserMenu(false)
                           await handleSignOut()
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors text-left"
+                        className="w-full flex items-center gap-3 px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-900/50 rounded-lg transition-colors text-left font-light"
                         type="button"
                       >
                         <svg 
@@ -543,8 +563,8 @@ export default function Header() {
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
-                        <span className="text-sm font-medium">Sign Out</span>
-                      </button>
+                        <span className="text-sm">Sign Out</span>
+              </button>
                     </div>
                   </div>
                 </>
@@ -563,12 +583,12 @@ export default function Header() {
             onClick={() => setIsMobileMenuOpen(false)}
           />
           {/* Mobile Menu */}
-          <div className="fixed top-0 left-0 h-full w-64 bg-primary-dark-card border-r border-gray-800 z-50 md:hidden shadow-2xl">
+          <div className="fixed top-0 left-0 h-full w-64 bg-[#1a1a1a] border-r border-gray-800 z-50 md:hidden shadow-2xl">
             <div className="flex flex-col h-full">
               {/* Mobile Menu Header */}
               <div className="flex items-center justify-between p-4 border-b border-gray-800">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-primary-orange rounded-lg flex items-center justify-center shadow-lg shadow-primary-orange/30">
+                  <div className="w-8 h-8 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center">
                     <svg
                       width="16"
                       height="16"
@@ -582,8 +602,6 @@ export default function Header() {
                         strokeWidth="1.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        fill="white"
-                        fillOpacity="0.1"
                       />
                       <path
                         d="M14 2V8H20"
@@ -594,7 +612,7 @@ export default function Header() {
                       />
                     </svg>
                   </div>
-                  <div className="text-white font-medium text-sm">
+                  <div className="text-white font-light text-sm">
                     Finacra
                   </div>
                 </div>
@@ -624,7 +642,7 @@ export default function Header() {
                 <a
                   href="/data-room"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 text-white font-medium bg-primary-orange/20 border border-primary-orange/30 rounded-lg"
+                  className="flex items-center gap-3 px-4 py-3 text-white font-light bg-gray-900/50 border border-gray-800 rounded-lg"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -636,7 +654,7 @@ export default function Header() {
                   <a
                     href="/admin"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-gray-900/50 rounded-lg transition-colors font-light"
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -647,7 +665,7 @@ export default function Header() {
                 <a
                   href="/team"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                  className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-gray-900/50 rounded-lg transition-colors font-light"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -660,7 +678,7 @@ export default function Header() {
                 <a
                   href="/settings/email-preferences"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                  className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-gray-900/50 rounded-lg transition-colors font-light"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -672,12 +690,12 @@ export default function Header() {
               {/* Mobile Menu Footer - User Info */}
               <div className="border-t border-gray-800 p-4">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-primary-orange rounded-full flex items-center justify-center text-white font-medium text-sm">
+                  <div className="w-10 h-10 bg-gray-800 border border-gray-700 rounded-full flex items-center justify-center text-white font-light text-sm">
                     {userInitials}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-white text-sm font-medium truncate">{userName}</div>
-                    <div className="text-gray-400 text-xs truncate">{userEmail}</div>
+                    <div className="text-white text-sm font-light truncate">{userName}</div>
+                    <div className="text-gray-400 text-xs truncate font-light">{userEmail}</div>
                   </div>
                 </div>
                 <button
@@ -685,7 +703,7 @@ export default function Header() {
                     setIsMobileMenuOpen(false)
                     await handleSignOut()
                   }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-900/50 rounded-lg transition-colors font-light"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -703,7 +721,7 @@ export default function Header() {
       {/* Notification Detail Modal */}
       {selectedNotification && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-800">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-light text-white">Notification Details</h3>
@@ -753,15 +771,15 @@ export default function Header() {
                   )}
                 </div>
                 <div>
-                  <div className="text-white font-medium">{selectedNotification.title}</div>
-                  <div className="text-gray-400 text-sm capitalize">{selectedNotification.type.replace('_', ' ')}</div>
+                  <div className="text-white font-light">{selectedNotification.title}</div>
+                  <div className="text-gray-400 text-sm capitalize font-light">{selectedNotification.type.replace('_', ' ')}</div>
                 </div>
               </div>
 
               {/* Full Message */}
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Message</label>
-                <div className="text-white bg-gray-900 rounded-lg p-4 whitespace-pre-wrap">
+                <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">Message</label>
+                <div className="text-white bg-gray-900/50 border border-gray-800 rounded-lg p-4 whitespace-pre-wrap font-light">
                   {selectedNotification.message}
                 </div>
               </div>
@@ -797,12 +815,12 @@ export default function Header() {
                 
                 return (
                   <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Details</label>
-                    <div className="bg-gray-900 rounded-lg p-4 space-y-2">
+                    <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">Details</label>
+                    <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-4 space-y-2">
                       {Object.entries(metadataObj).map(([key, value]) => (
                         <div key={key} className="flex justify-between items-start gap-4">
-                          <span className="text-gray-400 text-sm capitalize flex-shrink-0">{key.replace(/_/g, ' ')}:</span>
-                          <span className="text-white text-sm text-right break-words">
+                          <span className="text-gray-400 text-sm capitalize flex-shrink-0 font-light">{key.replace(/_/g, ' ')}:</span>
+                          <span className="text-white text-sm text-right break-words font-light">
                             {value === null || value === undefined 
                               ? 'N/A'
                               : typeof value === 'object' 
@@ -820,8 +838,8 @@ export default function Header() {
               {/* Timestamp */}
               <div className="flex items-center justify-between pt-4 border-t border-gray-800">
                 <div>
-                  <div className="text-gray-400 text-xs">Created</div>
-                  <div className="text-white text-sm">
+                  <div className="text-gray-400 text-xs font-light">Created</div>
+                  <div className="text-white text-sm font-light">
                     {new Date(selectedNotification.created_at).toLocaleString('en-GB', {
                       day: 'numeric',
                       month: 'long',
@@ -833,8 +851,8 @@ export default function Header() {
                 </div>
                 {selectedNotification.read_at && (
                   <div>
-                    <div className="text-gray-400 text-xs">Read</div>
-                    <div className="text-white text-sm">
+                    <div className="text-gray-400 text-xs font-light">Read</div>
+                    <div className="text-white text-sm font-light">
                       {new Date(selectedNotification.read_at).toLocaleString('en-GB', {
                         day: 'numeric',
                         month: 'long',
@@ -853,7 +871,7 @@ export default function Header() {
                   onClick={() => {
                     setSelectedNotification(null)
                   }}
-                  className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
+                  className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors font-light"
                 >
                   Close
                 </button>
@@ -863,7 +881,7 @@ export default function Header() {
                       router.push('/data-room')
                       setSelectedNotification(null)
                     }}
-                    className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors"
+                    className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors font-light"
                   >
                     View in Data Room
                   </button>
@@ -877,14 +895,14 @@ export default function Header() {
       {/* View All Notifications Modal */}
       {showAllNotifications && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             <div className="p-6 border-b border-gray-800 flex items-center justify-between">
               <h3 className="text-xl font-light text-white">All Notifications</h3>
               <div className="flex items-center gap-3">
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllRead}
-                    className="text-sm text-primary-orange hover:text-orange-400 transition-colors"
+                    className="text-sm text-gray-400 hover:text-white transition-colors font-light"
                   >
                     Mark all read
                   </button>
@@ -906,7 +924,7 @@ export default function Header() {
             <div className="flex-1 overflow-y-auto p-6">
               {isLoadingNotifications ? (
                 <div className="p-8 text-center text-gray-400">
-                  <div className="animate-spin w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full mx-auto"></div>
+                  <div className="animate-spin w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full mx-auto"></div>
                 </div>
               ) : notifications.length === 0 ? (
                 <div className="p-8 text-center text-gray-400">
@@ -914,7 +932,7 @@ export default function Header() {
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                     <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                   </svg>
-                  <p className="text-lg">No notifications</p>
+                  <p className="text-lg font-light">No notifications</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -929,7 +947,7 @@ export default function Header() {
                       className={`px-4 py-4 border border-gray-800 rounded-lg cursor-pointer transition-colors ${
                         notification.is_read 
                           ? 'bg-gray-900/50 hover:bg-gray-900' 
-                          : 'bg-primary-orange/5 hover:bg-primary-orange/10 border-primary-orange/30'
+                          : 'bg-gray-900/30 hover:bg-gray-900/50 border-gray-700'
                       }`}
                     >
                       <div className="flex items-start gap-3">
@@ -961,17 +979,17 @@ export default function Header() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className={`text-base font-medium ${notification.is_read ? 'text-gray-300' : 'text-white'}`}>
+                            <p className={`text-base font-light ${notification.is_read ? 'text-gray-300' : 'text-white'}`}>
                               {notification.title}
                             </p>
                             {!notification.is_read && (
-                              <div className="w-2 h-2 bg-primary-orange rounded-full flex-shrink-0"></div>
+                              <div className="w-2 h-2 bg-gray-400 rounded-full flex-shrink-0"></div>
                             )}
                           </div>
-                          <p className="text-sm text-gray-400 mt-1 line-clamp-3">
+                          <p className="text-sm text-gray-400 mt-1 line-clamp-3 font-light">
                             {notification.message}
                           </p>
-                          <p className="text-xs text-gray-500 mt-2">
+                          <p className="text-xs text-gray-500 mt-2 font-light">
                             {new Date(notification.created_at).toLocaleString('en-GB', {
                               day: 'numeric',
                               month: 'long',

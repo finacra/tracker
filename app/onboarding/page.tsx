@@ -68,6 +68,7 @@ export default function OnboardingPage() {
   const [entityDetection, setEntityDetection] = useState<any>(null)
   const [isCINVerified, setIsCINVerified] = useState(false)
   const [currentStep, setCurrentStep] = useState(1) // 1 = Company Details, 2 = Documents
+  const [exDirectors, setExDirectors] = useState<string>('') // Comma-separated or newline-separated names
 
   const [formData, setFormData] = useState({
     companyName: '',
@@ -104,7 +105,7 @@ export default function OnboardingPage() {
   if (loading || subLoading) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -118,19 +119,19 @@ export default function OnboardingPage() {
   if (!hasSubscription && currentCompanyCount === 0) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
-        <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-8 max-w-md text-center">
-          <div className="w-16 h-16 bg-primary-orange/20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-8 h-8 text-primary-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-gray-800/50 border border-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white mb-4">Subscription Required</h1>
-          <p className="text-gray-400 mb-6">
+          <h1 className="text-2xl font-light text-white mb-4">Subscription Required</h1>
+          <p className="text-gray-400 mb-6 font-light">
             You need an active subscription to create companies. Start with a free 15-day trial!
           </p>
           <button
             onClick={() => router.push('/subscribe')}
-            className="w-full bg-primary-orange text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-orange/90 transition-colors"
+            className="w-full border border-gray-700 text-gray-300 px-6 py-3 rounded-lg font-light hover:border-gray-600 hover:text-white transition-colors"
           >
             Choose a Plan
           </button>
@@ -143,29 +144,29 @@ export default function OnboardingPage() {
   if (hasSubscription && !canCreateCompany) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
-        <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-8 max-w-md text-center">
-          <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+        <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-yellow-500/10 border border-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
             <svg className="w-8 h-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white mb-4">Company Limit Reached</h1>
-          <p className="text-gray-400 mb-2">
-            You've created <span className="text-white font-semibold">{currentCompanyCount}</span> of <span className="text-white font-semibold">{companyLimit}</span> companies allowed on your plan.
+          <h1 className="text-2xl font-light text-white mb-4">Company Limit Reached</h1>
+          <p className="text-gray-400 mb-2 font-light">
+            You've created <span className="text-white font-light">{currentCompanyCount}</span> of <span className="text-white font-light">{companyLimit}</span> companies allowed on your plan.
           </p>
-          <p className="text-gray-500 text-sm mb-6">
+          <p className="text-gray-500 text-sm mb-6 font-light">
             Upgrade to a higher plan to add more companies.
           </p>
           <div className="flex flex-col gap-3">
             <button
               onClick={() => router.push('/subscribe')}
-              className="w-full bg-primary-orange text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-orange/90 transition-colors"
+              className="w-full border border-gray-700 text-gray-300 px-6 py-3 rounded-lg font-light hover:border-gray-600 hover:text-white transition-colors"
             >
               Upgrade Plan
             </button>
             <button
               onClick={() => router.push('/data-room')}
-              className="w-full bg-gray-800 text-gray-300 px-6 py-3 rounded-lg font-medium hover:bg-gray-700 transition-colors"
+              className="w-full border border-gray-700 text-gray-300 px-6 py-3 rounded-lg font-light hover:border-gray-600 hover:text-white transition-colors"
             >
               Go to Data Room
             </button>
@@ -281,6 +282,29 @@ export default function OnboardingPage() {
       })
       console.log('Created Directors:', cinDirectors)
       setDirectors(cinDirectors)
+    }
+
+    // Check for ex-directors in CIN response (if available)
+    const exDirectorData = (response.data?.data as any)?.exDirectorData || 
+                          (response.data?.data as any)?.formerDirectorData ||
+                          (response.data?.data as any)?.exDirectors ||
+                          (response.data?.data as any)?.formerDirectors ||
+                          []
+    
+    if (Array.isArray(exDirectorData) && exDirectorData.length > 0) {
+      // Format ex-directors as comma-separated names
+      const exDirectorNames = exDirectorData
+        .map((exDir: any) => {
+          const firstName = exDir.firstName || exDir.FirstName || exDir.first_name || ''
+          const middleName = exDir.middleName || exDir.MiddleName || exDir.middle_name || ''
+          const lastName = exDir.lastName || exDir.LastName || exDir.last_name || ''
+          return [firstName, middleName, lastName].filter(Boolean).join(' ').trim()
+        })
+        .filter((name: string) => name.length > 0)
+      
+      if (exDirectorNames.length > 0) {
+        setExDirectors(exDirectorNames.join(', '))
+      }
     }
 
     setIsVerifyingCIN(false)
@@ -652,7 +676,8 @@ export default function OnboardingPage() {
         ...formData,
         companyStage: entityDetection?.companyStage,
         confidenceScore: entityDetection?.confidenceScore,
-        documents: uploadedDocuments
+        documents: uploadedDocuments,
+        exDirectors: exDirectors.trim() || undefined
       }, directors)
 
       if (result.success && result.companyId) {
@@ -683,7 +708,7 @@ export default function OnboardingPage() {
         {/* Header */}
         <div className="mb-4 sm:mb-8">
           <div className="flex items-center gap-2 sm:gap-4 mb-3 sm:mb-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-orange rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-primary-orange/30 flex-shrink-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-800 border border-gray-700 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
               <svg
                 width="20"
                 height="20"
@@ -724,7 +749,7 @@ export default function OnboardingPage() {
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl md:text-3xl font-light text-white">Create New Company</h1>
-              <p className="text-gray-400 text-xs sm:text-sm mt-1">
+              <p className="text-gray-400 text-xs sm:text-sm mt-1 font-light">
                 Add another company to your account
               </p>
             </div>
@@ -732,22 +757,22 @@ export default function OnboardingPage() {
         </div>
 
         {/* Form Card */}
-        <form onSubmit={handleSubmit} className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 backdrop-blur-sm">
+        <form onSubmit={handleSubmit} className="bg-[#1a1a1a] border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8">
           <div className="space-y-4 sm:space-y-6">
             {/* Step Indicator */}
             <div className="flex items-center justify-center gap-2 mb-4 sm:mb-6">
-              <div className={`flex items-center gap-2 ${currentStep === 1 ? 'text-primary-orange' : 'text-gray-400'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 1 ? 'bg-primary-orange text-white' : 'bg-gray-800 text-gray-400'}`}>
+              <div className={`flex items-center gap-2 ${currentStep === 1 ? 'text-white' : 'text-gray-400'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${currentStep === 1 ? 'bg-gray-800 border-gray-600 text-white' : 'bg-gray-900 border-gray-700 text-gray-400'}`}>
                   1
                 </div>
-                <span className="text-xs sm:text-sm font-medium">Company Details</span>
+                <span className="text-xs sm:text-sm font-light">Company Details</span>
               </div>
               <div className="w-8 sm:w-12 h-0.5 bg-gray-700"></div>
-              <div className={`flex items-center gap-2 ${currentStep === 2 ? 'text-primary-orange' : 'text-gray-400'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep === 2 ? 'bg-primary-orange text-white' : 'bg-gray-800 text-gray-400'}`}>
+              <div className={`flex items-center gap-2 ${currentStep === 2 ? 'text-white' : 'text-gray-400'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${currentStep === 2 ? 'bg-gray-800 border-gray-600 text-white' : 'bg-gray-900 border-gray-700 text-gray-400'}`}>
                   2
                 </div>
-                <span className="text-xs sm:text-sm font-medium">Documents</span>
+                <span className="text-xs sm:text-sm font-light">Documents</span>
               </div>
             </div>
 
@@ -755,7 +780,7 @@ export default function OnboardingPage() {
               <>
                 {/* CIN Number - MOVED TO TOP */}
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
                     CIN Number <span className="text-red-500">*</span>
                   </label>
                   <div className="flex flex-col sm:flex-row gap-2">
@@ -765,13 +790,13 @@ export default function OnboardingPage() {
                       value={formData.cinNumber}
                       onChange={handleInputChange}
                       placeholder="Enter CIN number"
-                      className="flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                     />
                     <button
                       type="button"
                       onClick={handleCINVerification}
                       disabled={isVerifyingCIN || !formData.cinNumber.trim()}
-                      className="px-4 sm:px-6 py-2 sm:py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap"
+                      className="px-4 sm:px-6 py-2 sm:py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap font-light"
                     >
                       {isVerifyingCIN ? (
                         <>
@@ -806,7 +831,7 @@ export default function OnboardingPage() {
                 value={formData.companyName}
                 onChange={handleInputChange}
                 placeholder="Enter company name"
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
               />
               {errors.companyName && (
                 <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.companyName}</p>
@@ -818,7 +843,7 @@ export default function OnboardingPage() {
               <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                 Company Type <span className="text-red-500">*</span>
                 {isCINVerified && (
-                  <span className="ml-2 text-[10px] sm:text-xs text-primary-orange flex items-center gap-1">
+                  <span className="ml-2 text-[10px] sm:text-xs text-gray-400 flex items-center gap-1">
                     <svg width="10" height="10" className="sm:w-3 sm:h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="10" />
                       <path d="M12 16v-4" />
@@ -833,7 +858,7 @@ export default function OnboardingPage() {
                 value={formData.companyType}
                 onChange={handleInputChange}
                 disabled={isCINVerified}
-                className={`w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors appearance-none ${
+                className={`w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none font-light ${
                   isCINVerified ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
                 }`}
               >
@@ -861,7 +886,7 @@ export default function OnboardingPage() {
                   value={formData.panNumber}
                   onChange={handleInputChange}
                   placeholder="ABCDE1234F"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.panNumber && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.panNumber}</p>
@@ -874,7 +899,7 @@ export default function OnboardingPage() {
                 <label className="block text-xs sm:text-sm font-medium text-gray-300">
                   Industries <span className="text-red-500">*</span> (Select at least one)
                   {isCINVerified && (
-                    <span className="ml-2 text-[10px] sm:text-xs text-primary-orange flex items-center gap-1">
+                    <span className="ml-2 text-[10px] sm:text-xs text-gray-400 flex items-center gap-1">
                       <svg width="10" height="10" className="sm:w-3 sm:h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="10" />
                         <path d="M12 16v-4" />
@@ -884,7 +909,7 @@ export default function OnboardingPage() {
                     </span>
                   )}
                 </label>
-                <label className="flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-900 border border-gray-700 rounded-lg hover:border-primary-orange/50 transition-colors cursor-pointer">
+                <label className="flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-900 border border-gray-700 rounded-lg hover:border-gray-600 transition-colors cursor-pointer">
                   <input
                     type="checkbox"
                     checked={INDUSTRIES.every(industry => formData.industries.includes(industry))}
@@ -895,22 +920,22 @@ export default function OnboardingPage() {
                         setFormData(prev => ({ ...prev, industries: [] }))
                       }
                     }}
-                    className="w-3 h-3 sm:w-4 sm:h-4 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2"
+                    className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 bg-gray-800 border-gray-600 rounded focus:ring-gray-500 focus:ring-2"
                   />
-                  <span className="text-gray-300 text-[10px] sm:text-xs font-medium">Select All</span>
+                  <span className="text-gray-300 text-[10px] sm:text-xs font-light">Select All</span>
                 </label>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 max-h-48 overflow-y-auto">
                 {INDUSTRIES.map((industry) => (
                   <label
                     key={industry}
-                    className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gray-900 border border-gray-700 rounded-lg transition-colors cursor-pointer hover:border-primary-orange/50"
+                    className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gray-900 border border-gray-700 rounded-lg transition-colors cursor-pointer hover:border-gray-600"
                   >
                     <input
                       type="checkbox"
                       checked={formData.industries.includes(industry)}
                       onChange={() => handleIndustryChange(industry)}
-                      className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2 flex-shrink-0"
+                      className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 bg-gray-800 border-gray-600 rounded focus:ring-gray-500 focus:ring-2 flex-shrink-0"
                     />
                     <span className="text-gray-300 text-xs sm:text-sm break-words">{industry}</span>
                   </label>
@@ -923,10 +948,10 @@ export default function OnboardingPage() {
 
             {/* Industry Categories */}
             <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2 sm:mb-3">
+              <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2 sm:mb-3">
                 Category of Industry <span className="text-red-500">*</span>
                 {isCINVerified && (
-                  <span className="ml-2 text-[10px] sm:text-xs text-primary-orange flex items-center gap-1">
+                  <span className="ml-2 text-[10px] sm:text-xs text-gray-400 flex items-center gap-1">
                     <svg width="10" height="10" className="sm:w-3 sm:h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="10" />
                       <path d="M12 16v-4" />
@@ -940,13 +965,13 @@ export default function OnboardingPage() {
                 {INDUSTRY_CATEGORIES.map((category) => (
                   <label
                     key={category}
-                    className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gray-900 border border-gray-700 rounded-lg transition-colors cursor-pointer hover:border-primary-orange/50"
+                    className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gray-900 border border-gray-700 rounded-lg transition-colors cursor-pointer hover:border-gray-600"
                   >
                     <input
                       type="checkbox"
                       checked={formData.industryCategories.includes(category)}
                       onChange={() => handleIndustryCategoryChange(category)}
-                      className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2 flex-shrink-0"
+                      className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 bg-gray-800 border-gray-600 rounded focus:ring-gray-500 focus:ring-2 flex-shrink-0"
                     />
                     <span className="text-gray-300 text-xs sm:text-sm break-words">{category}</span>
                   </label>
@@ -959,7 +984,7 @@ export default function OnboardingPage() {
               {/* Other Industry Category Text Input */}
               {formData.industryCategories.includes('Other') && (
                 <div className="mt-3 sm:mt-4">
-                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
                     Specify Industry Category <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -968,7 +993,7 @@ export default function OnboardingPage() {
                     value={formData.otherIndustryCategory}
                     onChange={handleInputChange}
                     placeholder="Enter industry category"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                   />
                   {errors.otherIndustryCategory && (
                     <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.otherIndustryCategory}</p>
@@ -979,7 +1004,7 @@ export default function OnboardingPage() {
 
             {/* Date of Incorporation */}
             <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
                 Date of Incorporation <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -998,7 +1023,7 @@ export default function OnboardingPage() {
                     }
                   }}
                   placeholder="Select date"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors cursor-pointer pr-10"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors cursor-pointer pr-10 font-light"
                 />
               <input
                 type="date"
@@ -1025,14 +1050,14 @@ export default function OnboardingPage() {
 
             {/* Year Type */}
             <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
                 Financial Year Type <span className="text-red-500">*</span>
               </label>
               <select
                 name="yearType"
                 value={formData.yearType}
                 onChange={handleInputChange}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
               >
                 <option value="FY">Financial Year (India) - Q1: Apr-Jun, Q2: Jul-Sep, Q3: Oct-Dec, Q4: Jan-Mar</option>
                 <option value="CY">Calendar Year (Gulf/USA) - Q1: Jan-Mar, Q2: Apr-Jun, Q3: Jul-Sep, Q4: Oct-Dec</option>
@@ -1044,7 +1069,7 @@ export default function OnboardingPage() {
 
             {/* Address */}
             <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
                 Address <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -1053,7 +1078,7 @@ export default function OnboardingPage() {
                 onChange={handleInputChange}
                 placeholder="Enter complete address"
                 rows={3}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors resize-y"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors resize-y font-light"
               />
               {errors.address && (
                 <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.address}</p>
@@ -1063,7 +1088,7 @@ export default function OnboardingPage() {
             {/* City, State, PIN Code */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
                   City <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -1072,14 +1097,14 @@ export default function OnboardingPage() {
                   value={formData.city}
                   onChange={handleInputChange}
                   placeholder="City"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.city && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.city}</p>
                 )}
               </div>
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
                   State <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -1088,14 +1113,14 @@ export default function OnboardingPage() {
                   value={formData.state}
                   onChange={handleInputChange}
                   placeholder="State"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.state && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.state}</p>
                 )}
               </div>
               <div className="sm:col-span-2 md:col-span-1">
-                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
                   PIN Code <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -1104,7 +1129,7 @@ export default function OnboardingPage() {
                   value={formData.pinCode}
                   onChange={handleInputChange}
                   placeholder="PIN code"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.pinCode && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.pinCode}</p>
@@ -1115,13 +1140,13 @@ export default function OnboardingPage() {
             {/* Company Stage (Read-only info) */}
             {entityDetection && (
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
                   Company Stage
                 </label>
                 <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <span className="text-white text-sm sm:text-base">{entityDetection.companyStage}</span>
-                    <span className="text-[10px] sm:text-xs text-primary-orange bg-primary-orange/20 px-2 py-0.5 rounded w-fit">
+                    <span className="text-[10px] sm:text-xs text-gray-400 bg-gray-800 border border-gray-700 px-2 py-0.5 rounded w-fit font-light">
                       {entityDetection.confidenceScore} Confidence
                     </span>
                   </div>
@@ -1132,7 +1157,7 @@ export default function OnboardingPage() {
             {/* Phone Number, Email, and Landline */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
                   Phone Number <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
                 </label>
                 <input
@@ -1140,14 +1165,14 @@ export default function OnboardingPage() {
                   name="phoneNumber"
                   value={formData.phoneNumber}
                   onChange={handleInputChange}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.phoneNumber && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.phoneNumber}</p>
                 )}
               </div>
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
                   Email Address
                 </label>
                 <input
@@ -1156,14 +1181,14 @@ export default function OnboardingPage() {
                   value={formData.email}
                   onChange={handleInputChange}
                   placeholder="company@example.com"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.email && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.email}</p>
                 )}
               </div>
               <div className="sm:col-span-2 md:col-span-1">
-                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
                   Landline
                 </label>
                 <input
@@ -1172,14 +1197,14 @@ export default function OnboardingPage() {
                   value={formData.landline}
                   onChange={handleInputChange}
                   placeholder="Enter landline number"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
               </div>
             </div>
 
             {/* Other Field */}
             <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
                 Other
               </label>
               <input
@@ -1188,20 +1213,20 @@ export default function OnboardingPage() {
                 value={formData.other}
                 onChange={handleInputChange}
                 placeholder="Enter any other information"
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
               />
             </div>
 
             {/* Directors Section */}
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
-                <label className="block text-xs sm:text-sm font-medium text-gray-300">
+                <label className="block text-xs sm:text-sm font-light text-gray-300">
                   Directors
                 </label>
                 <button
                   type="button"
                   onClick={() => setShowAddDirector(!showAddDirector)}
-                  className="px-3 sm:px-4 py-1.5 sm:py-2 bg-primary-orange/20 border border-primary-orange text-primary-orange rounded-lg hover:bg-primary-orange/30 transition-colors text-xs sm:text-sm flex items-center justify-center gap-2 w-full sm:w-auto"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-xs sm:text-sm flex items-center justify-center gap-2 w-full sm:w-auto font-light"
                 >
                   <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="12" y1="5" x2="12" y2="19" />
@@ -1224,13 +1249,13 @@ export default function OnboardingPage() {
                         setErrors((prev) => ({ ...prev, newDirectorDIN: '' }))
                       }}
                       placeholder="Enter DIN number"
-                      className="flex-1 px-3 sm:px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="flex-1 px-3 sm:px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                     />
                     <button
                       type="button"
                       onClick={handleAddDirectorByDIN}
                       disabled={!newDirectorDIN.trim()}
-                      className="px-3 sm:px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                      className="px-3 sm:px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-light"
                     >
                       Verify & Add
                     </button>
@@ -1266,7 +1291,7 @@ export default function OnboardingPage() {
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2 sm:mb-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2 mb-2">
-                            <h4 className="text-white font-medium text-sm sm:text-base break-words">
+                            <h4 className="text-white font-light text-sm sm:text-base break-words">
                               {director.firstName} {director.middleName} {director.lastName}
                             </h4>
                             {director.verified && (
@@ -1323,11 +1348,11 @@ export default function OnboardingPage() {
                               type="button"
                               onClick={() => handleDINVerification(director.id, director.din)}
                               disabled={isVerifyingDIN === director.id}
-                              className="px-2 sm:px-3 py-1 sm:py-1.5 bg-primary-orange/20 border border-primary-orange text-primary-orange rounded text-xs sm:text-sm hover:bg-primary-orange/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                              className="px-2 sm:px-3 py-1 sm:py-1.5 border border-gray-700 text-gray-300 rounded text-xs sm:text-sm hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 font-light"
                             >
                               {isVerifyingDIN === director.id ? (
                                 <>
-                                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 border-2 border-primary-orange border-t-transparent rounded-full animate-spin"></div>
+                                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
                                   <span className="hidden sm:inline">Verifying...</span>
                                 </>
                               ) : (
@@ -1367,18 +1392,45 @@ export default function OnboardingPage() {
               )}
             </div>
 
+            {/* Ex-Directors Section */}
+            <div>
+              <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
+                Ex-Directors / Former Directors <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
+                {isCINVerified && exDirectors && (
+                  <span className="ml-2 text-[10px] sm:text-xs text-gray-400 flex items-center gap-1">
+                    <svg width="10" height="10" className="sm:w-3 sm:h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 16v-4" />
+                      <path d="M12 8h.01" />
+                    </svg>
+                    Auto-filled from MCA records
+                  </span>
+                )}
+              </label>
+              <textarea
+                value={exDirectors}
+                onChange={(e) => setExDirectors(e.target.value)}
+                placeholder="Enter ex-director names separated by commas or new lines (e.g., John Doe, Jane Smith or one per line)"
+                rows={4}
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors resize-y font-light"
+              />
+              <p className="mt-1 text-[10px] sm:text-xs text-gray-500">
+                You can enter multiple names separated by commas or one per line. This information will be stored for reference.
+              </p>
+            </div>
+
               </>
             ) : (
               <>
                 {/* Document Uploads - Step 2 */}
             <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2 sm:mb-3">
+              <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2 sm:mb-3">
                 Required Documents <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
               </label>
               <div className="space-y-3 sm:space-y-4">
                 {DOCUMENT_TYPES.map((docType) => (
                   <div key={docType}>
-                    <label className="block text-xs sm:text-sm text-gray-400 mb-1.5 sm:mb-2">
+                    <label className="block text-xs sm:text-sm text-gray-400 mb-1.5 sm:mb-2 font-light">
                       {docType}
                     </label>
                     <div className="flex items-center gap-2 sm:gap-4">
@@ -1394,8 +1446,8 @@ export default function OnboardingPage() {
                         <div
                           className={`px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border rounded-lg transition-colors flex items-center justify-between ${
                             formData.documents[docType]
-                              ? 'border-primary-orange text-primary-orange'
-                              : 'border-gray-700 text-gray-400 hover:border-primary-orange'
+                              ? 'border-gray-600 text-white'
+                              : 'border-gray-700 text-gray-400 hover:border-gray-600'
                           }`}
                         >
                           <span className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
@@ -1404,7 +1456,7 @@ export default function OnboardingPage() {
                                 <svg
                                   width="14"
                                   height="14"
-                                  className="sm:w-4 sm:h-4 flex-shrink-0 text-primary-orange"
+                                  className="sm:w-4 sm:h-4 flex-shrink-0 text-white"
                                   viewBox="0 0 24 24"
                                   fill="none"
                                 >
@@ -1546,7 +1598,7 @@ export default function OnboardingPage() {
                         setCurrentStep(2)
                       }
                     }}
-                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors flex items-center justify-center gap-2 text-sm sm:text-base font-light"
                   >
                     Update and Next
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1573,7 +1625,7 @@ export default function OnboardingPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
+                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base font-light"
               >
                 {isSubmitting ? (
                   <>

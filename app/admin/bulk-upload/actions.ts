@@ -51,10 +51,14 @@ interface ErrorFix {
 
 /**
  * Use AI to fix validation errors in the spreadsheet data
+ * @param mode - 'auto' for automatic resolution, 'custom' for user-provided instructions
+ * @param customInstructions - User-provided instructions for custom mode
  */
 export async function resolveErrorsWithAI(
   data: string[][],
-  validationResult: ValidationResult
+  validationResult: ValidationResult,
+  mode: 'auto' | 'custom' = 'auto',
+  customInstructions?: string
 ): Promise<{ success: boolean; fixedData: string[][]; fixes: ErrorFix[]; error?: string }> {
   const client = getAzureOpenAIClient()
   if (!client) {
@@ -143,7 +147,42 @@ export async function resolveErrorsWithAI(
     }))
 
     // Create enhanced prompt for AI
-    const systemMessage = `You are an expert data quality specialist for financial compliance management systems. Your CRITICAL task is to fix ALL validation errors in spreadsheet data in a SINGLE response.
+    let systemMessage: string
+    if (mode === 'custom' && customInstructions) {
+      // Custom mode: User provides specific instructions
+      systemMessage = `You are an expert data quality specialist for financial compliance management systems. You have FULL ACCESS to the entire spreadsheet data and must follow the user's specific instructions to resolve errors.
+
+YOUR TASK:
+Follow the user's custom instructions EXACTLY to resolve the specified errors in the spreadsheet.
+
+IMPORTANT:
+1. You have access to the COMPLETE spreadsheet data - all rows and all columns
+2. Follow the user's instructions precisely
+3. Only fix errors that match the user's instructions
+4. You can analyze the entire spreadsheet to understand context and patterns
+5. Preserve all valid data - only modify cells as instructed
+6. If the user's instructions are unclear, make reasonable inferences based on the spreadsheet context
+
+Return STRICT JSON ONLY (no markdown, no explanations) with this EXACT structure:
+{
+  "fixes": [
+    {
+      "row": number,
+      "columnIndex": number,
+      "originalValue": string,
+      "fixedValue": string,
+      "reason": string
+    }
+  ],
+  "summary": {
+    "totalErrors": ${errors.length},
+    "fixesProvided": number,
+    "rowsProcessed": number
+  }
+}`
+    } else {
+      // Auto mode: Standard automatic resolution
+      systemMessage = `You are an expert data quality specialist for financial compliance management systems. Your CRITICAL task is to fix ALL validation errors in spreadsheet data in a SINGLE response.
 
 WORKFLOW (MANDATORY):
 Step 1: ANALYZE all errors - identify patterns, group similar errors
@@ -188,17 +227,58 @@ Return STRICT JSON ONLY (no markdown, no explanations) with this EXACT structure
 }
 
 CRITICAL: You must provide fixes for ALL ${errors.length} errors. The "fixesProvided" count must equal ${errors.length}.`
+    }
 
-    // Build comprehensive user prompt with ALL error data
-    const errorRowsData = Array.from(errorsByRow.entries()).map(([rowNum, rowErrors]) => {
-      const row = data[rowNum]
-      return `Row ${rowNum + 1} (${rowErrors.length} error${rowErrors.length > 1 ? 's' : ''}):
+    // Build comprehensive user prompt
+    let userPrompt: string
+    
+    if (mode === 'custom' && customInstructions) {
+      // Custom mode: Include full spreadsheet data and user instructions
+      const fullSpreadsheetData = data.map((row, idx) => 
+        `Row ${idx + 1}: ${CSV_COLUMNS.map((col, colIdx) => `${col}="${row[colIdx] || ''}"`).join(', ')}`
+      ).join('\n')
+      
+      const errorRowsData = Array.from(errorsByRow.entries()).map(([rowNum, rowErrors]) => {
+        const row = data[rowNum]
+        return `Row ${rowNum + 1} (${rowErrors.length} error${rowErrors.length > 1 ? 's' : ''}):
   Full Row Data: ${CSV_COLUMNS.map((col, idx) => `${col}="${row?.[idx] || ''}"`).join(', ')}
   Errors:
 ${rowErrors.map(e => `    - Column "${e.column}" (index ${e.columnIndex}): "${e.value}" -> ${e.message}`).join('\n')}`
-    }).join('\n\n')
+      }).join('\n\n')
 
-    const userPrompt = `Fix ALL ${errors.length} validation errors in the spreadsheet data. You MUST fix every single error in this response.
+      userPrompt = `You have FULL ACCESS to the complete spreadsheet data. Follow the user's custom instructions to resolve errors.
+
+COMPLETE SPREADSHEET DATA (${data.length} rows):
+${fullSpreadsheetData}
+
+COLUMN DEFINITIONS:
+${columnMappings.map(c => 
+  `  ${c.index}: ${c.name}${c.allowedValues ? ` (Allowed: ${c.allowedValues.join(', ')})` : ''}`
+).join('\n')}
+
+ERRORS FOUND (${errors.length} total errors in ${errorsByRow.size} rows):
+${errorRowsData}
+
+USER'S CUSTOM INSTRUCTIONS:
+${customInstructions}
+
+IMPORTANT:
+- Follow the user's instructions EXACTLY
+- You can see the entire spreadsheet, so use context from all rows to make informed decisions
+- Only fix errors that match the user's instructions
+- If the instructions are about specific patterns, apply them across all matching rows
+- Return JSON with fixes for errors that match the instructions`
+    } else {
+      // Auto mode: Standard error resolution
+      const errorRowsData = Array.from(errorsByRow.entries()).map(([rowNum, rowErrors]) => {
+        const row = data[rowNum]
+        return `Row ${rowNum + 1} (${rowErrors.length} error${rowErrors.length > 1 ? 's' : ''}):
+  Full Row Data: ${CSV_COLUMNS.map((col, idx) => `${col}="${row?.[idx] || ''}"`).join(', ')}
+  Errors:
+${rowErrors.map(e => `    - Column "${e.column}" (index ${e.columnIndex}): "${e.value}" -> ${e.message}`).join('\n')}`
+      }).join('\n\n')
+
+      userPrompt = `Fix ALL ${errors.length} validation errors in the spreadsheet data. You MUST fix every single error in this response.
 
 COLUMN DEFINITIONS:
 ${columnMappings.map(c => 
@@ -225,6 +305,7 @@ INSTRUCTIONS:
 5. Ensure your response includes fixes for ALL ${errors.length} errors
 
 Return the JSON with fixes for ALL errors.`
+    }
 
     const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.2-chat'
     

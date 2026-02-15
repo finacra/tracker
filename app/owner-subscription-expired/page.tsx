@@ -137,8 +137,8 @@ function OwnerExpiredPageInner() {
           <div className="text-center mt-8">
             <p className="text-gray-600 text-sm">
               Need help? Contact{' '}
-              <a href="mailto:support@finnovateai.com" className="text-primary-orange hover:underline">
-                support@finnovateai.com
+              <a href="mailto:info@finacra.com" className="text-primary-orange hover:underline">
+                info@finacra.com
               </a>
             </p>
           </div>

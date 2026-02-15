@@ -11,6 +11,24 @@ import { useUserRole } from '@/hooks/useUserRole'
 import UsersManagement from '@/components/admin/UsersManagement'
 import AllUsersManagement from '@/components/admin/AllUsersManagement'
 import TransactionHistory from '@/components/admin/TransactionHistory'
+import {
+  getFolders,
+  createFolder,
+  updateFolder,
+  deleteFolder,
+  getDocumentTemplates,
+  createDocumentTemplate,
+  updateDocumentTemplate,
+  deleteDocumentTemplate,
+  type FolderInfo,
+  type DocumentTemplate,
+} from '@/app/admin/vault/actions'
+import {
+  parseFolderPath,
+  buildBreadcrumb,
+  getFolderName,
+  getParentPath,
+} from '@/lib/vault/folder-utils'
 import { 
   FIXED_COSTS, 
   CAPEX_YEAR_1, 
@@ -79,6 +97,30 @@ export default function AdminPage() {
     required_documents: [] as string[],
     possible_legal_action: '',
     required_documents_input: '' // Temporary input for adding documents
+  })
+
+  // Vault management state
+  const [vaultFolders, setVaultFolders] = useState<FolderInfo[]>([])
+  const [vaultTemplates, setVaultTemplates] = useState<DocumentTemplate[]>([])
+  const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(null)
+  const [isLoadingVaultFolders, setIsLoadingVaultFolders] = useState(false)
+  const [isLoadingVaultTemplates, setIsLoadingVaultTemplates] = useState(false)
+  const [isCreatingVaultFolder, setIsCreatingVaultFolder] = useState(false)
+  const [isCreatingVaultTemplate, setIsCreatingVaultTemplate] = useState(false)
+  const [showCreateVaultFolderModal, setShowCreateVaultFolderModal] = useState(false)
+  const [showCreateVaultTemplateModal, setShowCreateVaultTemplateModal] = useState(false)
+  const [editingVaultFolder, setEditingVaultFolder] = useState<FolderInfo | null>(null)
+  const [editingVaultTemplate, setEditingVaultTemplate] = useState<DocumentTemplate | null>(null)
+  const [expandedVaultFolders, setExpandedVaultFolders] = useState<Set<string>>(new Set())
+
+  // Vault form states
+  const [vaultFolderForm, setVaultFolderForm] = useState({ name: '', description: '' })
+  const [vaultTemplateForm, setVaultTemplateForm] = useState({
+    name: '',
+    frequency: 'monthly' as 'one-time' | 'monthly' | 'quarterly' | 'yearly',
+    category: '',
+    description: '',
+    isMandatory: false,
   })
 
   // Check if user is superadmin
@@ -208,12 +250,389 @@ export default function AdminPage() {
     }
   }
 
+  // Vault management functions
+  const loadVaultFolders = async () => {
+    setIsLoadingVaultFolders(true)
+    try {
+      console.log('[ADMIN VAULT] Loading vault folders')
+      
+      const foldersResult = await getFolders()
+
+      console.log('[ADMIN VAULT] Folders result:', {
+        success: foldersResult.success,
+        foldersCount: foldersResult.folders?.length || 0,
+        error: foldersResult.error,
+      })
+
+      if (foldersResult.success && foldersResult.folders) {
+        setVaultFolders(foldersResult.folders)
+      } else if (foldersResult.error) {
+        console.error('[ADMIN VAULT] Failed to load folders:', foldersResult.error)
+        alert(`Failed to load folders: ${foldersResult.error}`)
+      }
+    } catch (error) {
+      console.error('[ADMIN VAULT] Error loading vault folders:', error)
+      alert(`Error loading vault folders: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsLoadingVaultFolders(false)
+    }
+  }
+
+  const loadVaultTemplates = async (folderPath: string | null) => {
+    setIsLoadingVaultTemplates(true)
+    try {
+      console.log('[ADMIN VAULT] Loading vault templates for folder:', folderPath)
+      
+      const templatesResult = await getDocumentTemplates(folderPath)
+
+      console.log('[ADMIN VAULT] Templates result:', {
+        success: templatesResult.success,
+        templatesCount: templatesResult.templates?.length || 0,
+        error: templatesResult.error,
+      })
+
+      if (templatesResult.success && templatesResult.templates) {
+        setVaultTemplates(templatesResult.templates)
+      } else if (templatesResult.error) {
+        console.error('[ADMIN VAULT] Failed to load templates:', templatesResult.error)
+        // Don't alert for template errors, just log
+      }
+    } catch (error) {
+      console.error('[ADMIN VAULT] Error loading vault templates:', error)
+      // Don't alert for template loading errors, just log
+    } finally {
+      setIsLoadingVaultTemplates(false)
+    }
+  }
+
+  // Load all vault data (folders + templates)
+  const loadVaultData = async () => {
+    await loadVaultFolders()
+    await loadVaultTemplates(selectedFolderPath)
+  }
+
+  const handleCreateVaultFolder = async () => {
+    if (!vaultFolderForm.name.trim()) {
+      alert('Please enter a folder name')
+      return
+    }
+
+    setIsCreatingVaultFolder(true)
+    try {
+      const result = await createFolder(
+        vaultFolderForm.name.trim(),
+        selectedFolderPath,
+        vaultFolderForm.description.trim() || null
+      )
+
+      if (result.success) {
+        setShowCreateVaultFolderModal(false)
+        setVaultFolderForm({ name: '', description: '' })
+        await loadVaultFolders()
+      } else {
+        alert(result.error || 'Failed to create folder')
+      }
+    } catch (error) {
+      console.error('Error creating folder:', error)
+      alert('Failed to create folder')
+    } finally {
+      setIsCreatingVaultFolder(false)
+    }
+  }
+
+  const handleUpdateVaultFolder = async () => {
+    if (!editingVaultFolder || !vaultFolderForm.name.trim()) {
+      return
+    }
+
+    setIsCreatingVaultFolder(true)
+    try {
+      const parentPath = getParentPath(editingVaultFolder.path)
+      const newPath = parentPath 
+        ? `${parentPath}/${vaultFolderForm.name.trim()}`
+        : vaultFolderForm.name.trim()
+
+      const result = await updateFolder(
+        editingVaultFolder.path,
+        newPath,
+        vaultFolderForm.description.trim() || null
+      )
+
+      if (result.success) {
+        setEditingVaultFolder(null)
+        setVaultFolderForm({ name: '', description: '' })
+        if (selectedFolderPath === editingVaultFolder.path) {
+          setSelectedFolderPath(newPath)
+        }
+        await loadVaultFolders()
+      } else {
+        alert(result.error || 'Failed to update folder')
+      }
+    } catch (error) {
+      console.error('Error updating folder:', error)
+      alert('Failed to update folder')
+    } finally {
+      setIsCreatingVaultFolder(false)
+    }
+  }
+
+  const handleDeleteVaultFolder = async (folderPath: string) => {
+    if (!confirm('Are you sure you want to delete this folder? This will delete all document templates in this folder and subfolders. This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const result = await deleteFolder(folderPath)
+
+      if (result.success) {
+        if (selectedFolderPath === folderPath) {
+          setSelectedFolderPath(null)
+        }
+        await loadVaultFolders()
+      } else {
+        alert(result.error || 'Failed to delete folder')
+      }
+    } catch (error) {
+      console.error('Error deleting folder:', error)
+      alert('Failed to delete folder')
+    }
+  }
+
+  const handleCreateVaultTemplate = async () => {
+    if (!vaultTemplateForm.name.trim()) {
+      alert('Please enter a document name')
+      return
+    }
+
+    setIsCreatingVaultTemplate(true)
+    try {
+      const result = await createDocumentTemplate(
+        vaultTemplateForm.name.trim(),
+        selectedFolderPath,
+        vaultTemplateForm.frequency,
+        vaultTemplateForm.category.trim() || null,
+        vaultTemplateForm.description.trim() || null,
+        vaultTemplateForm.isMandatory
+      )
+
+      if (result.success) {
+        setShowCreateVaultTemplateModal(false)
+        setVaultTemplateForm({
+          name: '',
+          frequency: 'monthly',
+          category: '',
+          description: '',
+          isMandatory: false,
+        })
+        await loadVaultTemplates(selectedFolderPath)
+      } else {
+        alert(result.error || 'Failed to create document template')
+      }
+    } catch (error) {
+      console.error('Error creating document template:', error)
+      alert('Failed to create document template')
+    } finally {
+      setIsCreatingVaultTemplate(false)
+    }
+  }
+
+  const handleUpdateVaultTemplate = async () => {
+    if (!editingVaultTemplate || !vaultTemplateForm.name.trim()) {
+      return
+    }
+
+    setIsCreatingVaultTemplate(true)
+    try {
+      const result = await updateDocumentTemplate(
+        editingVaultTemplate.id!,
+        vaultTemplateForm.name.trim(),
+        selectedFolderPath,
+        vaultTemplateForm.frequency,
+        vaultTemplateForm.category.trim() || null,
+        vaultTemplateForm.description.trim() || null,
+        vaultTemplateForm.isMandatory
+      )
+
+      if (result.success) {
+        setEditingVaultTemplate(null)
+        setVaultTemplateForm({
+          name: '',
+          frequency: 'monthly',
+          category: '',
+          description: '',
+          isMandatory: false,
+        })
+        await loadVaultTemplates(selectedFolderPath)
+      } else {
+        alert(result.error || 'Failed to update document template')
+      }
+    } catch (error) {
+      console.error('Error updating document template:', error)
+      alert('Failed to update document template')
+    } finally {
+      setIsCreatingVaultTemplate(false)
+    }
+  }
+
+  const handleDeleteVaultTemplate = async (templateId: string) => {
+    if (!confirm('Are you sure you want to delete this document template? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const result = await deleteDocumentTemplate(templateId)
+
+      if (result.success) {
+        await loadVaultTemplates(selectedFolderPath)
+      } else {
+        alert(result.error || 'Failed to delete document template')
+      }
+    } catch (error) {
+      console.error('Error deleting document template:', error)
+      alert('Failed to delete document template')
+    }
+  }
+
+  const toggleVaultFolderExpansion = (folderPath: string) => {
+    const newExpanded = new Set(expandedVaultFolders)
+    if (newExpanded.has(folderPath)) {
+      newExpanded.delete(folderPath)
+    } else {
+      newExpanded.add(folderPath)
+    }
+    setExpandedVaultFolders(newExpanded)
+  }
+
+  const renderVaultFolderTree = (folderList: FolderInfo[], level: number = 0) => {
+    return folderList.map(folder => {
+      const isExpanded = expandedVaultFolders.has(folder.path)
+      const isSelected = selectedFolderPath === folder.path
+      const hasChildren = folder.children && folder.children.length > 0
+
+      return (
+        <div key={folder.path}>
+          <div
+            className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors ${
+              isSelected ? 'bg-primary-orange/20 border border-primary-orange/50' : ''
+            }`}
+            style={{ paddingLeft: `${level * 20 + 8}px` }}
+            onClick={() => setSelectedFolderPath(folder.path)}
+          >
+            {hasChildren && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  toggleVaultFolderExpansion(folder.path)
+                }}
+                className="w-4 h-4 flex items-center justify-center text-gray-400 hover:text-white"
+              >
+                {isExpanded ? '▼' : '▶'}
+              </button>
+            )}
+            {!hasChildren && <div className="w-4" />}
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="text-primary-orange"
+            >
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+            </svg>
+            <span className="flex-1 text-sm text-white">{folder.name}</span>
+            <span className="text-xs text-gray-500">({folder.documentCount})</span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setEditingVaultFolder(folder)
+                  setVaultFolderForm({ name: folder.name, description: '' })
+                }}
+                className="p-1 text-gray-400 hover:text-primary-orange transition-colors"
+                title="Edit folder"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDeleteVaultFolder(folder.path)
+                }}
+                className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+                title="Delete folder"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          {isExpanded && hasChildren && folder.children && (
+            <div>{renderVaultFolderTree(folder.children, level + 1)}</div>
+          )}
+        </div>
+      )
+    })
+  }
+
+  const getVaultFrequencyBadgeColor = (frequency: string) => {
+    switch (frequency) {
+      case 'one-time':
+        return 'bg-gray-600'
+      case 'monthly':
+        return 'bg-blue-600'
+      case 'quarterly':
+        return 'bg-purple-600'
+      case 'yearly':
+      case 'annually':
+        return 'bg-green-600'
+      default:
+        return 'bg-gray-600'
+    }
+  }
+
+  const getVaultFrequencyLabel = (frequency: string) => {
+    switch (frequency) {
+      case 'one-time':
+        return 'One-Time'
+      case 'monthly':
+        return 'Monthly'
+      case 'quarterly':
+        return 'Quarterly'
+      case 'yearly':
+      case 'annually':
+        return 'Yearly'
+      default:
+        return frequency
+    }
+  }
+
   // Load templates when templates tab is active
   useEffect(() => {
     if (activeTab === 'templates' && isSuperadmin) {
       loadTemplates()
     }
   }, [activeTab, isSuperadmin])
+
+  // Load folders only when vault tab is first opened
+  useEffect(() => {
+    if (activeTab === 'vault' && isSuperadmin) {
+      loadVaultFolders()
+    }
+  }, [activeTab, isSuperadmin])
+
+  // Load templates when folder selection changes
+  useEffect(() => {
+    if (activeTab === 'vault' && isSuperadmin) {
+      loadVaultTemplates(selectedFolderPath)
+    }
+  }, [selectedFolderPath, activeTab, isSuperadmin])
 
   if (isLoading) {
     return (
@@ -379,9 +798,7 @@ export default function AdminPage() {
             <span>Transaction History</span>
           </button>
           <button
-            onClick={() => {
-              router.push('/admin/vault')
-            }}
+            onClick={() => setActiveTab('vault')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${
               activeTab === 'vault'
                 ? 'border-primary-orange bg-primary-orange/20 text-white'
@@ -557,9 +974,40 @@ export default function AdminPage() {
           <div className="space-y-6">
             {/* Header with Add Button */}
             <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-light text-white mb-2">Compliance Templates</h2>
-                <p className="text-gray-400">Create templates that automatically apply to matching companies</p>
+              <div className="flex items-center gap-4">
+                <div>
+                  <h2 className="text-2xl font-light text-white mb-2">
+                    Compliance Templates
+                    {templates.length > 0 && (
+                      <span className="ml-3 text-sm font-normal text-gray-400">
+                        ({templates.length} template{templates.length !== 1 ? 's' : ''})
+                      </span>
+                    )}
+                  </h2>
+                  <p className="text-gray-400">Create templates that automatically apply to matching companies</p>
+                </div>
+                <button
+                  onClick={loadTemplates}
+                  disabled={isLoadingTemplates}
+                  className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+                  title="Refresh templates list"
+                >
+                  <svg 
+                    width="16" 
+                    height="16" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2"
+                    className={isLoadingTemplates ? 'animate-spin' : ''}
+                  >
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                    <path d="M21 3v5h-5" />
+                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                    <path d="M3 21v-5h5" />
+                  </svg>
+                  Refresh
+                </button>
               </div>
               <div className="flex items-center gap-3">
                 <button
@@ -1829,6 +2277,361 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'vault' && (
+          <div className="space-y-6">
+            <div className="mb-6">
+              <h2 className="text-2xl font-light text-white mb-2">Compliance Vault</h2>
+              <p className="text-gray-400">Manage global folder structure and document templates for all companies</p>
+            </div>
+
+            {isLoadingVaultFolders ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Folder Tree Sidebar */}
+                <div className="lg:col-span-1">
+                  <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-white">Folders</h3>
+                      <button
+                        onClick={() => {
+                          setEditingVaultFolder(null)
+                          setVaultFolderForm({ name: '', description: '' })
+                          setShowCreateVaultFolderModal(true)
+                        }}
+                        className="px-3 py-1.5 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors text-sm font-medium"
+                      >
+                        + New Folder
+                      </button>
+                    </div>
+
+                    {/* Root level button */}
+                    <button
+                      onClick={() => setSelectedFolderPath(null)}
+                      className={`w-full flex items-center gap-2 p-2 rounded-lg hover:bg-gray-800 transition-colors mb-2 ${
+                        selectedFolderPath === null ? 'bg-primary-orange/20 border border-primary-orange/50' : ''
+                      }`}
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-primary-orange"
+                      >
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                        <polyline points="9 22 9 12 15 12 15 22" />
+                      </svg>
+                      <span className="text-sm text-white">Root</span>
+                    </button>
+
+                    <div className="space-y-1 max-h-[600px] overflow-y-auto">
+                      {renderVaultFolderTree(vaultFolders)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Document Templates List */}
+                <div className="lg:col-span-2">
+                  <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">
+                          {selectedFolderPath ? getFolderName(selectedFolderPath) : 'Root'} Documents
+                        </h3>
+                        {selectedFolderPath && (
+                          <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
+                            {buildBreadcrumb(selectedFolderPath).map((crumb, idx) => (
+                              <span key={crumb.path}>
+                                {idx > 0 && <span className="mx-1">/</span>}
+                                <button
+                                  onClick={() => setSelectedFolderPath(crumb.path)}
+                                  className="hover:text-primary-orange transition-colors"
+                                >
+                                  {crumb.name}
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => {
+                          setEditingVaultTemplate(null)
+                          setVaultTemplateForm({
+                            name: '',
+                            frequency: 'monthly',
+                            category: '',
+                            description: '',
+                            isMandatory: false,
+                          })
+                          setShowCreateVaultTemplateModal(true)
+                        }}
+                        className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors text-sm font-medium"
+                      >
+                        + New Document
+                      </button>
+                    </div>
+
+                    {isLoadingVaultTemplates ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="flex items-center gap-3 text-gray-400">
+                          <div className="w-5 h-5 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
+                          <span className="text-sm">Loading templates...</span>
+                        </div>
+                      </div>
+                    ) : vaultTemplates.length === 0 ? (
+                      <div className="text-center py-12">
+                        <svg
+                          width="48"
+                          height="48"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          className="text-gray-600 mx-auto mb-4"
+                        >
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                          <line x1="16" y1="13" x2="8" y2="13" />
+                          <line x1="16" y1="17" x2="8" y2="17" />
+                        </svg>
+                        <p className="text-gray-400">No document templates in this folder</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {vaultTemplates.map(template => (
+                          <div
+                            key={template.id || template.document_name}
+                            className="flex items-center gap-4 p-4 bg-gray-900/50 rounded-lg border border-gray-800 hover:border-gray-700 transition-colors"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-3 mb-2">
+                                <h4 className="text-white font-medium truncate">{template.document_name}</h4>
+                                <span className={`px-2 py-0.5 rounded text-xs font-medium text-white ${getVaultFrequencyBadgeColor(template.default_frequency)}`}>
+                                  {getVaultFrequencyLabel(template.default_frequency)}
+                                </span>
+                                {template.is_mandatory && (
+                                  <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-600 text-white">
+                                    Mandatory
+                                  </span>
+                                )}
+                              </div>
+                              {template.description && (
+                                <p className="text-sm text-gray-400 truncate mb-2">{template.description}</p>
+                              )}
+                              <div className="flex items-center gap-4 text-xs text-gray-500">
+                                {template.category && (
+                                  <span className="px-2 py-0.5 bg-primary-orange/20 text-primary-orange rounded">
+                                    {template.category}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => {
+                                  setEditingVaultTemplate(template)
+                                  setVaultTemplateForm({
+                                    name: template.document_name,
+                                    frequency: (template.default_frequency === 'annually' ? 'yearly' : template.default_frequency) as 'one-time' | 'monthly' | 'quarterly' | 'yearly',
+                                    category: template.category || '',
+                                    description: template.description || '',
+                                    isMandatory: template.is_mandatory,
+                                  })
+                                }}
+                                className="p-2 text-gray-400 hover:text-primary-orange transition-colors"
+                                title="Edit"
+                              >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => template.id && handleDeleteVaultTemplate(template.id)}
+                                className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                                title="Delete"
+                              >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polyline points="3 6 5 6 21 6" />
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Create/Edit Folder Modal */}
+            {(showCreateVaultFolderModal || editingVaultFolder) && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6 w-full max-w-md">
+                  <h2 className="text-xl font-semibold text-white mb-4">
+                    {editingVaultFolder ? 'Edit Folder' : 'Create New Folder'}
+                  </h2>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Folder Name</label>
+                      <input
+                        type="text"
+                        value={vaultFolderForm.name}
+                        onChange={(e) => setVaultFolderForm({ ...vaultFolderForm, name: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        placeholder="Enter folder name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Description (Optional)</label>
+                      <textarea
+                        value={vaultFolderForm.description}
+                        onChange={(e) => setVaultFolderForm({ ...vaultFolderForm, description: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        placeholder="Enter folder description"
+                        rows={3}
+                      />
+                    </div>
+                    {selectedFolderPath && !editingVaultFolder && (
+                      <div className="text-sm text-gray-400">
+                        Creating in: <span className="text-primary-orange">{selectedFolderPath}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={editingVaultFolder ? handleUpdateVaultFolder : handleCreateVaultFolder}
+                        disabled={isCreatingVaultFolder || !vaultFolderForm.name.trim()}
+                        className="flex-1 px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isCreatingVaultFolder ? 'Saving...' : editingVaultFolder ? 'Update' : 'Create'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowCreateVaultFolderModal(false)
+                          setEditingVaultFolder(null)
+                          setVaultFolderForm({ name: '', description: '' })
+                        }}
+                        className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Create/Edit Document Template Modal */}
+            {(showCreateVaultTemplateModal || editingVaultTemplate) && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6 w-full max-w-md">
+                  <h2 className="text-xl font-semibold text-white mb-4">
+                    {editingVaultTemplate ? 'Edit Document Template' : 'Create New Document Template'}
+                  </h2>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Document Name</label>
+                      <input
+                        type="text"
+                        value={vaultTemplateForm.name}
+                        onChange={(e) => setVaultTemplateForm({ ...vaultTemplateForm, name: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        placeholder="e.g., GSTR-3B Filed Copy"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Frequency</label>
+                      <select
+                        value={vaultTemplateForm.frequency}
+                        onChange={(e) => {
+                          const value = e.target.value as 'one-time' | 'monthly' | 'quarterly' | 'yearly'
+                          setVaultTemplateForm({ ...vaultTemplateForm, frequency: value })
+                        }}
+                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                      >
+                        <option value="one-time">One-Time</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="yearly">Yearly</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Category (Optional)</label>
+                      <input
+                        type="text"
+                        value={vaultTemplateForm.category}
+                        onChange={(e) => setVaultTemplateForm({ ...vaultTemplateForm, category: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        placeholder="e.g., GST, Income Tax"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Description (Optional)</label>
+                      <textarea
+                        value={vaultTemplateForm.description}
+                        onChange={(e) => setVaultTemplateForm({ ...vaultTemplateForm, description: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        placeholder="Enter document description"
+                        rows={3}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="isMandatoryVault"
+                        checked={vaultTemplateForm.isMandatory}
+                        onChange={(e) => setVaultTemplateForm({ ...vaultTemplateForm, isMandatory: e.target.checked })}
+                        className="w-4 h-4 text-primary-orange bg-gray-900 border-gray-700 rounded focus:ring-primary-orange"
+                      />
+                      <label htmlFor="isMandatoryVault" className="text-sm text-gray-300">
+                        Mandatory Document
+                      </label>
+                    </div>
+                    {selectedFolderPath && (
+                      <div className="text-sm text-gray-400">
+                        Creating in: <span className="text-primary-orange">{selectedFolderPath}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={editingVaultTemplate ? handleUpdateVaultTemplate : handleCreateVaultTemplate}
+                        disabled={isCreatingVaultTemplate || !vaultTemplateForm.name.trim()}
+                        className="flex-1 px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isCreatingVaultTemplate ? 'Saving...' : editingVaultTemplate ? 'Update' : 'Create'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowCreateVaultTemplateModal(false)
+                          setEditingVaultTemplate(null)
+                          setVaultTemplateForm({
+                            name: '',
+                            frequency: 'monthly',
+                            category: '',
+                            description: '',
+                            isMandatory: false,
+                          })
+                        }}
+                        className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -70,7 +70,7 @@ function SubscriptionRequiredInner() {
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -83,9 +83,9 @@ function SubscriptionRequiredInner() {
         <div className="max-w-lg w-full">
           {/* Icon */}
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 bg-red-500/20 border border-red-500/30 rounded-2xl flex items-center justify-center">
+            <div className="w-20 h-20 bg-gray-800 border border-gray-700 rounded-xl flex items-center justify-center">
               <svg
-                className="w-10 h-10 text-red-400"
+                className="w-10 h-10 text-gray-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -101,18 +101,18 @@ function SubscriptionRequiredInner() {
           </div>
           
           {/* Main Card */}
-          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-8 text-center">
-            <h1 className="text-2xl font-bold text-white mb-3">
+          <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-8 text-center">
+            <h1 className="text-2xl font-light text-white mb-3">
               Subscription Required
             </h1>
             
             {company ? (
-              <p className="text-gray-400 mb-6">
-                Your trial for <span className="text-white font-medium">{company.name}</span> has expired. 
+              <p className="text-gray-400 mb-6 font-light">
+                Your trial for <span className="text-white font-light">{company.name}</span> has expired. 
                 Subscribe to continue accessing this company.
               </p>
             ) : (
-              <p className="text-gray-400 mb-6">
+              <p className="text-gray-400 mb-6 font-light">
                 Your trial has expired. Subscribe to continue accessing the Data Room.
               </p>
             )}
@@ -122,7 +122,7 @@ function SubscriptionRequiredInner() {
               {company && (
                 <button
                   onClick={() => router.push(`/subscribe?company_id=${company.id}`)}
-                  className="w-full bg-primary-orange text-white py-3 px-6 rounded-lg font-semibold hover:bg-primary-orange/90 transition-colors"
+                  className="w-full bg-gray-700 text-white py-3 px-6 rounded-lg font-light hover:bg-gray-600 transition-colors"
                 >
                   Subscribe to {company.name}
                 </button>
@@ -130,7 +130,7 @@ function SubscriptionRequiredInner() {
               
               <button
                 onClick={() => router.push('/pricing')}
-                className="w-full bg-gray-800 text-white py-3 px-6 rounded-lg font-medium hover:bg-gray-700 transition-colors border border-gray-700"
+                className="w-full bg-transparent border border-gray-700 text-gray-300 py-3 px-6 rounded-lg font-light hover:border-gray-600 hover:text-white transition-colors"
               >
                 View All Plans
               </button>
@@ -150,7 +150,7 @@ function SubscriptionRequiredInner() {
                       <button
                         key={c.id}
                         onClick={() => router.push(`/subscribe?company_id=${c.id}`)}
-                        className="w-full text-left px-4 py-2 bg-gray-900 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors text-sm"
+                        className="w-full text-left px-4 py-2 bg-gray-900 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors text-sm font-light"
                       >
                         {c.name}
                       </button>
@@ -163,7 +163,7 @@ function SubscriptionRequiredInner() {
             <div className="mt-6 pt-6 border-t border-gray-800">
               <button
                 onClick={() => router.push('/onboarding')}
-                className="text-primary-orange hover:text-primary-orange/80 text-sm font-medium transition-colors"
+                className="text-gray-400 hover:text-white text-sm font-light transition-colors"
               >
                 + Create a New Company
               </button>
@@ -172,10 +172,10 @@ function SubscriptionRequiredInner() {
           
           {/* Help Text */}
           <div className="mt-6 text-center">
-            <p className="text-gray-500 text-sm">
+            <p className="text-gray-500 text-sm font-light">
               Need help? Contact{' '}
-              <a href="mailto:support@finnovateai.com" className="text-primary-orange hover:underline">
-                support@finnovateai.com
+              <a href="mailto:info@finacra.com" className="text-gray-400 hover:text-white transition-colors">
+                info@finacra.com
               </a>
             </p>
           </div>
@@ -189,7 +189,7 @@ export default function SubscriptionRequiredPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <SubscriptionRequiredInner />

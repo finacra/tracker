@@ -104,8 +104,8 @@ const validators: Record<keyof CSVTemplateRow, FieldValidator> = {
   },
 
   due_date_offset: (value, row) => {
-    if (row.compliance_type === 'monthly') {
-      if (!value) return { valid: false, message: 'Due date offset required for monthly compliance' }
+    // Optional: Only validate format if provided
+    if (value && row.compliance_type === 'monthly') {
       const num = parseInt(value, 10)
       if (isNaN(num) || num < 1 || num > 28) {
         return { valid: false, message: 'Due date offset must be 1-28 for monthly' }
@@ -115,8 +115,8 @@ const validators: Record<keyof CSVTemplateRow, FieldValidator> = {
   },
 
   due_month: (value, row) => {
-    if (row.compliance_type === 'quarterly' || row.compliance_type === 'annual') {
-      if (!value) return { valid: false, message: 'Due month required for quarterly/annual compliance' }
+    // Optional: Only validate format if provided
+    if (value && (row.compliance_type === 'quarterly' || row.compliance_type === 'annual')) {
       const num = parseInt(value, 10)
       if (isNaN(num) || num < 1 || num > 12) {
         return { valid: false, message: 'Due month must be 1-12' }
@@ -126,8 +126,8 @@ const validators: Record<keyof CSVTemplateRow, FieldValidator> = {
   },
 
   due_day: (value, row) => {
-    if (row.compliance_type === 'quarterly' || row.compliance_type === 'annual') {
-      if (!value) return { valid: false, message: 'Due day required for quarterly/annual compliance' }
+    // Optional: Only validate format if provided
+    if (value && (row.compliance_type === 'quarterly' || row.compliance_type === 'annual')) {
       const num = parseInt(value, 10)
       if (isNaN(num) || num < 1 || num > 31) {
         return { valid: false, message: 'Due day must be 1-31' }
@@ -137,8 +137,8 @@ const validators: Record<keyof CSVTemplateRow, FieldValidator> = {
   },
 
   due_date: (value, row) => {
-    if (row.compliance_type === 'one-time') {
-      if (!value) return { valid: false, message: 'Due date required for one-time compliance' }
+    // Optional: Only validate format if provided
+    if (value) {
       // Validate date format YYYY-MM-DD
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/
       if (!dateRegex.test(value)) {
