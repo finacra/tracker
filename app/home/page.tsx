@@ -216,7 +216,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/home" className="flex items-center gap-2">
             <img
-              src="https://aqziojkjtmyecfglifbc.supabase.co/storage/v1/object/public/logo/WhatsApp%20Image%202026-02-09%20at%2018.02.02.jpeg"
+              src="https://aqziojkjtmyecfglifbc.supabase.co/storage/v1/object/public/logo/WhatsApp_Image_2026-02-09_at_18.02.02-removebg-preview.png"
               alt="Finacra Logo"
               className="h-8 w-auto sm:h-10 object-contain"
             />

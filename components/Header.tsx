@@ -167,11 +167,11 @@ export default function Header() {
         <div className="flex items-center justify-between" style={{ overflow: 'visible' }}>
           {/* Logo */}
           <Link href="/data-room" className="flex items-center">
-            <img
-              src="https://aqziojkjtmyecfglifbc.supabase.co/storage/v1/object/public/logo/WhatsApp%20Image%202026-02-09%20at%2018.02.02.jpeg"
-              alt="Finacra Logo"
-              className="h-8 w-auto sm:h-10 object-contain"
-            />
+              <img
+                src="https://aqziojkjtmyecfglifbc.supabase.co/storage/v1/object/public/logo/WhatsApp_Image_2026-02-09_at_18.02.02-removebg-preview.png"
+                alt="Finacra Logo"
+                className="h-8 w-auto sm:h-10 object-contain"
+              />
           </Link>
 
           {/* Navigation (Desktop) */}
