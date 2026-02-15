@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
@@ -165,66 +166,13 @@ export default function Header() {
       <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4" style={{ overflow: 'visible' }}>
         <div className="flex items-center justify-between" style={{ overflow: 'visible' }}>
           {/* Logo */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
-              <svg
-                width="16"
-                height="16"
-                className="sm:w-5 sm:h-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
-                  stroke="white"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M14 2V8H20"
-                  stroke="white"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <line
-                  x1="8"
-                  y1="11"
-                  x2="16"
-                  y2="11"
-                  stroke="white"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="8"
-                  y1="14"
-                  x2="16"
-                  y2="14"
-                  stroke="white"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-                <line
-                  x1="8"
-                  y1="17"
-                  x2="16"
-                  y2="17"
-                  stroke="white"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-            <div>
-              <div className="text-white font-light text-sm sm:text-base md:text-lg">
-                Finacra
-              </div>
-              <div className="text-gray-400 text-[10px] sm:text-xs font-light">Smart Compliance</div>
-            </div>
-          </div>
+          <Link href="/data-room" className="flex items-center">
+            <img
+              src="https://aqziojkjtmyecfglifbc.supabase.co/storage/v1/object/public/logo/WhatsApp%20Image%202026-02-09%20at%2018.02.02.jpeg"
+              alt="Finacra Logo"
+              className="h-8 w-auto sm:h-10 object-contain"
+            />
+          </Link>
 
           {/* Navigation (Desktop) */}
           <nav className="hidden md:flex items-center gap-6">

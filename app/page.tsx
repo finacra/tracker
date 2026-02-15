@@ -106,9 +106,11 @@ function LoginPageInner() {
       <nav className="relative z-10 w-full px-6 py-6 border-b border-gray-800">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
-            <span className="text-white text-xl font-light">
-              FINACRA
-            </span>
+            <img
+              src="https://aqziojkjtmyecfglifbc.supabase.co/storage/v1/object/public/logo/WhatsApp%20Image%202026-02-09%20at%2018.02.02.jpeg"
+              alt="Finacra Logo"
+              className="h-8 w-auto sm:h-10 object-contain"
+            />
           </div>
           <div className="flex items-center gap-8">
             <Link 

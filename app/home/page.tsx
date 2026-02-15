@@ -214,11 +214,13 @@ export default function HomePage() {
       {/* Navigation Bar */}
       <nav className="relative z-10 w-full px-4 sm:px-6 py-4 sm:py-6 animate-fade-in">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-white text-lg sm:text-xl font-light">
-              FINACRA
-            </span>
-          </div>
+          <Link href="/home" className="flex items-center gap-2">
+            <img
+              src="https://aqziojkjtmyecfglifbc.supabase.co/storage/v1/object/public/logo/WhatsApp%20Image%202026-02-09%20at%2018.02.02.jpeg"
+              alt="Finacra Logo"
+              className="h-8 w-auto sm:h-10 object-contain"
+            />
+          </Link>
           <div className="hidden md:flex items-center gap-8">
             <Link href="#products" className="text-gray-300 hover:text-white transition-colors font-light text-sm">
               Products
