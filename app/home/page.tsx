@@ -276,7 +276,7 @@ export default function HomePage() {
                 </span>
               </h1>
               <p className="text-sm sm:text-base md:text-lg text-gray-400 mb-6 sm:mb-10 font-light leading-relaxed animate-fade-in" style={{ animationDelay: '0.4s', opacity: 0, animationFillMode: 'forwards' }}>
-                Finacra delivers proven compliance tracking, document management, and financial oversight to businesses, finance operators, and consulting firms.
+                Manage companies, documents, and compliance in one place.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 animate-fade-in" style={{ animationDelay: '0.6s', opacity: 0, animationFillMode: 'forwards' }}>
                 <Link
