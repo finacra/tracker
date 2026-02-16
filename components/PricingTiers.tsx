@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import Link from 'next/link'
 import { PRICING_TIERS, getTierPricing, formatPrice, type BillingCycle, type PricingTier } from '@/lib/pricing/tiers'
 import PaymentButton from './PaymentButton'
 
@@ -73,7 +74,7 @@ export default function PricingTiers() {
       </div>
 
       {/* Pricing Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 items-stretch justify-items-center max-w-5xl mx-auto">
         {PRICING_TIERS.map((tier) => {
           const tierPricing = getTierPricing(tier)
           const selectedPricing = tierPricing.options.find(
@@ -88,13 +89,16 @@ export default function PricingTiers() {
               ref={(el) => {
                 planRefs.current[tier.id] = el
               }}
-              className={`relative rounded-xl border p-8 transition-all bg-[#1a1a1a] ${
+              className={`relative rounded-xl border p-8 transition-all bg-[#1a1a1a] flex flex-col h-full min-h-0 ${
                 tier.popular
-                  ? 'border-gray-600 scale-105'
+                  ? 'border-gray-600'
                   : isSelectedPlan
-                  ? 'border-gray-600 scale-105'
+                  ? 'border-gray-600'
                   : 'border-gray-800 hover:border-gray-700'
-              } ${hoveredTier === tier.id ? 'transform scale-105' : ''}`}
+              }`}
+              style={{
+                zIndex: (tier.popular || isSelectedPlan || hoveredTier === tier.id) ? 10 : 1,
+              }}
               onMouseEnter={() => setHoveredTier(tier.id)}
               onMouseLeave={() => setHoveredTier(null)}
             >
@@ -122,64 +126,66 @@ export default function PricingTiers() {
                   )}
                 </div>
                 <p className="text-gray-400 text-sm mb-2 font-light">{tier.description}</p>
-                {tier.id === 'enterprise' ? (
-                  <p className="text-gray-500 text-xs mb-4">
-                    One subscription covers all your companies (up to 100 companies)
-                  </p>
-                ) : (
-                  <p className="text-gray-500 text-xs mb-4">
-                    Subscription is per company. Each company needs its own subscription.
-                  </p>
-                )}
-
-                {/* Price */}
-                <div className="mb-4">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-4xl font-light text-white">
-                      {formatPrice(selectedPricing.price)}
-                    </span>
-                    {selectedBillingCycle !== 'monthly' && (
-                      <span className="text-gray-500 text-sm">
-                        /{selectedBillingCycle === 'quarterly' ? 'quarter' : selectedBillingCycle === 'half-yearly' ? '6 months' : 'year'}
-                      </span>
-                    )}
-                  </div>
-                  {selectedBillingCycle !== 'monthly' && (
-                    <div className="mt-2">
-                      <span className="text-gray-400 text-sm">
-                        {formatPrice(selectedPricing.effectiveMonthly)}/month
-                      </span>
-                      {selectedPricing.savings && (
-                        <span className="ml-2 text-green-400 text-sm font-medium">
-                          Save {formatPrice(selectedPricing.savings)}
-                        </span>
-                      )}
-                    </div>
+                {/* Ensure consistent height for description text */}
+                <div className="min-h-[40px] mb-4">
+                  {tier.id === 'enterprise' ? (
+                    <p className="text-gray-500 text-xs">
+                      One subscription covers all your companies (up to 100 companies)
+                    </p>
+                  ) : (
+                    <p className="text-gray-500 text-xs">
+                      Subscription is per company. Each company needs its own subscription.
+                    </p>
                   )}
-                  {selectedPricing.discount > 0 && (
-                    <div className="mt-1">
-                      <span className="text-gray-400 text-sm font-light">
-                        {selectedPricing.discount}% discount
-                      </span>
+                </div>
+
+                {/* Price - Only show for non-enterprise plans */}
+                {/* Use min-height to ensure consistent spacing */}
+                <div className="mb-4 min-h-[120px]">
+                  {tier.id !== 'enterprise' ? (
+                    <>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-4xl font-light text-white">
+                          {formatPrice(selectedPricing.price)}
+                        </span>
+                        {selectedBillingCycle !== 'monthly' && (
+                          <span className="text-gray-500 text-sm">
+                            /{selectedBillingCycle === 'quarterly' ? 'quarter' : selectedBillingCycle === 'half-yearly' ? '6 months' : 'year'}
+                          </span>
+                        )}
+                      </div>
+                      {selectedBillingCycle !== 'monthly' && (
+                        <div className="mt-2">
+                          <span className="text-gray-400 text-sm">
+                            {formatPrice(selectedPricing.effectiveMonthly)}/month
+                          </span>
+                          {selectedPricing.savings && (
+                            <span className="ml-2 text-green-400 text-sm font-medium">
+                              Save {formatPrice(selectedPricing.savings)}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {selectedPricing.discount > 0 && (
+                        <div className="mt-1">
+                          <span className="text-gray-400 text-sm font-light">
+                            {selectedPricing.discount}% discount
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex items-center" style={{ minHeight: '120px' }}>
+                      <p className="text-gray-400 text-sm font-light">
+                        Custom pricing discussed on call
+                      </p>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* CTA Button */}
-              <PaymentButton
-                tier={tier.id}
-                billingCycle={selectedBillingCycle}
-                price={selectedPricing.price}
-                  className={`w-full py-3 px-6 rounded-lg font-light transition-all mb-6 ${
-                    tier.popular
-                      ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                      : 'bg-transparent border border-gray-700 text-gray-300 hover:border-gray-600 hover:text-white'
-                  }`}
-              />
-
               {/* Features */}
-              <div className="space-y-3">
+              <div className="space-y-3 flex-grow mb-6">
                 <div className="text-sm font-light text-gray-400 mb-3">Features:</div>
                 {tier.features.map((feature, index) => (
                   <div key={index} className="flex items-start gap-2">
@@ -201,8 +207,8 @@ export default function PricingTiers() {
                 ))}
               </div>
 
-              {/* Limits Info */}
-              <div className="mt-6 pt-6 border-t border-gray-700">
+              {/* Limits Info - Fixed height to ensure consistency */}
+              <div className="mb-6 pt-6 border-t border-gray-700 min-h-[140px]">
                 <div className="text-xs text-gray-500 space-y-1">
                   {tier.id === 'enterprise' ? (
                     <>
@@ -221,6 +227,33 @@ export default function PricingTiers() {
                     ✓ Invited team members get free access
                   </div>
                 </div>
+              </div>
+
+              {/* CTA Button - Positioned at bottom */}
+              <div className="mt-auto">
+                {tier.id === 'enterprise' ? (
+                  <Link
+                    href="/contact?plan=enterprise&source=pricing"
+                    className={`block w-full py-3 px-6 rounded-lg font-light transition-all text-center ${
+                      tier.popular
+                        ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                        : 'bg-transparent border border-gray-700 text-gray-300 hover:border-gray-600 hover:text-white'
+                    }`}
+                  >
+                    Contact Sales Team
+                  </Link>
+                ) : (
+                  <PaymentButton
+                    tier={tier.id}
+                    billingCycle={selectedBillingCycle}
+                    price={selectedPricing.price}
+                    className={`w-full py-3 px-6 rounded-lg font-light transition-all ${
+                      tier.popular
+                        ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                        : 'bg-transparent border border-gray-700 text-gray-300 hover:border-gray-600 hover:text-white'
+                    }`}
+                  />
+                )}
               </div>
             </div>
           )

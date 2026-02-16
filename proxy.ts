@@ -16,7 +16,7 @@ export default async function proxy(request: NextRequest) {
   })
   
   // Public routes that should be accessible without authentication
-  const publicRoutes = ['/home', '/privacy-policy', '/terms-of-service', '/pricing', '/contact']
+  const publicRoutes = ['/home', '/privacy-policy', '/terms-of-service', '/pricing', '/contact', '/login']
   
   if (
     pathname.startsWith('/_next') ||
@@ -71,11 +71,25 @@ export default async function proxy(request: NextRequest) {
     userId: user?.id,
   })
 
+  // Allow root path to pass through (it will redirect to /home on client side)
+  if (pathname === '/') {
+    console.log('[PROXY] Root path, allowing through for client-side redirect')
+    return response
+  }
+
   // Protect routes that require authentication
-  if (!user && pathname !== '/') {
-    console.log('[PROXY] No user, redirecting to /')
+  if (!user) {
+    // For subscribe page, redirect to login
+    if (pathname === '/subscribe') {
+      console.log('[PROXY] No user, redirecting /subscribe to /login')
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+    // For other protected routes, redirect to /home
+    console.log('[PROXY] No user, redirecting to /home')
     const url = request.nextUrl.clone()
-    url.pathname = '/'
+    url.pathname = '/home'
     return NextResponse.redirect(url)
   }
 
@@ -83,42 +97,6 @@ export default async function proxy(request: NextRequest) {
   if (user && pathname.startsWith('/admin')) {
     console.log('[PROXY] Admin route detected, allowing through:', pathname)
     return response
-  }
-
-  // Redirect authenticated users away from login page
-  if (user && pathname === '/') {
-    console.log('[PROXY] User on root path, checking companies...')
-    // Check if user has companies (owned or via user_roles)
-    const { data: ownedCompanies } = await supabase
-      .from('companies')
-      .select('id')
-      .eq('user_id', user.id)
-      .limit(1)
-    
-    const { data: userRoles } = await supabase
-      .from('user_roles')
-      .select('company_id')
-      .eq('user_id', user.id)
-      .not('company_id', 'is', null)
-      .limit(1)
-    
-    const hasCompanies = (ownedCompanies && ownedCompanies.length > 0) || (userRoles && userRoles.length > 0)
-    
-    console.log('[PROXY] Company check result:', {
-      hasCompanies,
-      ownedCount: ownedCompanies?.length || 0,
-      rolesCount: userRoles?.length || 0,
-    })
-    
-    const url = request.nextUrl.clone()
-    if (hasCompanies) {
-      url.pathname = '/data-room'
-      console.log('[PROXY] Redirecting to /data-room')
-    } else {
-      url.pathname = '/onboarding'
-      console.log('[PROXY] Redirecting to /onboarding')
-    }
-    return NextResponse.redirect(url)
   }
 
   console.log('[PROXY] Allowing request through:', pathname)

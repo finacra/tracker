@@ -1,11 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { submitContactForm } from './actions'
 
 // This page is public and accessible to unauthenticated users
-export default function ContactPage() {
+function ContactPageContent() {
+  const searchParams = useSearchParams()
+  const plan = searchParams.get('plan')
+  const source = searchParams.get('source')
+
   // Debug logging
   if (typeof window !== 'undefined') {
     console.log('📧 [CONTACT PAGE] Component mounted!')
@@ -20,6 +25,16 @@ export default function ContactPage() {
     phone: '',
     message: ''
   })
+
+  // Pre-fill form based on query parameters
+  useEffect(() => {
+    if (plan === 'enterprise') {
+      setFormData(prev => ({
+        ...prev,
+        message: prev.message || `I'm interested in learning more about the Enterprise plan. Please contact me to discuss pricing and features.`
+      }))
+    }
+  }, [plan])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState<string>('')
@@ -268,5 +283,17 @@ export default function ContactPage() {
         </div>
       </footer>
     </div>
+  )
+}
+
+export default function ContactPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    }>
+      <ContactPageContent />
+    </Suspense>
   )
 }

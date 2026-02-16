@@ -47,49 +47,60 @@ export default function EmbeddedPricing() {
           return (
             <div
               key={tier.id}
-              className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-10"
+              className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-10 flex flex-col h-full"
             >
               {/* Tier Header */}
               <div className="mb-6">
                 <h3 className="text-3xl font-light text-white mb-4">{tier.name}</h3>
                 <p className="text-gray-400 mb-6 font-light text-lg">{tier.description}</p>
                 
-                {/* Price */}
-                <div className="mb-6">
-                  <div className="flex items-baseline gap-2 mb-2">
-                    <span className="text-4xl font-light text-white">
-                      {formatPrice(selectedPricing.price)}
-                    </span>
-                    {selectedBillingCycle !== 'monthly' && (
-                      <span className="text-gray-500 text-sm font-light">
-                        /{selectedBillingCycle === 'quarterly' ? 'quarter' : selectedBillingCycle === 'half-yearly' ? '6 months' : 'year'}
-                      </span>
-                    )}
-                  </div>
-                  {selectedBillingCycle !== 'monthly' && (
-                    <div className="mt-2">
-                      <span className="text-gray-400 text-sm font-light">
-                        {formatPrice(selectedPricing.effectiveMonthly)}/month
-                      </span>
-                      {selectedPricing.savings && (
-                        <span className="ml-2 text-gray-500 text-sm font-light">
-                          Save {formatPrice(selectedPricing.savings)}
+                {/* Price - Only show for non-enterprise plans */}
+                {/* Use min-height to ensure consistent spacing */}
+                <div className="mb-6 min-h-[120px]">
+                  {tier.id !== 'enterprise' ? (
+                    <>
+                      <div className="flex items-baseline gap-2 mb-2">
+                        <span className="text-4xl font-light text-white">
+                          {formatPrice(selectedPricing.price)}
                         </span>
+                        {selectedBillingCycle !== 'monthly' && (
+                          <span className="text-gray-500 text-sm font-light">
+                            /{selectedBillingCycle === 'quarterly' ? 'quarter' : selectedBillingCycle === 'half-yearly' ? '6 months' : 'year'}
+                          </span>
+                        )}
+                      </div>
+                      {selectedBillingCycle !== 'monthly' && (
+                        <div className="mt-2">
+                          <span className="text-gray-400 text-sm font-light">
+                            {formatPrice(selectedPricing.effectiveMonthly)}/month
+                          </span>
+                          {selectedPricing.savings && (
+                            <span className="ml-2 text-gray-500 text-sm font-light">
+                              Save {formatPrice(selectedPricing.savings)}
+                            </span>
+                          )}
+                        </div>
                       )}
-                    </div>
-                  )}
-                  {selectedPricing.discount > 0 && (
-                    <div className="mt-1">
-                      <span className="text-gray-500 text-sm font-light">
-                        {selectedPricing.discount}% discount
-                      </span>
+                      {selectedPricing.discount > 0 && (
+                        <div className="mt-1">
+                          <span className="text-gray-500 text-sm font-light">
+                            {selectedPricing.discount}% discount
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex items-center" style={{ minHeight: '120px' }}>
+                      <p className="text-gray-400 text-sm font-light">
+                        Custom pricing discussed on call
+                      </p>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Features */}
-              <ul className="space-y-4 text-gray-300 mb-8 font-light">
+              <ul className="space-y-4 text-gray-300 mb-8 font-light flex-grow">
                 {tier.id === 'starter' ? (
                   <>
                     <li className="flex items-start">
@@ -147,13 +158,24 @@ export default function EmbeddedPricing() {
                 )}
               </ul>
 
-              {/* CTA Button */}
-              <Link
-                href={`/pricing?plan=${tier.id}&billing=${selectedBillingCycle}`}
-                className="block w-full px-6 py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-center font-light"
-              >
-                {tier.id === 'enterprise' ? 'Contact Sales' : 'Get Started'}
-              </Link>
+              {/* CTA Button - Positioned at bottom */}
+              <div className="mt-auto">
+                {tier.id === 'enterprise' ? (
+                  <Link
+                    href="/contact?plan=enterprise&source=pricing"
+                    className="block w-full px-6 py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-center font-light"
+                  >
+                    Contact Sales Team
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/pricing?plan=${tier.id}&billing=${selectedBillingCycle}`}
+                    className="block w-full px-6 py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-center font-light"
+                  >
+                    Get Started
+                  </Link>
+                )}
+              </div>
             </div>
           )
         })}
