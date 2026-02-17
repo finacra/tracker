@@ -570,7 +570,7 @@ export default function HomePage() {
               </svg>
             </Link>
             <Link
-              href="/"
+              href="/login"
               className="text-gray-300 hover:text-white transition-colors font-light text-xs sm:text-sm"
             >
               Log In
