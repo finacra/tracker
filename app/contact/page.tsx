@@ -253,10 +253,10 @@ function ContactPageContent() {
                 </a>
                 <span className="text-gray-600 hidden sm:inline">•</span>
                 <a
-                  href="tel:+919652974428"
+                  href="tel:+16693097426"
                   className="text-gray-300 hover:text-white transition-colors font-light"
                 >
-                  +91 96529 74428
+                  +1 (669) 309-7426
                 </a>
               </div>
             </div>

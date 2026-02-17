@@ -2705,8 +2705,8 @@ export default function HomePage() {
                 </a>
               </p>
               <p className="text-gray-400 text-xs sm:text-sm font-light">
-                <a href="tel:+919652974428" className="hover:text-white transition-colors">
-                  +91 96529 74428
+                <a href="tel:+16693097426" className="hover:text-white transition-colors">
+                  +1 (669) 309-7426
                 </a>
               </p>
             </div>
