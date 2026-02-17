@@ -389,31 +389,51 @@ export async function updateRequirement(
 
 /**
  * Calculate period key from date and compliance type
+ * Matches the format used in calculatePeriodMetadata() for consistency
+ * @param complianceType - Type of compliance (one-time, monthly, quarterly, annual)
+ * @param date - Due date (string or Date object)
+ * @param yearType - Optional year type (FY for Financial Year, CY for Calendar Year). Defaults to FY
  */
-function calculatePeriodKey(complianceType: string | null, date: string | Date): string {
+function calculatePeriodKey(complianceType: string | null, date: string | Date, yearType: 'FY' | 'CY' = 'FY'): string {
   const d = typeof date === 'string' ? new Date(date) : date
   const year = d.getFullYear()
   const month = d.getMonth() + 1 // 1-indexed
-  
-  // Calculate FY year (April start)
-  const fyYear = month >= 4 ? year : year - 1
 
   switch (complianceType) {
     case 'monthly':
       return `${year}-${month.toString().padStart(2, '0')}`
     
     case 'quarterly': {
-      // Q1: Apr-Jun, Q2: Jul-Sep, Q3: Oct-Dec, Q4: Jan-Mar
       let quarter: number
-      if (month >= 4 && month <= 6) quarter = 1
-      else if (month >= 7 && month <= 9) quarter = 2
-      else if (month >= 10 && month <= 12) quarter = 3
-      else quarter = 4
-      return `Q${quarter}-${fyYear}-${(fyYear + 1).toString().slice(2)}`
+      
+      if (yearType === 'FY') {
+        // Financial Year (India): Q1=Apr-Jun, Q2=Jul-Sep, Q3=Oct-Dec, Q4=Jan-Mar
+        if (month >= 4 && month <= 6) quarter = 1
+        else if (month >= 7 && month <= 9) quarter = 2
+        else if (month >= 10 && month <= 12) quarter = 3
+        else quarter = 4
+      } else {
+        // Calendar Year (Gulf/USA): Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec
+        if (month <= 3) quarter = 1
+        else if (month <= 6) quarter = 2
+        else if (month <= 9) quarter = 3
+        else quarter = 4
+      }
+      
+      // Use consistent format: Q{quarter}-{year}
+      return `Q${quarter}-${year}`
     }
     
-    case 'annual':
-      return `FY-${fyYear}-${(fyYear + 1).toString().slice(2)}`
+    case 'annual': {
+      if (yearType === 'FY') {
+        // Financial Year: April to March
+        const fyYear = month >= 4 ? year : year - 1
+        return `FY-${fyYear}`
+      } else {
+        // Calendar Year: January to December
+        return `FY-${year}`
+      }
+    }
     
     default:
       // one-time: use the date itself
@@ -460,10 +480,10 @@ export async function updateRequirementStatus(
       }
     }
 
-    // Fetch the requirement to get required_documents, due_date, compliance_type
+    // Fetch the requirement to get required_documents, due_date, compliance_type, year_type
     const { data: requirement, error: reqError } = await adminSupabase
       .from('regulatory_requirements')
-      .select('id, company_id, requirement, required_documents, due_date, compliance_type, status')
+      .select('id, company_id, requirement, required_documents, due_date, compliance_type, status, year_type')
       .eq('id', requirementId)
       .single()
 
@@ -473,6 +493,41 @@ export async function updateRequirementStatus(
     }
 
     const reqCompanyId = companyId || requirement.company_id
+    const currentStatus = requirement.status
+    
+    // Validate status transition
+    // Define valid transitions
+    const validTransitions: Record<string, string[]> = {
+      'not_started': ['upcoming', 'pending', 'overdue', 'completed'],
+      'upcoming': ['pending', 'overdue', 'completed'],
+      'pending': ['overdue', 'completed'],
+      'overdue': ['pending', 'completed'], // Can't go back to not_started or upcoming
+      'completed': ['pending'] // Can revert to pending if documents are removed, but not to other statuses
+    }
+    
+    // Check if transition is valid
+    if (currentStatus !== newStatus) {
+      const allowedTransitions = validTransitions[currentStatus] || []
+      if (!allowedTransitions.includes(newStatus)) {
+        return { 
+          success: false, 
+          error: `Invalid status transition: Cannot change from "${currentStatus}" to "${newStatus}". Valid transitions: ${allowedTransitions.join(', ')}` 
+        }
+      }
+    }
+    
+    // Get year_type from requirement or fetch from company
+    let yearType: 'FY' | 'CY' = (requirement as any).year_type || 'FY'
+    if (!(requirement as any).year_type) {
+      // Fetch from company if not in requirement
+      const { data: company } = await adminSupabase
+        .from('companies')
+        .select('year_type')
+        .eq('id', reqCompanyId)
+        .single()
+      yearType = (company as any)?.year_type || 'FY'
+    }
+    
     let actualStatus = newStatus
     let statusReason: string | null = null
     let missingDocs: string[] = []
@@ -485,28 +540,60 @@ export async function updateRequirementStatus(
         : (requirement.required_documents ? [requirement.required_documents] : [])
       
       if (requiredDocs.length > 0) {
-        // Calculate period key for document matching
-        const periodKey = calculatePeriodKey(requirement.compliance_type, requirement.due_date)
+        // Calculate period key for document matching (using year_type)
+        const periodKey = calculatePeriodKey(requirement.compliance_type, requirement.due_date, yearType)
         
-        // Fetch uploaded documents for this company with matching period
+        // Fetch all documents for this company (we'll do matching in code for better flexibility)
         const { data: uploadedDocs, error: docsError } = await adminSupabase
           .from('company_documents_internal')
           .select('document_type, period_key')
           .eq('company_id', reqCompanyId)
-          .in('document_type', requiredDocs)
         
         if (docsError) {
           console.error('Error checking documents:', docsError)
         }
 
-        // Check which documents are missing (match by doc_type and optionally period_key)
-        const uploadedDocTypes = new Set(
-          (uploadedDocs || [])
-            .filter(doc => !doc.period_key || doc.period_key === periodKey)
-            .map(doc => doc.document_type)
-        )
+        // Normalize document names for matching (case-insensitive, remove special chars)
+        const normalizeDocName = (name: string): string => {
+          return name.toLowerCase()
+            .replace(/[^\w\s]/g, '') // Remove special characters
+            .replace(/\s+/g, ' ') // Normalize whitespace
+            .trim()
+        }
 
-        missingDocs = requiredDocs.filter((docType: string) => !uploadedDocTypes.has(docType))
+        // Check which documents are missing
+        // Match by normalized document type and period key (if period_key exists on doc)
+        const uploadedDocsNormalized = new Map<string, boolean>()
+        
+        ;(uploadedDocs || []).forEach(doc => {
+          const normalizedDocType = normalizeDocName(doc.document_type || '')
+          
+          // If document has period_key, it must match. If no period_key, it's a one-time doc that matches any period
+          const periodMatches = !doc.period_key || doc.period_key === periodKey
+          
+          if (periodMatches && normalizedDocType) {
+            uploadedDocsNormalized.set(normalizedDocType, true)
+          }
+        })
+
+        // Check each required document with fuzzy matching
+        missingDocs = requiredDocs.filter((requiredDocType: string) => {
+          const normalizedRequired = normalizeDocName(requiredDocType)
+          
+          // Exact match
+          if (uploadedDocsNormalized.has(normalizedRequired)) {
+            return false
+          }
+          
+          // Fuzzy match: check if any uploaded doc contains the required doc name or vice versa
+          for (const [uploadedDoc, _] of uploadedDocsNormalized.entries()) {
+            if (uploadedDoc.includes(normalizedRequired) || normalizedRequired.includes(uploadedDoc)) {
+              return false // Found a match
+            }
+          }
+          
+          return true // Document is missing
+        })
 
         if (missingDocs.length > 0) {
           // Cannot complete - set to pending with status reason
@@ -1480,6 +1567,79 @@ export async function updateTeamMemberRole(
   } catch (error: any) {
     console.error('Error in updateTeamMemberRole:', error)
     return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Generate future periods for recurring compliance requirements
+ * This creates future instances for monthly, quarterly, and annual compliances
+ */
+export async function generateRecurringCompliances(
+  companyId: string | null,
+  monthsAhead: number = 12
+): Promise<{ success: boolean; periodsGenerated?: number; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      return { success: false, error: 'Not authenticated' }
+    }
+
+    const adminSupabase = createAdminClient()
+    
+    // Check if user is superadmin (platform-level, company_id = NULL)
+    const { data: superadminRoles } = await adminSupabase
+      .from('user_roles')
+      .select('role, company_id')
+      .eq('user_id', user.id)
+      .eq('role', 'superadmin')
+
+    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+
+    // Check permissions (superadmin can generate for all, others need company access)
+    if (!isSuperadmin) {
+      if (!companyId) {
+        return { success: false, error: 'Company ID required for non-superadmin users' }
+      }
+      const canEdit = await canUserEdit(companyId)
+      if (!canEdit) {
+        return { success: false, error: 'You do not have permission to generate compliance requirements' }
+      }
+    }
+
+    if (companyId) {
+      // Generate for specific company
+      const { data, error } = await adminSupabase.rpc('generate_recurring_compliances_for_company', {
+        p_company_id: companyId,
+        p_months_ahead: monthsAhead
+      })
+
+      if (error) {
+        console.error('Error generating recurring compliances:', error)
+        return { success: false, error: error.message || 'Failed to generate recurring compliances' }
+      }
+
+      return { success: true, periodsGenerated: data || 0 }
+    } else if (isSuperadmin) {
+      // Generate for all companies (superadmin only)
+      const { data, error } = await adminSupabase.rpc('generate_recurring_compliances_all', {
+        p_months_ahead: monthsAhead
+      })
+
+      if (error) {
+        console.error('Error generating recurring compliances:', error)
+        return { success: false, error: error.message || 'Failed to generate recurring compliances' }
+      }
+
+      const totalGenerated = (data || []).reduce((sum: number, row: any) => sum + (row.periods_generated || 0), 0)
+      return { success: true, periodsGenerated: totalGenerated }
+    } else {
+      return { success: false, error: 'Company ID required for non-superadmin users' }
+    }
+  } catch (error: any) {
+    console.error('Error in generateRecurringCompliances:', error)
+    return { success: false, error: error.message || 'An unexpected error occurred' }
   }
 }
 

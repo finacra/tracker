@@ -128,15 +128,15 @@ export default function PricingTiers() {
                 <p className="text-gray-400 text-sm mb-2 font-light">{tier.description}</p>
                 {/* Ensure consistent height for description text */}
                 <div className="min-h-[40px] mb-4">
-                  {tier.id === 'enterprise' ? (
+                {tier.id === 'enterprise' ? (
                     <p className="text-gray-500 text-xs">
-                      One subscription covers all your companies (up to 100 companies)
-                    </p>
-                  ) : (
+                    One subscription covers all your companies (up to 100 companies)
+                  </p>
+                ) : (
                     <p className="text-gray-500 text-xs">
-                      Subscription is per company. Each company needs its own subscription.
-                    </p>
-                  )}
+                    Subscription is per company. Each company needs its own subscription.
+                  </p>
+                )}
                 </div>
 
                 {/* Price - Only show for non-enterprise plans */}
@@ -144,33 +144,33 @@ export default function PricingTiers() {
                 <div className="mb-4 min-h-[120px]">
                   {tier.id !== 'enterprise' ? (
                     <>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-4xl font-light text-white">
-                          {formatPrice(selectedPricing.price)}
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-light text-white">
+                      {formatPrice(selectedPricing.price)}
+                    </span>
+                    {selectedBillingCycle !== 'monthly' && (
+                      <span className="text-gray-500 text-sm">
+                        /{selectedBillingCycle === 'quarterly' ? 'quarter' : selectedBillingCycle === 'half-yearly' ? '6 months' : 'year'}
+                      </span>
+                    )}
+                  </div>
+                  {selectedBillingCycle !== 'monthly' && (
+                    <div className="mt-2">
+                      <span className="text-gray-400 text-sm">
+                        {formatPrice(selectedPricing.effectiveMonthly)}/month
+                      </span>
+                      {selectedPricing.savings && (
+                        <span className="ml-2 text-green-400 text-sm font-medium">
+                          Save {formatPrice(selectedPricing.savings)}
                         </span>
-                        {selectedBillingCycle !== 'monthly' && (
-                          <span className="text-gray-500 text-sm">
-                            /{selectedBillingCycle === 'quarterly' ? 'quarter' : selectedBillingCycle === 'half-yearly' ? '6 months' : 'year'}
-                          </span>
-                        )}
-                      </div>
-                      {selectedBillingCycle !== 'monthly' && (
-                        <div className="mt-2">
-                          <span className="text-gray-400 text-sm">
-                            {formatPrice(selectedPricing.effectiveMonthly)}/month
-                          </span>
-                          {selectedPricing.savings && (
-                            <span className="ml-2 text-green-400 text-sm font-medium">
-                              Save {formatPrice(selectedPricing.savings)}
-                            </span>
-                          )}
-                        </div>
                       )}
-                      {selectedPricing.discount > 0 && (
-                        <div className="mt-1">
-                          <span className="text-gray-400 text-sm font-light">
-                            {selectedPricing.discount}% discount
-                          </span>
+                    </div>
+                  )}
+                  {selectedPricing.discount > 0 && (
+                    <div className="mt-1">
+                      <span className="text-gray-400 text-sm font-light">
+                        {selectedPricing.discount}% discount
+                      </span>
                         </div>
                       )}
                     </>

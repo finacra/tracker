@@ -14,13 +14,14 @@ import jsPDF from 'jspdf'
 import { useUserRole } from '@/hooks/useUserRole'
 import { useCompanyAccess } from '@/hooks/useCompanyAccess'
 import { enrichComplianceRequirements, type EnrichedComplianceData } from '@/app/data-room/actions-enrichment'
+import { showToast } from '@/components/Toast'
+import ToastContainer from '@/components/Toast'
 
 interface Company {
   id: string
   name: string
   type: string
   year: string
-  yearType?: 'FY' | 'CY'  // Financial Year (India) or Calendar Year (Gulf/USA)
 }
 
 interface Director {
@@ -60,7 +61,6 @@ function DataRoomPageInner() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [entityDetails, setEntityDetails] = useState<EntityDetails | null>(null)
-  const [incorporationDate, setIncorporationDate] = useState<string | null>(null)
   const [vaultDocuments, setVaultDocuments] = useState<any[]>([])
   const [documentTemplates, setDocumentTemplates] = useState<any[]>([])
   const [regulatoryRequirements, setRegulatoryRequirements] = useState<RegulatoryRequirement[]>([])
@@ -195,8 +195,7 @@ function DataRoomPageInner() {
               id: c.id,
               name: c.name,
               type: c.type,
-              year: new Date(c.incorporation_date).getFullYear().toString(),
-              yearType: (c as any).year_type || 'FY'  // Default to FY for backward compatibility
+              year: new Date(c.incorporation_date).getFullYear().toString()
             })
           })
         }
@@ -208,8 +207,7 @@ function DataRoomPageInner() {
               id: c.id,
               name: c.name,
               type: c.type,
-              year: new Date(c.incorporation_date).getFullYear().toString(),
-              yearType: (c as any).year_type || 'FY'  // Default to FY for backward compatibility
+              year: new Date(c.incorporation_date).getFullYear().toString()
             })
           }
         })
@@ -301,10 +299,7 @@ function DataRoomPageInner() {
   // Fetch specific company details and directors when currentCompany changes
   useEffect(() => {
     async function fetchDetails() {
-      if (!currentCompany) {
-        setIncorporationDate(null)
-        return
-      }
+      if (!currentCompany) return
 
       setIsLoading(true)
       const startTime = performance.now()
@@ -327,9 +322,6 @@ function DataRoomPageInner() {
 
         // Map to EntityDetails structure
         if (company) {
-          // Store incorporation date for filtering requirements
-          setIncorporationDate(company.incorporation_date || null)
-          
           const mappedDetails: EntityDetails = {
             companyName: company.name,
             type: company.type.toUpperCase(),
@@ -390,24 +382,6 @@ function DataRoomPageInner() {
   const [gstData, setGstData] = useState<any>(null)
   const [selectedGstPeriod, setSelectedGstPeriod] = useState('012026')
   const [gstActiveSection, setGstActiveSection] = useState<'overview' | 'gstr1' | 'gstr2a' | 'gstr2b' | 'gstr3b' | 'ledger'>('overview')
-
-  // DSC Management States
-  const [dscCredentials, setDscCredentials] = useState({
-    name: '',
-    certificateNumber: '',
-    issuer: '',
-    expiryDate: '',
-    frequency: '1' as '1' | '2' | 'custom',
-    customFrequencyYears: '',
-    inHouseNotifications: true,
-    emailNotifications: true,
-    notificationEmails: [] as string[],
-    storePlatformCredentials: false,
-    platformEmail: '',
-    platformPassword: ''
-  })
-  const [newEmail, setNewEmail] = useState('')
-  const [isDscSaving, setIsDscSaving] = useState(false)
 
   // Notices States
   const [noticesFilter, setNoticesFilter] = useState<'all' | 'pending' | 'responded' | 'resolved'>('all')
@@ -576,7 +550,6 @@ function DataRoomPageInner() {
   const [isSendModalOpen, setIsSendModalOpen] = useState(false)
   const [isEmailTemplateOpen, setIsEmailTemplateOpen] = useState(false)
   const [selectedFY, setSelectedFY] = useState<string>('')
-  const [selectedVaultMonth, setSelectedVaultMonth] = useState<string>('')
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set())
   const [selectedDocumentsToSend, setSelectedDocumentsToSend] = useState<Set<string>>(new Set())
   const [isSendingEmail, setIsSendingEmail] = useState(false)
@@ -586,29 +559,12 @@ function DataRoomPageInner() {
     content: 'Please find the attached documents from our Compliance Vault.',
   })
 
-  // Generate financial years from 2019 to current year + 1 (for future years)
+  // Generate financial years from 2019 to current year
   const currentYear = new Date().getFullYear()
-  const financialYears = Array.from({ length: currentYear - 2018 + 1 }, (_, i) => {
+  const financialYears = Array.from({ length: currentYear - 2018 }, (_, i) => {
     const year = 2019 + i
     return `FY ${year}-${(year + 1).toString().slice(-2)}`
   }).reverse()
-
-  // Generate months for vault filter (All + Jan-Dec)
-  const vaultMonths = [
-    { value: '', label: 'All Months' },
-    { value: '01', label: 'January' },
-    { value: '02', label: 'February' },
-    { value: '03', label: 'March' },
-    { value: '04', label: 'April' },
-    { value: '05', label: 'May' },
-    { value: '06', label: 'June' },
-    { value: '07', label: 'July' },
-    { value: '08', label: 'August' },
-    { value: '09', label: 'September' },
-    { value: '10', label: 'October' },
-    { value: '11', label: 'November' },
-    { value: '12', label: 'December' },
-  ]
   const [uploadFormData, setUploadFormData] = useState({
     folder: '',
     documentName: '',
@@ -776,13 +732,6 @@ function DataRoomPageInner() {
     } else {
       return `FY ${year - 1}-${year.toString().slice(-2)}`
     }
-  }
-
-  const getMonthFromDate = (dateStr: string): string => {
-    if (!dateStr) return ''
-    const date = new Date(dateStr)
-    const month = (date.getMonth() + 1).toString().padStart(2, '0') // 01-12
-    return month
   }
 
   // Helper function to format period information for display
@@ -1005,6 +954,11 @@ function DataRoomPageInner() {
   const [industryFilter, setIndustryFilter] = useState<string>('all')
   const [industryCategoryFilter, setIndustryCategoryFilter] = useState<string>('all')
   const [complianceTypeFilter, setComplianceTypeFilter] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedRequirements, setSelectedRequirements] = useState<Set<string>>(new Set())
+  const [isComplianceScoreModalOpen, setIsComplianceScoreModalOpen] = useState(false)
+  const [isBulkActionModalOpen, setIsBulkActionModalOpen] = useState(false)
+  const [bulkActionType, setBulkActionType] = useState<'status' | 'delete' | null>(null)
 
   // CRUD modals and forms
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -1115,15 +1069,10 @@ function DataRoomPageInner() {
         setRegulatoryRequirements(result.requirements)
       } else {
         console.error('Failed to fetch requirements:', result.error)
-        // Show user-friendly error message
-        if (result.error && !result.error.includes('Not authenticated')) {
-          alert(`Failed to load compliance requirements: ${result.error}`)
-        }
         setRegulatoryRequirements([])
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching requirements:', error)
-      alert(`An error occurred while loading requirements: ${error.message || 'Please try again later.'}`)
       setRegulatoryRequirements([])
     } finally {
       setIsLoadingRequirements(false)
@@ -1219,49 +1168,15 @@ function DataRoomPageInner() {
       periodType = 'quarterly'
       const month = dueDate.getMonth() + 1
       const year = dueDate.getFullYear()
-      
-      // Get year_type from requirement or company, default to 'FY'
-      const yearType = (req as any).year_type || currentCompany?.yearType || 'FY'
-      
-      // Calculate quarter based on year_type
       let quarter = 1
-      let quarterStartMonth = 1
-      
-      if (yearType === 'FY') {
-        // Financial Year (India): Q1=Apr-Jun, Q2=Jul-Sep, Q3=Oct-Dec, Q4=Jan-Mar
-        if (month >= 4 && month <= 6) {
-          quarter = 1
-          quarterStartMonth = 4
-        } else if (month >= 7 && month <= 9) {
-          quarter = 2
-          quarterStartMonth = 7
-        } else if (month >= 10 && month <= 12) {
-          quarter = 3
-          quarterStartMonth = 10
-        } else {
-          quarter = 4
-          quarterStartMonth = 1
-        }
-      } else {
-        // Calendar Year (Gulf/USA): Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec
-        if (month <= 3) {
-          quarter = 1
-          quarterStartMonth = 1
-        } else if (month <= 6) {
-          quarter = 2
-          quarterStartMonth = 4
-        } else if (month <= 9) {
-          quarter = 3
-          quarterStartMonth = 7
-        } else {
-          quarter = 4
-          quarterStartMonth = 10
-        }
-      }
-      
+      if (month >= 4 && month <= 6) quarter = 1
+      else if (month >= 7 && month <= 9) quarter = 2
+      else if (month >= 10 && month <= 12) quarter = 3
+      else quarter = 4
       periodKey = `Q${quarter}-${year}`
+      const quarterStartMonth = (quarter - 1) * 3 + 1
       periodStart = `${year}-${String(quarterStartMonth).padStart(2, '0')}-01`
-      const quarterEndMonth = quarterStartMonth + 2
+      const quarterEndMonth = quarter * 3
       const lastDay = new Date(year, quarterEndMonth, 0).getDate()
       periodEnd = `${year}-${String(quarterEndMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
     } else if (complianceType === 'annual') {
@@ -1392,29 +1307,20 @@ function DataRoomPageInner() {
       // Close modal
       setDocumentUploadModal(null)
       setUploadFile(null)
-      alert(`Document uploaded successfully! ${allRequiredUploaded ? 'All documents uploaded - status set to completed.' : 'Status set to pending.'}`)
+      showToast(
+        `Document uploaded successfully! ${allRequiredUploaded ? 'All documents uploaded - status set to completed.' : 'Status set to pending.'}`,
+        'success'
+      )
     } catch (error: any) {
       console.error('Error uploading document:', error)
-      alert(`Error: ${error.message}`)
+      showToast(`Error uploading document: ${error.message}`, 'error')
     } finally {
       setUploadingDocument(false)
     }
   }
 
-  // Filter out requirements with due dates before incorporation date
-  const filteredRequirements = incorporationDate
-    ? regulatoryRequirements.filter(req => {
-        const reqDate = new Date(req.due_date)
-        const incorpDate = new Date(incorporationDate)
-        // Set time to midnight for accurate date comparison
-        reqDate.setHours(0, 0, 0, 0)
-        incorpDate.setHours(0, 0, 0, 0)
-        return reqDate >= incorpDate
-      })
-    : regulatoryRequirements
-
   // Convert database requirements to display format
-  const displayRequirements = filteredRequirements.map(req => ({
+  const displayRequirements = regulatoryRequirements.map(req => ({
     id: req.id,
     template_id: (req as any).template_id ?? null,
     category: req.category,
@@ -1429,9 +1335,7 @@ function DataRoomPageInner() {
     industry: (req as any).industry,
     industry_category: (req as any).industry_category,
     compliance_type: (req as any).compliance_type,
-    required_documents: Array.isArray(req.required_documents) 
-      ? req.required_documents 
-      : (req.required_documents ? [req.required_documents] : []),
+    required_documents: req.required_documents || [],
     possible_legal_action: req.possible_legal_action,
     penalty_config: req.penalty_config,
     penalty_base_amount: req.penalty_base_amount,
@@ -1469,7 +1373,7 @@ function DataRoomPageInner() {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-400 text-sm">Checking access...</p>
         </div>
       </div>
@@ -1481,7 +1385,7 @@ function DataRoomPageInner() {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-400 text-sm">Redirecting to subscription...</p>
         </div>
       </div>
@@ -1498,19 +1402,19 @@ function DataRoomPageInner() {
 
       {/* Trial Banner */}
       {accessType === 'trial' && trialDaysRemaining !== null && currentCompany && (
-        <div className="relative z-20 bg-gradient-to-r from-gray-800/50 to-gray-700/50 border-b border-gray-700">
+        <div className="relative z-20 bg-gradient-to-r from-primary-orange/20 to-orange-600/20 border-b border-primary-orange/30">
           <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-primary-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span className="text-gray-300">
-                <span className="text-gray-300 font-light">{trialDaysRemaining} days</span> left in your trial
+                <span className="text-primary-orange font-semibold">{trialDaysRemaining} days</span> left in your trial
               </span>
             </div>
             <button
               onClick={() => router.push(`/subscribe?company_id=${currentCompany.id}`)}
-              className="text-xs sm:text-sm bg-gray-700 text-white px-3 py-1 rounded-lg hover:bg-gray-600 transition-colors font-light"
+              className="text-xs sm:text-sm bg-primary-orange text-white px-3 py-1 rounded-lg hover:bg-primary-orange/90 transition-colors"
             >
               Upgrade Now
             </button>
@@ -1521,8 +1425,8 @@ function DataRoomPageInner() {
       {/* Main Content */}
       <div className="relative z-10 container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Company Selector */}
-        <div className="mb-8 sm:mb-10">
-          <h2 className="text-gray-400 text-sm font-light mb-4 sm:mb-5">My companies</h2>
+        <div className="mb-4 sm:mb-6">
+          <h2 className="text-gray-400 text-sm font-medium mb-2 sm:mb-3">My companies</h2>
           <CompanySelector
             companies={companies}
             currentCompany={currentCompany}
@@ -1537,10 +1441,10 @@ function DataRoomPageInner() {
         <div className="flex items-center gap-2 mb-4 sm:mb-8 overflow-x-auto pb-2 -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 font-light ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'overview'
-                ? 'border-gray-600 bg-gray-800 text-white'
-                : 'border-gray-700 bg-[#1a1a1a] text-gray-400 hover:text-white hover:border-gray-600'
+                ? 'border-primary-orange bg-primary-orange/20 text-white'
+                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
             }`}
           >
             <svg
@@ -1563,10 +1467,10 @@ function DataRoomPageInner() {
           </button>
           <button
             onClick={() => setActiveTab('tracker')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 font-light ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'tracker'
-                ? 'border-gray-600 bg-gray-800 text-white'
-                : 'border-gray-700 bg-[#1a1a1a] text-gray-400 hover:text-white hover:border-gray-600'
+                ? 'border-primary-orange bg-primary-orange/20 text-white'
+                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
             }`}
           >
             <svg
@@ -1586,10 +1490,10 @@ function DataRoomPageInner() {
           </button>
           <button
             onClick={() => setActiveTab('documents')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 font-light ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'documents'
-                ? 'border-gray-600 bg-gray-800 text-white'
-                : 'border-gray-700 bg-[#1a1a1a] text-gray-400 hover:text-white hover:border-gray-600'
+                ? 'border-primary-orange bg-primary-orange/20 text-white'
+                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
             }`}
           >
             <svg
@@ -1640,10 +1544,10 @@ function DataRoomPageInner() {
           </button>
           <button
             onClick={() => setActiveTab('notices')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 font-light ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'notices'
-                ? 'border-gray-600 bg-gray-800 text-white'
-                : 'border-gray-700 bg-[#1a1a1a] text-gray-400 hover:text-white hover:border-gray-600'
+                ? 'border-primary-orange bg-primary-orange/20 text-white'
+                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
             }`}
           >
             <svg
@@ -1664,10 +1568,10 @@ function DataRoomPageInner() {
           </button>
           <button
             onClick={() => setActiveTab('gst')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 font-light ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === 'gst'
-                ? 'border-gray-600 bg-gray-800 text-white'
-                : 'border-gray-700 bg-[#1a1a1a] text-gray-400 hover:text-white hover:border-gray-600'
+                ? 'border-primary-orange bg-primary-orange/20 text-white'
+                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
             }`}
           >
             <svg
@@ -1686,76 +1590,48 @@ function DataRoomPageInner() {
             </svg>
             <span className="text-sm sm:text-base">GST <span className="text-gray-500 text-xs">(Soon)</span></span>
           </button>
-          <button
-            onClick={() => setActiveTab('dsc')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 font-light ${
-              activeTab === 'dsc'
-                ? 'border-gray-600 bg-gray-800 text-white'
-                : 'border-gray-700 bg-[#1a1a1a] text-gray-400 hover:text-white hover:border-gray-600'
-            }`}
-          >
-            <svg
-              width="16"
-              height="16"
-              className="sm:w-[18px] sm:h-[18px]"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-            <span className="text-sm sm:text-base">DSC Management</span>
-          </button>
         </div>
 
         {/* Content based on active tab */}
         {activeTab === 'overview' && (
-          <div className="space-y-6">
-            {/* Main Entity Details Card */}
-            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-6 sm:p-10">
-              {/* Card Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          <div>
+            <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8">
+              {/* Card Header - Stack on Mobile */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-3 mb-4 sm:mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary-orange rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
                     <svg
-                      width="20"
-                      height="20"
-                      className="sm:w-6 sm:h-6"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
-                        stroke="white"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d="M14 2V8H20"
-                        stroke="white"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 className="text-2xl sm:text-3xl font-light text-white">Entity Details</h2>
-                    <p className="text-gray-400 text-sm font-light mt-1">Company information and registration details</p>
-                  </div>
+                      width="16"
+                      height="16"
+                      className="sm:w-5 sm:h-5"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
+                      stroke="white"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M14 2V8H20"
+                      stroke="white"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                  <h2 className="text-xl sm:text-2xl font-light text-white">Entity Details</h2>
                 </div>
                 <div className="sm:ml-auto w-full sm:w-auto">
                   <button
                     onClick={() => router.push('/manage-company')}
-                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all text-sm flex items-center justify-center gap-2 font-light"
+                    className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-primary-orange/20 border border-primary-orange text-primary-orange rounded-lg hover:bg-primary-orange/30 transition-colors text-xs sm:text-sm flex items-center justify-center gap-2"
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                     </svg>
@@ -1765,173 +1641,162 @@ function DataRoomPageInner() {
               </div>
 
               {isLoading ? (
-                <div className="py-16 flex flex-col items-center justify-center">
-                  <div className="w-10 h-10 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mb-4"></div>
-                  <p className="text-gray-400 text-sm font-light">Loading company details...</p>
+                <div className="py-8 sm:py-12 flex flex-col items-center justify-center">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mb-4"></div>
+                  <p className="text-gray-400 text-sm sm:text-base">Loading company details...</p>
                 </div>
               ) : entityDetails ? (
-              <div className="space-y-6">
-                {/* Grid Layout for Company Information */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Company Name - Full Width */}
-                  <div className="md:col-span-2">
-                    <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-5">
-                      <label className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2 block">Company Name</label>
-                      <div className="text-white text-lg font-light break-words">{entityDetails.companyName}</div>
-                    </div>
-                  </div>
-
-                  {/* Type */}
-                  <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-5">
-                    <label className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2 block">Type</label>
-                    <span className="inline-block bg-gray-800 border border-gray-700 text-white px-3 py-1.5 rounded-md text-sm font-light">
-                      {entityDetails.type}
-                    </span>
-                  </div>
-
-                  {/* Reg Date */}
-                  <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-5">
-                    <label className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2 block">Registration Date</label>
-                    <div className="text-white text-base font-light">{entityDetails.regDate}</div>
-                  </div>
-
-                  {/* PAN */}
-                  <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-5">
-                    <label className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2 block">PAN Number</label>
-                    <div className="text-white text-base font-mono font-light break-all">{entityDetails.pan}</div>
-                  </div>
-
-                  {/* CIN */}
-                  <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-5">
-                    <label className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2 block">CIN Number</label>
-                    <div className="text-white text-base font-mono font-light break-all">{entityDetails.cin}</div>
-                  </div>
-
-                  {/* Address - Full Width */}
-                  <div className="md:col-span-2">
-                    <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-5">
-                      <label className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2 block">Registered Address</label>
-                      <div className="text-white text-base font-light break-words leading-relaxed">{entityDetails.address}</div>
-                    </div>
-                  </div>
-
-                  {/* Phone Number */}
-                  <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-5">
-                    <label className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2 block">Phone Number</label>
-                    <div className="text-white text-base font-light break-all">{entityDetails.phoneNumber || 'Not provided'}</div>
-                  </div>
-
-                  {/* Industry Category */}
-                  <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-5">
-                    <label className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2 block">Industry Category</label>
-                    <div className="text-white text-base font-light break-words">{entityDetails.industryCategory}</div>
-                  </div>
+              <div className="space-y-3 sm:space-y-4">
+                {/* Company Name */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Company Name</label>
+                  <div className="text-white text-base sm:text-lg font-medium break-words">{entityDetails.companyName}</div>
                 </div>
 
-                {/* Directors Section */}
-                <div className="border-t border-gray-800 pt-6">
-                  <div className="mb-6">
-                    <h3 className="text-lg font-light text-white mb-2">Directors</h3>
-                    <p className="text-gray-400 text-sm font-light">View and manage company directors</p>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {/* Directors Dropdown */}
-                    <div>
-                      <label className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2 block">Select Director</label>
-                      <select
-                        value={selectedDirectorId || ''}
-                        onChange={(e) => setSelectedDirectorId(e.target.value || null)}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-all appearance-none cursor-pointer font-light"
-                      >
-                        <option value="">Select a director to view profile</option>
-                        {entityDetails.directors.map((director) => (
-                          <option key={director.id} value={director.id}>
-                            {director.firstName} {director.middleName} {director.lastName} {director.din ? `(DIN: ${director.din})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                {/* Type */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Type</label>
+                  <span className="inline-block bg-primary-orange text-white px-3 py-1 rounded-full text-xs sm:text-sm font-medium w-fit">
+                    {entityDetails.type}
+                  </span>
+                </div>
 
-                    {/* Director Profile */}
-                    {selectedDirectorId && (() => {
-                      const director = entityDetails.directors.find(d => d.id === selectedDirectorId)
-                      if (!director) return null
-                      
-                      return (
-                        <div className={`bg-gray-900/50 border rounded-xl p-6 ${
-                          director.verified
-                            ? 'border-green-500/30 bg-green-500/5'
-                            : 'border-gray-800'
-                        }`}>
-                          {/* Director Header */}
-                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-                            <div className="flex items-start gap-4">
-                              <div className="w-14 h-14 bg-gray-800 border border-gray-700 rounded-full flex items-center justify-center flex-shrink-0">
-                                <span className="text-gray-300 font-light text-lg">
-                                  {director.firstName?.[0] || ''}{director.lastName?.[0] || ''}
-                                </span>
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                                  <h3 className="text-white font-light text-lg break-words">
-                                    {director.firstName} {director.middleName} {director.lastName}
-                                  </h3>
-                                  {director.verified && (
-                                    <span className="px-2.5 py-1 bg-green-500/20 border border-green-500/30 text-green-400 text-xs rounded-md flex items-center gap-1.5 w-fit">
-                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                                        <polyline points="22 4 12 14.01 9 11.01" />
-                                      </svg>
-                                      Verified
+                {/* Reg Date */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Reg Date</label>
+                  <div className="text-white text-base sm:text-lg font-medium">{entityDetails.regDate}</div>
+                </div>
+
+                {/* PAN */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">PAN</label>
+                  <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.pan}</div>
+                </div>
+
+                {/* CIN */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">CIN</label>
+                  <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.cin}</div>
+                </div>
+
+                {/* Address */}
+                <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
+                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-0.5">Address</label>
+                  <div className="text-white text-base sm:text-lg font-medium break-words flex-1">{entityDetails.address}</div>
+                </div>
+
+                {/* Phone Number */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Phone Number</label>
+                  <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.phoneNumber}</div>
+                </div>
+
+                {/* Industry Category */}
+                <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
+                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-0.5">Industry Category</label>
+                  <div className="text-white text-base sm:text-lg font-medium break-words flex-1">{entityDetails.industryCategory}</div>
+                </div>
+
+                {/* Directors */}
+                <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
+                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-1">Directors</label>
+                    <div className="flex-1 space-y-3 sm:space-y-4">
+                      {/* Directors Dropdown */}
+                      <div>
+                        <select
+                          value={selectedDirectorId || ''}
+                          onChange={(e) => setSelectedDirectorId(e.target.value || null)}
+                          className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors appearance-none cursor-pointer"
+                        >
+                          <option value="">Select a director to view profile</option>
+                          {entityDetails.directors.map((director) => (
+                            <option key={director.id} value={director.id}>
+                              {director.firstName} {director.middleName} {director.lastName} {director.din ? `(DIN: ${director.din})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                  </div>
+
+                      {/* Director Profile */}
+                      {selectedDirectorId && (() => {
+                        const director = entityDetails.directors.find(d => d.id === selectedDirectorId)
+                        if (!director) return null
+                        
+                        return (
+                          <div className={`p-4 sm:p-6 bg-gray-900 border rounded-lg ${
+                            director.verified
+                              ? 'border-green-500/50 bg-green-500/5'
+                              : 'border-gray-700'
+                          }`}>
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-4">
+                              <div className="flex-1">
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+                                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-orange/20 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <span className="text-primary-orange font-semibold text-base sm:text-lg">
+                                      {director.firstName?.[0] || ''}{director.lastName?.[0] || ''}
                                     </span>
+                </div>
+                                  <div className="flex-1 min-w-0">
+                                    <h3 className="text-white font-semibold text-base sm:text-lg break-words">
+                                      {director.firstName} {director.middleName} {director.lastName}
+                                    </h3>
+                                    {director.designation && (
+                                      <p className="text-gray-400 text-xs sm:text-sm break-words">{director.designation}</p>
+                                    )}
+              </div>
+                                  <div className="sm:ml-auto flex items-center gap-2 flex-shrink-0">
+                                    {director.verified && (
+                                      <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded flex items-center gap-1">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                          <polyline points="22 4 12 14.01 9 11.01" />
+                                        </svg>
+                                        Verified
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Director Details Grid */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                  {director.din && (
+                                    <div className="p-3 bg-gray-800 rounded-lg">
+                                      <div className="text-xs text-gray-500 mb-1">DIN Number</div>
+                                      <div className="text-white font-mono text-sm sm:text-base break-all">{director.din}</div>
+                                    </div>
+                                  )}
+                                  {director.pan && (
+                                    <div className="p-3 bg-gray-800 rounded-lg">
+                                      <div className="text-xs text-gray-500 mb-1">PAN Number</div>
+                                      <div className="text-white font-mono text-sm sm:text-base break-all">{director.pan}</div>
+                                    </div>
+                                  )}
+                                  {director.dob && (
+                                    <div className="p-3 bg-gray-800 rounded-lg">
+                                      <div className="text-xs text-gray-500 mb-1">Date of Birth</div>
+                                      <div className="text-white text-sm sm:text-base">{formatDateForDisplay(director.dob)}</div>
+                                    </div>
+                                  )}
+                                  {director.email && (
+                                    <div className="p-3 bg-gray-800 rounded-lg">
+                                      <div className="text-xs text-gray-500 mb-1">Email Address</div>
+                                      <div className="text-white text-sm sm:text-base break-all">{director.email}</div>
+                                    </div>
+                                  )}
+                                  {director.mobile && (
+                                    <div className="p-3 bg-gray-800 rounded-lg">
+                                      <div className="text-xs text-gray-500 mb-1">Mobile Number</div>
+                                      <div className="text-white text-sm sm:text-base break-all">{director.mobile}</div>
+                                    </div>
                                   )}
                                 </div>
-                                {director.designation && (
-                                  <p className="text-gray-400 text-sm break-words font-light">{director.designation}</p>
-                                )}
                               </div>
                             </div>
                           </div>
-
-                          {/* Director Details Grid */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {director.din && (
-                              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                                <div className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2">DIN Number</div>
-                                <div className="text-white font-mono text-base break-all font-light">{director.din}</div>
-                              </div>
-                            )}
-                            {director.pan && (
-                              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                                <div className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2">PAN Number</div>
-                                <div className="text-white font-mono text-base break-all font-light">{director.pan}</div>
-                              </div>
-                            )}
-                            {director.dob && (
-                              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                                <div className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2">Date of Birth</div>
-                                <div className="text-white text-base font-light">{formatDateForDisplay(director.dob)}</div>
-                              </div>
-                            )}
-                            {director.email && (
-                              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                                <div className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2">Email Address</div>
-                                <div className="text-white text-base break-all font-light">{director.email}</div>
-                              </div>
-                            )}
-                            {director.mobile && (
-                              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                                <div className="text-xs text-gray-500 uppercase tracking-wider font-light mb-2">Mobile Number</div>
-                                <div className="text-white text-base break-all font-light">{director.mobile}</div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })()}
+                        )
+                      })()}
+                    </div>
                   </div>
-                </div>
                 </div>
               ) : (
                 <div className="py-12 text-center">
@@ -2308,12 +2173,17 @@ function DataRoomPageInner() {
             const reportData = displayRequirements.map(req => ({
               'Category': req.category,
               'Requirement': req.requirement,
+              'Description': req.description || '',
               'Status': req.status.toUpperCase(),
               'Due Date': req.dueDate,
               'Financial Year': req.financial_year || 'Not Specified',
               'Penalty': req.penalty || '-',
               'Is Critical': req.isCritical ? 'Yes' : 'No',
-              'Compliance Type': req.compliance_type || 'one-time'
+              'Compliance Type': req.compliance_type || 'one-time',
+              'Filed On': (req as any).filed_on ? new Date((req as any).filed_on).toLocaleDateString('en-GB') : '-',
+              'Filed By': (req as any).filed_by_name || ((req as any).filed_by ? 'User' : '-'),
+              'Status Reason': (req as any).status_reason || '-',
+              'Documents': req.required_documents?.join(', ') || '-'
             }))
             exportToCSV(reportData, `compliance-report-${new Date().toISOString().split('T')[0]}.csv`)
           }
@@ -2325,12 +2195,16 @@ function DataRoomPageInner() {
               return {
                 'Category': req.category,
                 'Requirement': req.requirement,
+                'Description': req.description || '',
                 'Due Date': req.dueDate,
                 'Days Delayed': delay || 0,
                 'Penalty': req.penalty || '-',
                 'Calculated Penalty': penalty,
                 'Financial Year': req.financial_year || 'Not Specified',
-                'Is Critical': req.isCritical ? 'Yes' : 'No'
+                'Is Critical': req.isCritical ? 'Yes' : 'No',
+                'Compliance Type': req.compliance_type || 'one-time',
+                'Status Reason': (req as any).status_reason || '-',
+                'Documents': req.required_documents?.join(', ') || '-'
               }
             })
             exportToCSV(reportData, `overdue-compliance-report-${new Date().toISOString().split('T')[0]}.csv`)
@@ -2536,7 +2410,7 @@ function DataRoomPageInner() {
             coverY += Math.min(companyLines.length, 3) * 18 + 10
             doc.setFont('helvetica', 'italic')
             doc.setFontSize(14)
-            doc.text('BY FINACRA AI', margin, coverY, { maxWidth: contentWidth })
+            doc.text('BY FINNOVATE AI', margin, coverY, { maxWidth: contentWidth })
 
             // Footer details (bottom-left)
             const footerBlockY = pageHeight - 70
@@ -3195,7 +3069,7 @@ function DataRoomPageInner() {
             // QR code
             try {
               const QRCode: any = await import('qrcode')
-              const qrUrl = 'https://www.finacraai.com'
+              const qrUrl = 'https://www.finnovateai.com'
               const qrDataUrl: string = await QRCode.toDataURL(qrUrl, {
                 margin: 1,
                 width: 260,
@@ -3219,7 +3093,7 @@ function DataRoomPageInner() {
               doc.setFontSize(10)
               doc.setTextColor(textGray[0], textGray[1], textGray[2])
               doc.text('Scan to visit', pageWidth / 2, qrY + qrSize + 32, { align: 'center' })
-              doc.text('www.finacraai.com', pageWidth / 2, qrY + qrSize + 44, { align: 'center' })
+              doc.text('www.finnovateai.com', pageWidth / 2, qrY + qrSize + 44, { align: 'center' })
             } catch (qrErr) {
               // Fallback if QR generation fails: show the URL + CTA text
               doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
@@ -3229,7 +3103,7 @@ function DataRoomPageInner() {
               doc.setFont('helvetica', 'normal')
               doc.setFontSize(10)
               doc.setTextColor(textGray[0], textGray[1], textGray[2])
-              doc.text('www.finacraai.com', pageWidth / 2, pageHeight / 2 + 14, { align: 'center' })
+              doc.text('www.finnovateai.com', pageWidth / 2, pageHeight / 2 + 14, { align: 'center' })
             }
 
             // Footer - Add to all pages with proper spacing
@@ -3258,17 +3132,14 @@ function DataRoomPageInner() {
           return (
             <div className="space-y-4 sm:space-y-6">
               {/* Header */}
-              <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
+              <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-3 sm:mb-4">
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-light text-white mb-1">Compliance Reports</h2>
-                    <p className="text-gray-400 text-sm font-light">Comprehensive compliance analytics and insights</p>
-                  </div>
+                  <h2 className="text-xl sm:text-2xl font-light text-white">Compliance Reports</h2>
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                     <button
                       onClick={exportPDFReport}
                       disabled={isGeneratingEnhancedPDF}
-                      className="px-3 sm:px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center justify-center gap-2 font-light text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3 sm:px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isGeneratingEnhancedPDF ? (
                         <>
@@ -3294,7 +3165,7 @@ function DataRoomPageInner() {
                     </button>
                     <button
                       onClick={exportComplianceReport}
-                      className="px-3 sm:px-4 py-2 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 hover:border-gray-600 hover:text-white transition-colors flex items-center justify-center gap-2 text-sm sm:text-base font-light"
+                      className="px-3 sm:px-4 py-2 bg-primary-orange/20 border border-primary-orange text-primary-orange rounded-lg hover:bg-primary-orange/30 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
                     >
                       <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -3308,7 +3179,7 @@ function DataRoomPageInner() {
                     {overdueCompliances.length > 0 && (
                       <button
                         onClick={exportOverdueReport}
-                        className="px-3 sm:px-4 py-2 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 hover:border-gray-600 hover:text-white transition-colors flex items-center justify-center gap-2 text-sm sm:text-base font-light"
+                        className="px-3 sm:px-4 py-2 bg-red-500/20 border border-red-500 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
                       >
                         <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -3322,9 +3193,9 @@ function DataRoomPageInner() {
                     )}
               </div>
                   {isGeneratingEnhancedPDF && (
-                    <div className="mt-4 p-4 bg-gray-800/50 border border-gray-700 rounded-lg">
+                    <div className="mt-4 p-4 bg-primary-orange/10 border border-primary-orange/30 rounded-lg">
                       <div className="flex items-center gap-3">
-                        <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <svg className="animate-spin h-5 w-5 text-primary-orange" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
@@ -3340,19 +3211,20 @@ function DataRoomPageInner() {
                       <div className="mt-2 text-xs text-gray-400">
                         This may take a few moments as we research legal sections and analyze business impact...
             </div>
-            </div>
+          </div>
         )}
                 </div>
+                <p className="text-gray-400 text-sm sm:text-base">Comprehensive compliance analytics and insights</p>
               </div>
 
               {/* Statistics Overview */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {/* Total Compliances */}
-                <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
+                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-xs sm:text-sm font-light text-gray-400 uppercase tracking-wider">Total Compliances</h3>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Total Compliances</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M9 11l3 3L22 4" />
                         <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7" />
                       </svg>
@@ -3363,27 +3235,27 @@ function DataRoomPageInner() {
                 </div>
 
                 {/* Completed */}
-                <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
+                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-xs sm:text-sm font-light text-gray-400 uppercase tracking-wider">Completed</h3>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Completed</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                     </div>
                   </div>
                   <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{completed}</div>
-                  <p className="text-xs sm:text-sm text-gray-400 font-light">
+                  <p className="text-xs sm:text-sm text-gray-400">
                     {totalCompliances > 0 ? `${Math.round((completed / totalCompliances) * 100)}% completion rate` : 'No compliances'}
                   </p>
                 </div>
 
                 {/* Overdue */}
-                <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
+                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-xs sm:text-sm font-light text-gray-400 uppercase tracking-wider">Overdue</h3>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Overdue</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="8" x2="12" y2="12" />
                         <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -3391,17 +3263,17 @@ function DataRoomPageInner() {
                     </div>
                   </div>
                   <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{overdue}</div>
-                  <p className="text-xs sm:text-sm text-gray-400 font-light">
+                  <p className="text-xs sm:text-sm text-gray-400">
                     {totalCompliances > 0 ? `${Math.round((overdue / totalCompliances) * 100)}% overdue rate` : 'No compliances'}
                   </p>
                 </div>
 
                 {/* Pending */}
-                <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
+                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-xs sm:text-sm font-light text-gray-400 uppercase tracking-wider">Pending</h3>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Pending</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-yellow-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="8" x2="12" y2="12" />
                         <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -3409,14 +3281,14 @@ function DataRoomPageInner() {
                     </div>
                   </div>
                   <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{pending}</div>
-                  <p className="text-xs sm:text-sm text-gray-400 font-light">In progress</p>
+                  <p className="text-xs sm:text-sm text-gray-400">In progress</p>
                 </div>
 
                 {/* Not Started */}
-                <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
+                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-xs sm:text-sm font-light text-gray-400 uppercase tracking-wider">Not Started</h3>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Not Started</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
                       <svg width="20" height="20" className="sm:w-6 sm:h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="8" x2="12" y2="12" />
@@ -3425,19 +3297,32 @@ function DataRoomPageInner() {
                     </div>
                   </div>
                   <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{notStarted}</div>
-                  <p className="text-xs sm:text-sm text-gray-400 font-light">Awaiting action</p>
+                  <p className="text-xs sm:text-sm text-gray-400">Awaiting action</p>
                 </div>
 
               {/* Compliance Score */}
-              <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
+              <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <h3 className="text-xs sm:text-sm font-light text-gray-400 uppercase tracking-wider">Compliance Score</h3>
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <svg width="20" height="20" className="sm:w-6 sm:h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                      <path d="M2 17l10 5 10-5" />
-                      <path d="M2 12l10 5 10-5" />
-                    </svg>
+                  <h3 className="text-base sm:text-lg font-medium text-gray-300">Compliance Score</h3>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setIsComplianceScoreModalOpen(true)}
+                      className="text-gray-400 hover:text-white transition-colors"
+                      title="Learn more about compliance score"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                      </svg>
+                    </button>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                        <path d="M2 17l10 5 10-5" />
+                        <path d="M2 12l10 5 10-5" />
+                      </svg>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-baseline gap-2 mb-1">
@@ -3445,20 +3330,20 @@ function DataRoomPageInner() {
                     {totalCompliances === 0 ? '—' : `${complianceScore}`}
                   </div>
                   {totalCompliances > 0 && (
-                    <div className="text-xs sm:text-sm text-gray-400 font-light">/ 100</div>
+                    <div className="text-xs sm:text-sm text-gray-400">/ 100</div>
                   )}
                 </div>
-                <p className="text-xs sm:text-sm text-gray-400 font-light">
+                <p className="text-xs sm:text-sm text-gray-400">
                   Overall compliance health based on completion and overdue items
                 </p>
               </div>
 
               {/* Total Penalty */}
-              <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
+              <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <h3 className="text-xs sm:text-sm font-light text-gray-400 uppercase tracking-wider">Total Penalty</h3>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Total Penalty</h3>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="8" x2="12" y2="12" />
                         <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -3468,27 +3353,35 @@ function DataRoomPageInner() {
                   <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">
                     {totalPenalty > 0 ? `₹${totalPenalty.toLocaleString('en-IN')}` : '₹0'}
                   </div>
-                  <p className="text-xs sm:text-sm text-gray-400 font-light">Accumulated penalties</p>
+                  <p className="text-xs sm:text-sm text-gray-400">Accumulated penalties</p>
                 </div>
               </div>
 
               {/* Status Breakdown Chart */}
-              <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
+              <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                 <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Status Breakdown</h3>
                 <div className="space-y-3 sm:space-y-4">
                   {Object.entries(statusBreakdown).map(([status, count]) => {
                     const percentage = totalCompliances > 0 ? (count / totalCompliances) * 100 : 0
+                    const statusColors: Record<string, { bg: string; text: string; bar: string }> = {
+                      completed: { bg: 'bg-green-500/20', text: 'text-green-400', bar: 'bg-green-500' },
+                      pending: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', bar: 'bg-yellow-500' },
+                      overdue: { bg: 'bg-red-500/20', text: 'text-red-400', bar: 'bg-red-500' },
+                      notStarted: { bg: 'bg-gray-500/20', text: 'text-gray-400', bar: 'bg-gray-500' },
+                      upcoming: { bg: 'bg-blue-500/20', text: 'text-blue-400', bar: 'bg-blue-500' }
+                    }
+                    const colors = statusColors[status] || statusColors.notStarted
                     const statusLabel = status === 'notStarted' ? 'Not Started' : status.charAt(0).toUpperCase() + status.slice(1)
                     
                     return (
                       <div key={status}>
                         <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                          <span className="text-xs sm:text-sm font-light text-gray-300">{statusLabel}</span>
-                          <span className="text-xs sm:text-sm text-gray-400 font-light">{count} ({Math.round(percentage)}%)</span>
+                          <span className={`text-xs sm:text-sm font-medium ${colors.text}`}>{statusLabel}</span>
+                          <span className="text-xs sm:text-sm text-gray-400">{count} ({Math.round(percentage)}%)</span>
                         </div>
                         <div className="w-full bg-gray-800 rounded-full h-1.5 sm:h-2">
                           <div
-                            className="h-1.5 sm:h-2 rounded-full bg-gray-600 transition-all duration-300"
+                            className={`h-1.5 sm:h-2 rounded-full ${colors.bar} transition-all duration-300`}
                             style={{ width: `${percentage}%` }}
                           />
                         </div>
@@ -3499,7 +3392,7 @@ function DataRoomPageInner() {
               </div>
 
               {/* Category Breakdown */}
-              <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
+              <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                 <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Category Breakdown</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   {Object.entries(categoryBreakdown)
@@ -3507,18 +3400,18 @@ function DataRoomPageInner() {
                     .map(([category, count]) => {
                       const percentage = totalCompliances > 0 ? (count / totalCompliances) * 100 : 0
                       return (
-                        <div key={category} className="border border-gray-800 rounded-lg p-3 sm:p-4 bg-gray-900/50">
+                        <div key={category} className="border border-gray-700 rounded-lg p-3 sm:p-4">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-white font-light text-sm sm:text-base break-words">{category}</span>
-                            <span className="text-gray-300 font-light text-sm sm:text-base flex-shrink-0 ml-2">{count}</span>
+                            <span className="text-white font-medium text-sm sm:text-base break-words">{category}</span>
+                            <span className="text-primary-orange font-semibold text-sm sm:text-base flex-shrink-0 ml-2">{count}</span>
                           </div>
                           <div className="w-full bg-gray-800 rounded-full h-1 sm:h-1.5">
                             <div
-                              className="bg-gray-600 h-1 sm:h-1.5 rounded-full transition-all duration-300"
+                              className="bg-primary-orange h-1 sm:h-1.5 rounded-full transition-all duration-300"
                               style={{ width: `${percentage}%` }}
                             />
                           </div>
-                          <p className="text-[10px] sm:text-xs text-gray-400 mt-1 font-light">{Math.round(percentage)}% of total</p>
+                          <p className="text-[10px] sm:text-xs text-gray-400 mt-1">{Math.round(percentage)}% of total</p>
                         </div>
                       )
                     })}
@@ -3526,7 +3419,7 @@ function DataRoomPageInner() {
               </div>
 
               {/* Compliance Type Breakdown */}
-              <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
+              <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                 <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Compliance Type Breakdown</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                   {Object.entries(complianceTypeBreakdown)
@@ -3538,40 +3431,47 @@ function DataRoomPageInner() {
                         'quarterly': 'Quarterly',
                         'annual': 'Annual'
                       }
+                      const typeColors: Record<string, { bg: string; text: string; border: string; bar: string }> = {
+                        'one-time': { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', bar: 'bg-blue-400' },
+                        'monthly': { bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/30', bar: 'bg-purple-400' },
+                        'quarterly': { bg: 'bg-indigo-500/20', text: 'text-indigo-400', border: 'border-indigo-500/30', bar: 'bg-indigo-400' },
+                        'annual': { bg: 'bg-cyan-500/20', text: 'text-cyan-400', border: 'border-cyan-500/30', bar: 'bg-cyan-400' }
+                      }
+                      const colors = typeColors[type] || typeColors['one-time']
                       const completionRate = data.total > 0 ? (data.completed / data.total) * 100 : 0
                       
                       return (
-                        <div key={type} className="border border-gray-800 rounded-lg p-3 sm:p-4 bg-gray-900/50">
+                        <div key={type} className={`border ${colors.border} rounded-lg p-3 sm:p-4 ${colors.bg}`}>
                           <div className="flex items-center justify-between mb-2 sm:mb-3">
-                            <h4 className="font-light text-sm sm:text-base text-white">{typeLabels[type]}</h4>
-                            <span className="text-white font-light text-base sm:text-lg flex-shrink-0 ml-2">{data.total}</span>
+                            <h4 className={`font-semibold text-sm sm:text-base ${colors.text}`}>{typeLabels[type]}</h4>
+                            <span className="text-white font-bold text-base sm:text-lg flex-shrink-0 ml-2">{data.total}</span>
                           </div>
                           <div className="space-y-1.5 sm:space-y-2">
                             <div className="flex items-center justify-between text-xs sm:text-sm">
-                              <span className="text-gray-400 font-light">Completed</span>
-                              <span className="text-gray-300 font-light">{data.completed}</span>
+                              <span className="text-gray-400">Completed</span>
+                              <span className="text-green-400 font-medium">{data.completed}</span>
                             </div>
                             <div className="flex items-center justify-between text-xs sm:text-sm">
-                              <span className="text-gray-400 font-light">Overdue</span>
-                              <span className="text-gray-300 font-light">{data.overdue}</span>
+                              <span className="text-gray-400">Overdue</span>
+                              <span className="text-red-400 font-medium">{data.overdue}</span>
                             </div>
                             <div className="flex items-center justify-between text-xs sm:text-sm">
-                              <span className="text-gray-400 font-light">Pending</span>
-                              <span className="text-gray-300 font-light">{data.pending}</span>
+                              <span className="text-gray-400">Pending</span>
+                              <span className="text-yellow-400 font-medium">{data.pending}</span>
                             </div>
                             <div className="flex items-center justify-between text-xs sm:text-sm">
-                              <span className="text-gray-400 font-light">Not Started</span>
-                              <span className="text-gray-300 font-light">{data.notStarted}</span>
+                              <span className="text-gray-400">Not Started</span>
+                              <span className="text-gray-400 font-medium">{data.notStarted}</span>
                             </div>
                           </div>
-                          <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-800">
+                          <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-700">
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10px] sm:text-xs text-gray-400 font-light">Completion Rate</span>
-                              <span className="text-[10px] sm:text-xs font-light text-gray-300">{Math.round(completionRate)}%</span>
+                              <span className="text-[10px] sm:text-xs text-gray-400">Completion Rate</span>
+                              <span className={`text-[10px] sm:text-xs font-semibold ${colors.text}`}>{Math.round(completionRate)}%</span>
                             </div>
                             <div className="w-full bg-gray-800 rounded-full h-1 sm:h-1.5">
                               <div
-                                className="h-1 sm:h-1.5 rounded-full bg-gray-600 transition-all duration-300"
+                                className={`h-1 sm:h-1.5 rounded-full ${colors.bar} transition-all duration-300`}
                                 style={{ width: `${completionRate}%` }}
                               />
                             </div>
@@ -3584,7 +3484,7 @@ function DataRoomPageInner() {
 
               {/* Financial Year Breakdown */}
               {Object.keys(fyBreakdown).length > 0 && (
-                <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
+                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Financial Year Breakdown</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     {Object.entries(fyBreakdown)
@@ -3598,9 +3498,9 @@ function DataRoomPageInner() {
                         return getYear(b) - getYear(a)
                       })
                       .map(([fy, count]) => (
-                        <div key={fy} className="border border-gray-800 rounded-lg p-3 sm:p-4 text-center bg-gray-900/50">
+                        <div key={fy} className="border border-gray-700 rounded-lg p-3 sm:p-4 text-center">
                           <div className="text-xl sm:text-2xl font-light text-white mb-1">{count}</div>
-                          <div className="text-xs sm:text-sm text-gray-400 break-words font-light">{fy}</div>
+                          <div className="text-xs sm:text-sm text-gray-400 break-words">{fy}</div>
                         </div>
                       ))}
                   </div>
@@ -3720,7 +3620,7 @@ function DataRoomPageInner() {
                 <select
                   value={noticesFilter}
                   onChange={(e) => setNoticesFilter(e.target.value as any)}
-                  className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange"
                 >
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
@@ -3731,7 +3631,7 @@ function DataRoomPageInner() {
                 <select
                   value={noticesTypeFilter}
                   onChange={(e) => setNoticesTypeFilter(e.target.value)}
-                  className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange"
                 >
                   <option value="all">All Types</option>
                   <option value="Income Tax">Income Tax</option>
@@ -3741,7 +3641,7 @@ function DataRoomPageInner() {
                 </select>
                 <button 
                   onClick={() => setIsAddNoticeModalOpen(true)}
-                  className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm font-light"
+                  className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2 text-sm"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 5v14M5 12h14" />
@@ -3821,8 +3721,8 @@ function DataRoomPageInner() {
                   <div
                     key={notice.id}
                     onClick={() => setSelectedNotice(notice)}
-                    className={`bg-[#1a1a1a] border rounded-xl p-4 cursor-pointer transition-all hover:border-gray-600 ${
-                      selectedNotice?.id === notice.id ? 'border-gray-600' : 'border-gray-800'
+                    className={`bg-primary-dark-card border rounded-xl p-4 cursor-pointer transition-all hover:border-primary-orange/50 ${
+                      selectedNotice?.id === notice.id ? 'border-primary-orange' : 'border-gray-800'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3 mb-2">
@@ -3831,7 +3731,7 @@ function DataRoomPageInner() {
                           notice.type === 'Income Tax' ? 'bg-blue-500/20 text-blue-400' :
                           notice.type === 'GST' ? 'bg-green-500/20 text-green-400' :
                           notice.type === 'MCA/RoC' ? 'bg-purple-500/20 text-purple-400' :
-                          'bg-gray-500/20 text-gray-400'
+                          'bg-orange-500/20 text-orange-400'
                         }`}>
                           {notice.type}
                         </span>
@@ -3868,7 +3768,7 @@ function DataRoomPageInner() {
                             selectedNotice.type === 'Income Tax' ? 'bg-blue-500/20' :
                             selectedNotice.type === 'GST' ? 'bg-green-500/20' :
                             selectedNotice.type === 'MCA/RoC' ? 'bg-purple-500/20' :
-                            'bg-gray-500/20'
+                            'bg-orange-500/20'
                           }`}>
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={
                               selectedNotice.type === 'Income Tax' ? '#3B82F6' :
@@ -3942,7 +3842,7 @@ function DataRoomPageInner() {
                           {selectedNotice.timeline.map((event: any, idx: number) => (
                             <div key={idx} className="flex items-start gap-3">
                               <div className="flex flex-col items-center">
-                                <div className={`w-3 h-3 rounded-full ${idx === 0 ? 'bg-gray-500' : 'bg-gray-600'}`}></div>
+                                <div className={`w-3 h-3 rounded-full ${idx === 0 ? 'bg-primary-orange' : 'bg-gray-600'}`}></div>
                                 {idx < selectedNotice.timeline.length - 1 && (
                                   <div className="w-0.5 h-8 bg-gray-700"></div>
                                 )}
@@ -3968,7 +3868,7 @@ function DataRoomPageInner() {
                             onChange={(e) => setNoticeResponse(e.target.value)}
                             placeholder="Enter your response or remarks..."
                             rows={4}
-                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors resize-none font-light"
+                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors resize-none"
                           />
                           <div className="flex items-center justify-between mt-4">
                             <button className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm">
@@ -3986,7 +3886,7 @@ function DataRoomPageInner() {
                                 setIsSubmittingResponse(false)
                               }}
                               disabled={isSubmittingResponse || !noticeResponse.trim()}
-                              className="px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed font-light"
+                              className="px-6 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               {isSubmittingResponse ? (
                                 <>
@@ -4104,7 +4004,7 @@ function DataRoomPageInner() {
                     <select
                       value={newNoticeForm.type}
                       onChange={(e) => setNewNoticeForm({ ...newNoticeForm, type: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     >
                       <option value="Income Tax">Income Tax</option>
                       <option value="GST">GST</option>
@@ -4123,7 +4023,7 @@ function DataRoomPageInner() {
                       value={newNoticeForm.subType}
                       onChange={(e) => setNewNoticeForm({ ...newNoticeForm, subType: e.target.value })}
                       placeholder="e.g., Scrutiny Notice, Show Cause Notice"
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     />
                   </div>
                 </div>
@@ -4139,7 +4039,7 @@ function DataRoomPageInner() {
                       value={newNoticeForm.section}
                       onChange={(e) => setNewNoticeForm({ ...newNoticeForm, section: e.target.value })}
                       placeholder="e.g., Section 143(2), Section 73"
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     />
                   </div>
 
@@ -4150,7 +4050,7 @@ function DataRoomPageInner() {
                     <select
                       value={newNoticeForm.priority}
                       onChange={(e) => setNewNoticeForm({ ...newNoticeForm, priority: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
@@ -4170,7 +4070,7 @@ function DataRoomPageInner() {
                     value={newNoticeForm.subject}
                     onChange={(e) => setNewNoticeForm({ ...newNoticeForm, subject: e.target.value })}
                     placeholder="Enter the notice subject/title"
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                   />
                 </div>
 
@@ -4185,7 +4085,7 @@ function DataRoomPageInner() {
                       value={newNoticeForm.issuedBy}
                       onChange={(e) => setNewNoticeForm({ ...newNoticeForm, issuedBy: e.target.value })}
                       placeholder="e.g., Income Tax Department"
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     />
                   </div>
 
@@ -4209,7 +4109,7 @@ function DataRoomPageInner() {
                           }
                         }}
                         placeholder="Select date"
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors cursor-pointer pr-10"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors cursor-pointer pr-10"
                       />
                       <input
                         type="date"
@@ -4250,7 +4150,7 @@ function DataRoomPageInner() {
                           }
                         }}
                         placeholder="Select date"
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors cursor-pointer pr-10"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors cursor-pointer pr-10"
                       />
                       <input
                         type="date"
@@ -4282,7 +4182,7 @@ function DataRoomPageInner() {
                     onChange={(e) => setNewNoticeForm({ ...newNoticeForm, description: e.target.value })}
                     placeholder="Enter the full notice description and requirements..."
                     rows={5}
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors resize-none"
+                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors resize-none"
                   />
                 </div>
 
@@ -4337,7 +4237,7 @@ function DataRoomPageInner() {
                           }
                         }}
                         placeholder="Enter document name and press Enter"
-                        className="flex-1 px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                        className="flex-1 px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                       />
                       <button
                         onClick={() => {
@@ -4349,7 +4249,7 @@ function DataRoomPageInner() {
                             setNewDocument('')
                           }
                         }}
-                        className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2 font-light"
+                        className="px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M12 5v14M5 12h14" />
@@ -4444,7 +4344,7 @@ function DataRoomPageInner() {
                       setIsSubmittingNotice(false)
                     }}
                     disabled={isSubmittingNotice}
-                    className="px-6 py-2.5 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-light"
+                    className="px-6 py-2.5 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {isSubmittingNotice ? (
                       <>
@@ -4485,7 +4385,7 @@ function DataRoomPageInner() {
                   {/* Progress Steps */}
                   <div className="flex items-center justify-center gap-4 mb-8">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-white text-sm font-light">1</div>
+                      <div className="w-8 h-8 bg-primary-orange rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
                       <span className="text-white text-sm">Connect</span>
                     </div>
                     <div className="h-px w-12 bg-gray-700"></div>
@@ -4512,7 +4412,7 @@ function DataRoomPageInner() {
                         onChange={(e) => setGstCredentials({ ...gstCredentials, gstin: e.target.value.toUpperCase() })}
                         placeholder="Enter your 15-digit GSTIN"
                         maxLength={15}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-mono tracking-wider"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors font-mono tracking-wider"
                       />
                       <p className="mt-1 text-xs text-gray-500">Example: 27AQOPD9471C3ZM</p>
                     </div>
@@ -4526,7 +4426,7 @@ function DataRoomPageInner() {
                         value={gstCredentials.gstUsername}
                         onChange={(e) => setGstCredentials({ ...gstCredentials, gstUsername: e.target.value })}
                         placeholder="Enter your GST portal username"
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                       />
                     </div>
 
@@ -4573,7 +4473,7 @@ function DataRoomPageInner() {
                     </button>
 
                     <p className="text-center text-xs text-gray-500">
-                      By connecting, you agree to share your GST data securely with Finacra
+                      By connecting, you agree to share your GST data securely with Finnovate
                     </p>
                   </div>
                 </div>
@@ -4607,7 +4507,7 @@ function DataRoomPageInner() {
                     </div>
                     <div className="h-px w-12 bg-green-500"></div>
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-white text-sm font-light">2</div>
+                      <div className="w-8 h-8 bg-primary-orange rounded-full flex items-center justify-center text-white text-sm font-bold">2</div>
                       <span className="text-white text-sm">Verify OTP</span>
                     </div>
                     <div className="h-px w-12 bg-gray-700"></div>
@@ -4642,10 +4542,10 @@ function DataRoomPageInner() {
                         onChange={(e) => setGstOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="Enter 6-digit OTP"
                         maxLength={6}
-                        className="w-full px-4 py-4 bg-gray-900 border border-gray-700 rounded-lg text-white text-center text-2xl font-mono tracking-[0.5em] placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                        className="w-full px-4 py-4 bg-gray-900 border border-gray-700 rounded-lg text-white text-center text-2xl font-mono tracking-[0.5em] placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                       />
                       <p className="mt-2 text-center text-xs text-gray-500">
-                        OTP expires in <span className="text-gray-400">5:00</span> minutes
+                        OTP expires in <span className="text-primary-orange">5:00</span> minutes
                       </p>
                     </div>
 
@@ -4738,7 +4638,7 @@ function DataRoomPageInner() {
                       </button>
                     </div>
 
-                    <button className="w-full text-center text-sm text-gray-400 hover:text-gray-300 transition-colors font-light">
+                    <button className="w-full text-center text-sm text-primary-orange hover:text-primary-orange/80 transition-colors">
                       Didn't receive OTP? Resend
                     </button>
                   </div>
@@ -4768,7 +4668,7 @@ function DataRoomPageInner() {
                       <select
                         value={selectedGstPeriod}
                         onChange={(e) => setSelectedGstPeriod(e.target.value)}
-                        className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                        className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
                       >
                         <option value="012026">January 2026</option>
                         <option value="122025">December 2025</option>
@@ -4806,8 +4706,8 @@ function DataRoomPageInner() {
                       onClick={() => setGstActiveSection(tab.id as any)}
                       className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap ${
                         gstActiveSection === tab.id
-                          ? 'bg-gray-700 text-white font-light'
-                          : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 font-light'
+                          ? 'bg-primary-orange text-white'
+                          : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
                       }`}
                     >
                       <span>{tab.icon}</span>
@@ -5130,9 +5030,9 @@ function DataRoomPageInner() {
                         </div>
                       </div>
 
-                      <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-                        <h4 className="text-gray-400 text-sm mb-4 font-light">Tax Paid</h4>
-                        <p className="text-3xl font-light text-gray-300 mb-2">₹{gstData.gstr3b.taxPaid.toLocaleString('en-IN')}</p>
+                      <div className="bg-primary-orange/10 border border-primary-orange/30 rounded-xl p-6">
+                        <h4 className="text-gray-400 text-sm mb-4">Tax Paid</h4>
+                        <p className="text-3xl font-light text-primary-orange mb-2">₹{gstData.gstr3b.taxPaid.toLocaleString('en-IN')}</p>
                         <div className="text-xs text-gray-500 space-y-1">
                           <div className="flex justify-between"><span>Cash</span><span>₹81,400</span></div>
                           <div className="flex justify-between"><span>ITC</span><span>₹81,400</span></div>
@@ -5221,464 +5121,6 @@ function DataRoomPageInner() {
           </div>
         )}
 
-        {activeTab === 'dsc' && (
-          <div className="space-y-6">
-            <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-6 sm:p-8">
-              {/* Header */}
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/20">
-                  <svg
-                    width="24"
-                    height="24"
-                    className="sm:w-8 sm:h-8"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="white"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-light text-white">DSC Management</h2>
-                  <p className="text-gray-400 text-sm sm:text-base">Manage your Digital Signature Certificate credentials and notifications</p>
-                </div>
-              </div>
-
-              {/* Form */}
-              <div className="space-y-6">
-                {/* DSC Credentials Section */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white border-b border-gray-800 pb-2">DSC Credentials</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Certificate Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={dscCredentials.name}
-                        onChange={(e) => setDscCredentials({ ...dscCredentials, name: e.target.value })}
-                        placeholder="Enter certificate name"
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Certificate Number <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={dscCredentials.certificateNumber}
-                        onChange={(e) => setDscCredentials({ ...dscCredentials, certificateNumber: e.target.value })}
-                        placeholder="Enter certificate number"
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Issuer <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={dscCredentials.issuer}
-                        onChange={(e) => setDscCredentials({ ...dscCredentials, issuer: e.target.value })}
-                        placeholder="e.g., eMudhra, Sify, etc."
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Expiry Date <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="date"
-                        value={dscCredentials.expiryDate}
-                        onChange={(e) => setDscCredentials({ ...dscCredentials, expiryDate: e.target.value })}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Frequency Section */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white border-b border-gray-800 pb-2">Renewal Frequency</h3>
-                  
-                  <div className="flex flex-wrap gap-4">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="frequency"
-                        value="1"
-                        checked={dscCredentials.frequency === '1'}
-                        onChange={(e) => setDscCredentials({ ...dscCredentials, frequency: e.target.value as '1' | '2' | 'custom' })}
-                        className="w-5 h-5 text-gray-400 bg-gray-900 border-gray-700 focus:ring-gray-500 focus:ring-2"
-                      />
-                      <div>
-                        <span className="text-white font-medium">1 Year</span>
-                        <p className="text-gray-400 text-xs">Annual renewal</p>
-                      </div>
-                    </label>
-                    
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="frequency"
-                        value="2"
-                        checked={dscCredentials.frequency === '2'}
-                        onChange={(e) => setDscCredentials({ ...dscCredentials, frequency: e.target.value as '1' | '2' | 'custom' })}
-                        className="w-5 h-5 text-gray-400 bg-gray-900 border-gray-700 focus:ring-gray-500 focus:ring-2"
-                      />
-                      <div>
-                        <span className="text-white font-medium">2 Years</span>
-                        <p className="text-gray-400 text-xs">Biennial renewal</p>
-                      </div>
-                    </label>
-
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="frequency"
-                        value="custom"
-                        checked={dscCredentials.frequency === 'custom'}
-                        onChange={(e) => setDscCredentials({ ...dscCredentials, frequency: e.target.value as '1' | '2' | 'custom' })}
-                        className="w-5 h-5 text-gray-400 bg-gray-900 border-gray-700 focus:ring-gray-500 focus:ring-2"
-                      />
-                      <div>
-                        <span className="text-white font-medium">Custom</span>
-                        <p className="text-gray-400 text-xs">Specify custom years</p>
-                      </div>
-                    </label>
-                  </div>
-
-                  {/* Custom Frequency Input */}
-                  {dscCredentials.frequency === 'custom' && (
-                    <div className="mt-4 p-4 bg-gray-900/50 rounded-lg border border-gray-800">
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Number of Years <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="10"
-                        value={dscCredentials.customFrequencyYears}
-                        onChange={(e) => {
-                          const value = e.target.value
-                          if (value === '' || (parseInt(value) >= 1 && parseInt(value) <= 10)) {
-                            setDscCredentials({ ...dscCredentials, customFrequencyYears: value })
-                          }
-                        }}
-                        placeholder="Enter number of years (1-10)"
-                        className="w-full sm:w-64 px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
-                      />
-                      <p className="mt-2 text-xs text-gray-500">Enter a number between 1 and 10 years</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Notifications Section */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-white border-b border-gray-800 pb-2">Notifications</h3>
-                  
-                  <div className="space-y-4">
-                    {/* In-House Notifications */}
-                    <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-800">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                          <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                          </svg>
-                        </div>
-                        <div>
-                          <span className="text-white font-medium block">In-House Notifications</span>
-                          <p className="text-gray-400 text-sm">Receive notifications within the platform</p>
-                        </div>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={dscCredentials.inHouseNotifications}
-                          onChange={(e) => setDscCredentials({ ...dscCredentials, inHouseNotifications: e.target.checked })}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gray-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-600"></div>
-                      </label>
-                    </div>
-
-                    {/* Email Notifications */}
-                    <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-800">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-                          <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                            <polyline points="22,6 12,13 2,6" />
-                          </svg>
-                        </div>
-                        <div>
-                          <span className="text-white font-medium block">Email Notifications</span>
-                          <p className="text-gray-400 text-sm">Receive email alerts for expiry reminders</p>
-                        </div>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={dscCredentials.emailNotifications}
-                          onChange={(e) => setDscCredentials({ ...dscCredentials, emailNotifications: e.target.checked })}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-gray-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gray-600"></div>
-                      </label>
-                    </div>
-
-                    {/* Email Addresses */}
-                    {dscCredentials.emailNotifications && (
-                      <div className="mt-4 p-4 bg-gray-900/50 rounded-lg border border-gray-800">
-                        <label className="block text-sm font-medium text-gray-300 mb-3">
-                          Notification Email Addresses
-                        </label>
-                        <div className="space-y-3">
-                          {/* Existing emails */}
-                          {dscCredentials.notificationEmails.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {dscCredentials.notificationEmails.map((email, index) => (
-                                <div
-                                  key={index}
-                                  className="flex items-center gap-2 px-3 py-1.5 bg-gray-800/50 border border-gray-700 rounded-lg text-sm text-white font-light"
-                                >
-                                  <span>{email}</span>
-                                  <button
-                                    onClick={() => {
-                                      const updated = [...dscCredentials.notificationEmails]
-                                      updated.splice(index, 1)
-                                      setDscCredentials({ ...dscCredentials, notificationEmails: updated })
-                                    }}
-                                    className="text-gray-400 hover:text-gray-300 transition-colors"
-                                  >
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <line x1="18" y1="6" x2="6" y2="18" />
-                                      <line x1="6" y1="6" x2="18" y2="18" />
-                                    </svg>
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          
-                          {/* Add email input */}
-                          <div className="flex gap-2">
-                            <input
-                              type="email"
-                              value={newEmail}
-                              onChange={(e) => setNewEmail(e.target.value)}
-                              placeholder="Enter email address"
-                              className="flex-1 px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors text-sm"
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter' && newEmail.trim() && newEmail.includes('@')) {
-                                  if (!dscCredentials.notificationEmails.includes(newEmail.trim())) {
-                                    setDscCredentials({
-                                      ...dscCredentials,
-                                      notificationEmails: [...dscCredentials.notificationEmails, newEmail.trim()]
-                                    })
-                                    setNewEmail('')
-                                  }
-                                }
-                              }}
-                            />
-                            <button
-                              onClick={() => {
-                                if (newEmail.trim() && newEmail.includes('@')) {
-                                  if (!dscCredentials.notificationEmails.includes(newEmail.trim())) {
-                                    setDscCredentials({
-                                      ...dscCredentials,
-                                      notificationEmails: [...dscCredentials.notificationEmails, newEmail.trim()]
-                                    })
-                                    setNewEmail('')
-                                  }
-                                }
-                              }}
-                              disabled={!newEmail.trim() || !newEmail.includes('@') || dscCredentials.notificationEmails.includes(newEmail.trim())}
-                              className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-light"
-                            >
-                              Add
-                            </button>
-                          </div>
-                          <p className="text-xs text-gray-500">Press Enter or click Add to add an email address</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Platform Credentials Section */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-800">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center">
-                        <svg
-                          width="20"
-                          height="20"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                          <polyline points="14 2 14 8 20 8" />
-                          <line x1="16" y1="13" x2="8" y2="13" />
-                          <line x1="16" y1="17" x2="8" y2="17" />
-                          <polyline points="10 9 9 9 8 9" />
-                        </svg>
-                      </div>
-                      <div>
-                        <span className="text-white font-medium block">Store Platform Credentials</span>
-                        <p className="text-gray-400 text-sm">Save your platform email and password for easy access</p>
-                      </div>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={dscCredentials.storePlatformCredentials}
-                        onChange={(e) => setDscCredentials({ ...dscCredentials, storePlatformCredentials: e.target.checked })}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-orange rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-orange"></div>
-                    </label>
-                  </div>
-
-                  {dscCredentials.storePlatformCredentials && (
-                    <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-800 space-y-4">
-                      <h3 className="text-lg font-medium text-white border-b border-gray-800 pb-2">Platform Login Details</h3>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Platform Email <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="email"
-                            value={dscCredentials.platformEmail}
-                            onChange={(e) => setDscCredentials({ ...dscCredentials, platformEmail: e.target.value })}
-                            placeholder="Enter platform email address"
-                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Platform Password <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="password"
-                            value={dscCredentials.platformPassword}
-                            onChange={(e) => setDscCredentials({ ...dscCredentials, platformPassword: e.target.value })}
-                            placeholder="Enter platform password"
-                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
-                        <div className="flex items-start gap-2">
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="text-yellow-400 mt-0.5 flex-shrink-0"
-                          >
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                            <path d="M12 8v4" />
-                            <path d="M12 16h.01" />
-                          </svg>
-                          <p className="text-yellow-400 text-xs">
-                            Your credentials are stored securely. Make sure to use strong passwords and keep them updated.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Save Button */}
-                <div className="pt-4 border-t border-gray-800">
-                  <button
-                    onClick={async () => {
-                      if (!dscCredentials.name || !dscCredentials.certificateNumber || !dscCredentials.issuer || !dscCredentials.expiryDate) {
-                        alert('Please fill in all required fields')
-                        return
-                      }
-                      if (dscCredentials.frequency === 'custom' && !dscCredentials.customFrequencyYears) {
-                        alert('Please enter the number of years for custom frequency')
-                        return
-                      }
-                      if (dscCredentials.storePlatformCredentials && (!dscCredentials.platformEmail || !dscCredentials.platformPassword)) {
-                        alert('Please fill in platform email and password if you want to store platform credentials')
-                        return
-                      }
-                      setIsDscSaving(true)
-                      // Simulate save operation
-                      await new Promise(resolve => setTimeout(resolve, 1000))
-                      setIsDscSaving(false)
-                      alert('DSC credentials saved successfully!')
-                    }}
-                    disabled={isDscSaving || !dscCredentials.name || !dscCredentials.certificateNumber || !dscCredentials.issuer || !dscCredentials.expiryDate || (dscCredentials.frequency === 'custom' && !dscCredentials.customFrequencyYears) || (dscCredentials.storePlatformCredentials && (!dscCredentials.platformEmail || !dscCredentials.platformPassword))}
-                    className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg font-medium hover:from-purple-600 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20"
-                  >
-                    {isDscSaving ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                          <polyline points="17 21 17 13 7 13 7 21" />
-                          <polyline points="7 3 7 8 15 8" />
-                        </svg>
-                        Save DSC Credentials
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {activeTab === 'tracker' && (
           <div className="space-y-4 sm:space-y-6">
             {/* Header with Title and Actions - Stack on Mobile */}
@@ -5694,8 +5136,8 @@ function DataRoomPageInner() {
                     onClick={() => setTrackerView('list')}
                     className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${
                       trackerView === 'list'
-                        ? 'bg-gray-700 text-white font-light'
-                        : 'text-gray-400 hover:text-white font-light'
+                        ? 'bg-primary-orange text-white'
+                        : 'text-gray-400 hover:text-white'
                     }`}
                     title="List View"
                   >
@@ -5713,8 +5155,8 @@ function DataRoomPageInner() {
                     onClick={() => setTrackerView('calendar')}
                     className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${
                       trackerView === 'calendar'
-                        ? 'bg-gray-700 text-white font-light'
-                        : 'text-gray-400 hover:text-white font-light'
+                        ? 'bg-primary-orange text-white'
+                        : 'text-gray-400 hover:text-white'
                     }`}
                     title="Calendar View"
                   >
@@ -5764,7 +5206,7 @@ function DataRoomPageInner() {
                       })
                       setIsCreateModalOpen(true)
                     }}
-                    className="bg-gray-700 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-1.5 sm:gap-2 font-light text-xs sm:text-base"
+                    className="bg-primary-orange text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-1.5 sm:gap-2 font-medium text-xs sm:text-base"
                   >
                     <svg
                       width="14"
@@ -5784,7 +5226,7 @@ function DataRoomPageInner() {
                     <span className="sm:hidden">Add</span>
                   </button>
                 )}
-                <button className="bg-[#1a1a1a] border border-gray-700 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-gray-600 transition-colors flex items-center gap-1.5 sm:gap-2 font-light text-xs sm:text-base">
+                <button className="bg-primary-dark-card border border-gray-700 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-primary-orange/50 transition-colors flex items-center gap-1.5 sm:gap-2 font-medium text-xs sm:text-base">
                 <svg
                   width="14"
                   height="14"
@@ -5817,9 +5259,9 @@ function DataRoomPageInner() {
                     const newFY = e.target.value
                     setSelectedTrackerFY(newFY)
                   }}
-                  className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 appearance-none cursor-pointer ${
+                  className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange appearance-none cursor-pointer ${
                     selectedTrackerFY 
-                      ? 'border-gray-600 bg-gray-800 text-white' 
+                      ? 'border-primary-orange bg-primary-orange/20 text-white' 
                       : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
                   }`}
                 >
@@ -5841,7 +5283,7 @@ function DataRoomPageInner() {
                   }}
                   className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors flex items-center justify-between sm:justify-start gap-2 text-sm sm:text-base ${
                     selectedMonth
-                      ? 'border-gray-600 bg-gray-800 text-white'
+                      ? 'border-primary-orange bg-primary-orange/20 text-white'
                       : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
                   }`}
                 >
@@ -5875,7 +5317,7 @@ function DataRoomPageInner() {
                         }}
                         className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${
                           selectedMonth === null
-                            ? 'bg-gray-800 text-white'
+                            ? 'bg-primary-orange/20 text-white'
                             : 'text-gray-300'
                         }`}
                       >
@@ -5892,7 +5334,7 @@ function DataRoomPageInner() {
                           }}
                           className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${
                             selectedMonth === month
-                              ? 'bg-gray-800 text-white'
+                              ? 'bg-primary-orange/20 text-white'
                               : 'text-gray-300'
                           }`}
                         >
@@ -5913,7 +5355,7 @@ function DataRoomPageInner() {
                   }}
                   className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors flex items-center justify-between sm:justify-start gap-2 text-sm sm:text-base ${
                     selectedQuarter
-                      ? 'border-gray-600 bg-gray-800 text-white'
+                      ? 'border-primary-orange bg-primary-orange/20 text-white'
                       : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
                   }`}
                 >
@@ -5947,7 +5389,7 @@ function DataRoomPageInner() {
                         }}
                         className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${
                           selectedQuarter === null
-                            ? 'bg-gray-800 text-white'
+                            ? 'bg-primary-orange/20 text-white'
                             : 'text-gray-300'
                         }`}
                       >
@@ -5964,7 +5406,7 @@ function DataRoomPageInner() {
                           }}
                           className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${
                             selectedQuarter === quarter.value
-                              ? 'bg-gray-800 text-white'
+                              ? 'bg-primary-orange/20 text-white'
                               : 'text-gray-300'
                           }`}
                         >
@@ -5977,6 +5419,83 @@ function DataRoomPageInner() {
               </div>
             </div>
 
+            {/* Search and Bulk Actions Bar */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 mb-4">
+              {/* Search Input */}
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Search requirements, categories, descriptions..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2.5 pl-10 bg-primary-dark-card border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange text-sm sm:text-base"
+                />
+                <svg
+                  width="16"
+                  height="16"
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.35-4.35" />
+                </svg>
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              
+              {/* Bulk Actions */}
+              {canEdit && selectedRequirements.size > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-400 whitespace-nowrap">
+                    {selectedRequirements.size} selected
+                  </span>
+                  <button
+                    onClick={() => {
+                      setBulkActionType('status')
+                      setIsBulkActionModalOpen(true)
+                    }}
+                    className="px-3 py-2 bg-blue-500/20 border border-blue-500 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors text-sm flex items-center gap-2"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                    </svg>
+                    Update Status
+                  </button>
+                  <button
+                    onClick={() => {
+                      setBulkActionType('delete')
+                      setIsBulkActionModalOpen(true)
+                    }}
+                    className="px-3 py-2 bg-red-500/20 border border-red-500 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors text-sm flex items-center gap-2"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                    Delete
+                  </button>
+                  <button
+                    onClick={() => setSelectedRequirements(new Set())}
+                    className="px-3 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Category Filters - Scrollable on Mobile */}
             <div className="flex items-center gap-2 flex-wrap overflow-x-auto pb-2 -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide">
               {['all', 'critical', 'pending', 'upcoming', 'completed'].map((filter) => (
@@ -5985,7 +5504,7 @@ function DataRoomPageInner() {
                   onClick={() => setCategoryFilter(filter)}
                   className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 transition-colors capitalize text-xs sm:text-sm whitespace-nowrap flex-shrink-0 ${
                     categoryFilter === filter
-                      ? 'border-gray-600 bg-gray-800 text-white'
+                      ? 'border-primary-orange bg-primary-orange/20 text-white'
                       : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
                   }`}
                 >
@@ -6007,7 +5526,7 @@ function DataRoomPageInner() {
             <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden">
               {isLoadingRequirements ? (
                 <div className="py-8 sm:py-12 flex flex-col items-center justify-center">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-gray-400 border-t-transparent rounded-full animate-spin mb-4"></div>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mb-4"></div>
                   <p className="text-gray-400 text-sm sm:text-base">Loading requirements...</p>
                 </div>
               ) : displayRequirements.length === 0 ? (
@@ -6035,32 +5554,7 @@ function DataRoomPageInner() {
               ) : (
               <div className="sm:overflow-x-auto scrollbar-hide">
                 {(() => {
-                  // Get unique categories from requirements
-                  const uniqueCategories = Array.from(new Set(displayRequirements.map(req => req.category)))
-                  
-                  // Normalize category names (handle "Other" vs "Others")
-                  const normalizedCategories = uniqueCategories.map(cat => {
-                    if (cat === 'Other' || cat === 'Others') return 'Other'
-                    return cat
-                  })
-                  
-                  // Define preferred order for known categories
-                  const preferredOrder = ['Income Tax', 'GST', 'Prof. Tax', 'Payroll', 'RoC', 'Renewals', 'Other']
-                  
-                  // Sort categories: preferred order first, then any others alphabetically
-                  const categoryOrder = [
-                    ...preferredOrder.filter(cat => normalizedCategories.includes(cat)),
-                    ...normalizedCategories.filter(cat => !preferredOrder.includes(cat)).sort()
-                  ]
-                  
-                  // Map back to original category names for filtering
-                  const categoryMap = new Map<string, string>()
-                  uniqueCategories.forEach(cat => {
-                    const normalized = (cat === 'Other' || cat === 'Others') ? 'Other' : cat
-                    if (!categoryMap.has(normalized)) {
-                      categoryMap.set(normalized, cat)
-                    }
-                  })
+                  const categoryOrder = ['Income Tax', 'GST', 'Payroll', 'RoC', 'Renewals', 'Others']
                   
                   // Helper function to parse date and get month/quarter
                   const getMonthFromDate = (dateStr: string) => {
@@ -6340,20 +5834,28 @@ function DataRoomPageInner() {
                       if (reqComplianceType !== complianceTypeFilter) return false
                     }
 
+                    // Search filter
+                    if (searchQuery.trim()) {
+                      const query = searchQuery.toLowerCase().trim()
+                      const searchableText = [
+                        req.category,
+                        req.requirement,
+                        req.description,
+                        req.status,
+                        req.compliance_type,
+                        req.financial_year
+                      ].filter(Boolean).join(' ').toLowerCase()
+                      if (!searchableText.includes(query)) return false
+                    }
+
                     return true
                   })
 
                   const groupedByCategory = categoryOrder.map((category) => {
-                    // Get the original category name from the map, or use the normalized one
-                    const originalCategory = categoryMap.get(category) || category
                     const items = filteredRequirements
-                      .filter((req) => {
-                        // Match both normalized and original category names
-                        const reqCategory = req.category === 'Other' || req.category === 'Others' ? 'Other' : req.category
-                        return reqCategory === category || req.category === originalCategory
-                      })
+                      .filter((req) => req.category === category)
                       .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
-                    return { category: originalCategory, items }
+                    return { category, items }
                   }).filter((group) => group.items.length > 0)
 
                   // Calendar view helper functions
@@ -6580,8 +6082,24 @@ function DataRoomPageInner() {
                                 
                                 return (
                                   <div key={req.id} className="bg-gray-900/50 border border-gray-800 rounded-lg p-3 space-y-2">
-                                    {/* Requirement Header */}
+                                    {/* Requirement Header with Checkbox */}
                                     <div className="flex items-start gap-2">
+                                      {canEdit && (
+                                        <input
+                                          type="checkbox"
+                                          checked={selectedRequirements.has(req.id)}
+                                          onChange={(e) => {
+                                            const newSelected = new Set(selectedRequirements)
+                                            if (e.target.checked) {
+                                              newSelected.add(req.id)
+                                            } else {
+                                              newSelected.delete(req.id)
+                                            }
+                                            setSelectedRequirements(newSelected)
+                                          }}
+                                          className="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary-orange focus:ring-primary-orange focus:ring-2 cursor-pointer"
+                                        />
+                                      )}
                                       {(req.isCritical || req.status === 'overdue') && (
                                         <svg
                                           width="16"
@@ -6720,6 +6238,40 @@ function DataRoomPageInner() {
                                       )}
                                     </div>
                                     
+                                    {/* Audit Trail */}
+                                    {((req as any).filed_on || (req as any).filed_by || (req as any).status_reason) && (
+                                      <div className="pt-2 border-t border-gray-800 space-y-1.5">
+                                        {(req as any).filed_on && (
+                                          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                              <circle cx="12" cy="12" r="10" />
+                                              <polyline points="12 6 12 12 16 14" />
+                                            </svg>
+                                            <span>Filed on: {new Date((req as any).filed_on).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                          </div>
+                                        )}
+                                        {(req as any).filed_by && (
+                                          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                              <circle cx="12" cy="7" r="4" />
+                                            </svg>
+                                            <span>Filed by: {((req as any).filed_by_name || 'User')}</span>
+                                          </div>
+                                        )}
+                                        {(req as any).status_reason && (
+                                          <div className="flex items-start gap-1.5 text-xs text-gray-400">
+                                            <svg width="12" height="12" className="mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                              <circle cx="12" cy="12" r="10" />
+                                              <line x1="12" y1="16" x2="12" y2="12" />
+                                              <line x1="12" y1="8" x2="12.01" y2="8" />
+                                            </svg>
+                                            <span>Reason: {(req as any).status_reason}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                    
                                     {/* Actions */}
                                     {canEdit && (
                                       <div className="flex items-center gap-2 pt-2 border-t border-gray-800">
@@ -6794,6 +6346,22 @@ function DataRoomPageInner() {
                       <table className="hidden sm:table w-full">
                       <thead className="bg-gray-900 border-b border-gray-800">
                         <tr>
+                          {canEdit && (
+                            <th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider w-12">
+                              <input
+                                type="checkbox"
+                                checked={filteredRequirements.length > 0 && filteredRequirements.every(req => selectedRequirements.has(req.id))}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedRequirements(new Set(filteredRequirements.map(req => req.id)))
+                                  } else {
+                                    setSelectedRequirements(new Set())
+                                  }
+                                }}
+                                className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary-orange focus:ring-primary-orange focus:ring-2 cursor-pointer"
+                              />
+                            </th>
+                          )}
                           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                             CATEGORY
                           </th>
@@ -6814,6 +6382,12 @@ function DataRoomPageInner() {
                           </th>
                           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
                             FILED ON
+                          </th>
+                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden xl:table-cell">
+                            FILED BY
+                          </th>
+                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden xl:table-cell">
+                            STATUS REASON
                           </th>
                             <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
                             PENALTY
@@ -6837,7 +6411,7 @@ function DataRoomPageInner() {
                             {/* Visual Separator between categories */}
                             {groupIndex > 0 && (
                               <tr>
-                                <td colSpan={canEdit ? 11 : 10} className="px-0 py-0">
+                                <td colSpan={canEdit ? 13 : 12} className="px-0 py-0">
                                   <div className="h-0.5 bg-gradient-to-r from-transparent via-primary-orange/50 to-transparent my-2"></div>
                                 </td>
                               </tr>
@@ -6845,6 +6419,24 @@ function DataRoomPageInner() {
                             {/* Category Items */}
                             {group.items.map((req, itemIndex) => (
                               <tr key={req.id} className="hover:bg-gray-900/50 transition-colors border-t border-gray-800">
+                                {canEdit && (
+                                  <td className="px-4 py-4">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedRequirements.has(req.id)}
+                                      onChange={(e) => {
+                                        const newSelected = new Set(selectedRequirements)
+                                        if (e.target.checked) {
+                                          newSelected.add(req.id)
+                                        } else {
+                                          newSelected.delete(req.id)
+                                        }
+                                        setSelectedRequirements(newSelected)
+                                      }}
+                                      className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-primary-orange focus:ring-primary-orange focus:ring-2 cursor-pointer"
+                                    />
+                                  </td>
+                                )}
                                 {itemIndex === 0 && (
                                   <td 
                                     className="px-6 py-4 border-r-0 border-l-0 border-t-0 border-b-0 align-top"
@@ -6980,9 +6572,7 @@ function DataRoomPageInner() {
                                   <td className="px-6 py-4 hidden md:table-cell">
                                   {/* Documents Required Column */}
                                   {(() => {
-                                    const requiredDocs = Array.isArray(req.required_documents)
-                                      ? req.required_documents
-                                      : (req.required_documents ? [req.required_documents] : [])
+                                    const requiredDocs = req.required_documents || []
                                     // Debug logging
                                     if (req.requirement === 'GSTR-3B - Monthly Summary Return' || req.requirement === 'ESI Challan - Monthly ESI Payment') {
                                       console.log('[RENDER] Documents for', req.requirement, ':', {
@@ -7050,6 +6640,34 @@ function DataRoomPageInner() {
                                     return (
                                       <div className="text-green-400 text-sm">
                                         {new Date(filedOn).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                      </div>
+                                    )
+                                  })()}
+                                </td>
+                                <td className="px-6 py-4 hidden xl:table-cell">
+                                  {/* Filed By Column */}
+                                  {(() => {
+                                    const filedBy = (req as any).filed_by
+                                    if (!filedBy) {
+                                      return <div className="text-gray-500 text-sm">-</div>
+                                    }
+                                    return (
+                                      <div className="text-blue-400 text-sm">
+                                        {(req as any).filed_by_name || 'User'}
+                                      </div>
+                                    )
+                                  })()}
+                                </td>
+                                <td className="px-6 py-4 hidden xl:table-cell">
+                                  {/* Status Reason Column */}
+                                  {(() => {
+                                    const statusReason = (req as any).status_reason
+                                    if (!statusReason) {
+                                      return <div className="text-gray-500 text-sm">-</div>
+                                    }
+                                    return (
+                                      <div className="text-yellow-400 text-xs max-w-[200px]" title={statusReason}>
+                                        {statusReason.length > 30 ? statusReason.substring(0, 30) + '...' : statusReason}
                                       </div>
                                     )
                                   })()}
@@ -7231,7 +6849,7 @@ function DataRoomPageInner() {
                       <select
                         value={requirementForm.category}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, category: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                       >
                         <option value="">Select Category</option>
                         <option value="Income Tax">Income Tax</option>
@@ -7252,7 +6870,7 @@ function DataRoomPageInner() {
                         type="text"
                         value={requirementForm.requirement}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, requirement: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                         placeholder="e.g., TDS Payment - Monthly"
                       />
                     </div>
@@ -7265,7 +6883,7 @@ function DataRoomPageInner() {
                       <textarea
                         value={requirementForm.description}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, description: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                         rows={3}
                         placeholder="Brief description of the requirement"
                       />
@@ -7279,7 +6897,7 @@ function DataRoomPageInner() {
                       <select
                         value={requirementForm.compliance_type}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, compliance_type: e.target.value as any }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                       >
                         <option value="one-time">One-time</option>
                         <option value="monthly">Monthly</option>
@@ -7299,7 +6917,7 @@ function DataRoomPageInner() {
                         <select
                           value={requirementForm.year}
                           onChange={(e) => setRequirementForm(prev => ({ ...prev, year: e.target.value }))}
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                         >
                           {Array.from({ length: 5 }, (_, i) => {
                             const year = new Date().getFullYear() - 2 + i
@@ -7325,7 +6943,7 @@ function DataRoomPageInner() {
                         type="date"
                         value={requirementForm.due_date}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, due_date: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                       />
                       {requirementForm.compliance_type !== 'one-time' && (
                         <p className="text-xs text-gray-400 mt-1">
@@ -7343,7 +6961,7 @@ function DataRoomPageInner() {
                         type="text"
                         value={requirementForm.penalty}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, penalty: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                         placeholder="e.g., Late fee ₹200/day"
                       />
                     </div>
@@ -7356,7 +6974,7 @@ function DataRoomPageInner() {
                       <select
                         value={requirementForm.financial_year}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, financial_year: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                       >
                         <option value="">Select Financial Year</option>
                         {financialYears.map((fy) => (
@@ -7374,7 +6992,7 @@ function DataRoomPageInner() {
                         <select
                           value={requirementForm.status}
                           onChange={(e) => setRequirementForm(prev => ({ ...prev, status: e.target.value as any }))}
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                         >
                           <option value="not_started">Not Started</option>
                           <option value="upcoming">Upcoming</option>
@@ -7491,12 +7109,12 @@ function DataRoomPageInner() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">Compliance Vault</h2>
-                <p className="text-gray-400 text-sm sm:text-base font-light">Manage document categories and specific compliance folders.</p>
+                <p className="text-gray-400 text-sm sm:text-base">Manage document categories and specific compliance folders.</p>
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                 <button
                   onClick={() => setIsExportModalOpen(true)}
-                  className="bg-transparent border border-gray-700 text-gray-300 px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-gray-600 hover:text-white transition-colors flex items-center justify-center gap-2 font-light text-sm sm:text-base"
+                  className="bg-primary-dark-card border border-gray-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-primary-orange/50 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
                 >
                   <svg
                     width="16"
@@ -7518,7 +7136,7 @@ function DataRoomPageInner() {
                 </button>
                 <button
                   onClick={() => setIsSendModalOpen(true)}
-                  className="bg-transparent border border-gray-700 text-gray-300 px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-gray-600 hover:text-white transition-colors flex items-center justify-center gap-2 font-light text-sm sm:text-base"
+                  className="bg-primary-dark-card border border-gray-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-primary-orange/50 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
                 >
                   <svg
                     width="16"
@@ -7539,7 +7157,7 @@ function DataRoomPageInner() {
                 </button>
                 <button
                   onClick={() => setIsUploadModalOpen(true)}
-                  className="bg-gray-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-gray-600 transition-colors flex items-center justify-center gap-2 font-light text-sm sm:text-base"
+                  className="bg-primary-orange text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
                 >
                   <svg
                     width="16"
@@ -7562,31 +7180,18 @@ function DataRoomPageInner() {
               </div>
             </div>
 
-            {/* FY and Month Filters */}
+            {/* FY Filter */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-              <label className="text-xs sm:text-sm font-light text-gray-400 uppercase tracking-wider">Financial Year:</label>
+              <label className="text-sm font-medium text-gray-300">Financial Year:</label>
               <select
                 value={selectedFY}
                 onChange={(e) => setSelectedFY(e.target.value)}
-                className="px-3 sm:px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none cursor-pointer"
+                className="px-3 sm:px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors appearance-none cursor-pointer"
               >
                 <option value="">All Financial Years</option>
                 {financialYears.map((fy) => (
                   <option key={fy} value={fy}>
                     {fy}
-                  </option>
-                ))}
-              </select>
-              
-              <label className="text-xs sm:text-sm font-light text-gray-400 uppercase tracking-wider sm:ml-4">Month:</label>
-              <select
-                value={selectedVaultMonth}
-                onChange={(e) => setSelectedVaultMonth(e.target.value)}
-                className="px-3 sm:px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none cursor-pointer"
-              >
-                {vaultMonths.map((month) => (
-                  <option key={month.value} value={month.value}>
-                    {month.label}
                   </option>
                 ))}
               </select>
@@ -7597,38 +7202,22 @@ function DataRoomPageInner() {
               <div className="lg:col-span-2 space-y-4 sm:space-y-6">
                 {documentFolders.map((folderName) => {
                   const filteredVaultDocs = vaultDocuments.filter(doc => {
-                    // FY Filter
-                    if (selectedFY) {
-                      // Prefer period_financial_year if available (for tracker-uploaded docs)
-                      if (doc.period_financial_year) {
-                        if (doc.period_financial_year !== selectedFY) return false
-                      } else if (doc.registration_date) {
-                        // Fallback to registration_date for older documents
-                        const docFY = getFinancialYear(doc.registration_date)
-                        if (docFY !== selectedFY) return false
-                      } else {
-                        // If no period or registration date, don't show when FY is selected
-                        return false
-                      }
+                    // If no FY selected, show all documents
+                    if (!selectedFY) return true
+                    
+                    // Prefer period_financial_year if available (for tracker-uploaded docs)
+                    if (doc.period_financial_year) {
+                      return doc.period_financial_year === selectedFY
                     }
                     
-                    // Month Filter
-                    if (selectedVaultMonth) {
-                      // Check period_month if available (for tracker-uploaded docs)
-                      if (doc.period_month) {
-                        const docMonth = doc.period_month.toString().padStart(2, '0')
-                        if (docMonth !== selectedVaultMonth) return false
-                      } else if (doc.registration_date) {
-                        // Fallback to registration_date
-                        const docMonth = getMonthFromDate(doc.registration_date)
-                        if (docMonth !== selectedVaultMonth) return false
-                      } else {
-                        // If no period or registration date, don't show when month is selected
-                        return false
-                      }
+                    // Fallback to registration_date for older documents
+                    if (doc.registration_date) {
+                    const docFY = getFinancialYear(doc.registration_date)
+                    return docFY === selectedFY
                     }
                     
-                    return true
+                    // If no period or registration date, don't show when FY is selected
+                    return false
                   })
                   
                   // Filter uploaded docs by folder, but move PAN and TAN to Financials and licenses
@@ -7694,19 +7283,21 @@ function DataRoomPageInner() {
                     return 0
                   })
 
-                  const iconColor = 'bg-gray-800 border border-gray-700'
+                  const iconColor = folderName === 'Constitutional Documents' ? 'bg-primary-orange' : 
+                                   folderName === 'Financials and licenses' ? 'bg-purple-500' :
+                                   folderName === 'Taxation & GST Compliance' ? 'bg-green-500' : 'bg-blue-500'
                   
                   return (
-                    <div key={folderName} className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
+                    <div key={folderName} className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
                         <div className={`w-8 h-8 sm:w-10 sm:h-10 ${iconColor} rounded-lg flex items-center justify-center flex-shrink-0`}>
                       <svg
                         width="16"
                         height="16"
-                        className="sm:w-5 sm:h-5 text-gray-400"
+                        className="sm:w-5 sm:h-5"
                         viewBox="0 0 24 24"
                         fill="none"
-                        stroke="currentColor"
+                        stroke="white"
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -7717,7 +7308,7 @@ function DataRoomPageInner() {
                       </div>
                     <div className="min-w-0 flex-1">
                           <h3 className="text-base sm:text-xl font-light text-white break-words">{folderName}</h3>
-                          <p className="text-gray-400 text-xs sm:text-sm font-light">{folderDocs.filter((d: any) => d.status === 'uploaded').length} DOCUMENTS</p>
+                          <p className="text-gray-400 text-xs sm:text-sm">{folderDocs.filter((d: any) => d.status === 'uploaded').length} DOCUMENTS</p>
                       </div>
                     </div>
                       
@@ -7725,7 +7316,7 @@ function DataRoomPageInner() {
                         {folderDocs.length > 0 ? folderDocs.map((doc: any) => (
                           <div key={doc.id} className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border transition-colors ${
                             doc.status === 'uploaded' 
-                              ? 'bg-gray-900/50 border-gray-800 hover:border-gray-700' 
+                              ? 'bg-gray-900 border-gray-800 hover:border-primary-orange/50' 
                               : 'bg-gray-900/30 border-gray-800/50 border-dashed opacity-60'
                           }`}>
                       <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
@@ -7767,19 +7358,19 @@ function DataRoomPageInner() {
                                 <>
                                   <button 
                                     onClick={() => handleView(doc.file_path)}
-                                    className="text-gray-300 hover:text-white font-light text-xs sm:text-sm border border-gray-700 px-2 sm:px-3 py-1 rounded-lg hover:border-gray-600 transition-colors flex-shrink-0"
+                                    className="text-primary-orange hover:text-primary-orange/80 font-medium text-xs sm:text-sm border border-primary-orange/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-primary-orange/10 transition-colors flex-shrink-0"
                                   >
                           View
                         </button>
                                   <button 
                                     onClick={() => handleExport(doc.file_path, doc.file_name)}
-                                    className="text-gray-300 hover:text-white font-light text-xs sm:text-sm border border-gray-700 px-2 sm:px-3 py-1 rounded-lg hover:border-gray-600 transition-colors flex-shrink-0"
+                                    className="text-primary-orange hover:text-primary-orange/80 font-medium text-xs sm:text-sm border border-primary-orange/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-primary-orange/10 transition-colors flex-shrink-0"
                                   >
                           Export
                         </button>
                                   <button 
                                     onClick={() => handleRemove(doc.id, doc.file_path)}
-                                    className="text-gray-400 hover:text-gray-300 font-light text-xs sm:text-sm border border-gray-700 px-2 sm:px-3 py-1 rounded-lg hover:border-gray-600 transition-colors flex-shrink-0"
+                                    className="text-red-400 hover:text-red-300 font-medium text-xs sm:text-sm border border-red-500/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-red-500/10 transition-colors flex-shrink-0"
                                   >
                           Remove
                         </button>
@@ -7794,7 +7385,7 @@ function DataRoomPageInner() {
                                     }))
                                     setIsUploadModalOpen(true)
                                   }}
-                                  className="text-gray-300 hover:text-white font-light text-xs sm:text-sm border border-gray-700 px-3 sm:px-4 py-1.5 rounded-lg hover:border-gray-600 transition-colors w-full sm:w-auto"
+                                  className="text-primary-orange hover:text-white font-medium text-xs sm:text-sm border border-primary-orange px-3 sm:px-4 py-1.5 rounded-lg hover:bg-primary-orange transition-colors w-full sm:w-auto"
                                 >
                                   Upload Now
                         </button>
@@ -7815,7 +7406,7 @@ function DataRoomPageInner() {
               {/* Right Sidebar */}
               <div className="lg:col-span-1 space-y-4 sm:space-y-6">
                 {/* Storage Stats */}
-                <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
+                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
                     <svg
                       width="16"
@@ -7836,25 +7427,25 @@ function DataRoomPageInner() {
                   <div className="space-y-2 sm:space-y-3">
                     <div className="w-full bg-gray-900 rounded-full h-2 sm:h-2.5">
                       <div
-                        className="bg-gray-600 h-2 sm:h-2.5 rounded-full"
+                        className="bg-primary-orange h-2 sm:h-2.5 rounded-full"
                         style={{ width: '42%' }}
                       ></div>
                     </div>
-                    <div className="text-gray-400 text-xs sm:text-sm font-light">4.2 GB / 10 GB</div>
+                    <div className="text-gray-400 text-xs sm:text-sm">4.2 GB / 10 GB</div>
                   </div>
                 </div>
 
                 {/* Recent Activity */}
-                <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-4 sm:p-6">
+                <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <h3 className="text-base sm:text-lg font-light text-white mb-3 sm:mb-4">Recent Activity</h3>
                   <div className="space-y-2 sm:space-y-3">
                     <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-500 rounded-full flex-shrink-0"></div>
-                      <span className="text-gray-400 text-xs sm:text-sm font-light">Encrypted vault synced</span>
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full flex-shrink-0"></div>
+                      <span className="text-gray-400 text-xs sm:text-sm">Encrypted vault synced</span>
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-500 rounded-full flex-shrink-0"></div>
-                      <span className="text-gray-400 text-xs sm:text-sm font-light">Audit logs updated</span>
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary-orange rounded-full flex-shrink-0"></div>
+                      <span className="text-gray-400 text-xs sm:text-sm">Audit logs updated</span>
                     </div>
                   </div>
                 </div>
@@ -7956,7 +7547,7 @@ function DataRoomPageInner() {
                             setUploadFormData((prev) => ({ ...prev, documentName: e.target.value }))
                           }
                           placeholder="Enter document name"
-                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                         />
                       </div>
 
@@ -7970,7 +7561,7 @@ function DataRoomPageInner() {
                           onChange={(e) =>
                             setUploadFormData((prev) => ({ ...prev, frequency: e.target.value }))
                           }
-                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors cursor-pointer"
+                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors cursor-pointer"
                         >
                           <option value="one-time">One-time</option>
                           <option value="monthly">Monthly</option>
@@ -7995,7 +7586,7 @@ function DataRoomPageInner() {
                                 registrationDate: e.target.value,
                               }))
                             }
-                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                           />
                         </div>
                       <div>
@@ -8011,7 +7602,7 @@ function DataRoomPageInner() {
                                 expiryDate: e.target.value,
                               }))
                             }
-                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                           />
                         </div>
                       </div>
@@ -8054,7 +7645,7 @@ function DataRoomPageInner() {
                                 }))
                               }
                               placeholder="portal@example.com"
-                              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                             />
                           </div>
                           <div>
@@ -8071,7 +7662,7 @@ function DataRoomPageInner() {
                                 }))
                               }
                               placeholder="Enter password"
-                              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                             />
                           </div>
                         </div>
@@ -8217,11 +7808,11 @@ function DataRoomPageInner() {
                             checked={allDocuments.length > 0 && selectedDocuments.size === allDocuments.length}
                             onChange={handleSelectAll}
                             disabled={allDocuments.length === 0}
-                            className="w-5 h-5 text-gray-400 bg-gray-800 border-gray-600 rounded focus:ring-gray-500 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="w-5 h-5 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50"
                           />
-                          <span className="text-white font-light">Select All</span>
+                          <span className="text-white font-medium">Select All</span>
                         </label>
-                        <span className="text-gray-400 text-sm font-light">
+                        <span className="text-gray-400 text-sm">
                           {selectedDocuments.size} of {allDocuments.length} selected
                         </span>
                       </div>
@@ -8231,24 +7822,24 @@ function DataRoomPageInner() {
                         {allDocuments.map((doc) => (
                           <label
                             key={doc.id}
-                            className="flex items-center gap-3 p-4 bg-gray-900 rounded-lg border border-gray-800 hover:border-gray-700 transition-colors cursor-pointer"
+                            className="flex items-center gap-3 p-4 bg-gray-900 rounded-lg border border-gray-800 hover:border-primary-orange/50 transition-colors cursor-pointer"
                           >
                             <input
                               type="checkbox"
                               checked={selectedDocuments.has(doc.id)}
                               onChange={() => toggleDocumentSelection(doc.id)}
-                              className="w-5 h-5 text-gray-400 bg-gray-800 border-gray-600 rounded focus:ring-gray-500 focus:ring-2"
+                              className="w-5 h-5 text-primary-orange bg-gray-800 border-gray-600 rounded focus:ring-primary-orange focus:ring-2"
                             />
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-white font-light">{doc.name}</span>
+                                <span className="text-white font-medium">{doc.name}</span>
                                 {doc.period && (
-                                  <span className="px-2 py-0.5 text-xs rounded-full border bg-gray-800/50 text-gray-400 border-gray-700">
+                                  <span className="px-2 py-0.5 text-xs rounded-full border bg-blue-500/20 text-blue-400 border-blue-500/30">
                                     {doc.period}
                                   </span>
                                 )}
                               </div>
-                              <div className="text-gray-400 text-sm mt-1 font-light">{doc.category}</div>
+                              <div className="text-gray-400 text-sm mt-1">{doc.category}</div>
                             </div>
                           </label>
                         ))}
@@ -8261,7 +7852,7 @@ function DataRoomPageInner() {
                             setIsExportModalOpen(false)
                             setSelectedDocuments(new Set())
                           }}
-                          className="px-6 py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors font-light"
+                          className="px-6 py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors"
                         >
                           Cancel
                         </button>
@@ -8583,7 +8174,7 @@ function DataRoomPageInner() {
                             setEmailData((prev) => ({ ...prev, recipients: e.target.value }))
                           }
                           placeholder="Enter email addresses (comma separated)"
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                         />
                         <p className="text-gray-500 text-xs mt-1">
                           Separate multiple email addresses with commas
@@ -8602,7 +8193,7 @@ function DataRoomPageInner() {
                             setEmailData((prev) => ({ ...prev, subject: e.target.value }))
                           }
                           placeholder="Email subject"
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                         />
                       </div>
 
@@ -8618,7 +8209,7 @@ function DataRoomPageInner() {
                           }
                           rows={10}
                           placeholder="Write your email message here..."
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors resize-none"
+                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors resize-none"
                         />
                       </div>
 
@@ -8817,6 +8408,238 @@ function DataRoomPageInner() {
           </div>
         </div>
       )}
+
+      {/* Bulk Action Modal */}
+      {isBulkActionModalOpen && bulkActionType && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
+            onClick={() => {
+              setIsBulkActionModalOpen(false)
+              setBulkActionType(null)
+            }}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-gray-800">
+                <h3 className="text-xl font-light text-white">
+                  {bulkActionType === 'status' ? 'Update Status' : 'Delete Requirements'}
+                </h3>
+              </div>
+              <div className="p-6 space-y-4">
+                <p className="text-gray-300">
+                  {bulkActionType === 'status'
+                    ? `Update status for ${selectedRequirements.size} requirement(s)?`
+                    : `Are you sure you want to delete ${selectedRequirements.size} requirement(s)? This action cannot be undone.`}
+                </p>
+                {bulkActionType === 'status' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-2">New Status</label>
+                    <select
+                      id="bulkStatusSelect"
+                      className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                    >
+                      <option value="not_started">Not Started</option>
+                      <option value="upcoming">Upcoming</option>
+                      <option value="pending">Pending</option>
+                      <option value="overdue">Overdue</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  </div>
+                )}
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-800">
+                  <button
+                    onClick={() => {
+                      setIsBulkActionModalOpen(false)
+                      setBulkActionType(null)
+                    }}
+                    className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!currentCompany) return
+                      
+                      if (bulkActionType === 'status') {
+                        const statusSelect = document.getElementById('bulkStatusSelect') as HTMLSelectElement
+                        const newStatus = statusSelect.value as 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed'
+                        
+                        try {
+                          let successCount = 0
+                          let failCount = 0
+                          
+                          for (const reqId of selectedRequirements) {
+                            const result = await updateRequirementStatus(reqId, currentCompany.id, newStatus)
+                            if (result.success) {
+                              successCount++
+                            } else {
+                              failCount++
+                            }
+                          }
+                          
+                          if (successCount > 0) {
+                            showToast(`Updated ${successCount} requirement(s)`, 'success')
+                            const refreshResult = await getRegulatoryRequirements(currentCompany.id)
+                            if (refreshResult.success && refreshResult.requirements) {
+                              setRegulatoryRequirements(refreshResult.requirements)
+                            }
+                          }
+                          if (failCount > 0) {
+                            showToast(`Failed to update ${failCount} requirement(s)`, 'error')
+                          }
+                          
+                          setSelectedRequirements(new Set())
+                          setIsBulkActionModalOpen(false)
+                          setBulkActionType(null)
+                        } catch (error: any) {
+                          showToast(`Error: ${error.message}`, 'error')
+                        }
+                      } else if (bulkActionType === 'delete') {
+                        if (!confirm(`Are you absolutely sure you want to delete ${selectedRequirements.size} requirement(s)? This cannot be undone.`)) {
+                          return
+                        }
+                        
+                        try {
+                          let successCount = 0
+                          let failCount = 0
+                          
+                          for (const reqId of selectedRequirements) {
+                            const result = await deleteRequirement(reqId, currentCompany.id)
+                            if (result.success) {
+                              successCount++
+                            } else {
+                              failCount++
+                            }
+                          }
+                          
+                          if (successCount > 0) {
+                            showToast(`Deleted ${successCount} requirement(s)`, 'success')
+                            const refreshResult = await getRegulatoryRequirements(currentCompany.id)
+                            if (refreshResult.success && refreshResult.requirements) {
+                              setRegulatoryRequirements(refreshResult.requirements)
+                            }
+                          }
+                          if (failCount > 0) {
+                            showToast(`Failed to delete ${failCount} requirement(s)`, 'error')
+                          }
+                          
+                          setSelectedRequirements(new Set())
+                          setIsBulkActionModalOpen(false)
+                          setBulkActionType(null)
+                        } catch (error: any) {
+                          showToast(`Error: ${error.message}`, 'error')
+                        }
+                      }
+                    }}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      bulkActionType === 'delete'
+                        ? 'bg-red-500 text-white hover:bg-red-600'
+                        : 'bg-primary-orange text-white hover:bg-primary-orange/90'
+                    }`}
+                  >
+                    {bulkActionType === 'status' ? 'Update' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Compliance Score Explanation Modal */}
+      {isComplianceScoreModalOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
+            onClick={() => setIsComplianceScoreModalOpen(false)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-gray-800">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-light text-white">Compliance Score Explained</h3>
+                  <button
+                    onClick={() => setIsComplianceScoreModalOpen(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                  <h4 className="text-white font-medium mb-2">How is the Compliance Score Calculated?</h4>
+                  <p className="text-gray-300 text-sm leading-relaxed">
+                    The compliance score is calculated based on the status of all your compliance requirements:
+                  </p>
+                  <ul className="mt-3 space-y-2 text-sm text-gray-300">
+                    <li className="flex items-start gap-2">
+                      <span className="text-green-400 mt-1">✓</span>
+                      <span><strong>Completed:</strong> +10 points per requirement</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-yellow-400 mt-1">⏳</span>
+                      <span><strong>Pending:</strong> +5 points per requirement</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-blue-400 mt-1">○</span>
+                      <span><strong>Upcoming:</strong> +2 points per requirement</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-gray-400 mt-1">○</span>
+                      <span><strong>Not Started:</strong> 0 points</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-red-400 mt-1">!</span>
+                      <span><strong>Overdue:</strong> -15 points per requirement</span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                  <h4 className="text-white font-medium mb-2">Score Interpretation</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                      <span className="text-gray-300"><strong>80-100:</strong> Excellent compliance health</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                      <span className="text-gray-300"><strong>60-79:</strong> Good, but room for improvement</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                      <span className="text-gray-300"><strong>40-59:</strong> Needs attention</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                      <span className="text-gray-300"><strong>Below 40:</strong> Critical - immediate action required</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-4 border-t border-gray-800">
+                  <button
+                    onClick={() => setIsComplianceScoreModalOpen(false)}
+                    className="w-full px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors"
+                  >
+                    Got it
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+      <ToastContainer />
     </div>
   )
 }

@@ -369,9 +369,9 @@ export default function HomePage() {
           rootMargin: '0px 0px 200px 0px' // Trigger 200px before section enters viewport
         }
       : {
-          threshold: 0.15,
-          rootMargin: '0px 0px -50px 0px'
-        }
+      threshold: 0.15,
+      rootMargin: '0px 0px -50px 0px'
+    }
 
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
@@ -699,20 +699,20 @@ export default function HomePage() {
             <div className="space-y-0">
               {/* Compliance Tracker */}
               <div>
-                <div
-                  className={`border-b border-gray-800 pb-12 mb-12 cursor-pointer transition-all duration-300 ${
-                    hoveredProduct && hoveredProduct !== 'compliance' ? 'opacity-30' : 'opacity-100'
-                  }`}
-                  onMouseEnter={() => setHoveredProduct('compliance')}
-                  onMouseLeave={() => setHoveredProduct(null)}
+              <div
+                className={`border-b border-gray-800 pb-12 mb-12 cursor-pointer transition-all duration-300 ${
+                  hoveredProduct && hoveredProduct !== 'compliance' ? 'opacity-30' : 'opacity-100'
+                }`}
+                onMouseEnter={() => setHoveredProduct('compliance')}
+                onMouseLeave={() => setHoveredProduct(null)}
                   onClick={() => handleProductClick('compliance')}
-                >
-                  <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
-                    Compliance Tracker
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light">
-                    Track statutory and regulatory requirements across GST, Income Tax, RoC, payroll, and renewals with structured status management and due-date monitoring.
-                  </p>
+              >
+                <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
+                  Compliance Tracker
+                </h3>
+                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light">
+                  Track statutory and regulatory requirements across GST, Income Tax, RoC, payroll, and renewals with structured status management and due-date monitoring.
+                </p>
                 </div>
                 {/* Mobile Graphic - Inline - Only show when active */}
                 {(clickedProduct === 'compliance' || hoveredProduct === 'compliance') && (
@@ -724,20 +724,20 @@ export default function HomePage() {
 
               {/* Document Vault */}
               <div>
-                <div
-                  className={`border-b border-gray-800 pb-8 sm:pb-12 mb-8 sm:mb-12 cursor-pointer transition-all duration-300 ${
-                    hoveredProduct && hoveredProduct !== 'vault' ? 'opacity-30' : 'opacity-100'
-                  }`}
-                  onMouseEnter={() => setHoveredProduct('vault')}
-                  onMouseLeave={() => setHoveredProduct(null)}
+              <div
+                className={`border-b border-gray-800 pb-8 sm:pb-12 mb-8 sm:mb-12 cursor-pointer transition-all duration-300 ${
+                  hoveredProduct && hoveredProduct !== 'vault' ? 'opacity-30' : 'opacity-100'
+                }`}
+                onMouseEnter={() => setHoveredProduct('vault')}
+                onMouseLeave={() => setHoveredProduct(null)}
                   onClick={() => handleProductClick('vault')}
-                >
-                  <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
-                    Document Vault
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light">
-                    Secure storage and structured organization of financial and legal documents with role-based access.
-                  </p>
+              >
+                <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
+                  Document Vault
+                </h3>
+                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light">
+                  Secure storage and structured organization of financial and legal documents with role-based access.
+                </p>
                 </div>
                 {/* Mobile Graphic - Inline - Only show when active */}
                 {(clickedProduct === 'vault' || hoveredProduct === 'vault') && (
@@ -749,28 +749,28 @@ export default function HomePage() {
 
               {/* Finacra Web Services */}
               <div>
-                <div
+              <div
                   className={`border-b border-gray-800 pt-8 sm:pt-12 pb-8 sm:pb-12 mb-8 sm:mb-12 cursor-pointer transition-all duration-300 ${
-                    hoveredProduct && hoveredProduct !== 'services' ? 'opacity-30' : 'opacity-100'
-                  }`}
-                  onMouseEnter={() => setHoveredProduct('services')}
-                  onMouseLeave={() => setHoveredProduct(null)}
+                  hoveredProduct && hoveredProduct !== 'services' ? 'opacity-30' : 'opacity-100'
+                }`}
+                onMouseEnter={() => setHoveredProduct('services')}
+                onMouseLeave={() => setHoveredProduct(null)}
                   onClick={() => handleProductClick('services')}
-                >
-                  <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
-                    Finacra Web Services <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light">
-                    Infrastructure layer that supports company onboarding, entity detection, compliance workflows, and administrative control.
-                  </p>
-                </div>
+              >
+                <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
+                  Finacra Web Services <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
+                </h3>
+                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light">
+                  Infrastructure layer that supports company onboarding, entity detection, compliance workflows, and administrative control.
+                </p>
+              </div>
                 {/* Mobile Graphic - Inline - Only show when active */}
                 {(clickedProduct === 'services' || hoveredProduct === 'services') && (
                   <div ref={graphicRefs.services} className="md:hidden mb-8 -mt-8">
                     {renderProductGraphic('services')}
                   </div>
                 )}
-              </div>
+            </div>
 
               {/* E-Invoicing */}
               <div>
@@ -1235,10 +1235,10 @@ export default function HomePage() {
             >
             {/* Companies Card */}
             <div className="w-full flex-shrink-0 md:w-auto">
-              <div 
-                className={`bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
-                style={{ transitionDelay: visibleSections.has('solution') ? '0.3s' : '0s' }}
-              >
+            <div 
+              className={`bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
+              style={{ transitionDelay: visibleSections.has('solution') ? '0.3s' : '0s' }}
+            >
               <div className="mb-4 sm:mb-6">
                 <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Companies</div>
                 <p className="text-gray-400 font-light text-xs sm:text-sm">Multi-entity management</p>
@@ -1272,17 +1272,17 @@ export default function HomePage() {
                     <div className="text-xs text-white font-light">Global Industries Ltd</div>
                     <div className="text-[10px] text-gray-500 mt-0.5">CIN: U67890DL2021PLC789012</div>
                   </div>
+                  </div>
                 </div>
-              </div>
               </div>
             </div>
 
             {/* Documents Card */}
             <div className="w-full flex-shrink-0 md:w-auto">
-              <div 
-                className={`bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
-                style={{ transitionDelay: visibleSections.has('solution') ? '0.4s' : '0s' }}
-              >
+            <div 
+              className={`bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
+              style={{ transitionDelay: visibleSections.has('solution') ? '0.4s' : '0s' }}
+            >
               <div className="mb-4 sm:mb-6">
                 <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Documents</div>
                 <p className="text-gray-400 font-light text-xs sm:text-sm">Secure storage</p>
@@ -1329,19 +1329,19 @@ export default function HomePage() {
                         <div className="text-xs text-white font-light">AOC-4_Form.pdf</div>
                         <div className="text-[10px] text-gray-500 mt-0.5">RoC • 956 KB</div>
                       </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
               </div>
             </div>
 
             {/* Compliance Card */}
             <div className="w-full flex-shrink-0 md:w-auto">
-              <div 
-                className={`bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
-                style={{ transitionDelay: visibleSections.has('solution') ? '0.5s' : '0s' }}
-              >
+            <div 
+              className={`bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
+              style={{ transitionDelay: visibleSections.has('solution') ? '0.5s' : '0s' }}
+            >
               <div className="mb-4 sm:mb-6">
                 <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Compliance</div>
                 <p className="text-gray-400 font-light text-xs sm:text-sm">Regulatory tracking</p>
@@ -1554,7 +1554,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Features Section */}
+          {/* Features Section */}
       <section 
         id="features" 
         data-animate-section="features"
