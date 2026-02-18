@@ -16,7 +16,7 @@ export default async function proxy(request: NextRequest) {
   })
   
   // Public routes that should be accessible without authentication
-  const publicRoutes = ['/home', '/privacy-policy', '/terms-of-service', '/pricing', '/contact', '/login', '/compliance-tracker', '/company-onboarding', '/customers']
+  const publicRoutes = ['/home', '/privacy-policy', '/terms-of-service', '/pricing', '/contact', '/login', '/compliance-tracker', '/company-onboarding', '/customers', '/auth/reset-password']
   
   if (
     pathname.startsWith('/_next') ||

@@ -81,6 +81,29 @@ export async function createRazorpayOrder(
   return response.json()
 }
 
+export async function createTrialVerificationOrder(
+  companyId?: string,
+  tier?: string
+): Promise<{ orderId: string; amount: number; currency: string; keyId: string }> {
+  const response = await fetch('/api/payments/trial-verification', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      companyId,
+      tier,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Failed to create verification order')
+  }
+
+  return response.json()
+}
+
 export async function verifyPayment(
   razorpay_order_id: string,
   razorpay_payment_id: string,

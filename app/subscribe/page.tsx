@@ -8,13 +8,20 @@ import { createClient } from '@/utils/supabase/client'
 import { PRICING_TIERS, getTierPricing, formatPrice, type BillingCycle } from '@/lib/pricing/tiers'
 import PaymentButton from '@/components/PaymentButton'
 import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
+import Link from 'next/link'
+import { loadRazorpayScript, createTrialVerificationOrder, verifyPayment, openRazorpayCheckout, type RazorpayResponse } from '@/lib/razorpay/payment'
 
 function SubscribePageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, signOut } = useAuth()
   const { hasSubscription, isTrial, trialDaysRemaining, companyLimit, currentCompanyCount, isLoading: subLoading } = useUserSubscription()
   const supabase = createClient()
+  
+  const handleSignOut = async () => {
+    await signOut()
+    router.push('/home')
+  }
   
   // Optional company_id for context (showing company name)
   const companyId = searchParams.get('company_id')
@@ -28,6 +35,7 @@ function SubscribePageInner() {
   const [selectedCompanyForSubscription, setSelectedCompanyForSubscription] = useState<string | null>(companyId)
   const [companyHasActiveSubscription, setCompanyHasActiveSubscription] = useState<boolean>(false)
   const [isCheckingCompanySubscription, setIsCheckingCompanySubscription] = useState(false)
+  const [isRazorpayScriptLoaded, setIsRazorpayScriptLoaded] = useState(false)
 
   // Check if selected company has active subscription/trial
   useEffect(() => {
@@ -129,9 +137,24 @@ function SubscribePageInner() {
     }
   }, [hasSubscription, isTrial, trialDaysRemaining, subLoading, companyId, router, user, showUpgrade])
 
+  // Load Razorpay script on mount
+  useEffect(() => {
+    loadRazorpayScript()
+      .then(() => setIsRazorpayScriptLoaded(true))
+      .catch((error) => {
+        console.error('Failed to load Razorpay script:', error)
+        setError('Payment system failed to load. Please refresh the page.')
+      })
+  }, [])
+
   const handleStartTrial = async (tier: 'starter' | 'professional' | 'enterprise' = 'starter') => {
     if (!user) {
       setError('Please sign in first')
+      return
+    }
+
+    if (!isRazorpayScriptLoaded) {
+      setError('Payment system is loading. Please wait a moment and try again.')
       return
     }
 
@@ -139,10 +162,68 @@ function SubscribePageInner() {
     setError(null)
 
     try {
+      // Determine target company ID
+      const targetCompanyId = selectedCompanyForSubscription || companyId || null
+
+      // Step 1: Create trial verification payment (₹2)
+      const orderData = await createTrialVerificationOrder(targetCompanyId || undefined, tier)
+
+      // Step 2: Open Razorpay checkout for verification
+      openRazorpayCheckout({
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'Finacra AI',
+        description: 'Trial Verification - ₹2 (will be refunded within 24 hours)',
+        order_id: orderData.orderId,
+        prefill: {
+          email: user.email || undefined,
+          name: user.user_metadata?.full_name || undefined,
+        },
+        theme: {
+          color: '#9CA3AF', // Gray color (matching the design)
+        },
+        handler: async (response: RazorpayResponse) => {
+          try {
+            // Step 3: Verify payment
+            const verification = await verifyPayment(
+              response.razorpay_order_id,
+              response.razorpay_payment_id,
+              response.razorpay_signature
+            )
+
+            if (verification.success) {
+              // Step 4: Payment verified, now create the trial
+              await createTrialAfterVerification(tier, targetCompanyId)
+            } else {
+              setError('Payment verification failed. Please try again.')
+              setIsStartingTrial(false)
+            }
+          } catch (error: any) {
+            console.error('Payment verification error:', error)
+            setError(`Payment verification failed: ${error.message}`)
+            setIsStartingTrial(false)
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setIsStartingTrial(false)
+          },
+        },
+      })
+    } catch (err: any) {
+      console.error('Trial verification error:', err)
+      setError(err.message || 'Failed to start trial verification')
+      setIsStartingTrial(false)
+    }
+  }
+
+  const createTrialAfterVerification = async (tier: 'starter' | 'professional' | 'enterprise', targetCompanyId: string | null) => {
+    try {
       // Enterprise: user-first trial
       if (tier === 'enterprise') {
         const { data, error: rpcError } = await supabase
-          .rpc('create_user_trial', { target_user_id: user.id })
+          .rpc('create_user_trial', { target_user_id: user!.id })
 
         if (rpcError) {
           throw new Error(rpcError.message || 'Failed to create trial')
@@ -162,10 +243,8 @@ function SubscribePageInner() {
       // Starter/Professional: company-first trial
       // If user has no companies, create a user-level trial first (allows creating first company)
       if (currentCompanyCount === 0) {
-        // Create user-level trial for Starter/Professional (similar to Enterprise)
-        // This allows them to create their first company
         const { data, error: rpcError } = await supabase
-          .rpc('create_user_trial', { target_user_id: user.id })
+          .rpc('create_user_trial', { target_user_id: user!.id })
 
         if (rpcError) {
           throw new Error(rpcError.message || 'Failed to create trial')
@@ -177,7 +256,6 @@ function SubscribePageInner() {
       }
       
       // Require company selection if user has companies
-      const targetCompanyId = selectedCompanyForSubscription || companyId
       if (!targetCompanyId && currentCompanyCount > 0) {
         setError('Please select a company for the trial')
         setIsStartingTrial(false)
@@ -186,30 +264,38 @@ function SubscribePageInner() {
       
       // If still no company selected but user has companies, select the first one
       if (!targetCompanyId && userCompanies.length > 0) {
-        setSelectedCompanyForSubscription(userCompanies[0].id)
-        // Retry with first company
-        setTimeout(() => {
-          handleStartTrial(tier)
-        }, 100)
+        const firstCompanyId = userCompanies[0].id
+        const { data, error: rpcError } = await supabase
+          .rpc('create_company_trial', {
+            p_user_id: user!.id,
+            p_company_id: firstCompanyId
+          })
+
+        if (rpcError) {
+          throw new Error(rpcError.message || 'Failed to create trial')
+        }
+
+        router.push(`/data-room?company_id=${firstCompanyId}`)
         return
       }
 
-      const { data, error: rpcError } = await supabase
-        .rpc('create_company_trial', {
-          p_user_id: user.id,
-          p_company_id: targetCompanyId
-        })
+      if (targetCompanyId) {
+        const { data, error: rpcError } = await supabase
+          .rpc('create_company_trial', {
+            p_user_id: user!.id,
+            p_company_id: targetCompanyId
+          })
 
-      if (rpcError) {
-        throw new Error(rpcError.message || 'Failed to create trial')
+        if (rpcError) {
+          throw new Error(rpcError.message || 'Failed to create trial')
+        }
+
+        // Success - redirect to the company
+        router.push(`/data-room?company_id=${targetCompanyId}`)
       }
-
-      // Success - redirect to the company
-      router.push(`/data-room?company_id=${targetCompanyId}`)
     } catch (err: any) {
       console.error('Trial creation error:', err)
-      setError(err.message || 'Failed to start trial')
-    } finally {
+      setError(err.message || 'Failed to create trial')
       setIsStartingTrial(false)
     }
   }
@@ -234,6 +320,28 @@ function SubscribePageInner() {
     return (
       <div className="min-h-screen bg-primary-dark relative overflow-hidden">
         <SubtleCircuitBackground />
+        
+        {/* Back Button and Logout */}
+        <div className="relative z-10 px-4 sm:px-6 pt-4 flex items-center justify-between">
+          <Link
+            href="/data-room"
+            className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors font-light text-sm"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Data Room
+          </Link>
+          <button
+            onClick={handleSignOut}
+            className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors font-light text-sm"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Logout
+          </button>
+        </div>
         
         <div className="relative z-10 container mx-auto px-4 py-12">
           {/* Trial Banner */}
@@ -425,6 +533,28 @@ function SubscribePageInner() {
     <div className="min-h-screen bg-primary-dark relative overflow-hidden">
       <SubtleCircuitBackground />
       
+      {/* Back Button and Logout */}
+      <div className="relative z-10 px-4 sm:px-6 pt-4 flex items-center justify-between">
+        <Link
+          href={currentCompanyCount > 0 ? "/data-room" : "/onboarding"}
+          className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors font-light text-sm"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          {currentCompanyCount > 0 ? "Back to Data Room" : "Back to Onboarding"}
+        </Link>
+        <button
+          onClick={handleSignOut}
+          className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors font-light text-sm"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          Logout
+        </button>
+      </div>
+      
       <div className="relative z-10 container mx-auto px-4 py-12">
           {/* Header */}
           <div className="text-center mb-8">
@@ -476,8 +606,8 @@ function SubscribePageInner() {
                 </svg>
                 <span className="text-xl font-light text-white">Not ready to commit?</span>
               </div>
-              <p className="text-gray-400 mb-4 font-light">
-                Start with a <span className="text-gray-300 font-light">15-day free trial</span> — no credit card required.
+              <p className="text-gray-400 mb-2 font-light">
+                Start with a <span className="text-gray-300 font-light">15-day free trial</span> — verify with ₹2 payment (refunded within 24 hours).
                 {currentCompanyCount === 0 ? (
                   <> You'll be able to create your first company after starting the trial.</>
                 ) : selectedCompanyForSubscription ? (
@@ -485,6 +615,9 @@ function SubscribePageInner() {
                 ) : (
                   <> Enterprise trial covers all your companies.</>
                 )}
+              </p>
+              <p className="text-gray-500 text-xs mb-4 font-light">
+                A ₹2 verification charge will be made to verify your payment method. This amount will be automatically refunded within 24 hours.
               </p>
               <div className="flex items-center justify-center gap-3">
                 <button
@@ -538,7 +671,7 @@ function SubscribePageInner() {
             disabled={isStartingTrial}
             className="text-gray-500 hover:text-gray-400 text-sm underline transition-colors disabled:opacity-50"
           >
-            Skip for now and start free trial
+            Skip for now and start free trial (₹2 verification required)
           </button>
         </div>
       </div>

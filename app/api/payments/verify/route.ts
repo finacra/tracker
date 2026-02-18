@@ -55,7 +55,30 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .single()
 
-    if (paymentError || !payment) {
+    if (paymentError) {
+      console.error('[Payment Verify] Error fetching payment:', paymentError)
+      console.error('[Payment Verify] Order ID:', razorpay_order_id)
+      console.error('[Payment Verify] User ID:', user.id)
+      
+      // Try to find payment without user_id filter (for debugging)
+      const { data: allPayments } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('razorpay_order_id', razorpay_order_id)
+      
+      console.error('[Payment Verify] Payments found with order ID:', allPayments)
+      
+      return NextResponse.json(
+        { error: `Payment record not found: ${paymentError.message}` },
+        { status: 404 }
+      )
+    }
+
+    if (!payment) {
+      console.error('[Payment Verify] Payment is null')
+      console.error('[Payment Verify] Order ID:', razorpay_order_id)
+      console.error('[Payment Verify] User ID:', user.id)
+      
       return NextResponse.json(
         { error: 'Payment record not found' },
         { status: 404 }
@@ -83,7 +106,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create or update subscription
+    // If this is a trial verification payment, just verify and return
+    // The trial will be created separately via createTrialAfterVerification
+    if (payment.payment_type === 'trial_verification') {
+      return NextResponse.json({
+        success: true,
+        message: 'Trial verification payment confirmed',
+        payment_type: 'trial_verification',
+      })
+    }
+
+    // For regular subscription payments, create or update subscription
     const tierConfig = getTierById(payment.tier as any)
     if (!tierConfig) {
       return NextResponse.json(

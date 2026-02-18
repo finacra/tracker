@@ -538,7 +538,7 @@ export function useAnyCompanyAccess(): {
           }
         }
 
-        // Check if user has subscription for their owned companies
+        // Check if user has Enterprise subscription (user-level)
         const { data: subData } = await supabase
           .rpc('check_user_subscription', { target_user_id: user.id })
           .single()
@@ -546,7 +546,7 @@ export function useAnyCompanyAccess(): {
         const subInfo = subData as SubscriptionRPCResponse | null
 
         if (subInfo?.has_subscription) {
-          // User has subscription, all their owned companies are accessible
+          // User has Enterprise subscription, all their owned companies are accessible
           const { data: ownedCompanies } = await supabase
             .from('companies')
             .select('id')
@@ -556,6 +556,27 @@ export function useAnyCompanyAccess(): {
             for (const company of ownedCompanies) {
               if (!accessibleIds.includes(company.id)) {
                 accessibleIds.push(company.id)
+              }
+            }
+          }
+        } else {
+          // Check for company-level subscriptions (Starter/Professional)
+          const { data: ownedCompanies } = await supabase
+            .from('companies')
+            .select('id')
+            .eq('user_id', user.id)
+
+          if (ownedCompanies) {
+            for (const company of ownedCompanies) {
+              // Check if this specific company has a subscription
+              const { data: companySubData } = await supabase
+                .rpc('check_company_subscription', { p_company_id: company.id })
+                .single()
+              
+              if (companySubData && (companySubData as any).has_subscription) {
+                if (!accessibleIds.includes(company.id)) {
+                  accessibleIds.push(company.id)
+                }
               }
             }
           }

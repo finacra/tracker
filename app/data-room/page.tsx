@@ -12,7 +12,7 @@ import { uploadDocument, getCompanyDocuments, getDocumentTemplates, getDownloadU
 import { getRegulatoryRequirements, updateRequirementStatus, createRequirement, deleteRequirement, updateRequirement, sendDocumentsEmail, type RegulatoryRequirement } from '@/app/data-room/actions'
 import jsPDF from 'jspdf'
 import { useUserRole } from '@/hooks/useUserRole'
-import { useCompanyAccess } from '@/hooks/useCompanyAccess'
+import { useCompanyAccess, useAnyCompanyAccess } from '@/hooks/useCompanyAccess'
 import { enrichComplianceRequirements, type EnrichedComplianceData } from '@/app/data-room/actions-enrichment'
 import { showToast } from '@/components/Toast'
 import ToastContainer from '@/components/Toast'
@@ -73,6 +73,9 @@ function DataRoomPageInner() {
   
   // Check subscription/trial access for current company
   const { hasAccess, accessType, isLoading: accessLoading, trialDaysRemaining, isOwner, ownerSubscriptionExpired } = useCompanyAccess(currentCompany?.id || null)
+  
+  // Check if user has access to ANY company (for initial page load check)
+  const { hasAnyAccess, accessibleCompanyIds, isLoading: anyAccessLoading } = useAnyCompanyAccess()
 
   // Fetch all companies for the selector (owned + invited)
   useEffect(() => {
@@ -250,6 +253,58 @@ function DataRoomPageInner() {
     fetchCompanies()
     fetchTemplates()
   }, [user, supabase, authLoading, initialCompanyId])
+
+  // Check if user has access to ANY company - redirect if no access at all
+  useEffect(() => {
+    // Wait for all loading states to complete
+    if (anyAccessLoading || authLoading || isLoading) return
+    
+    // If no user, redirect to login
+    if (!user) {
+      router.push('/login')
+      return
+    }
+    
+    // If user has no companies at all, redirect to onboarding or subscribe
+    if (companies.length === 0 && !isLoading) {
+      console.log('[Access Check] User has no companies, checking subscription status')
+      
+      // Check if user has active subscription or trial
+      supabase.rpc('check_user_subscription', { target_user_id: user.id })
+        .single()
+        .then(({ data, error }) => {
+          if (!error && data) {
+            const subInfo = data as {
+              has_subscription: boolean
+              is_trial: boolean
+              trial_days_remaining: number
+            }
+            
+            // If user has active subscription or trial, redirect to onboarding to create company
+            if (subInfo.has_subscription || (subInfo.is_trial && subInfo.trial_days_remaining > 0)) {
+              console.log('[Access Check] User has subscription/trial but no companies, redirecting to onboarding')
+              router.push('/onboarding')
+            } else {
+              // No subscription/trial and no companies, redirect to subscribe
+              console.log('[Access Check] User has no subscription/trial and no companies, redirecting to subscribe')
+              router.push('/subscribe')
+            }
+          } else {
+            // Error checking subscription, redirect to subscribe
+            console.log('[Access Check] Error checking subscription, redirecting to subscribe')
+            router.push('/subscribe')
+          }
+        })
+      return
+    }
+    
+    // If user has companies but no access to any of them, redirect
+    if (companies.length > 0 && !hasAnyAccess && !anyAccessLoading) {
+      console.log('[Access Check] User has companies but no access to any, redirecting to subscribe')
+      router.push('/subscribe')
+      return
+    }
+  }, [companies.length, hasAnyAccess, anyAccessLoading, authLoading, isLoading, user, router, supabase])
 
   // Check access when company is selected - redirect if no access
   useEffect(() => {
@@ -1367,6 +1422,30 @@ function DataRoomPageInner() {
     { value: 'editor', label: 'Editor - Can view and edit' },
     { value: 'admin', label: 'Admin - Full access including invites' },
   ]
+
+  // Show loading while fetching companies or checking access
+  if (isLoading || anyAccessLoading || (authLoading && !user)) {
+    return (
+      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-400 text-sm">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // If no companies and access check is complete, show redirect message (redirect happens via useEffect)
+  if (companies.length === 0 && !isLoading && !anyAccessLoading && user) {
+    return (
+      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-400 text-sm">Redirecting...</p>
+        </div>
+      </div>
+    )
+  }
 
   // Show loading while checking access
   if (currentCompany && accessLoading) {

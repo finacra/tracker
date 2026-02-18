@@ -82,8 +82,26 @@ async function handlePaymentCaptured(payload: any, supabase: any) {
     })
     .eq('razorpay_order_id', order.id)
 
-  // Handle subscription creation/update
+  // Handle trial verification payments
   const notes = order.notes || {}
+  if (notes.type === 'trial_verification') {
+    // Schedule refund for 24 hours later
+    const refundScheduledAt = new Date()
+    refundScheduledAt.setHours(refundScheduledAt.getHours() + 24)
+    
+    await supabase
+      .from('payments')
+      .update({
+        refund_scheduled_at: refundScheduledAt.toISOString(),
+        refund_status: 'scheduled',
+      })
+      .eq('razorpay_order_id', order.id)
+    
+    console.log(`Trial verification payment captured. Refund scheduled for: ${refundScheduledAt.toISOString()}`)
+    return
+  }
+
+  // Handle subscription creation/update
   if (notes.user_id && notes.tier && notes.billing_cycle) {
     await createOrUpdateSubscription(
       notes.user_id,
