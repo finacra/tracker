@@ -115,8 +115,11 @@ export default function OnboardingPage() {
     return null
   }
 
-  // Check if user needs to subscribe first (no subscription at all)
-  if (!hasSubscription && currentCompanyCount === 0) {
+  // Check if user needs to subscribe first (no subscription or trial at all)
+  // Allow access if user has subscription OR trial
+  const hasActiveAccess = hasSubscription || (isTrial && trialDaysRemaining > 0)
+  
+  if (!hasActiveAccess && currentCompanyCount === 0) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
         <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-8 max-w-md text-center">
@@ -127,7 +130,7 @@ export default function OnboardingPage() {
           </div>
           <h1 className="text-2xl font-light text-white mb-4">Subscription Required</h1>
           <p className="text-gray-400 mb-6 font-light">
-            You need an active subscription to create companies. Start with a free 15-day trial!
+            You need an active subscription or trial to create companies. Start with a free 15-day trial!
           </p>
           <button
             onClick={() => router.push('/subscribe')}
@@ -140,8 +143,8 @@ export default function OnboardingPage() {
     )
   }
 
-  // Check if user has reached company limit
-  if (hasSubscription && !canCreateCompany) {
+  // Check if user has reached company limit (only check if they have active access)
+  if (hasActiveAccess && !canCreateCompany) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
         <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-8 max-w-md text-center">

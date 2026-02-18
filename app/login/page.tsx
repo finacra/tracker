@@ -75,12 +75,16 @@ function LoginPageInner() {
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
     try {
-      // Use returnTo if provided (deep linking), otherwise default to /subscribe
-      const nextPath = returnTo || '/subscribe'
+      // Don't set a default next path - let the callback determine the appropriate redirect
+      // based on whether user has companies or not
+      const redirectTo = returnTo 
+        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(returnTo)}`
+        : `${window.location.origin}/auth/callback`
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
+          redirectTo,
         },
       })
       

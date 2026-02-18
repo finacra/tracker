@@ -410,7 +410,8 @@ export function useUserSubscription(): {
         const subInfo = data as SubscriptionRPCResponse | null
 
         if (!rpcError && subInfo) {
-          setHasSubscription(subInfo.has_subscription)
+          // hasSubscription should be true if user has active subscription OR active trial
+          setHasSubscription(subInfo.has_subscription || (subInfo.is_trial && subInfo.trial_days_remaining > 0))
           setTier(subInfo.tier)
           setIsTrial(subInfo.is_trial)
           setTrialDaysRemaining(subInfo.trial_days_remaining)

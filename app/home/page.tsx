@@ -8,6 +8,10 @@ export default function HomePage() {
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null)
   const [clickedProduct, setClickedProduct] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const [showProductsDropdown, setShowProductsDropdown] = useState(false)
+  const [showFeaturesDropdown, setShowFeaturesDropdown] = useState(false)
+  const productsDropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const featuresDropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const graphicRefs = {
     compliance: useRef<HTMLDivElement>(null),
     vault: useRef<HTMLDivElement>(null),
@@ -17,6 +21,18 @@ export default function HomePage() {
     ai: useRef<HTMLDivElement>(null),
   }
   const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set())
+  
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (productsDropdownTimeoutRef.current) {
+        clearTimeout(productsDropdownTimeoutRef.current)
+      }
+      if (featuresDropdownTimeoutRef.current) {
+        clearTimeout(featuresDropdownTimeoutRef.current)
+      }
+    }
+  }, [])
   
   // Handle product click - set clicked product and scroll to graphic
   const handleProductClick = (productId: string) => {
@@ -268,30 +284,20 @@ export default function HomePage() {
   }
 
   const [solutionIndex, setSolutionIndex] = useState(0)
-  const [trackerIndex, setTrackerIndex] = useState(0)
-  const [onboardingIndex, setOnboardingIndex] = useState(0)
 
-  const handleSwipe = (section: 'solution' | 'tracker' | 'onboarding', totalCards: number, direction: 'left' | 'right') => {
+  const handleSwipe = (section: 'solution', totalCards: number, direction: 'left' | 'right') => {
     if (direction === 'left') {
       if (section === 'solution') {
         setSolutionIndex((prev) => Math.min(prev + 1, totalCards - 1))
-      } else if (section === 'tracker') {
-        setTrackerIndex((prev) => Math.min(prev + 1, totalCards - 1))
-      } else if (section === 'onboarding') {
-        setOnboardingIndex((prev) => Math.min(prev + 1, totalCards - 1))
       }
     } else {
       if (section === 'solution') {
         setSolutionIndex((prev) => Math.max(prev - 1, 0))
-      } else if (section === 'tracker') {
-        setTrackerIndex((prev) => Math.max(prev - 1, 0))
-      } else if (section === 'onboarding') {
-        setOnboardingIndex((prev) => Math.max(prev - 1, 0))
       }
     }
   }
 
-  const createTouchHandlers = (section: 'solution' | 'tracker' | 'onboarding', totalCards: number) => {
+  const createTouchHandlers = (section: 'solution', totalCards: number) => {
     let touchStartX = 0
     let touchStartY = 0
     let touchEndX = 0
@@ -545,12 +551,140 @@ export default function HomePage() {
             />
           </Link>
           <div className="hidden md:flex items-center gap-8">
-            <Link href="#products" className="text-gray-300 hover:text-white transition-colors font-light text-sm">
-              Products
-            </Link>
-            <Link href="#features" className="text-gray-300 hover:text-white transition-colors font-light text-sm">
-              Features
-            </Link>
+            {/* Products with Dropdown */}
+            <div 
+              className="relative"
+              onMouseEnter={() => {
+                if (productsDropdownTimeoutRef.current) {
+                  clearTimeout(productsDropdownTimeoutRef.current)
+                  productsDropdownTimeoutRef.current = null
+                }
+                setShowProductsDropdown(true)
+                setShowFeaturesDropdown(false)
+              }}
+              onMouseLeave={() => {
+                productsDropdownTimeoutRef.current = setTimeout(() => {
+                  setShowProductsDropdown(false)
+                }, 150)
+              }}
+            >
+              <Link 
+                href="#products" 
+                className="text-gray-300 hover:text-white transition-colors font-light text-sm flex items-center gap-1 py-2"
+                onClick={(e) => {
+                  e.preventDefault()
+                  document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' })
+                  setShowProductsDropdown(false)
+                }}
+              >
+                Products
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </Link>
+              {showProductsDropdown && (
+                <div 
+                  className="absolute top-full left-0 w-48 z-50"
+                  style={{ marginTop: '4px' }}
+                  onMouseEnter={() => {
+                    if (productsDropdownTimeoutRef.current) {
+                      clearTimeout(productsDropdownTimeoutRef.current)
+                      productsDropdownTimeoutRef.current = null
+                    }
+                    setShowProductsDropdown(true)
+                  }}
+                  onMouseLeave={() => {
+                    productsDropdownTimeoutRef.current = setTimeout(() => {
+                      setShowProductsDropdown(false)
+                    }, 150)
+                  }}
+                >
+                  <div className="bg-[#1a1a1a] border border-gray-800 rounded-lg shadow-xl overflow-hidden">
+                    <Link
+                      href="/compliance-tracker"
+                      className="block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-900/50 transition-colors font-light text-sm"
+                      onClick={() => {
+                        setShowProductsDropdown(false)
+                        if (productsDropdownTimeoutRef.current) {
+                          clearTimeout(productsDropdownTimeoutRef.current)
+                          productsDropdownTimeoutRef.current = null
+                        }
+                      }}
+                    >
+                      Compliance Tracker
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Features with Dropdown */}
+            <div 
+              className="relative"
+              onMouseEnter={() => {
+                if (featuresDropdownTimeoutRef.current) {
+                  clearTimeout(featuresDropdownTimeoutRef.current)
+                  featuresDropdownTimeoutRef.current = null
+                }
+                setShowFeaturesDropdown(true)
+                setShowProductsDropdown(false)
+              }}
+              onMouseLeave={() => {
+                featuresDropdownTimeoutRef.current = setTimeout(() => {
+                  setShowFeaturesDropdown(false)
+                }, 150)
+              }}
+            >
+              <Link 
+                href="#solution" 
+                className="text-gray-300 hover:text-white transition-colors font-light text-sm flex items-center gap-1 py-2"
+                onClick={(e) => {
+                  e.preventDefault()
+                  document.getElementById('solution')?.scrollIntoView({ behavior: 'smooth' })
+                  setShowFeaturesDropdown(false)
+                }}
+              >
+                Features
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </Link>
+              {showFeaturesDropdown && (
+                <div 
+                  className="absolute top-full left-0 w-48 z-50"
+                  style={{ marginTop: '4px' }}
+                  onMouseEnter={() => {
+                    if (featuresDropdownTimeoutRef.current) {
+                      clearTimeout(featuresDropdownTimeoutRef.current)
+                      featuresDropdownTimeoutRef.current = null
+                    }
+                    setShowFeaturesDropdown(true)
+                  }}
+                  onMouseLeave={() => {
+                    featuresDropdownTimeoutRef.current = setTimeout(() => {
+                      setShowFeaturesDropdown(false)
+                    }, 150)
+                  }}
+                >
+                  <div className="bg-[#1a1a1a] border border-gray-800 rounded-lg shadow-xl overflow-hidden">
+                    <Link
+                      href="/company-onboarding"
+                      className="block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-900/50 transition-colors font-light text-sm"
+                      onClick={() => {
+                        setShowFeaturesDropdown(false)
+                        if (featuresDropdownTimeoutRef.current) {
+                          clearTimeout(featuresDropdownTimeoutRef.current)
+                          featuresDropdownTimeoutRef.current = null
+                        }
+                      }}
+                    >
+                      Company Onboarding
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+            
             <Link href="#plans" className="text-gray-300 hover:text-white transition-colors font-light text-sm">
               Plans
             </Link>
@@ -710,9 +844,14 @@ export default function HomePage() {
                 <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
                   Compliance Tracker
                 </h3>
-                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light">
+                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
                   Track statutory and regulatory requirements across GST, Income Tax, RoC, payroll, and renewals with structured status management and due-date monitoring.
                 </p>
+                <Link href="/compliance-tracker">
+                  <button className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm">
+                    Learn More
+                  </button>
+                </Link>
                 </div>
                 {/* Mobile Graphic - Inline - Only show when active */}
                 {(clickedProduct === 'compliance' || hoveredProduct === 'compliance') && (
@@ -760,9 +899,14 @@ export default function HomePage() {
                 <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
                   Finacra Web Services <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
                 </h3>
-                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light">
+                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
                   Infrastructure layer that supports company onboarding, entity detection, compliance workflows, and administrative control.
                 </p>
+                <Link href="/company-onboarding">
+                  <button className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm">
+                    Learn More
+                  </button>
+                </Link>
               </div>
                 {/* Mobile Graphic - Inline - Only show when active */}
                 {(clickedProduct === 'services' || hoveredProduct === 'services') && (
@@ -1199,6 +1343,7 @@ export default function HomePage() {
 
       {/* The Finacra Solution Section */}
       <section
+        id="solution"
         data-animate-section="solution"
         className={`relative z-10 px-4 sm:px-6 pt-8 sm:pt-12 md:pt-24 pb-8 sm:pb-20 md:pb-32 border-t border-gray-800 ${visibleSections.has('solution') ? 'section-visible' : 'section-hidden'}`}
       >
@@ -1240,7 +1385,9 @@ export default function HomePage() {
               style={{ transitionDelay: visibleSections.has('solution') ? '0.3s' : '0s' }}
             >
               <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Companies</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">
+                  Companies
+                </div>
                 <p className="text-gray-400 font-light text-xs sm:text-sm">Multi-entity management</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
@@ -1252,6 +1399,13 @@ export default function HomePage() {
                   <div className="text-xs text-gray-500 uppercase mb-2 font-light">Company Profiles</div>
                   <div className="text-white text-sm font-light">Auto-fill company details from MCA, track directors, and maintain comprehensive entity records.</div>
                 </div>
+              </div>
+              <div className="mt-4">
+                <Link href="/company-onboarding">
+                  <button className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm">
+                    Learn More
+                  </button>
+                </Link>
               </div>
               {/* Company Management UI Preview */}
               <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
@@ -1343,7 +1497,9 @@ export default function HomePage() {
               style={{ transitionDelay: visibleSections.has('solution') ? '0.5s' : '0s' }}
             >
               <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Compliance</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">
+                  Compliance
+                </div>
                 <p className="text-gray-400 font-light text-xs sm:text-sm">Regulatory tracking</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
@@ -1355,6 +1511,13 @@ export default function HomePage() {
                   <div className="text-xs text-gray-500 uppercase mb-2 font-light">Status Management</div>
                   <div className="text-white text-sm font-light">Track filing status, penalty risks, and compliance health with automated alerts and reminders.</div>
                 </div>
+              </div>
+              <div className="mt-4">
+                <Link href="/compliance-tracker">
+                  <button className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm">
+                    Learn More
+                  </button>
+                </Link>
               </div>
               {/* Compliance Tracker UI Preview */}
               <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
@@ -1403,7 +1566,9 @@ export default function HomePage() {
               style={{ transitionDelay: visibleSections.has('solution') ? '0.3s' : '0s' }}
             >
               <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Companies</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">
+                  Companies
+                </div>
                 <p className="text-gray-400 font-light text-xs sm:text-sm">Multi-entity management</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
@@ -1415,6 +1580,13 @@ export default function HomePage() {
                   <div className="text-xs text-gray-500 uppercase mb-2 font-light">Company Profiles</div>
                   <div className="text-white text-sm font-light">Auto-fill company details from MCA, track directors, and maintain comprehensive entity records.</div>
                 </div>
+              </div>
+              <div className="mt-4">
+                <Link href="/company-onboarding">
+                  <button className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm">
+                    Learn More
+                  </button>
+                </Link>
               </div>
               <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
                 <div className="flex items-center justify-between mb-3">
@@ -1500,7 +1672,9 @@ export default function HomePage() {
               style={{ transitionDelay: visibleSections.has('solution') ? '0.5s' : '0s' }}
             >
               <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Compliance</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">
+                  Compliance
+                </div>
                 <p className="text-gray-400 font-light text-xs sm:text-sm">Regulatory tracking</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
@@ -1512,6 +1686,13 @@ export default function HomePage() {
                   <div className="text-xs text-gray-500 uppercase mb-2 font-light">Status Management</div>
                   <div className="text-white text-sm font-light">Track filing status, penalty risks, and compliance health with automated alerts and reminders.</div>
                 </div>
+              </div>
+              <div className="mt-4">
+                <Link href="/compliance-tracker">
+                  <button className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm">
+                    Learn More
+                  </button>
+                </Link>
               </div>
               <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
                 <div className="flex items-center justify-between mb-3">
@@ -1551,948 +1732,6 @@ export default function HomePage() {
           <p className="text-lg text-gray-400 mt-16 text-center font-light">
             From onboarding to tracking to execution all in one place.
           </p>
-        </div>
-      </section>
-
-          {/* Features Section */}
-      <section 
-        id="features" 
-        data-animate-section="features"
-        className={`relative z-10 px-4 sm:px-6 py-8 sm:py-20 md:py-32 border-t border-gray-800 ${visibleSections.has('features') ? 'section-visible' : 'section-hidden'}`}
-      >
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-4 sm:mb-6 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('features') ? 1 : 0 }}>
-            Introducing our Compliance Tracker
-          </h2>
-          <p className="text-base sm:text-lg md:text-xl text-gray-400 mb-4 sm:mb-12 md:mb-16 text-center font-light px-4">
-            Move from scattered tracking to structured financial oversight.
-          </p>
-
-          {/* Mobile: Dot Indicators */}
-          <div className="flex md:hidden justify-center gap-2 mb-4">
-            {[0, 1, 2, 3, 4].map((index) => (
-              <button
-                key={index}
-                onClick={() => setTrackerIndex(index)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  trackerIndex === index ? 'bg-white w-6' : 'bg-gray-600'
-                }`}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
-          </div>
-
-          {/* Mobile: Carousel Container */}
-          <div 
-            className="md:hidden overflow-hidden max-w-6xl mx-auto px-2"
-            {...createTouchHandlers('tracker', 5)}
-          >
-            <div 
-              className="flex transition-transform duration-300 ease-in-out"
-              style={{ transform: `translateX(-${trackerIndex * 100}%)` }}
-            >
-            {/* Business Impact Visibility */}
-            <div className="w-full flex-shrink-0">
-              <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-4 sm:p-6 md:p-8 min-h-[350px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
-              <div className="mb-3 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Business Impact Visibility</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Understand compliance status across categories</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Category Coverage</div>
-                  <div className="text-white text-sm font-light">Track compliance across Income Tax, GST, Payroll, RoC, and Renewals in one unified view.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Status Overview</div>
-                  <div className="text-white text-sm font-light">Get real-time visibility into compliance health across all regulatory requirements.</div>
-                </div>
-              </div>
-              {/* UI Preview */}
-              <div className="mt-4 sm:mt-6 bg-[#0f0f0f] rounded-lg p-3 sm:p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Categories</div>
-                  <div className="flex gap-1">
-                    <div className="w-1.5 h-1.5 bg-blue-500/50 rounded-full"></div>
-                    <div className="w-1.5 h-1.5 bg-green-500/50 rounded-full"></div>
-                    <div className="w-1.5 h-1.5 bg-yellow-500/50 rounded-full"></div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Income Tax</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">12 active • 3 pending</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">GST</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">8 active • 2 overdue</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
-                    <div className="text-xs text-white font-light">RoC</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">5 active • 1 pending</div>
-                  </div>
-                </div>
-              </div>
-              </div>
-            </div>
-
-            {/* Automated Due-Date Tracking */}
-            <div className="w-full flex-shrink-0">
-              <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-4 sm:p-6 md:p-8 min-h-[350px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
-              <div className="mb-3 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Automated Due-Date Tracking</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Monitor tasks and deadlines</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Task Monitoring</div>
-                  <div className="text-white text-sm font-light">Automatically track upcoming tasks, pending items, and overdue compliance requirements.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Smart Alerts</div>
-                  <div className="text-white text-sm font-light">Receive timely notifications before deadlines to ensure nothing falls through the cracks.</div>
-                </div>
-              </div>
-              {/* UI Preview */}
-              <div className="mt-4 sm:mt-6 bg-[#0f0f0f] rounded-lg p-3 sm:p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Upcoming Tasks</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">TDS Payment</div>
-                      <div className="text-[10px] text-gray-400">7 days</div>
-                    </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Due: 25 Jan 2025</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">GSTR-1 Filing</div>
-                      <div className="text-[10px] text-gray-400">14 days</div>
-                    </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Due: 1 Feb 2025</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">AOC-4 Filing</div>
-                      <div className="text-[10px] text-red-400">Overdue</div>
-                    </div>
-                    <div className="text-[10px] text-red-400 mt-0.5">Due: 15 Jan 2025</div>
-                  </div>
-                </div>
-              </div>
-              </div>
-            </div>
-
-            {/* Penalty Risk Awareness */}
-            <div className="w-full flex-shrink-0">
-              <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-4 sm:p-6 md:p-8 min-h-[350px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
-              <div className="mb-3 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Penalty Risk Awareness</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Identify risks before they escalate</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Risk Detection</div>
-                  <div className="text-white text-sm font-light">Identify delays and compliance gaps before they escalate into penalties or legal issues.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Penalty Calculation</div>
-                  <div className="text-white text-sm font-light">Automatically calculate potential penalties based on delay periods and regulatory rules.</div>
-                </div>
-              </div>
-              {/* UI Preview */}
-              <div className="mt-4 sm:mt-6 bg-[#0f0f0f] rounded-lg p-3 sm:p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Risk Alerts</div>
-                  <div className="flex gap-1">
-                    <div className="w-1.5 h-1.5 bg-red-500/50 rounded-full"></div>
-                    <div className="w-1.5 h-1.5 bg-yellow-500/50 rounded-full"></div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-red-800/30">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">AOC-4 Filing</div>
-                      <div className="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px]">High</div>
-                    </div>
-                    <div className="text-[10px] text-red-400 mt-0.5">₹15,000 penalty risk</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-yellow-800/30">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">GSTR-3B</div>
-                      <div className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-[10px]">Medium</div>
-                    </div>
-                    <div className="text-[10px] text-yellow-400 mt-0.5">₹5,000 penalty risk</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">TDS Return</div>
-                      <div className="px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded text-[10px]">Low</div>
-                    </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">On track</div>
-                  </div>
-                </div>
-              </div>
-              </div>
-            </div>
-
-            {/* Role-Based Access */}
-            <div className="w-full flex-shrink-0">
-              <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-4 sm:p-6 md:p-8 min-h-[350px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
-              <div className="mb-3 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Role-Based Access</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Structured permissions and control</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Permission Levels</div>
-                  <div className="text-white text-sm font-light">Structured permissions across Viewer, Editor, Admin, and Superadmin roles.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Access Control</div>
-                  <div className="text-white text-sm font-light">Granular control over who can view, edit, or manage compliance data and documents.</div>
-                </div>
-              </div>
-              {/* UI Preview */}
-              <div className="mt-4 sm:mt-6 bg-[#0f0f0f] rounded-lg p-3 sm:p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Team Roles</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">Admin</div>
-                      <div className="text-[10px] text-blue-400">Full Access</div>
-                    </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">2 members</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">Editor</div>
-                      <div className="text-[10px] text-green-400">Edit Access</div>
-                    </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">3 members</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">Viewer</div>
-                      <div className="text-[10px] text-gray-400">Read Only</div>
-                    </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">1 member</div>
-                  </div>
-                </div>
-              </div>
-              </div>
-            </div>
-
-            {/* Multi-Company Management */}
-            <div className="w-full flex-shrink-0">
-              <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 md:col-span-2">
-              <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Multi-Company Management</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Unified dashboard for all entities</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Unified Dashboard</div>
-                  <div className="text-white text-sm font-light">Operate across multiple entities under one dashboard with seamless switching.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Entity Switching</div>
-                  <div className="text-white text-sm font-light">Quickly switch between companies and maintain separate compliance tracking for each entity.</div>
-                </div>
-              </div>
-              {/* UI Preview */}
-              <div className="mt-4 sm:mt-6 bg-[#0f0f0f] rounded-lg p-3 sm:p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Active Companies</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Acme Corp Pvt Ltd</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">15 active compliances</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Tech Solutions LLP</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">8 active compliances</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
-                    <div className="text-xs text-white font-light">Global Industries Ltd</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">12 active compliances</div>
-                  </div>
-                </div>
-              </div>
-              </div>
-            </div>
-            </div>
-          </div>
-          
-          {/* Desktop: Grid */}
-          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto px-4 sm:px-0">
-            {/* Business Impact Visibility */}
-            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
-              <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Business Impact Visibility</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Understand compliance status across categories</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Category Coverage</div>
-                  <div className="text-white text-sm font-light">Track compliance across Income Tax, GST, Payroll, RoC, and Renewals in one unified view.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Status Overview</div>
-                  <div className="text-white text-sm font-light">Get real-time visibility into compliance health across all regulatory requirements.</div>
-                </div>
-              </div>
-              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Categories</div>
-                  <div className="flex gap-1">
-                    <div className="w-1.5 h-1.5 bg-blue-500/50 rounded-full"></div>
-                    <div className="w-1.5 h-1.5 bg-green-500/50 rounded-full"></div>
-                    <div className="w-1.5 h-1.5 bg-yellow-500/50 rounded-full"></div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Income Tax</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">12 active • 3 pending</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">GST</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">8 active • 2 overdue</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
-                    <div className="text-xs text-white font-light">RoC</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">5 active • 1 pending</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Automated Due-Date Tracking */}
-            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
-              <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Automated Due-Date Tracking</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Monitor tasks and deadlines</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Task Monitoring</div>
-                  <div className="text-white text-sm font-light">Automatically track upcoming tasks, pending items, and overdue compliance requirements.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Smart Alerts</div>
-                  <div className="text-white text-sm font-light">Receive timely notifications before deadlines to ensure nothing falls through the cracks.</div>
-                </div>
-              </div>
-              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Upcoming Tasks</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">TDS Payment</div>
-                      <div className="text-[10px] text-gray-400">7 days</div>
-                    </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Due: 25 Jan 2025</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">GSTR-1 Filing</div>
-                      <div className="text-[10px] text-gray-400">14 days</div>
-                    </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Due: 1 Feb 2025</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">AOC-4 Filing</div>
-                      <div className="text-[10px] text-red-400">Overdue</div>
-                    </div>
-                    <div className="text-[10px] text-red-400 mt-0.5">Due: 15 Jan 2025</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Penalty Risk Awareness */}
-            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
-              <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Penalty Risk Awareness</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Identify risks before they escalate</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Risk Detection</div>
-                  <div className="text-white text-sm font-light">Identify delays and compliance gaps before they escalate into penalties or legal issues.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Penalty Calculation</div>
-                  <div className="text-white text-sm font-light">Automatically calculate potential penalties based on delay periods and regulatory rules.</div>
-                </div>
-              </div>
-              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Risk Alerts</div>
-                  <div className="flex gap-1">
-                    <div className="w-1.5 h-1.5 bg-red-500/50 rounded-full"></div>
-                    <div className="w-1.5 h-1.5 bg-yellow-500/50 rounded-full"></div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-red-800/30">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">AOC-4 Filing</div>
-                      <div className="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px]">High</div>
-                    </div>
-                    <div className="text-[10px] text-red-400 mt-0.5">₹15,000 penalty risk</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-yellow-800/30">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">GSTR-3B</div>
-                      <div className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-[10px]">Medium</div>
-                    </div>
-                    <div className="text-[10px] text-yellow-400 mt-0.5">₹5,000 penalty risk</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">TDS Return</div>
-                      <div className="px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded text-[10px]">Low</div>
-                    </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">On track</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Role-Based Access */}
-            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
-              <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Role-Based Access</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Structured permissions and control</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Permission Levels</div>
-                  <div className="text-white text-sm font-light">Structured permissions across Viewer, Editor, Admin, and Superadmin roles.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Access Control</div>
-                  <div className="text-white text-sm font-light">Granular control over who can view, edit, or manage compliance data and documents.</div>
-                </div>
-              </div>
-              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Team Roles</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">Admin</div>
-                      <div className="text-[10px] text-blue-400">Full Access</div>
-                    </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">2 members</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">Editor</div>
-                      <div className="text-[10px] text-green-400">Edit Access</div>
-                    </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">3 members</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">Viewer</div>
-                      <div className="text-[10px] text-gray-400">Read Only</div>
-                    </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">1 member</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Multi-Company Management */}
-            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 md:col-span-2">
-              <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Multi-Company Management</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Unified dashboard for all entities</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Unified Dashboard</div>
-                  <div className="text-white text-sm font-light">Operate across multiple entities under one dashboard with seamless switching.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Entity Switching</div>
-                  <div className="text-white text-sm font-light">Quickly switch between companies and maintain separate compliance tracking for each entity.</div>
-                </div>
-              </div>
-              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Active Companies</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Acme Corp Pvt Ltd</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">15 active compliances</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Tech Solutions LLP</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">8 active compliances</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
-                    <div className="text-xs text-white font-light">Global Industries Ltd</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">12 active compliances</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Company Onboarding Engine Section */}
-      <section
-        data-animate-section="onboarding"
-        className={`relative z-10 px-4 sm:px-6 py-8 sm:py-20 md:py-32 border-t border-gray-800 ${visibleSections.has('onboarding') ? 'section-visible' : 'section-hidden'}`}
-      >
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-4 sm:mb-12 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('onboarding') ? 1 : 0 }}>
-            Company Onboarding Engine
-          </h2>
-          
-          {/* Mobile: Dot Indicators */}
-          <div className="flex md:hidden justify-center gap-2 mb-4">
-            {[0, 1, 2, 3, 4].map((index) => (
-              <button
-                key={index}
-                onClick={() => setOnboardingIndex(index)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  onboardingIndex === index ? 'bg-white w-6' : 'bg-gray-600'
-                }`}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
-          </div>
-
-          {/* Mobile: Carousel Container */}
-          <div 
-            className="md:hidden overflow-hidden max-w-6xl mx-auto px-2"
-            {...createTouchHandlers('onboarding', 5)}
-          >
-            <div 
-              className="flex transition-transform duration-300 ease-in-out"
-              style={{ transform: `translateX(-${onboardingIndex * 100}%)` }}
-            >
-            {/* CIN Verification Card */}
-            <div className="w-full flex-shrink-0">
-              <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-4 sm:p-6 md:p-8 min-h-[350px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
-              <div className="mb-3 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">CIN Verification</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">MCA auto-fill</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Auto-Fill</div>
-                  <div className="text-white text-sm font-light">Automatically fetch and populate company details from MCA database using CIN.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Verification</div>
-                  <div className="text-white text-sm font-light">Verify company authenticity and retrieve comprehensive registration information.</div>
-                </div>
-              </div>
-              {/* UI Preview */}
-              <div className="mt-4 sm:mt-6 bg-[#0f0f0f] rounded-lg p-3 sm:p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Company Details</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">CIN: U12345MH2020PTC</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Status: Verified</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Company Name</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Auto-filled from MCA</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
-                    <div className="text-xs text-white font-light">Registration Date</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">15 Jan 2020</div>
-                  </div>
-                </div>
-              </div>
-              </div>
-            </div>
-
-            {/* DIN Verification Card */}
-            <div className="w-full flex-shrink-0">
-              <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-4 sm:p-6 md:p-8 min-h-[350px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
-              <div className="mb-3 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">DIN Verification</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Director identification</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Director Details</div>
-                  <div className="text-white text-sm font-light">Verify director DIN and automatically fetch director information from MCA records.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Identity Check</div>
-                  <div className="text-white text-sm font-light">Ensure director authenticity and validate their association with the company.</div>
-                </div>
-              </div>
-              {/* UI Preview */}
-              <div className="mt-4 sm:mt-6 bg-[#0f0f0f] rounded-lg p-3 sm:p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Directors</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">John Doe</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">DIN: 01234567</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Jane Smith</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">DIN: 01234568</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
-                    <div className="text-xs text-white font-light">Robert Brown</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">DIN: 01234569</div>
-                  </div>
-                </div>
-              </div>
-              </div>
-            </div>
-
-            {/* Auto-Detection Card */}
-            <div className="w-full flex-shrink-0">
-              <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-4 sm:p-6 md:p-8 min-h-[350px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
-              <div className="mb-3 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Auto-Detection</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Company type & industry</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Type Detection</div>
-                  <div className="text-white text-sm font-light">Automatically identify company type (Pvt Ltd, LLP, Public Ltd) from registration data.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Industry Classification</div>
-                  <div className="text-white text-sm font-light">Detect and classify industry category based on business activities and registration details.</div>
-                </div>
-              </div>
-              {/* UI Preview */}
-              <div className="mt-4 sm:mt-6 bg-[#0f0f0f] rounded-lg p-3 sm:p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Classification</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Type: Private Limited</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Detected from CIN</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Industry: Technology</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Software Development</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
-                    <div className="text-xs text-white font-light">Category: IT Services</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Auto-classified</div>
-                  </div>
-                </div>
-              </div>
-              </div>
-            </div>
-
-            {/* Director Management Card */}
-            <div className="w-full flex-shrink-0">
-              <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-4 sm:p-6 md:p-8 min-h-[350px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
-              <div className="mb-3 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Director Management</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Comprehensive director tracking</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Director Profiles</div>
-                  <div className="text-white text-sm font-light">Maintain detailed director information including designation, appointment date, and contact details.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Role Assignment</div>
-                  <div className="text-white text-sm font-light">Assign and track director roles, responsibilities, and designations within the company structure.</div>
-                </div>
-              </div>
-              {/* UI Preview */}
-              <div className="mt-4 sm:mt-6 bg-[#0f0f0f] rounded-lg p-3 sm:p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Directors</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Managing Director</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">John Doe • Active</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Director</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Jane Smith • Active</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
-                    <div className="text-xs text-white font-light">Director</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Robert Brown • Active</div>
-                  </div>
-                </div>
-              </div>
-              </div>
-            </div>
-
-            {/* Entity Structuring Card */}
-            <div className="w-full flex-shrink-0">
-              <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 md:col-span-2">
-              <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Entity Structuring</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Organize company hierarchy</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Hierarchy Management</div>
-                  <div className="text-white text-sm font-light">Create and manage complex entity structures with parent-subsidiary relationships and group hierarchies.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Relationship Mapping</div>
-                  <div className="text-white text-sm font-light">Visualize and track relationships between entities, subsidiaries, and associated companies.</div>
-                </div>
-              </div>
-              {/* UI Preview */}
-              <div className="mt-4 sm:mt-6 bg-[#0f0f0f] rounded-lg p-3 sm:p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Entity Structure</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Parent Company</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Acme Holdings Pvt Ltd</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 ml-4">
-                    <div className="text-xs text-white font-light">Subsidiary</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Acme Corp Pvt Ltd</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 ml-4 opacity-60">
-                    <div className="text-xs text-white font-light">Subsidiary</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Tech Solutions LLP</div>
-                  </div>
-                </div>
-              </div>
-              </div>
-            </div>
-            </div>
-          </div>
-          
-          {/* Desktop: Grid */}
-          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto px-4 sm:px-0">
-            {/* CIN Verification Card */}
-            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
-              <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">CIN Verification</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">MCA auto-fill</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Auto-Fill</div>
-                  <div className="text-white text-sm font-light">Automatically fetch and populate company details from MCA database using CIN.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Verification</div>
-                  <div className="text-white text-sm font-light">Verify company authenticity and retrieve comprehensive registration information.</div>
-                </div>
-              </div>
-              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Company Details</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">CIN: U12345MH2020PTC</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Status: Verified</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Company Name</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Auto-filled from MCA</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
-                    <div className="text-xs text-white font-light">Registration Date</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">15 Jan 2020</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* DIN Verification Card */}
-            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
-              <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">DIN Verification</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Director identification</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Director Details</div>
-                  <div className="text-white text-sm font-light">Verify director DIN and automatically fetch director information from MCA records.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Identity Check</div>
-                  <div className="text-white text-sm font-light">Ensure director authenticity and validate their association with the company.</div>
-                </div>
-              </div>
-              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Directors</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">John Doe</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">DIN: 01234567</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Jane Smith</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">DIN: 01234568</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
-                    <div className="text-xs text-white font-light">Robert Brown</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">DIN: 01234569</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Auto-Detection Card */}
-            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
-              <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Auto-Detection</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Company type & industry</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Type Detection</div>
-                  <div className="text-white text-sm font-light">Automatically identify company type (Pvt Ltd, LLP, Public Ltd) from registration data.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Industry Classification</div>
-                  <div className="text-white text-sm font-light">Detect and classify industry category based on business activities and registration details.</div>
-                </div>
-              </div>
-              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Classification</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Type: Private Limited</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Detected from CIN</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Industry: Technology</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Software Development</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
-                    <div className="text-xs text-white font-light">Category: IT Services</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Auto-classified</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Director Management Card */}
-            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300">
-              <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Director Management</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Comprehensive director tracking</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Director Profiles</div>
-                  <div className="text-white text-sm font-light">Maintain detailed director information including designation, appointment date, and contact details.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Role Assignment</div>
-                  <div className="text-white text-sm font-light">Assign and track director roles, responsibilities, and designations within the company structure.</div>
-                </div>
-              </div>
-              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Directors</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Managing Director</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">John Doe • Active</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Director</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Jane Smith • Active</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
-                    <div className="text-xs text-white font-light">Director</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Robert Brown • Active</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Entity Structuring Card */}
-            <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 md:col-span-2">
-              <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Entity Structuring</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Organize company hierarchy</p>
-              </div>
-              <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Hierarchy Management</div>
-                  <div className="text-white text-sm font-light">Create and manage complex entity structures with parent-subsidiary relationships and group hierarchies.</div>
-                </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Relationship Mapping</div>
-                  <div className="text-white text-sm font-light">Visualize and track relationships between entities, subsidiaries, and associated companies.</div>
-                </div>
-              </div>
-              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Entity Structure</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
-                    <div className="text-xs text-white font-light">Parent Company</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Acme Holdings Pvt Ltd</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 ml-4">
-                    <div className="text-xs text-white font-light">Subsidiary</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Acme Corp Pvt Ltd</div>
-                  </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 ml-4 opacity-60">
-                    <div className="text-xs text-white font-light">Subsidiary</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Tech Solutions LLP</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 

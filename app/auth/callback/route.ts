@@ -32,8 +32,33 @@ export async function GET(request: Request) {
       
       const hasCompanies = (ownedCompanies && ownedCompanies.length > 0) || (userRoles && userRoles.length > 0)
       
-      // Determine redirect destination based on whether user has companies
-      let next = hasCompanies ? '/data-room' : '/onboarding'
+      // Determine redirect destination
+      let next = '/data-room' // Default to data-room
+      
+      if (!hasCompanies) {
+        // Check if user has active subscription or trial
+        // Users with active trials should be able to create companies
+        const { data: subData, error: subError } = await supabase
+          .rpc('check_user_subscription', { target_user_id: data.session.user.id })
+          .single()
+        
+        const subInfo = subData as {
+          has_subscription: boolean
+          is_trial: boolean
+          trial_days_remaining: number
+          tier: string
+        } | null
+        
+        // Check for active subscription OR active trial (trial days remaining > 0)
+        const hasActiveSubscription = subInfo?.has_subscription === true || 
+                                     (subInfo?.is_trial === true && (subInfo?.trial_days_remaining ?? 0) > 0)
+        
+        if (hasActiveSubscription) {
+          next = '/onboarding'
+        } else {
+          next = '/subscribe'
+        }
+      }
       
       // If "next" is explicitly provided in params, honor invite-accept flows even for existing users.
       if (explicitNext && explicitNext.startsWith('/')) {
