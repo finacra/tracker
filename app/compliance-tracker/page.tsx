@@ -479,8 +479,8 @@ export default function ComplianceTrackerPage() {
             </div>
           </div>
 
-          {/* Second Row - Centered Two Cards */}
-          <div className="hidden md:flex md:justify-center md:items-stretch md:gap-4 md:gap-6 w-full mt-4 sm:mt-6">
+          {/* Second Row - Left Aligned Two Cards */}
+          <div className="hidden md:flex md:justify-start md:items-stretch md:gap-4 md:gap-6 w-full mt-4 sm:mt-6">
             {/* Role-Based Access */}
             <div className="bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 w-full max-w-[400px]">
               <div className="mb-4 sm:mb-6">

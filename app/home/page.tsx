@@ -781,9 +781,7 @@ export default function HomePage() {
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-8 sm:mb-12 md:mb-16 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('products') ? 1 : 0 }}>
             Our Products
           </h2>
-          <div className="grid md:grid-cols-2 gap-8 sm:gap-12 md:gap-16 items-start">
-            {/* Left: Text Content */}
-            <div className="space-y-0">
+          <div className="space-y-0">
               {/* Compliance Tracker */}
               <div
                 className={`border-b border-gray-800 pb-12 mb-12 cursor-pointer transition-all duration-300 ${
@@ -796,23 +794,54 @@ export default function HomePage() {
                 onMouseLeave={() => setHoveredProduct(null)}
                 onClick={() => handleProductClick('compliance')}
               >
-                <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
-                  Compliance Tracker
-                </h3>
-                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
-                  Track statutory and regulatory requirements across GST, Income Tax, RoC, payroll, and renewals with structured status management and due-date monitoring.
-                </p>
-                {/* Mobile Graphic - Inline - Only show when active */}
-                {(clickedProduct === 'compliance' || hoveredProduct === 'compliance') && (
-                  <div ref={graphicRefs.compliance} className="md:hidden mb-4">
-                    {renderProductGraphic('compliance')}
+                <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
+                      Compliance Tracker
+                    </h3>
+                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
+                      Track statutory and regulatory requirements across GST, Income Tax, RoC, payroll, and renewals with structured status management and due-date monitoring.
+                    </p>
+                    {/* Mobile Graphic - Inline - Only show when active */}
+                    {(clickedProduct === 'compliance' || hoveredProduct === 'compliance') && (
+                      <div ref={graphicRefs.compliance} className="md:hidden mb-4">
+                        {renderProductGraphic('compliance')}
+                      </div>
+                    )}
+                    <Link href="/compliance-tracker">
+                      <button className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm">
+                        Learn More
+                      </button>
+                    </Link>
                   </div>
-                )}
-                <Link href="/compliance-tracker">
-                  <button className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm">
-                    Learn More
-                  </button>
-                </Link>
+                  {/* Desktop Graphic - Beside description */}
+                  <div className="hidden md:flex relative h-[300px] sm:h-[400px] items-center justify-center">
+                    {(clickedProduct === 'compliance' || hoveredProduct === 'compliance') && (
+                      <div className="w-full h-full">
+                        <div className="relative h-[300px] sm:h-[400px] flex items-center justify-center">
+                          <svg
+                            className="w-full h-full"
+                            viewBox="0 0 1000 700"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <defs>
+                              <linearGradient id={`boxGrad-desktop-compliance`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.15" />
+                                <stop offset="100%" stopColor="#888888" stopOpacity="0.25" />
+                              </linearGradient>
+                              <linearGradient id={`boxGradActive-desktop-compliance`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.25" />
+                                <stop offset="100%" stopColor="#ffffff" stopOpacity="0.35" />
+                              </linearGradient>
+                            </defs>
+                            {renderGraphicContent('compliance', true, 'desktop-compliance')}
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Document Vault */}
@@ -827,18 +856,49 @@ export default function HomePage() {
                 onMouseLeave={() => setHoveredProduct(null)}
                 onClick={() => handleProductClick('vault')}
               >
-                <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
-                  Document Vault
-                </h3>
-                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
-                  Secure storage and structured organization of financial and legal documents with role-based access.
-                </p>
-                {/* Mobile Graphic - Inline - Only show when active */}
-                {(clickedProduct === 'vault' || hoveredProduct === 'vault') && (
-                  <div ref={graphicRefs.vault} className="md:hidden mb-4">
-                    {renderProductGraphic('vault')}
+                <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
+                      Document Vault
+                    </h3>
+                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
+                      Secure storage and structured organization of financial and legal documents with role-based access.
+                    </p>
+                    {/* Mobile Graphic - Inline - Only show when active */}
+                    {(clickedProduct === 'vault' || hoveredProduct === 'vault') && (
+                      <div ref={graphicRefs.vault} className="md:hidden mb-4">
+                        {renderProductGraphic('vault')}
+                      </div>
+                    )}
                   </div>
-                )}
+                  {/* Desktop Graphic - Beside description */}
+                  <div className="hidden md:flex relative h-[300px] sm:h-[400px] items-center justify-center">
+                    {(clickedProduct === 'vault' || hoveredProduct === 'vault') && (
+                      <div className="w-full h-full">
+                        <div className="relative h-[300px] sm:h-[400px] flex items-center justify-center">
+                          <svg
+                            className="w-full h-full"
+                            viewBox="0 0 1000 700"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <defs>
+                              <linearGradient id={`boxGrad-desktop-vault`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.15" />
+                                <stop offset="100%" stopColor="#888888" stopOpacity="0.25" />
+                              </linearGradient>
+                              <linearGradient id={`boxGradActive-desktop-vault`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.25" />
+                                <stop offset="100%" stopColor="#ffffff" stopOpacity="0.35" />
+                              </linearGradient>
+                            </defs>
+                            {renderGraphicContent('vault', true, 'desktop-vault')}
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Finacra Web Services */}
@@ -853,23 +913,54 @@ export default function HomePage() {
                 onMouseLeave={() => setHoveredProduct(null)}
                 onClick={() => handleProductClick('services')}
               >
-                <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
-                  Finacra Web Services <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
-                </h3>
-                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
-                  Infrastructure layer that supports company onboarding, entity detection, compliance workflows, and administrative control.
-                </p>
-                {/* Mobile Graphic - Inline - Only show when active */}
-                {(clickedProduct === 'services' || hoveredProduct === 'services') && (
-                  <div ref={graphicRefs.services} className="md:hidden mb-4">
-                    {renderProductGraphic('services')}
+                <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
+                      Finacra Web Services <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
+                    </h3>
+                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
+                      Infrastructure layer that supports company onboarding, entity detection, compliance workflows, and administrative control.
+                    </p>
+                    {/* Mobile Graphic - Inline - Only show when active */}
+                    {(clickedProduct === 'services' || hoveredProduct === 'services') && (
+                      <div ref={graphicRefs.services} className="md:hidden mb-4">
+                        {renderProductGraphic('services')}
+                      </div>
+                    )}
+                    <Link href="/company-onboarding">
+                      <button className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm">
+                        Learn More
+                      </button>
+                    </Link>
                   </div>
-                )}
-                <Link href="/company-onboarding">
-                  <button className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm">
-                    Learn More
-                  </button>
-                </Link>
+                  {/* Desktop Graphic - Beside description */}
+                  <div className="hidden md:flex relative h-[300px] sm:h-[400px] items-center justify-center">
+                    {(clickedProduct === 'services' || hoveredProduct === 'services') && (
+                      <div className="w-full h-full">
+                        <div className="relative h-[300px] sm:h-[400px] flex items-center justify-center">
+                          <svg
+                            className="w-full h-full"
+                            viewBox="0 0 1000 700"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <defs>
+                              <linearGradient id={`boxGrad-desktop-services`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.15" />
+                                <stop offset="100%" stopColor="#888888" stopOpacity="0.25" />
+                              </linearGradient>
+                              <linearGradient id={`boxGradActive-desktop-services`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.25" />
+                                <stop offset="100%" stopColor="#ffffff" stopOpacity="0.35" />
+                              </linearGradient>
+                            </defs>
+                            {renderGraphicContent('services', true, 'desktop-services')}
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* E-Invoicing */}
@@ -950,353 +1041,6 @@ export default function HomePage() {
                 )}
               </div>
             </div>
-
-            {/* Right: Architecture Graphic - Desktop Only */}
-            <div className="hidden md:flex relative h-full min-h-[300px] sm:min-h-[400px] md:min-h-[600px] items-center justify-center -mt-8 sm:-mt-12 md:-mt-16">
-              <svg
-                className="w-full h-full"
-                viewBox="0 0 1000 700"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <defs>
-                  <linearGradient id="boxGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.15" />
-                    <stop offset="100%" stopColor="#888888" stopOpacity="0.25" />
-                  </linearGradient>
-                  <linearGradient id="boxGradActive" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.25" />
-                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0.35" />
-                  </linearGradient>
-                </defs>
-
-                {/* Master Architecture (default) */}
-                <g 
-                  opacity={!hoveredProduct && !clickedProduct ? 1 : 0} 
-                  style={{ 
-                    pointerEvents: !hoveredProduct && !clickedProduct ? 'auto' : 'none',
-                    transition: 'opacity 0.5s ease-in-out'
-                  }}
-                >
-                    {/* Central Hub */}
-                    <rect x="350" y="250" width="300" height="120" rx="8" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.6)" strokeWidth="3.5" />
-                    <text x="500" y="320" fill="white" fontSize="24" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Finacra Core</text>
-                    
-                    {/* Compliance Tracker */}
-                    <rect x="80" y="180" width="220" height="100" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="3" />
-                    <text x="190" y="240" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Compliance</text>
-                    <line x1="300" y1="230" x2="350" y2="280" stroke="rgba(255,255,255,0.4)" strokeWidth="3" />
-                    
-                    {/* Document Vault */}
-                    <rect x="80" y="440" width="220" height="100" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="3" />
-                    <text x="190" y="500" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Document</text>
-                    <line x1="300" y1="490" x2="350" y2="370" stroke="rgba(255,255,255,0.4)" strokeWidth="3" />
-                    
-                    {/* Web Services */}
-                    <rect x="700" y="250" width="220" height="120" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="3" />
-                    <text x="810" y="320" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Services</text>
-                    <line x1="650" y1="310" x2="700" y2="310" stroke="rgba(255,255,255,0.4)" strokeWidth="3" />
-                  </g>
-
-                {/* Compliance Tracker Architecture */}
-                <g 
-                  opacity={(hoveredProduct === 'compliance' || clickedProduct === 'compliance') ? 1 : 0} 
-                  style={{ 
-                    pointerEvents: (hoveredProduct === 'compliance' || clickedProduct === 'compliance') ? 'auto' : 'none',
-                    transition: 'opacity 0.5s ease-in-out'
-                  }}
-                >
-                    {/* Central Compliance Engine */}
-                    <rect x="350" y="280" width="300" height="110" rx="8" fill="url(#boxGradActive)" stroke="rgba(255,255,255,0.7)" strokeWidth="3.5" />
-                    <text x="500" y="345" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Compliance Engine</text>
-                    
-                    {/* Due Date Management */}
-                    <rect x="80" y="120" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="170" y="155" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Due Date</text>
-                    <text x="170" y="175" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Tracking</text>
-                    <line x1="260" y1="155" x2="380" y2="310" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Compliance Type */}
-                    <rect x="740" y="120" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="830" y="155" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Compliance</text>
-                    <text x="830" y="175" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Type</text>
-                    <line x1="740" y1="155" x2="620" y2="310" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Filing Status */}
-                    <rect x="80" y="240" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="170" y="275" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Filing</text>
-                    <text x="170" y="295" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Status</text>
-                    <line x1="260" y1="275" x2="380" y2="320" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Penalty Calculation */}
-                    <rect x="740" y="240" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="830" y="275" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Penalty</text>
-                    <text x="830" y="295" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Calculation</text>
-                    <line x1="740" y1="275" x2="620" y2="320" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Status Management */}
-                    <rect x="80" y="510" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="170" y="545" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Status</text>
-                    <text x="170" y="565" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Management</text>
-                    <line x1="260" y1="545" x2="380" y2="350" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Category Tracking */}
-                    <rect x="740" y="510" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="830" y="545" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Category</text>
-                    <text x="830" y="565" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Tracking</text>
-                    <line x1="740" y1="545" x2="620" y2="350" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                </g>
-
-                {/* Document Vault Architecture */}
-                <g 
-                  opacity={(hoveredProduct === 'vault' || clickedProduct === 'vault') ? 1 : 0} 
-                  style={{ 
-                    pointerEvents: (hoveredProduct === 'vault' || clickedProduct === 'vault') ? 'auto' : 'none',
-                    transition: 'opacity 0.5s ease-in-out'
-                  }}
-                >
-                    {/* Central Vault */}
-                    <rect x="300" y="270" width="400" height="110" rx="8" fill="url(#boxGradActive)" stroke="rgba(255,255,255,0.7)" strokeWidth="3.5" />
-                    <text x="500" y="330" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Document Vault</text>
-                    
-                    {/* Document Storage */}
-                    <rect x="80" y="120" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="170" y="155" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Document</text>
-                    <text x="170" y="175" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Storage</text>
-                    <line x1="260" y1="155" x2="320" y2="300" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Folder Structure */}
-                    <rect x="740" y="120" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="830" y="155" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Folder</text>
-                    <text x="830" y="175" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Structure</text>
-                    <line x1="740" y1="155" x2="680" y2="300" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Role-Based Access */}
-                    <rect x="80" y="240" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="170" y="275" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Role-Based</text>
-                    <text x="170" y="295" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Access</text>
-                    <line x1="260" y1="275" x2="320" y2="320" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Document Templates */}
-                    <rect x="740" y="240" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="830" y="275" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Document</text>
-                    <text x="830" y="295" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Templates</text>
-                    <line x1="740" y1="275" x2="680" y2="320" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Search & Filter */}
-                    <rect x="80" y="510" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="170" y="545" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Search &</text>
-                    <text x="170" y="565" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Filter</text>
-                    <line x1="260" y1="545" x2="320" y2="340" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Document Categories */}
-                    <rect x="740" y="510" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="830" y="545" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Document</text>
-                    <text x="830" y="565" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Categories</text>
-                    <line x1="740" y1="545" x2="680" y2="340" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                </g>
-
-                {/* Finacra Web Services Architecture */}
-                <g 
-                  opacity={(hoveredProduct === 'services' || clickedProduct === 'services') ? 1 : 0} 
-                  style={{ 
-                    pointerEvents: (hoveredProduct === 'services' || clickedProduct === 'services') ? 'auto' : 'none',
-                    transition: 'opacity 0.5s ease-in-out'
-                  }}
-                >
-                    {/* Central Platform */}
-                    <rect x="300" y="280" width="400" height="110" rx="8" fill="url(#boxGradActive)" stroke="rgba(255,255,255,0.7)" strokeWidth="3.5" />
-                    <text x="500" y="340" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">FWS Platform</text>
-                    
-                    {/* Order Management */}
-                    <rect x="80" y="120" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="170" y="155" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Order</text>
-                    <text x="170" y="175" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Management</text>
-                    <line x1="260" y1="155" x2="320" y2="310" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Practice Management */}
-                    <rect x="740" y="120" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="830" y="155" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Practice</text>
-                    <text x="830" y="175" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Management</text>
-                    <line x1="740" y1="155" x2="680" y2="310" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Client Management */}
-                    <rect x="80" y="240" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="170" y="275" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Client</text>
-                    <text x="170" y="295" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Management</text>
-                    <line x1="260" y1="275" x2="320" y2="330" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Process Automation */}
-                    <rect x="740" y="240" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="830" y="275" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Process</text>
-                    <text x="830" y="295" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Automation</text>
-                    <line x1="740" y1="275" x2="680" y2="330" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Company Onboarding */}
-                    <rect x="80" y="510" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="170" y="545" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Company</text>
-                    <text x="170" y="565" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Onboarding</text>
-                    <line x1="260" y1="545" x2="320" y2="350" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Workflow Engine */}
-                    <rect x="740" y="510" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="830" y="545" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Workflow</text>
-                    <text x="830" y="565" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Engine</text>
-                    <line x1="740" y1="545" x2="680" y2="350" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                </g>
-
-                {/* E-Invoicing Architecture */}
-                <g 
-                  opacity={(hoveredProduct === 'einvoicing' || clickedProduct === 'einvoicing') ? 1 : 0} 
-                  style={{ 
-                    pointerEvents: (hoveredProduct === 'einvoicing' || clickedProduct === 'einvoicing') ? 'auto' : 'none',
-                    transition: 'opacity 0.5s ease-in-out'
-                  }}
-                >
-                    {/* Central E-Invoicing Engine */}
-                    <rect x="300" y="280" width="400" height="110" rx="8" fill="url(#boxGradActive)" stroke="rgba(255,255,255,0.7)" strokeWidth="3.5" />
-                    <text x="500" y="340" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">E-Invoicing</text>
-                    <text x="500" y="360" fill="white" fontSize="18" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Engine</text>
-                    
-                    {/* Invoice Generation */}
-                    <rect x="80" y="120" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="170" y="155" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Invoice</text>
-                    <text x="170" y="175" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Generation</text>
-                    <line x1="260" y1="155" x2="320" y2="310" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Regulatory Compliance */}
-                    <rect x="740" y="120" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="830" y="155" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Regulatory</text>
-                    <text x="830" y="175" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Compliance</text>
-                    <line x1="740" y1="155" x2="680" y2="310" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Workflow Automation */}
-                    <rect x="80" y="240" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="170" y="275" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Workflow</text>
-                    <text x="170" y="295" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Automation</text>
-                    <line x1="260" y1="275" x2="320" y2="330" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Document Linking */}
-                    <rect x="740" y="240" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="830" y="275" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Document</text>
-                    <text x="830" y="295" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Linking</text>
-                    <line x1="740" y1="275" x2="680" y2="330" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Validation & Verification */}
-                    <rect x="80" y="510" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="170" y="545" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Validation &</text>
-                    <text x="170" y="565" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Verification</text>
-                    <line x1="260" y1="545" x2="320" y2="350" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Invoice Tracking */}
-                    <rect x="740" y="510" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="830" y="545" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Invoice</text>
-                    <text x="830" y="565" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Tracking</text>
-                    <line x1="740" y1="545" x2="680" y2="350" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                </g>
-
-                {/* Filing & Notices Architecture */}
-                <g 
-                  opacity={(hoveredProduct === 'filing' || clickedProduct === 'filing') ? 1 : 0} 
-                  style={{ 
-                    pointerEvents: (hoveredProduct === 'filing' || clickedProduct === 'filing') ? 'auto' : 'none',
-                    transition: 'opacity 0.5s ease-in-out'
-                  }}
-                >
-                    {/* Central Filing Hub */}
-                    <rect x="300" y="280" width="400" height="110" rx="8" fill="url(#boxGradActive)" stroke="rgba(255,255,255,0.7)" strokeWidth="3.5" />
-                    <text x="500" y="340" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Filing & Notices</text>
-                    <text x="500" y="360" fill="white" fontSize="18" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Hub</text>
-                    
-                    {/* Filing Management */}
-                    <rect x="80" y="120" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="170" y="155" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Filing</text>
-                    <text x="170" y="175" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Management</text>
-                    <line x1="260" y1="155" x2="320" y2="310" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Notice Tracking */}
-                    <rect x="740" y="120" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="830" y="155" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Notice</text>
-                    <text x="830" y="175" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Tracking</text>
-                    <line x1="740" y1="155" x2="680" y2="310" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Status Updates */}
-                    <rect x="80" y="240" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="170" y="275" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Status</text>
-                    <text x="170" y="295" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Updates</text>
-                    <line x1="260" y1="275" x2="320" y2="330" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Regulatory Notices */}
-                    <rect x="740" y="240" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="830" y="275" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Regulatory</text>
-                    <text x="830" y="295" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Notices</text>
-                    <line x1="740" y1="275" x2="680" y2="330" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Team Collaboration */}
-                    <rect x="80" y="510" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="170" y="545" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Team</text>
-                    <text x="170" y="565" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Collaboration</text>
-                    <line x1="260" y1="545" x2="320" y2="350" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Entity Management */}
-                    <rect x="740" y="510" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="830" y="545" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Entity</text>
-                    <text x="830" y="565" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Management</text>
-                    <line x1="740" y1="545" x2="680" y2="350" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                </g>
-
-                {/* Finacra AI Architecture */}
-                <g 
-                  opacity={(hoveredProduct === 'ai' || clickedProduct === 'ai') ? 1 : 0} 
-                  style={{ 
-                    pointerEvents: (hoveredProduct === 'ai' || clickedProduct === 'ai') ? 'auto' : 'none',
-                    transition: 'opacity 0.5s ease-in-out'
-                  }}
-                >
-                    {/* Central AI Engine */}
-                    <rect x="300" y="280" width="400" height="110" rx="8" fill="url(#boxGradActive)" stroke="rgba(255,255,255,0.7)" strokeWidth="3.5" />
-                    <text x="500" y="340" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Finacra AI</text>
-                    <text x="500" y="360" fill="white" fontSize="18" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Engine</text>
-                    
-                    {/* Document Understanding */}
-                    <rect x="80" y="120" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="170" y="155" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Document</text>
-                    <text x="170" y="175" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Understanding</text>
-                    <line x1="260" y1="155" x2="320" y2="310" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Compliance Recommendations */}
-                    <rect x="740" y="120" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="830" y="155" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Compliance</text>
-                    <text x="830" y="175" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Recommendations</text>
-                    <line x1="740" y1="155" x2="680" y2="310" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Intelligent Search */}
-                    <rect x="80" y="240" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="170" y="275" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Intelligent</text>
-                    <text x="170" y="295" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Search</text>
-                    <line x1="260" y1="275" x2="320" y2="330" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Pattern Recognition */}
-                    <rect x="740" y="240" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="830" y="275" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Pattern</text>
-                    <text x="830" y="295" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Recognition</text>
-                    <line x1="740" y1="275" x2="680" y2="330" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Data Extraction */}
-                    <rect x="80" y="510" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="170" y="545" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Data</text>
-                    <text x="170" y="565" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Extraction</text>
-                    <line x1="260" y1="545" x2="320" y2="350" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                    
-                    {/* Predictive Analytics */}
-                    <rect x="740" y="510" width="180" height="70" rx="6" fill="url(#boxGrad)" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" />
-                    <text x="830" y="545" fill="white" fontSize="14" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Predictive</text>
-                    <text x="830" y="565" fill="white" fontSize="13" fontFamily="sans-serif" fontWeight="300" textAnchor="middle">Analytics</text>
-                    <line x1="740" y1="545" x2="680" y2="350" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" />
-                </g>
-              </svg>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -1857,8 +1601,19 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-6 sm:gap-8 md:gap-12 mb-6 sm:mb-8 md:mb-12">
             <div>
-              <h3 className="text-white text-base sm:text-lg font-light mb-3 sm:mb-4">Finnogenius Consulting Private Limited</h3>
-              <p className="text-gray-400 text-xs sm:text-sm font-light mb-3">Hyderabad, India</p>
+              <h3 className="text-white text-base sm:text-lg font-light mb-3 sm:mb-4">India</h3>
+              <p className="text-gray-300 text-xs sm:text-sm font-light mb-2">Finnogenius Consulting Private Limited</p>
+              <p className="text-gray-400 text-xs sm:text-sm font-light mb-4">
+                4th Floor, Downtown Mall,<br />
+                Lakdikapul, Khairatabad,<br />
+                Hyderabad, Telangana, 500004
+              </p>
+              <h3 className="text-white text-base sm:text-lg font-light mb-3 sm:mb-4 mt-6">USA</h3>
+              <p className="text-gray-300 text-xs sm:text-sm font-light mb-2">Finacra LLC</p>
+              <p className="text-gray-400 text-xs sm:text-sm font-light mb-3">
+                2302 Stillbrooke Lane,<br />
+                Princeton, New Jersey, 08540
+              </p>
               <div className="flex gap-4 mt-4">
                 <a 
                   href="https://www.instagram.com/finacra.ai/" 

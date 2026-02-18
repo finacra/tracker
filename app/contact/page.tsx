@@ -246,7 +246,10 @@ function ContactPageContent() {
                     <div className="w-3 h-3 bg-white rounded-full flex-shrink-0"></div>
                     <h3 className="text-xs font-light text-gray-400 uppercase tracking-widest">India</h3>
                   </div>
-                  <div className="pl-6 space-y-1">
+                  <div className="pl-6 space-y-2">
+                    <p className="text-white font-light text-sm sm:text-base font-medium">
+                      Finnogenius Consulting Private Limited,
+                    </p>
                     <p className="text-gray-300 font-light leading-relaxed text-sm sm:text-base">
                       4th Floor, Downtown Mall,<br />
                       Lakdikapul, Khairatabad,<br />
@@ -261,7 +264,10 @@ function ContactPageContent() {
                     <div className="w-3 h-3 bg-white rounded-full flex-shrink-0"></div>
                     <h3 className="text-xs font-light text-gray-400 uppercase tracking-widest">USA</h3>
                   </div>
-                  <div className="pl-6 space-y-1">
+                  <div className="pl-6 space-y-2">
+                    <p className="text-white font-light text-sm sm:text-base font-medium">
+                      Finacra LLC,
+                    </p>
                     <p className="text-gray-300 font-light leading-relaxed text-sm sm:text-base">
                       2302 Stillbrooke Lane,<br />
                       Princeton, New Jersey, 08540
@@ -285,7 +291,7 @@ function ContactPageContent() {
 
                 {/* Phone */}
                 <div className="space-y-4 pt-6 border-t border-gray-800">
-                  <h3 className="text-xs font-light text-gray-400 uppercase tracking-widest mb-3">Phone</h3>
+                  <h3 className="text-xs font-light text-gray-400 uppercase tracking-widest mb-3">Phone Number</h3>
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
                       <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

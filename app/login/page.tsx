@@ -63,8 +63,29 @@ function LoginPageInner() {
           console.log('🔄 [AUTH CHECK] Redirecting to /data-room')
           router.push('/data-room')
         } else {
-          console.log('🔄 [AUTH CHECK] Redirecting to /onboarding')
-          router.push('/onboarding')
+          // Check if user has active subscription or trial
+          const { data: subData } = await supabase
+            .rpc('check_user_subscription', { target_user_id: session.user.id })
+            .single()
+          
+          const subInfo = subData as {
+            has_subscription: boolean
+            is_trial: boolean
+            trial_days_remaining: number
+            tier: string
+          } | null
+          
+          // Check for active subscription OR active trial (trial days remaining > 0)
+          const hasActiveSubscription = subInfo?.has_subscription === true || 
+                                       (subInfo?.is_trial === true && (subInfo?.trial_days_remaining ?? 0) > 0)
+          
+          if (hasActiveSubscription) {
+            console.log('🔄 [AUTH CHECK] Has subscription/trial, redirecting to /onboarding')
+            router.push('/onboarding')
+          } else {
+            console.log('🔄 [AUTH CHECK] No subscription/trial, redirecting to /subscribe')
+            router.push('/subscribe')
+          }
         }
       } else {
         console.log('✅ [AUTH CHECK] No session, staying on login page')
@@ -144,10 +165,58 @@ function LoginPageInner() {
         if (error) {
           setError(error.message)
           setIsLoading(false)
-        } else {
-          // Redirect will be handled by the useEffect that checks session
-          const redirectTo = returnTo || '/data-room'
+        } else if (data.session) {
+          // Check if user has companies (owned or via user_roles)
+          const { data: ownedCompanies } = await supabase
+            .from('companies')
+            .select('id')
+            .eq('user_id', data.session.user.id)
+            .limit(1)
+          
+          const { data: userRoles } = await supabase
+            .from('user_roles')
+            .select('company_id')
+            .eq('user_id', data.session.user.id)
+            .not('company_id', 'is', null)
+            .limit(1)
+          
+          const hasCompanies = (ownedCompanies && ownedCompanies.length > 0) || (userRoles && userRoles.length > 0)
+          
+          let redirectTo = '/data-room' // Default
+          
+          if (returnTo) {
+            // If there's a returnTo parameter, use it (for deep linking)
+            redirectTo = returnTo
+          } else if (!hasCompanies) {
+            // Check if user has active subscription or trial
+            const { data: subData } = await supabase
+              .rpc('check_user_subscription', { target_user_id: data.session.user.id })
+              .single()
+            
+            const subInfo = subData as {
+              has_subscription: boolean
+              is_trial: boolean
+              trial_days_remaining: number
+              tier: string
+            } | null
+            
+            // Check for active subscription OR active trial (trial days remaining > 0)
+            const hasActiveSubscription = subInfo?.has_subscription === true || 
+                                         (subInfo?.is_trial === true && (subInfo?.trial_days_remaining ?? 0) > 0)
+            
+            if (hasActiveSubscription) {
+              redirectTo = '/onboarding'
+            } else {
+              redirectTo = '/subscribe'
+            }
+          }
+          
+          console.log(`[EMAIL SIGN IN] User ${data.session.user.id} has companies: ${hasCompanies}, redirecting to: ${redirectTo}`)
           router.push(redirectTo)
+        } else {
+          // No session after sign in - should not happen, but handle it
+          setError('Sign in failed. Please try again.')
+          setIsLoading(false)
         }
       }
     } catch (error: any) {

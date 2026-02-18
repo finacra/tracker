@@ -1,11 +1,28 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 
 export default function PublicHeader() {
   const [showProductsDropdown, setShowProductsDropdown] = useState(false)
-  const productsDropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowProductsDropdown(false)
+      }
+    }
+
+    if (showProductsDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showProductsDropdown])
 
   return (
     <nav className="relative z-10 w-full px-4 sm:px-6 py-4 sm:py-6">
@@ -19,71 +36,56 @@ export default function PublicHeader() {
         </Link>
         <div className="hidden md:flex items-center gap-8">
           {/* Products with Dropdown */}
-          <div 
-            className="relative"
-            onMouseEnter={() => {
-              if (productsDropdownTimeoutRef.current) {
-                clearTimeout(productsDropdownTimeoutRef.current)
-                productsDropdownTimeoutRef.current = null
-              }
-                setShowProductsDropdown(true)
-            }}
-            onMouseLeave={() => {
-              productsDropdownTimeoutRef.current = setTimeout(() => {
-                setShowProductsDropdown(false)
-              }, 150)
-            }}
-          >
-            <Link 
-              href="/home#products" 
-              className="text-gray-300 hover:text-white transition-colors font-light text-sm flex items-center gap-1 py-2"
-            >
-              Products
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </Link>
+          <div className="relative" ref={dropdownRef}>
+            <div className="flex items-center gap-1">
+              <Link 
+                href="/home#products" 
+                className="text-gray-300 hover:text-white transition-colors font-light text-sm py-2"
+                onClick={(e) => {
+                  // Prevent dropdown from opening when clicking Products link
+                  e.stopPropagation()
+                }}
+              >
+                Products
+              </Link>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowProductsDropdown(!showProductsDropdown)
+                }}
+                className="text-gray-300 hover:text-white transition-colors font-light py-2 cursor-pointer"
+                aria-label="Toggle products menu"
+                aria-expanded={showProductsDropdown}
+              >
+                <svg 
+                  className={`w-4 h-4 transition-transform duration-200 ${showProductsDropdown ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
             {showProductsDropdown && (
               <div 
-                className="absolute top-full left-0 w-48 z-50"
-                style={{ marginTop: '4px' }}
-                onMouseEnter={() => {
-                  if (productsDropdownTimeoutRef.current) {
-                    clearTimeout(productsDropdownTimeoutRef.current)
-                    productsDropdownTimeoutRef.current = null
-                  }
-                  setShowProductsDropdown(true)
-                }}
-                onMouseLeave={() => {
-                  productsDropdownTimeoutRef.current = setTimeout(() => {
-                    setShowProductsDropdown(false)
-                  }, 150)
-                }}
+                className="absolute top-full left-0 w-48 pt-2 z-50"
+                onMouseDown={(e) => e.stopPropagation()}
               >
                 <div className="bg-[#1a1a1a] border border-gray-800 rounded-lg shadow-xl overflow-hidden">
                   <Link
                     href="/compliance-tracker"
                     className="block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-900/50 transition-colors font-light text-sm"
-                    onClick={() => {
-                      setShowProductsDropdown(false)
-                      if (productsDropdownTimeoutRef.current) {
-                        clearTimeout(productsDropdownTimeoutRef.current)
-                        productsDropdownTimeoutRef.current = null
-                      }
-                    }}
+                    onClick={() => setShowProductsDropdown(false)}
                   >
                     Compliance Tracker
                   </Link>
+                  <div className="h-px bg-gray-800" />
                   <Link
                     href="/company-onboarding"
-                    className="block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-900/50 transition-colors font-light text-sm border-t border-gray-800"
-                    onClick={() => {
-                      setShowProductsDropdown(false)
-                      if (productsDropdownTimeoutRef.current) {
-                        clearTimeout(productsDropdownTimeoutRef.current)
-                        productsDropdownTimeoutRef.current = null
-                      }
-                    }}
+                    className="block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-900/50 transition-colors font-light text-sm"
+                    onClick={() => setShowProductsDropdown(false)}
                   >
                     Company Onboarding
                   </Link>
