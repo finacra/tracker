@@ -9,9 +9,7 @@ export default function HomePage() {
   const [clickedProduct, setClickedProduct] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [showProductsDropdown, setShowProductsDropdown] = useState(false)
-  const [showFeaturesDropdown, setShowFeaturesDropdown] = useState(false)
   const productsDropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const featuresDropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const graphicRefs = {
     compliance: useRef<HTMLDivElement>(null),
     vault: useRef<HTMLDivElement>(null),
@@ -27,9 +25,6 @@ export default function HomePage() {
     return () => {
       if (productsDropdownTimeoutRef.current) {
         clearTimeout(productsDropdownTimeoutRef.current)
-      }
-      if (featuresDropdownTimeoutRef.current) {
-        clearTimeout(featuresDropdownTimeoutRef.current)
       }
     }
   }, [])
@@ -560,7 +555,6 @@ export default function HomePage() {
                   productsDropdownTimeoutRef.current = null
                 }
                 setShowProductsDropdown(true)
-                setShowFeaturesDropdown(false)
               }}
               onMouseLeave={() => {
                 productsDropdownTimeoutRef.current = setTimeout(() => {
@@ -613,68 +607,14 @@ export default function HomePage() {
                     >
                       Compliance Tracker
                     </Link>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            {/* Features with Dropdown */}
-            <div 
-              className="relative"
-              onMouseEnter={() => {
-                if (featuresDropdownTimeoutRef.current) {
-                  clearTimeout(featuresDropdownTimeoutRef.current)
-                  featuresDropdownTimeoutRef.current = null
-                }
-                setShowFeaturesDropdown(true)
-                setShowProductsDropdown(false)
-              }}
-              onMouseLeave={() => {
-                featuresDropdownTimeoutRef.current = setTimeout(() => {
-                  setShowFeaturesDropdown(false)
-                }, 150)
-              }}
-            >
-              <Link 
-                href="#solution" 
-                className="text-gray-300 hover:text-white transition-colors font-light text-sm flex items-center gap-1 py-2"
-                onClick={(e) => {
-                  e.preventDefault()
-                  document.getElementById('solution')?.scrollIntoView({ behavior: 'smooth' })
-                  setShowFeaturesDropdown(false)
-                }}
-              >
-                Features
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </Link>
-              {showFeaturesDropdown && (
-                <div 
-                  className="absolute top-full left-0 w-48 z-50"
-                  style={{ marginTop: '4px' }}
-                  onMouseEnter={() => {
-                    if (featuresDropdownTimeoutRef.current) {
-                      clearTimeout(featuresDropdownTimeoutRef.current)
-                      featuresDropdownTimeoutRef.current = null
-                    }
-                    setShowFeaturesDropdown(true)
-                  }}
-                  onMouseLeave={() => {
-                    featuresDropdownTimeoutRef.current = setTimeout(() => {
-                      setShowFeaturesDropdown(false)
-                    }, 150)
-                  }}
-                >
-                  <div className="bg-[#1a1a1a] border border-gray-800 rounded-lg shadow-xl overflow-hidden">
                     <Link
                       href="/company-onboarding"
-                      className="block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-900/50 transition-colors font-light text-sm"
+                      className="block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-900/50 transition-colors font-light text-sm border-t border-gray-800"
                       onClick={() => {
-                        setShowFeaturesDropdown(false)
-                        if (featuresDropdownTimeoutRef.current) {
-                          clearTimeout(featuresDropdownTimeoutRef.current)
-                          featuresDropdownTimeoutRef.current = null
+                        setShowProductsDropdown(false)
+                        if (productsDropdownTimeoutRef.current) {
+                          clearTimeout(productsDropdownTimeoutRef.current)
+                          productsDropdownTimeoutRef.current = null
                         }
                       }}
                     >
@@ -685,11 +625,24 @@ export default function HomePage() {
               )}
             </div>
             
+            <Link 
+              href="#solution" 
+              className="text-gray-300 hover:text-white transition-colors font-light text-sm"
+              onClick={(e) => {
+                e.preventDefault()
+                document.getElementById('solution')?.scrollIntoView({ behavior: 'smooth' })
+              }}
+            >
+              Features
+            </Link>
             <Link href="#plans" className="text-gray-300 hover:text-white transition-colors font-light text-sm">
               Plans
             </Link>
-            <Link href="#clients" className="text-gray-300 hover:text-white transition-colors font-light text-sm">
+            <Link href="/customers" className="text-gray-300 hover:text-white transition-colors font-light text-sm">
               Customers
+            </Link>
+            <Link href="/contact" className="text-gray-300 hover:text-white transition-colors font-light text-sm">
+              Contact Us
             </Link>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
@@ -832,14 +785,16 @@ export default function HomePage() {
             {/* Left: Text Content */}
             <div className="space-y-0">
               {/* Compliance Tracker */}
-              <div>
               <div
                 className={`border-b border-gray-800 pb-12 mb-12 cursor-pointer transition-all duration-300 ${
                   hoveredProduct && hoveredProduct !== 'compliance' ? 'opacity-30' : 'opacity-100'
                 }`}
-                onMouseEnter={() => setHoveredProduct('compliance')}
+                onMouseEnter={() => {
+                  setClickedProduct(null) // Clear clicked product to prevent overlap
+                  setHoveredProduct('compliance')
+                }}
                 onMouseLeave={() => setHoveredProduct(null)}
-                  onClick={() => handleProductClick('compliance')}
+                onClick={() => handleProductClick('compliance')}
               >
                 <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
                   Compliance Tracker
@@ -847,54 +802,56 @@ export default function HomePage() {
                 <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
                   Track statutory and regulatory requirements across GST, Income Tax, RoC, payroll, and renewals with structured status management and due-date monitoring.
                 </p>
+                {/* Mobile Graphic - Inline - Only show when active */}
+                {(clickedProduct === 'compliance' || hoveredProduct === 'compliance') && (
+                  <div ref={graphicRefs.compliance} className="md:hidden mb-4">
+                    {renderProductGraphic('compliance')}
+                  </div>
+                )}
                 <Link href="/compliance-tracker">
                   <button className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm">
                     Learn More
                   </button>
                 </Link>
-                </div>
-                {/* Mobile Graphic - Inline - Only show when active */}
-                {(clickedProduct === 'compliance' || hoveredProduct === 'compliance') && (
-                  <div ref={graphicRefs.compliance} className="md:hidden mb-8 -mt-8">
-                    {renderProductGraphic('compliance')}
-                  </div>
-                )}
               </div>
 
               {/* Document Vault */}
-              <div>
               <div
                 className={`border-b border-gray-800 pb-8 sm:pb-12 mb-8 sm:mb-12 cursor-pointer transition-all duration-300 ${
                   hoveredProduct && hoveredProduct !== 'vault' ? 'opacity-30' : 'opacity-100'
                 }`}
-                onMouseEnter={() => setHoveredProduct('vault')}
+                onMouseEnter={() => {
+                  setClickedProduct(null) // Clear clicked product to prevent overlap
+                  setHoveredProduct('vault')
+                }}
                 onMouseLeave={() => setHoveredProduct(null)}
-                  onClick={() => handleProductClick('vault')}
+                onClick={() => handleProductClick('vault')}
               >
                 <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
                   Document Vault
                 </h3>
-                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light">
+                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
                   Secure storage and structured organization of financial and legal documents with role-based access.
                 </p>
-                </div>
                 {/* Mobile Graphic - Inline - Only show when active */}
                 {(clickedProduct === 'vault' || hoveredProduct === 'vault') && (
-                  <div ref={graphicRefs.vault} className="md:hidden mb-8 -mt-8">
+                  <div ref={graphicRefs.vault} className="md:hidden mb-4">
                     {renderProductGraphic('vault')}
                   </div>
                 )}
               </div>
 
               {/* Finacra Web Services */}
-              <div>
               <div
-                  className={`border-b border-gray-800 pt-8 sm:pt-12 pb-8 sm:pb-12 mb-8 sm:mb-12 cursor-pointer transition-all duration-300 ${
+                className={`border-b border-gray-800 pt-8 sm:pt-12 pb-8 sm:pb-12 mb-8 sm:mb-12 cursor-pointer transition-all duration-300 ${
                   hoveredProduct && hoveredProduct !== 'services' ? 'opacity-30' : 'opacity-100'
                 }`}
-                onMouseEnter={() => setHoveredProduct('services')}
+                onMouseEnter={() => {
+                  setClickedProduct(null) // Clear clicked product to prevent overlap
+                  setHoveredProduct('services')
+                }}
                 onMouseLeave={() => setHoveredProduct(null)}
-                  onClick={() => handleProductClick('services')}
+                onClick={() => handleProductClick('services')}
               >
                 <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
                   Finacra Web Services <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
@@ -902,90 +859,92 @@ export default function HomePage() {
                 <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
                   Infrastructure layer that supports company onboarding, entity detection, compliance workflows, and administrative control.
                 </p>
+                {/* Mobile Graphic - Inline - Only show when active */}
+                {(clickedProduct === 'services' || hoveredProduct === 'services') && (
+                  <div ref={graphicRefs.services} className="md:hidden mb-4">
+                    {renderProductGraphic('services')}
+                  </div>
+                )}
                 <Link href="/company-onboarding">
                   <button className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm">
                     Learn More
                   </button>
                 </Link>
               </div>
-                {/* Mobile Graphic - Inline - Only show when active */}
-                {(clickedProduct === 'services' || hoveredProduct === 'services') && (
-                  <div ref={graphicRefs.services} className="md:hidden mb-8 -mt-8">
-                    {renderProductGraphic('services')}
-                  </div>
-                )}
-            </div>
 
               {/* E-Invoicing */}
-              <div>
-                <div
-                  className={`border-b border-gray-800 pt-8 sm:pt-12 pb-8 sm:pb-12 mb-8 sm:mb-12 cursor-pointer transition-all duration-300 ${
-                    hoveredProduct && hoveredProduct !== 'einvoicing' ? 'opacity-30' : 'opacity-100'
-                  }`}
-                  onMouseEnter={() => setHoveredProduct('einvoicing')}
-                  onMouseLeave={() => setHoveredProduct(null)}
-                  onClick={() => handleProductClick('einvoicing')}
-                >
-                  <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
-                    E-Invoicing <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light">
-                    Automated & structured invoice workflows aligned with regulatory frameworks and documentation requirements.
-                  </p>
-                </div>
+              <div
+                className={`border-b border-gray-800 pt-8 sm:pt-12 pb-8 sm:pb-12 mb-8 sm:mb-12 cursor-pointer transition-all duration-300 ${
+                  hoveredProduct && hoveredProduct !== 'einvoicing' ? 'opacity-30' : 'opacity-100'
+                }`}
+                onMouseEnter={() => {
+                  setClickedProduct(null) // Clear clicked product to prevent overlap
+                  setHoveredProduct('einvoicing')
+                }}
+                onMouseLeave={() => setHoveredProduct(null)}
+                onClick={() => handleProductClick('einvoicing')}
+              >
+                <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
+                  E-Invoicing <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
+                </h3>
+                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
+                  Automated & structured invoice workflows aligned with regulatory frameworks and documentation requirements.
+                </p>
                 {/* Mobile Graphic - Inline - Only show when active */}
                 {(clickedProduct === 'einvoicing' || hoveredProduct === 'einvoicing') && (
-                  <div ref={graphicRefs.einvoicing} className="md:hidden mb-8 -mt-8">
+                  <div ref={graphicRefs.einvoicing} className="md:hidden mb-4">
                     {renderProductGraphic('einvoicing')}
                   </div>
                 )}
               </div>
 
               {/* Filing & Notices */}
-              <div>
-                <div
-                  className={`border-b border-gray-800 pt-8 sm:pt-12 pb-8 sm:pb-12 mb-8 sm:mb-12 cursor-pointer transition-all duration-300 ${
-                    hoveredProduct && hoveredProduct !== 'filing' ? 'opacity-30' : 'opacity-100'
-                  }`}
-                  onMouseEnter={() => setHoveredProduct('filing')}
-                  onMouseLeave={() => setHoveredProduct(null)}
-                  onClick={() => handleProductClick('filing')}
-                >
-                  <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
-                    Filing & Notices <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light">
-                    Track filings, regulatory notices, and status updates across teams and entities.
-                  </p>
-                </div>
+              <div
+                className={`border-b border-gray-800 pt-8 sm:pt-12 pb-8 sm:pb-12 mb-8 sm:mb-12 cursor-pointer transition-all duration-300 ${
+                  hoveredProduct && hoveredProduct !== 'filing' ? 'opacity-30' : 'opacity-100'
+                }`}
+                onMouseEnter={() => {
+                  setClickedProduct(null) // Clear clicked product to prevent overlap
+                  setHoveredProduct('filing')
+                }}
+                onMouseLeave={() => setHoveredProduct(null)}
+                onClick={() => handleProductClick('filing')}
+              >
+                <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
+                  Filing & Notices <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
+                </h3>
+                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
+                  Track filings, regulatory notices, and status updates across teams and entities.
+                </p>
                 {/* Mobile Graphic - Inline - Only show when active */}
                 {(clickedProduct === 'filing' || hoveredProduct === 'filing') && (
-                  <div ref={graphicRefs.filing} className="md:hidden mb-8 -mt-8">
+                  <div ref={graphicRefs.filing} className="md:hidden mb-4">
                     {renderProductGraphic('filing')}
                   </div>
                 )}
               </div>
 
               {/* Finacra AI */}
-              <div>
-                <div
-                  className={`pt-8 sm:pt-12 pb-0 cursor-pointer transition-all duration-300 ${
-                    hoveredProduct && hoveredProduct !== 'ai' ? 'opacity-30' : 'opacity-100'
-                  }`}
-                  onMouseEnter={() => setHoveredProduct('ai')}
-                  onMouseLeave={() => setHoveredProduct(null)}
-                  onClick={() => handleProductClick('ai')}
-                >
-                  <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
-                    Finacra AI <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-0">
-                    AI-powered document understanding, compliance recommendations, and intelligent search capabilities under development.
-                  </p>
-                </div>
+              <div
+                className={`pt-8 sm:pt-12 pb-0 cursor-pointer transition-all duration-300 ${
+                  hoveredProduct && hoveredProduct !== 'ai' ? 'opacity-30' : 'opacity-100'
+                }`}
+                onMouseEnter={() => {
+                  setClickedProduct(null) // Clear clicked product to prevent overlap
+                  setHoveredProduct('ai')
+                }}
+                onMouseLeave={() => setHoveredProduct(null)}
+                onClick={() => handleProductClick('ai')}
+              >
+                <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
+                  Finacra AI <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
+                </h3>
+                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
+                  AI-powered document understanding, compliance recommendations, and intelligent search capabilities under development.
+                </p>
                 {/* Mobile Graphic - Inline - Only show when active */}
                 {(clickedProduct === 'ai' || hoveredProduct === 'ai') && (
-                  <div ref={graphicRefs.ai} className="md:hidden mb-8 -mt-8">
+                  <div ref={graphicRefs.ai} className="md:hidden mb-4">
                     {renderProductGraphic('ai')}
                   </div>
                 )}
@@ -1934,6 +1893,17 @@ export default function HomePage() {
                     <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                   </svg>
                 </a>
+                <a 
+                  href="https://x.com/Finacraco" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-white transition-colors"
+                  aria-label="X (Twitter)"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
+                </a>
               </div>
             </div>
             <div>
@@ -1943,10 +1913,15 @@ export default function HomePage() {
                   info@finacra.com
                 </a>
               </p>
-              <p className="text-gray-400 text-xs sm:text-sm font-light">
+              <p className="text-gray-400 text-xs sm:text-sm font-light mb-2">
                 <a href="tel:+16693097426" className="hover:text-white transition-colors">
                   +1 (669) 309-7426
                 </a>
+                <span className="text-gray-500 ml-1">- Global</span>
+              </p>
+              <p className="text-gray-400 text-xs sm:text-sm font-light">
+                <span>+91</span>
+                <span className="text-gray-500 ml-1">- India</span>
               </p>
             </div>
             <div>
@@ -1967,9 +1942,9 @@ export default function HomePage() {
           <div className="border-t border-gray-800 pt-6 sm:pt-8">
             <div className="flex flex-col md:flex-row justify-between items-center gap-3 sm:gap-4">
               <span className="text-gray-400 text-xs sm:text-sm font-light text-center md:text-left">
-                © 2024 FinacraAI. All rights reserved.
+                © 2026 FinacraAI. All rights reserved.
               </span>
-              <div className="flex gap-6 sm:gap-8 text-xs sm:text-sm">
+              <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs sm:text-sm">
                 <Link href="/privacy-policy" className="text-gray-400 hover:text-white transition-colors font-light">
                   Privacy Policy
                 </Link>

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import Header from '@/components/Header'
+import Link from 'next/link'
+import PublicHeader from '@/components/PublicHeader'
 import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
 
 export default function CompanyOnboardingPage() {
@@ -47,7 +48,20 @@ export default function CompanyOnboardingPage() {
   return (
     <div className="min-h-screen bg-primary-dark relative overflow-hidden">
       <SubtleCircuitBackground />
-      <Header />
+      <PublicHeader />
+      
+      {/* Back Button */}
+      <div className="relative z-10 px-4 sm:px-6 pt-4">
+        <Link
+          href="/home"
+          className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors font-light text-sm"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Home
+        </Link>
+      </div>
       
       <div className="relative z-10 px-4 sm:px-6 py-8 sm:py-20 md:py-32">
         <div className="max-w-7xl mx-auto">

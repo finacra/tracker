@@ -287,7 +287,7 @@ function SubscribePageInner() {
             <button
               key={cycle.value}
               onClick={() => setSelectedBillingCycle(cycle.value)}
-              className={`px-4 py-2 rounded-lg font-light transition-all ${
+              className={`px-4 py-2 rounded-lg font-light transition-all whitespace-nowrap ${
                 selectedBillingCycle === cycle.value
                   ? 'bg-gray-700 text-white'
                   : 'bg-gray-800 text-gray-300 hover:bg-gray-700'

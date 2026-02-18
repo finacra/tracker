@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import PublicHeader from '@/components/PublicHeader'
 import { submitContactForm } from './actions'
 
 // This page is public and accessible to unauthenticated users
@@ -81,35 +82,24 @@ function ContactPageContent() {
   return (
     <div className="min-h-screen bg-primary-dark flex flex-col relative overflow-hidden">
       {/* Navigation Bar */}
-      <nav className="relative z-10 w-full px-4 sm:px-6 py-4 sm:py-6 border-b border-gray-800">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/home" className="flex items-center gap-2">
-            <img
-              src="https://aqziojkjtmyecfglifbc.supabase.co/storage/v1/object/public/logo/WhatsApp_Image_2026-02-09_at_18.02.02-removebg-preview.png"
-              alt="Finacra Logo"
-              className="h-8 w-auto sm:h-10 object-contain"
-            />
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/home"
-              className="text-gray-300 hover:text-white transition-colors font-light text-xs sm:text-sm"
-            >
-              Back to Home
-            </Link>
-            <Link
-              href="/"
-              className="text-gray-300 hover:text-white transition-colors font-light text-xs sm:text-sm"
-            >
-              Log In
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <PublicHeader />
+      
+      {/* Back Button */}
+      <div className="relative z-10 px-4 sm:px-6 pt-4">
+        <Link
+          href="/home"
+          className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors font-light text-sm"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Home
+        </Link>
+      </div>
 
       {/* Contact Form Section */}
       <section className="flex-1 relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="mb-8 sm:mb-12 text-center">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-light text-white mb-4">
               Get in Touch
@@ -119,7 +109,9 @@ function ContactPageContent() {
             </p>
           </div>
 
-          <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-6 sm:p-8 md:p-10">
+          <div className="grid md:grid-cols-2 gap-6 sm:gap-8 md:gap-12">
+            {/* Left: Contact Form */}
+            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-6 sm:p-8 md:p-10">
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Name */}
               <div>
@@ -238,26 +230,88 @@ function ContactPageContent() {
                 </div>
               )}
             </form>
+            </div>
 
-            {/* Alternative Contact Info */}
-            <div className="mt-8 pt-8 border-t border-gray-800">
-              <p className="text-gray-400 text-sm font-light text-center mb-4">
-                Or reach us directly:
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center text-sm">
-                <a
-                  href="mailto:info@finacra.com"
-                  className="text-gray-300 hover:text-white transition-colors font-light"
-                >
-                  info@finacra.com
-                </a>
-                <span className="text-gray-600 hidden sm:inline">•</span>
-                <a
-                  href="tel:+16693097426"
-                  className="text-gray-300 hover:text-white transition-colors font-light"
-                >
-                  +1 (669) 309-7426
-                </a>
+            {/* Right: Contact Information Card */}
+            <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border border-gray-800 rounded-xl p-6 sm:p-8 md:p-10 shadow-2xl">
+              <div className="space-y-8">
+                {/* Corporate Header */}
+                <div className="pb-6 border-b border-gray-800">
+                  <h2 className="text-2xl sm:text-3xl font-light text-white">Corporate</h2>
+                </div>
+
+                {/* India Address */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-3 h-3 bg-white rounded-full flex-shrink-0"></div>
+                    <h3 className="text-xs font-light text-gray-400 uppercase tracking-widest">India</h3>
+                  </div>
+                  <div className="pl-6 space-y-1">
+                    <p className="text-gray-300 font-light leading-relaxed text-sm sm:text-base">
+                      4th Floor, Downtown Mall,<br />
+                      Lakdikapul, Khairatabad,<br />
+                      Hyderabad, Telangana, 500004
+                    </p>
+                  </div>
+                </div>
+
+                {/* USA Address */}
+                <div className="space-y-3 pt-6 border-t border-gray-800/50">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-3 h-3 bg-white rounded-full flex-shrink-0"></div>
+                    <h3 className="text-xs font-light text-gray-400 uppercase tracking-widest">USA</h3>
+                  </div>
+                  <div className="pl-6 space-y-1">
+                    <p className="text-gray-300 font-light leading-relaxed text-sm sm:text-base">
+                      2302 Stillbrooke Lane,<br />
+                      Princeton, New Jersey, 08540
+                    </p>
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div className="space-y-3 pt-6 border-t border-gray-800">
+                  <h3 className="text-xs font-light text-gray-400 uppercase tracking-widest mb-3">Email</h3>
+                  <a
+                    href="mailto:info@finacra.com"
+                    className="text-white hover:text-gray-300 transition-colors font-light text-sm sm:text-base flex items-center gap-2 group"
+                  >
+                    <svg className="w-4 h-4 text-gray-400 group-hover:text-gray-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    info@finacra.com
+                  </a>
+                </div>
+
+                {/* Phone */}
+                <div className="space-y-4 pt-6 border-t border-gray-800">
+                  <h3 className="text-xs font-light text-gray-400 uppercase tracking-widest mb-3">Phone</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      <div>
+                        <span className="text-white font-light">+91</span>
+                        <span className="text-gray-500 font-light ml-2 text-sm">- India</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      <div>
+                        <a
+                          href="tel:+16693097426"
+                          className="text-white hover:text-gray-300 transition-colors font-light"
+                        >
+                          +1 (669) 309-7426
+                        </a>
+                        <span className="text-gray-500 font-light ml-2 text-sm">- Global</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -269,9 +323,9 @@ function ContactPageContent() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <span className="text-gray-400 text-xs sm:text-sm font-light text-center md:text-left">
-              © 2024 FinacraAI. All rights reserved.
+              © 2026 FinacraAI. All rights reserved.
             </span>
-            <div className="flex gap-6 sm:gap-8 text-xs sm:text-sm">
+            <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs sm:text-sm">
               <Link href="/privacy-policy" className="text-gray-400 hover:text-white transition-colors font-light">
                 Privacy Policy
               </Link>

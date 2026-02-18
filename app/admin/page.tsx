@@ -1748,22 +1748,24 @@ export default function AdminPage() {
                   </select>
                 </div>
 
-                {/* Year Type - Only show for quarterly compliance */}
-                {templateForm.compliance_type === 'quarterly' && (
+                {/* Year Type - Show for quarterly, annual, and monthly compliance */}
+                {(templateForm.compliance_type === 'quarterly' || templateForm.compliance_type === 'annual' || templateForm.compliance_type === 'monthly') && (
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Financial Year Type *
+                      Year Type *
                     </label>
                     <select
                       value={templateForm.year_type}
                       onChange={(e) => setTemplateForm(prev => ({ ...prev, year_type: e.target.value as 'FY' | 'CY' }))}
                       className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     >
-                      <option value="FY">Financial Year (India) - Q1: Apr-Jun, Q2: Jul-Sep, Q3: Oct-Dec, Q4: Jan-Mar</option>
-                      <option value="CY">Calendar Year (Gulf/USA) - Q1: Jan-Mar, Q2: Apr-Jun, Q3: Jul-Sep, Q4: Oct-Dec</option>
+                      <option value="FY">Financial Year (India) - FY starts from April</option>
+                      <option value="CY">Calendar Year (Gulf/USA) - CY starts from January</option>
                     </select>
                     <p className="mt-1 text-xs text-gray-400">
-                      Select the year type for quarterly compliance calculations. Indian companies use Financial Year (FY).
+                      {templateForm.compliance_type === 'quarterly' && 'For quarterly: FY Q1: Apr-Jun, Q2: Jul-Sep, Q3: Oct-Dec, Q4: Jan-Mar | CY Q1: Jan-Mar, Q2: Apr-Jun, Q3: Jul-Sep, Q4: Oct-Dec'}
+                      {templateForm.compliance_type === 'annual' && 'Select the year type for annual compliance calculations. Indian companies use Financial Year (FY).'}
+                      {templateForm.compliance_type === 'monthly' && 'Select the year type for monthly compliance calculations. Indian companies use Financial Year (FY).'}
                     </p>
                   </div>
                 )}

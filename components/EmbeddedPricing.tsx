@@ -25,7 +25,7 @@ export default function EmbeddedPricing() {
           <button
             key={cycle.value}
             onClick={() => setSelectedBillingCycle(cycle.value)}
-            className={`px-4 py-2 rounded-lg font-light text-sm transition-all ${
+            className={`px-4 py-2 rounded-lg font-light text-sm transition-all whitespace-nowrap ${
               selectedBillingCycle === cycle.value
                 ? 'bg-gray-800 text-white border border-gray-700'
                 : 'bg-transparent text-gray-400 border border-gray-800 hover:border-gray-700 hover:text-gray-300'
