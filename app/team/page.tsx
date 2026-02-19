@@ -7,6 +7,7 @@ import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
 import { createClient } from '@/utils/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { getCompanyUserRoles, createTeamInvitation, removeTeamMember, updateTeamMemberRole } from '@/app/data-room/actions'
+import { trackTeamMemberAdded } from '@/lib/tracking/kpi-tracker'
 import { useUserRole } from '@/hooks/useUserRole'
 import { getCompanySubscription, type Subscription } from '@/lib/subscriptions/subscription'
 
@@ -375,6 +376,11 @@ export default function TeamPage() {
       const result = await createTeamInvitation(currentCompany.id, inviteEmail, inviteRole, inviteName)
       
       if (result.success) {
+        // Track team member addition
+        if (user?.id && currentCompany?.id) {
+          await trackTeamMemberAdded(user.id, currentCompany.id, inviteRole)
+        }
+
         alert('Invitation sent! They will get access after accepting the email invite.')
         setInviteEmail('')
         setInviteName('')

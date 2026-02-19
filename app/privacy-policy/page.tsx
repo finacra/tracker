@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
+import PublicHeader from '@/components/PublicHeader'
 
 // This page is public and accessible to unauthenticated users
 export default function PrivacyPolicyPage() {
@@ -12,7 +13,9 @@ export default function PrivacyPolicyPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-primary-dark text-gray-300 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-primary-dark text-gray-300">
+      <PublicHeader />
+      <div className="py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-12">
@@ -159,6 +162,7 @@ export default function PrivacyPolicyPage() {
               </a>
             </div>
           </section>
+        </div>
         </div>
       </div>
     </div>

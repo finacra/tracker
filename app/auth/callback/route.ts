@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { trackLogin } from '@/lib/tracking/kpi-tracker'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -89,6 +90,9 @@ export async function GET(request: Request) {
       }
       
       console.log(`[AUTH CALLBACK] User ${data.session.user.id} has companies: ${hasCompanies}, redirecting to: ${next}`)
+      
+      // Track login
+      await trackLogin(data.session.user.id)
       
       // Create redirect response - cookies are already set by Supabase client
       const redirectResponse = NextResponse.redirect(redirectUrl)

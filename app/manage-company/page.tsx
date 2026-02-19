@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/utils/supabase/client'
 import { updateCompany, getCompanyDirectors } from '@/app/onboarding/actions'
 import { verifyDIN, type DINDirectorData } from '@/lib/api/cin-din'
+import { trackCompanyEdit } from '@/lib/tracking/kpi-tracker'
 
 const INDUSTRY_CATEGORIES = [
   'Startups & MSMEs',
@@ -300,6 +301,10 @@ export default function ManageCompanyPage() {
         exDirectors: exDirectors.trim() || undefined
       })
       if (result.success) {
+        // Track company edit
+        if (user?.id) {
+          trackCompanyEdit(user.id, companyId)
+        }
         router.push('/data-room')
       }
     } catch (error: any) {

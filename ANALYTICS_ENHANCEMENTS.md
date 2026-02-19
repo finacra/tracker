@@ -144,46 +144,15 @@ You can view all these events in your Google Analytics dashboard:
 3. Set up custom reports for conversion tracking
 4. Create goals based on conversion events
 
-## KPI Tracking
-
-We've created a comprehensive KPI tracking system that maps all business KPIs to Google Analytics events. See `docs/KPI_TRACKING_SETUP.md` for complete documentation.
-
-### KPI Tracking Functions
-
-All KPI tracking functions are available in `lib/analytics/kpi-tracking.ts`:
-
-- **General KPIs**: User login, session time, onboarding, CIN retrieval, NPS, system errors, churn
-- **Company Overview**: Company edits, data accuracy
-- **Compliance Tracker**: Tracker usage, calendar sync, document uploads
-- **DSC Management**: DSC exports, notifications, credential views
-- **Reports**: Report generation, downloads, export formats
-- **Team Access**: User additions, access changes, CA additions, email sends
-- **Document Vault**: File uploads, exports, shares, note usage
-- **Reminders**: Email opens, notification clicks
-
-### Usage Example
-
-```typescript
-import { trackUserLogin, trackTrackerTabOpen } from '@/lib/analytics/kpi-tracking'
-
-// Track when user logs in
-trackUserLogin(userId, companyId)
-
-// Track when tracker tab is opened
-trackTrackerTabOpen(companyId)
-```
-
 ## Next Steps (Optional Enhancements)
 
-1. **Integrate KPI Tracking**: Add KPI tracking functions throughout the application at key interaction points
-2. **Set up GA4 Custom Dimensions**: Configure custom dimensions in Google Analytics for KPI segmentation
-3. **Create KPI Dashboards**: Build custom reports in GA4 for KPI monitoring
-4. **E-commerce Tracking**: Add detailed purchase tracking with items, quantities, and revenue
-5. **User Properties**: Track user segments (trial users, paid users, etc.)
-6. **Error Tracking**: Track JavaScript errors and failed API calls
-7. **Performance Tracking**: Track page load times and Core Web Vitals
-8. **A/B Testing**: Integrate with Google Optimize for A/B testing
-9. **Enhanced Conversions**: Set up enhanced e-commerce tracking for subscription flows
+1. **E-commerce Tracking**: Add detailed purchase tracking with items, quantities, and revenue
+2. **User Properties**: Track user segments (trial users, paid users, etc.)
+3. **Custom Dimensions**: Add custom dimensions for company size, industry, etc.
+4. **Error Tracking**: Track JavaScript errors and failed API calls
+5. **Performance Tracking**: Track page load times and Core Web Vitals
+6. **A/B Testing**: Integrate with Google Optimize for A/B testing
+7. **Enhanced Conversions**: Set up enhanced e-commerce tracking for subscription flows
 
 ## Measurement ID
 

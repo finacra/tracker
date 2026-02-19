@@ -258,33 +258,41 @@ function LoginPageInner() {
   return (
     <div className="min-h-screen bg-primary-dark flex flex-col relative overflow-hidden">
       {/* Top Navigation Bar */}
-      <nav className="relative z-10 w-full px-6 py-6 border-b border-gray-800">
+      <nav className="relative z-10 w-full px-4 sm:px-6 py-4 sm:py-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-2">
+          <Link href="/home" className="flex items-center gap-2">
             <img
               src="https://aqziojkjtmyecfglifbc.supabase.co/storage/v1/object/public/logo/WhatsApp_Image_2026-02-09_at_18.02.02-removebg-preview.png"
               alt="Finacra Logo"
               className="h-8 w-auto sm:h-10 object-contain"
             />
-          </div>
-          <div className="flex items-center gap-8">
+          </Link>
+          <div className="hidden md:flex items-center gap-8">
             <Link 
               href="/home"
-              className="text-sm font-light transition-colors text-gray-400 hover:text-white"
+              className="text-sm font-light transition-colors text-gray-300 hover:text-white"
           >
             Home
             </Link>
             <Link 
               href="/privacy-policy"
-              className="text-sm font-light transition-colors text-gray-400 hover:text-white"
+              className="text-sm font-light transition-colors text-gray-300 hover:text-white"
           >
             Privacy
             </Link>
             <Link 
               href="/terms-of-service"
-              className="text-sm font-light transition-colors text-gray-400 hover:text-white"
+              className="text-sm font-light transition-colors text-gray-300 hover:text-white"
           >
             Terms
+            </Link>
+          </div>
+          <div className="md:hidden">
+            <Link 
+              href="/home"
+              className="text-sm font-light transition-colors text-gray-300 hover:text-white"
+            >
+              Home
             </Link>
           </div>
         </div>

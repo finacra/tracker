@@ -11,6 +11,9 @@ import { useUserRole } from '@/hooks/useUserRole'
 import UsersManagement from '@/components/admin/UsersManagement'
 import AllUsersManagement from '@/components/admin/AllUsersManagement'
 import TransactionHistory from '@/components/admin/TransactionHistory'
+import { explainKPIData, chatWithKPIData, type KPIAggregation, type KPIMetric } from '@/app/admin/tracking/actions'
+import { InlineMath, BlockMath } from 'react-katex'
+import 'katex/dist/katex.min.css'
 import {
   getFolders,
   createFolder,
@@ -68,7 +71,7 @@ export default function AdminPage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [allRequirements, setAllRequirements] = useState<Requirement[]>([])
   const [selectedCompany, setSelectedCompany] = useState<string>('all')
-  const [activeTab, setActiveTab] = useState<'overview' | 'companies' | 'compliances' | 'subscriptions' | 'allusers' | 'templates' | 'financials' | 'transactions' | 'vault' | 'kpis'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'companies' | 'compliances' | 'subscriptions' | 'allusers' | 'templates' | 'financials' | 'transactions' | 'vault' | 'kpis' | 'tracking'>('overview')
   const [templates, setTemplates] = useState<ComplianceTemplate[]>([])
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([])
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
@@ -826,6 +829,19 @@ export default function AdminPage() {
               <line x1="6" y1="20" x2="6" y2="16" />
             </svg>
             <span>KPIs</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('tracking')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${
+              activeTab === 'tracking'
+                ? 'border-primary-orange bg-primary-orange/20 text-white'
+                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+            }`}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
+            <span>Tracking System</span>
           </button>
         </div>
 
@@ -2657,6 +2673,11 @@ export default function AdminPage() {
           <KPIsTab />
         )}
 
+        {/* Tracking System Tab */}
+        {activeTab === 'tracking' && (
+          <TrackingSystemTab supabase={supabase} />
+        )}
+
       </div>
     </div>
   )
@@ -2796,6 +2817,767 @@ function KPIsTab() {
           </p>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Tracking System Tab Component
+function TrackingSystemTab({ supabase }: { supabase: any }) {
+  const [selectedCategory, setSelectedCategory] = useState<string>('All')
+  const [selectedKPI, setSelectedKPI] = useState<string>('All')
+  const [selectedCompany, setSelectedCompany] = useState<string>('All')
+  const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d')
+  const [aggregations, setAggregations] = useState<any[]>([])
+  const [metrics, setMetrics] = useState<any[]>([])
+  const [companies, setCompanies] = useState<Array<{ id: string; name: string }>>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingMetrics, setIsLoadingMetrics] = useState(false)
+  const [selectedKPIDetail, setSelectedKPIDetail] = useState<string | null>(null)
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null)
+  const [isGeneratingExplanation, setIsGeneratingExplanation] = useState(false)
+  const [explanationError, setExplanationError] = useState<string | null>(null)
+  const [chatMode, setChatMode] = useState(false)
+  const [chatInput, setChatInput] = useState('')
+  const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([])
+  const [isGeneratingChat, setIsGeneratingChat] = useState(false)
+
+  // Get unique categories and KPIs
+  const categories = ['All', ...Array.from(new Set(KPI_DATA.map(kpi => kpi.category)))]
+  const kpis = ['All', ...Array.from(new Set(KPI_DATA.map(kpi => kpi.kpi)))]
+
+  // Helper function to render text with LaTeX
+  const renderWithLaTeX = (text: string) => {
+    const parts: React.ReactNode[] = []
+    let lastIndex = 0
+    const inlineMathRegex = /\$([^$]+)\$/g
+    const blockMathRegex = /\$\$([^$]+)\$\$/g
+    
+    // First handle block math ($$...$$)
+    const blockMatches = Array.from(text.matchAll(blockMathRegex))
+    blockMatches.forEach((match) => {
+      if (match.index !== undefined) {
+        // Add text before match
+        if (match.index > lastIndex) {
+          const beforeText = text.substring(lastIndex, match.index)
+          parts.push(renderInlineMath(beforeText))
+        }
+        // Add block math
+        try {
+          parts.push(<BlockMath key={`block-${match.index}`} math={match[1]} />)
+        } catch (e) {
+          parts.push(<span key={`block-${match.index}`} className="text-red-400">[LaTeX Error]</span>)
+        }
+        lastIndex = match.index + match[0].length
+      }
+    })
+    
+    // Add remaining text
+    if (lastIndex < text.length) {
+      const remainingText = text.substring(lastIndex)
+      parts.push(renderInlineMath(remainingText))
+    }
+    
+    return parts.length > 0 ? parts : [text]
+  }
+
+  // Helper to render inline math
+  const renderInlineMath = (text: string) => {
+    const parts: React.ReactNode[] = []
+    let lastIndex = 0
+    const inlineMathRegex = /\$([^$]+)\$/g
+    const matches = Array.from(text.matchAll(inlineMathRegex))
+    
+    matches.forEach((match) => {
+      if (match.index !== undefined) {
+        // Add text before match
+        if (match.index > lastIndex) {
+          parts.push(text.substring(lastIndex, match.index))
+        }
+        // Add inline math
+        try {
+          parts.push(<InlineMath key={`inline-${match.index}`} math={match[1]} />)
+        } catch (e) {
+          parts.push(<span key={`inline-${match.index}`} className="text-red-400">[LaTeX Error]</span>)
+        }
+        lastIndex = match.index + match[0].length
+      }
+    })
+    
+    // Add remaining text
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex))
+    }
+    
+    return parts.length > 0 ? parts : [text]
+  }
+
+  // Load companies
+  useEffect(() => {
+    async function loadCompanies() {
+      try {
+        const { data, error } = await supabase
+          .from('companies')
+          .select('id, name')
+          .order('name')
+        
+        if (!error && data) {
+          setCompanies(data)
+        }
+      } catch (error) {
+        console.error('Error loading companies:', error)
+      }
+    }
+    loadCompanies()
+  }, [supabase])
+
+  // Load aggregations
+  useEffect(() => {
+    async function loadAggregations() {
+      setIsLoading(true)
+      try {
+        const endDate = new Date().toISOString()
+        const startDate = dateRange === 'all' 
+          ? undefined 
+          : new Date(Date.now() - (dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90) * 24 * 60 * 60 * 1000).toISOString()
+
+        let query = supabase
+          .from('kpi_metrics')
+          .select('*')
+
+        if (startDate) {
+          query = query.gte('recorded_at', startDate)
+        }
+        if (selectedCategory !== 'All') {
+          query = query.eq('category', selectedCategory)
+        }
+        if (selectedKPI !== 'All') {
+          query = query.eq('kpi_name', selectedKPI)
+        }
+        if (selectedCompany !== 'All') {
+          query = query.eq('company_id', selectedCompany)
+        }
+
+        const { data, error } = await query
+
+        if (error) {
+          console.error('Error loading aggregations:', error)
+          setAggregations([])
+        } else if (data) {
+          // Aggregate the data
+          const aggregated = data.reduce((acc: any, metric: any) => {
+            const key = `${metric.category}::${metric.kpi_name}`
+            if (!acc[key]) {
+              acc[key] = {
+                kpi_name: metric.kpi_name,
+                category: metric.category,
+                values: [],
+                user_ids: new Set(),
+                company_ids: new Set(),
+                last_recorded: metric.recorded_at,
+              }
+            }
+            acc[key].values.push(metric.metric_value)
+            if (metric.user_id) acc[key].user_ids.add(metric.user_id)
+            if (metric.company_id) acc[key].company_ids.add(metric.company_id)
+            if (new Date(metric.recorded_at) > new Date(acc[key].last_recorded)) {
+              acc[key].last_recorded = metric.recorded_at
+            }
+            return acc
+          }, {})
+
+          const result = Object.values(aggregated).map((agg: any) => ({
+            kpi_name: agg.kpi_name,
+            category: agg.category,
+            total_count: agg.values.length,
+            average_value: agg.values.reduce((a: number, b: number) => a + b, 0) / agg.values.length,
+            min_value: Math.min(...agg.values),
+            max_value: Math.max(...agg.values),
+            last_recorded: agg.last_recorded,
+            user_count: agg.user_ids.size,
+            company_count: agg.company_ids.size,
+          }))
+
+          setAggregations(result)
+        }
+      } catch (error) {
+        console.error('Error loading aggregations:', error)
+        setAggregations([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadAggregations()
+  }, [selectedCategory, selectedKPI, selectedCompany, dateRange, supabase])
+
+  // Handle chat submission
+  const handleChatSubmit = async () => {
+    if (!chatInput.trim() || aggregations.length === 0) return
+
+    const userQuestion = chatInput.trim()
+    setChatInput('')
+    setIsGeneratingChat(true)
+
+    // Add user message to history
+    const newHistory = [...chatHistory, { role: 'user' as const, content: userQuestion }]
+    setChatHistory(newHistory)
+
+    try {
+      // Get sample metrics for context
+      const endDate = new Date().toISOString()
+      const startDate = dateRange === 'all' 
+        ? undefined 
+        : new Date(Date.now() - (dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90) * 24 * 60 * 60 * 1000).toISOString()
+      
+      let metricsQuery = supabase
+        .from('kpi_metrics')
+        .select('*')
+        .order('recorded_at', { ascending: false })
+        .limit(50)
+      
+      if (startDate) {
+        metricsQuery = metricsQuery.gte('recorded_at', startDate)
+      }
+      if (selectedCategory !== 'All') {
+        metricsQuery = metricsQuery.eq('category', selectedCategory)
+      }
+      if (selectedKPI !== 'All') {
+        metricsQuery = metricsQuery.eq('kpi_name', selectedKPI)
+      }
+      if (selectedCompany !== 'All') {
+        metricsQuery = metricsQuery.eq('company_id', selectedCompany)
+      }
+      
+      const { data: sampleMetrics } = await metricsQuery
+      
+      const result = await chatWithKPIData(
+        userQuestion,
+        aggregations as KPIAggregation[],
+        (sampleMetrics || []) as KPIMetric[],
+        dateRange === '7d' ? 'Last 7 days' : dateRange === '30d' ? 'Last 30 days' : dateRange === '90d' ? 'Last 90 days' : 'All time',
+        selectedCategory !== 'All' ? selectedCategory : undefined,
+        selectedKPI !== 'All' ? selectedKPI : undefined,
+        selectedCompany !== 'All' ? selectedCompany : undefined,
+        newHistory.slice(0, -1) // Pass history without the current question
+      )
+      
+      if (result.success && result.answer) {
+        setChatHistory([...newHistory, { role: 'assistant', content: result.answer }])
+      } else {
+        setChatHistory([...newHistory, { role: 'assistant', content: `Error: ${result.error || 'Failed to generate answer'}` }])
+      }
+    } catch (error: any) {
+      console.error('Error in chat:', error)
+      setChatHistory([...newHistory, { role: 'assistant', content: `Error: ${error.message || 'Failed to generate answer'}` }])
+    } finally {
+      setIsGeneratingChat(false)
+    }
+  }
+
+  // Load detailed metrics for a specific KPI
+  const loadKPIDetails = async (kpiName: string, category: string) => {
+    setIsLoadingMetrics(true)
+    setSelectedKPIDetail(kpiName)
+    try {
+      const endDate = new Date().toISOString()
+      const startDate = dateRange === 'all' 
+        ? undefined 
+        : new Date(Date.now() - (dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90) * 24 * 60 * 60 * 1000).toISOString()
+
+      let query = supabase
+        .from('kpi_metrics')
+        .select('*, companies(name)')
+        .eq('kpi_name', kpiName)
+        .eq('category', category)
+        .order('recorded_at', { ascending: false })
+        .limit(100)
+
+      if (startDate) {
+        query = query.gte('recorded_at', startDate)
+      }
+      if (selectedCompany !== 'All') {
+        query = query.eq('company_id', selectedCompany)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error('Error loading metrics:', error)
+        setMetrics([])
+      } else {
+        setMetrics(data || [])
+      }
+    } catch (error) {
+      console.error('Error loading metrics:', error)
+      setMetrics([])
+    } finally {
+      setIsLoadingMetrics(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Filters */}
+      <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Category Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-2">Category</label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full px-4 py-2 bg-primary-dark border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+            >
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+          {/* KPI Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-2">KPI</label>
+            <select
+              value={selectedKPI}
+              onChange={(e) => setSelectedKPI(e.target.value)}
+              className="w-full px-4 py-2 bg-primary-dark border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+            >
+              {kpis.map(kpi => (
+                <option key={kpi} value={kpi}>{kpi}</option>
+              ))}
+            </select>
+          </div>
+          {/* Company Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-2">Company</label>
+            <select
+              value={selectedCompany}
+              onChange={(e) => setSelectedCompany(e.target.value)}
+              className="w-full px-4 py-2 bg-primary-dark border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+            >
+              <option value="All">All Companies</option>
+              {companies.map(company => (
+                <option key={company.id} value={company.id}>{company.name}</option>
+              ))}
+            </select>
+          </div>
+          {/* Date Range */}
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-2">Date Range</label>
+            <select
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value as '7d' | '30d' | '90d' | 'all')}
+              className="w-full px-4 py-2 bg-primary-dark border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+            >
+              <option value="7d">Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+              <option value="90d">Last 90 days</option>
+              <option value="all">All time</option>
+            </select>
+          </div>
+          {/* Refresh Button */}
+          <div className="flex items-end gap-2">
+            <button
+              onClick={() => window.location.reload()}
+              className="flex-1 px-4 py-2 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-colors"
+            >
+              Refresh
+            </button>
+            <button
+              onClick={() => setChatMode(!chatMode)}
+              className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+                chatMode 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {chatMode ? '📊 Summary' : '💬 Chat'}
+            </button>
+            {!chatMode && (
+              <button
+                onClick={async () => {
+                  if (aggregations.length === 0) {
+                    setExplanationError('No data available to explain. Please load tracking data first.')
+                    return
+                  }
+                  setIsGeneratingExplanation(true)
+                  setExplanationError(null)
+                  setAiExplanation(null)
+                  
+                  try {
+                    // Get sample metrics for context
+                    const endDate = new Date().toISOString()
+                    const startDate = dateRange === 'all' 
+                      ? undefined 
+                      : new Date(Date.now() - (dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90) * 24 * 60 * 60 * 1000).toISOString()
+                    
+                    let metricsQuery = supabase
+                      .from('kpi_metrics')
+                      .select('*')
+                      .order('recorded_at', { ascending: false })
+                      .limit(50)
+                    
+                    if (startDate) {
+                      metricsQuery = metricsQuery.gte('recorded_at', startDate)
+                    }
+                    if (selectedCategory !== 'All') {
+                      metricsQuery = metricsQuery.eq('category', selectedCategory)
+                    }
+                    if (selectedKPI !== 'All') {
+                      metricsQuery = metricsQuery.eq('kpi_name', selectedKPI)
+                    }
+                    if (selectedCompany !== 'All') {
+                      metricsQuery = metricsQuery.eq('company_id', selectedCompany)
+                    }
+                    
+                    const { data: sampleMetrics } = await metricsQuery
+                    
+                    const result = await explainKPIData(
+                      aggregations as KPIAggregation[],
+                      (sampleMetrics || []) as KPIMetric[],
+                      dateRange === '7d' ? 'Last 7 days' : dateRange === '30d' ? 'Last 30 days' : dateRange === '90d' ? 'Last 90 days' : 'All time',
+                      selectedCategory !== 'All' ? selectedCategory : undefined,
+                      selectedKPI !== 'All' ? selectedKPI : undefined,
+                      selectedCompany !== 'All' ? selectedCompany : undefined
+                    )
+                    
+                    if (result.success && result.explanation) {
+                      setAiExplanation(result.explanation)
+                    } else {
+                      setExplanationError(result.error || 'Failed to generate explanation')
+                    }
+                  } catch (error: any) {
+                    console.error('Error generating explanation:', error)
+                    setExplanationError(error.message || 'Failed to generate explanation')
+                  } finally {
+                    setIsGeneratingExplanation(false)
+                  }
+                }}
+                disabled={isGeneratingExplanation || aggregations.length === 0}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isGeneratingExplanation ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Generating...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                      <path d="M2 17l10 5 10-5" />
+                      <path d="M2 12l10 5 10-5" />
+                    </svg>
+                    <span>Explain with AI</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Aggregations Table */}
+      <div className="bg-primary-dark-card border border-gray-800 rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-800">
+          <h2 className="text-xl font-light text-white">KPI Tracking Summary</h2>
+          <p className="text-sm text-gray-400 mt-1">Aggregated metrics across all tracked KPIs</p>
+        </div>
+        {isLoading ? (
+          <div className="p-8 text-center">
+            <div className="w-8 h-8 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-400">Loading tracking data...</p>
+          </div>
+        ) : aggregations.length === 0 ? (
+          <div className="p-8 text-center">
+            <p className="text-gray-400">No tracking data found for the selected filters.</p>
+            <p className="text-sm text-gray-500 mt-2">Tracking data will appear here as users interact with the system.</p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-800">
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">Category</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">KPI</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-400">Total Records</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-400">Avg Value</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-400">Min</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-400">Max</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-400">Users</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-400">Companies</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">Last Recorded</th>
+                    <th className="px-6 py-4 text-center text-sm font-medium text-gray-400">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {aggregations.map((agg, index) => (
+                    <tr
+                      key={index}
+                      className="border-b border-gray-800/50 hover:bg-gray-900/30 transition-colors"
+                    >
+                      <td className="px-6 py-4 text-sm text-gray-300">{agg.category}</td>
+                      <td className="px-6 py-4 text-sm text-white font-medium">{agg.kpi_name}</td>
+                      <td className="px-6 py-4 text-sm text-gray-400 text-right">{agg.total_count}</td>
+                      <td className="px-6 py-4 text-sm text-gray-400 text-right">{agg.average_value.toFixed(2)}</td>
+                      <td className="px-6 py-4 text-sm text-gray-400 text-right">{agg.min_value}</td>
+                      <td className="px-6 py-4 text-sm text-gray-400 text-right">{agg.max_value}</td>
+                      <td className="px-6 py-4 text-sm text-gray-400 text-right">{agg.user_count || 0}</td>
+                      <td className="px-6 py-4 text-sm text-gray-400 text-right">{agg.company_count || 0}</td>
+                      <td className="px-6 py-4 text-sm text-gray-400">
+                        {new Date(agg.last_recorded).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <button
+                          onClick={() => loadKPIDetails(agg.kpi_name, agg.category)}
+                          className="px-3 py-1 text-xs bg-primary-orange/20 text-primary-orange rounded hover:bg-primary-orange/30 transition-colors"
+                        >
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-800 bg-gray-900/20">
+              <p className="text-sm text-gray-400">
+                Showing {aggregations.length} tracked KPI{aggregations.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Detailed Metrics Modal */}
+      {selectedKPIDetail && (
+        <div className="bg-primary-dark-card border border-gray-800 rounded-2xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-light text-white">Detailed Metrics: {selectedKPIDetail}</h2>
+              <p className="text-sm text-gray-400 mt-1">Individual tracking records</p>
+            </div>
+            <button
+              onClick={() => {
+                setSelectedKPIDetail(null)
+                setMetrics([])
+              }}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+          {isLoadingMetrics ? (
+            <div className="p-8 text-center">
+              <div className="w-8 h-8 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-400">Loading metrics...</p>
+            </div>
+          ) : metrics.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="text-gray-400">No detailed metrics found.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-800">
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">Date</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">Company</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">User</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-400">Value</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">Data</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {metrics.map((metric, index) => (
+                    <tr
+                      key={index}
+                      className="border-b border-gray-800/50 hover:bg-gray-900/30 transition-colors"
+                    >
+                      <td className="px-6 py-4 text-sm text-gray-400">
+                        {new Date(metric.recorded_at).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-300">
+                        {metric.companies?.name || (metric.company_id ? metric.company_id.substring(0, 8) + '...' : 'N/A')}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-300">
+                        {metric.user_id ? metric.user_id.substring(0, 8) + '...' : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-white font-medium text-right">
+                        {metric.metric_value}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-400">
+                        {metric.metric_data ? JSON.stringify(metric.metric_data).substring(0, 50) + '...' : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* AI Explanation / Chat Section */}
+      {((!chatMode && (aiExplanation || explanationError || isGeneratingExplanation)) || chatMode) && (
+        <div className="bg-primary-dark-card border border-gray-800 rounded-2xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-light text-white flex items-center gap-2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                  <path d="M2 17l10 5 10-5" />
+                  <path d="M2 12l10 5 10-5" />
+                </svg>
+                {chatMode ? 'Chat with KPI Data' : 'AI Explanation'}
+              </h2>
+              <p className="text-sm text-gray-400 mt-1">
+                {chatMode ? 'Ask questions about your KPI tracking data' : 'Simple analysis of your KPI tracking data'}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                if (chatMode) {
+                  setChatHistory([])
+                  setChatInput('')
+                } else {
+                  setAiExplanation(null)
+                  setExplanationError(null)
+                }
+              }}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+          <div className="p-6">
+            {chatMode ? (
+              <div className="space-y-4">
+                {/* Chat History */}
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {chatHistory.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400">
+                      <p>Start a conversation about your KPI data</p>
+                      <p className="text-sm text-gray-500 mt-2">Try asking: "What does the Addictiveness KPI mean?" or "Show me trends in Tracker Usage"</p>
+                    </div>
+                  ) : (
+                    chatHistory.map((msg, index) => (
+                      <div
+                        key={index}
+                        className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-[80%] rounded-lg p-4 ${
+                            msg.role === 'user'
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-800 text-gray-300'
+                          }`}
+                        >
+                          <div className="whitespace-pre-wrap">
+                            {renderWithLaTeX(msg.content)}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  {isGeneratingChat && (
+                    <div className="flex justify-start">
+                      <div className="bg-gray-800 text-gray-300 rounded-lg p-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                          <span>Thinking...</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Chat Input */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey && chatInput.trim() && !isGeneratingChat) {
+                        e.preventDefault()
+                        handleChatSubmit()
+                      }
+                    }}
+                    placeholder="Ask a question about your KPI data..."
+                    className="flex-1 px-4 py-2 bg-primary-dark border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                    disabled={isGeneratingChat || aggregations.length === 0}
+                  />
+                  <button
+                    onClick={handleChatSubmit}
+                    disabled={!chatInput.trim() || isGeneratingChat || aggregations.length === 0}
+                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Send
+                  </button>
+                </div>
+              </div>
+            ) : isGeneratingExplanation ? (
+              <div className="text-center py-8">
+                <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-400">AI is analyzing your KPI data...</p>
+                <p className="text-sm text-gray-500 mt-2">This may take a few moments</p>
+              </div>
+            ) : explanationError ? (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-400 flex-shrink-0 mt-0.5">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <div>
+                    <h3 className="text-red-400 font-medium mb-1">Error Generating Explanation</h3>
+                    <p className="text-gray-300 text-sm">{explanationError}</p>
+                  </div>
+                </div>
+              </div>
+            ) : aiExplanation ? (
+              <div className="prose prose-invert max-w-none">
+                <div className="text-gray-300 whitespace-pre-wrap leading-relaxed">
+                  {aiExplanation.split('\n').map((paragraph, index) => {
+                    // Check if this is a header (starts with # or is all caps)
+                    if (paragraph.trim().startsWith('#') || (paragraph.trim().length > 0 && paragraph.trim().length < 50 && paragraph === paragraph.toUpperCase())) {
+                      return (
+                        <h3 key={index} className="text-white font-semibold text-lg mt-6 mb-3 first:mt-0">
+                          {renderWithLaTeX(paragraph.replace(/^#+\s*/, '').trim())}
+                        </h3>
+                      )
+                    }
+                    // Check if this is a bullet point or numbered list
+                    if (paragraph.trim().startsWith('-') || paragraph.trim().match(/^\d+\./)) {
+                      return (
+                        <div key={index} className="ml-4 mb-2 text-gray-300">
+                          {renderWithLaTeX(paragraph.trim())}
+                        </div>
+                      )
+                    }
+                    // Regular paragraph
+                    if (paragraph.trim().length > 0) {
+                      return (
+                        <p key={index} className="mb-4 text-gray-300">
+                          {renderWithLaTeX(paragraph.trim())}
+                        </p>
+                      )
+                    }
+                    return null
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

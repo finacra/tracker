@@ -3,6 +3,7 @@
 import { Suspense } from 'react'
 import PricingTiers from '@/components/PricingTiers'
 import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
+import PublicHeader from '@/components/PublicHeader'
 
 function PricingContent() {
   return (
@@ -10,6 +11,7 @@ function PricingContent() {
       <SubtleCircuitBackground />
       
       <div className="relative z-10">
+        <PublicHeader />
         <PricingTiers />
       </div>
     </div>

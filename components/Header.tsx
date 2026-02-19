@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { getNotifications, markNotificationsRead, markAllNotificationsRead, type Notification } from '@/app/data-room/actions'
+import { trackNotificationClick } from '@/lib/tracking/kpi-tracker'
 
 export default function Header() {
   const [showNotifications, setShowNotifications] = useState(false)
@@ -281,8 +282,21 @@ export default function Header() {
                         notifications.map((notification) => (
                           <div
                             key={notification.id}
-                            onClick={() => {
-                              if (!notification.is_read) handleMarkRead(notification.id)
+                            onClick={async () => {
+                              if (!notification.is_read) {
+                                await handleMarkRead(notification.id)
+                                // Track notification click
+                                if (user?.id) {
+                                  const companyId = notification.company_id || undefined
+                                  trackNotificationClick(user.id, companyId || '', notification.type || 'general')
+                                }
+                              } else {
+                                // Track notification click even if already read
+                                if (user?.id) {
+                                  const companyId = notification.company_id || undefined
+                                  trackNotificationClick(user.id, companyId || '', notification.type || 'general')
+                                }
+                              }
                               setSelectedNotification(notification)
                               setShowNotifications(false)
                             }}

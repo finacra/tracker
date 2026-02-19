@@ -10,6 +10,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { uploadDocument, getCompanyDocuments, getDocumentTemplates, getDownloadUrl, deleteDocument } from '@/app/onboarding/actions'
 import { getRegulatoryRequirements, updateRequirementStatus, createRequirement, deleteRequirement, updateRequirement, sendDocumentsEmail, type RegulatoryRequirement } from '@/app/data-room/actions'
+import { trackTrackerTabOpened, trackStatusChange, trackDocumentUpload, trackCalendarSync, trackVaultFileExport, trackReportDownload, trackVaultFileUpload } from '@/lib/tracking/kpi-tracker'
 import jsPDF from 'jspdf'
 import { useUserRole } from '@/hooks/useUserRole'
 import { useCompanyAccess, useAnyCompanyAccess } from '@/hooks/useCompanyAccess'
@@ -48,6 +49,58 @@ interface EntityDetails {
   phoneNumber: string
   industryCategory: string
   directors: Director[]
+}
+
+// Generate ICS calendar file from regulatory requirements
+function generateICSFile(requirements: RegulatoryRequirement[]): string {
+  const now = new Date()
+  const timestamp = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+  
+  let icsContent = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Finacra//Compliance Calendar//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH'
+  ].join('\r\n') + '\r\n'
+  
+  requirements.forEach((req, index) => {
+    if (!req.due_date) return
+    
+    const dueDate = new Date(req.due_date)
+    const dateStr = dueDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+    const uid = `compliance-${req.id}-${index}@finacra.com`
+    
+    // Escape text for ICS format
+    const escapeText = (text: string) => {
+      return text.replace(/\\/g, '\\\\')
+        .replace(/;/g, '\\;')
+        .replace(/,/g, '\\,')
+        .replace(/\n/g, '\\n')
+    }
+    
+    const summary = escapeText(req.requirement)
+    const description = escapeText(
+      `${req.category}${req.description ? ': ' + req.description : ''}${req.penalty ? ' | Penalty: ' + req.penalty : ''}`
+    )
+    
+    icsContent += [
+      'BEGIN:VEVENT',
+      `UID:${uid}`,
+      `DTSTAMP:${timestamp}`,
+      `DTSTART:${dateStr}`,
+      `DTEND:${dateStr}`,
+      `SUMMARY:${summary}`,
+      `DESCRIPTION:${description}`,
+      `STATUS:CONFIRMED`,
+      `SEQUENCE:0`,
+      'END:VEVENT'
+    ].join('\r\n') + '\r\n'
+  })
+  
+  icsContent += 'END:VCALENDAR\r\n'
+  
+  return icsContent
 }
 
 function DataRoomPageInner() {
@@ -749,6 +802,11 @@ function DataRoomPageInner() {
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
+        
+        // Track vault file export
+        if (user?.id && currentCompany?.id) {
+          trackVaultFileExport(user.id, currentCompany.id, 1)
+        }
       } else {
         alert('Failed to download document')
       }
@@ -890,6 +948,17 @@ function DataRoomPageInner() {
       })
 
       if (result.success) {
+        // Track document upload (vault)
+        if (user?.id && currentCompany?.id) {
+          await trackDocumentUpload(user.id, currentCompany.id, uploadFormData.documentName).catch(err => {
+            console.error('Failed to track document upload:', err)
+          })
+          // Also track as vault file upload
+          await trackVaultFileUpload(user.id, currentCompany.id, uploadFormData.file?.type || 'unknown').catch(err => {
+            console.error('Failed to track vault file upload:', err)
+          })
+        }
+
         setIsUploadModalOpen(false)
         setUploadFormData({
           folder: '',
@@ -1090,6 +1159,13 @@ function DataRoomPageInner() {
     fetchRequirements()
   }, [currentCompany]) // Removed activeTab - no need to re-fetch on tab change
 
+  // Track tracker tab opened
+  useEffect(() => {
+    if (activeTab === 'tracker' && currentCompany?.id && user?.id) {
+      trackTrackerTabOpened(user.id, currentCompany.id)
+    }
+  }, [activeTab, currentCompany?.id, user?.id])
+
   // Helper function to format date for display
   const formatDate = (dateStr: string): string => {
     try {
@@ -1139,8 +1215,19 @@ function DataRoomPageInner() {
     if (!currentCompany) return
 
     try {
+      // Get old status for tracking
+      const oldRequirement = regulatoryRequirements.find(req => req.id === requirementId)
+      const oldStatus = oldRequirement?.status || 'not_started'
+
       const result = await updateRequirementStatus(requirementId, currentCompany.id, newStatus)
       if (result.success) {
+        // Track status change
+        if (user?.id && currentCompany?.id) {
+          await trackStatusChange(user.id, currentCompany.id, requirementId, oldStatus, newStatus).catch(err => {
+            console.error('Failed to track status change:', err)
+          })
+        }
+
         // Update local state
         setRegulatoryRequirements(prev => 
           prev.map(req => 
@@ -1303,6 +1390,13 @@ function DataRoomPageInner() {
 
         if (!uploadResult.success) {
           throw new Error('Failed to save document metadata')
+        }
+
+        // Track document upload
+        if (user?.id && currentCompany?.id) {
+          await trackDocumentUpload(user.id, currentCompany.id, documentUploadModal.documentName).catch(err => {
+            console.error('Failed to track document upload:', err)
+          })
         }
       } catch (uploadError: any) {
         throw new Error(uploadError.message || 'Failed to upload document')
@@ -3203,6 +3297,13 @@ function DataRoomPageInner() {
             // Save PDF
             const fileName = `compliance-report-${currentCompany?.name || 'company'}-${new Date().toISOString().split('T')[0]}.pdf`
             doc.save(fileName)
+            
+            // Track report download
+            if (user?.id && currentCompany?.id) {
+              await trackReportDownload(user.id, currentCompany.id, 'compliance_pdf').catch(err => {
+                console.error('Failed to track report download:', err)
+              })
+            }
             
             setIsGeneratingEnhancedPDF(false)
             setPdfGenerationProgress({ current: 0, total: 0, step: '' })
@@ -5305,7 +5406,29 @@ function DataRoomPageInner() {
                     <span className="sm:hidden">Add</span>
                   </button>
                 )}
-                <button className="bg-primary-dark-card border border-gray-700 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-white/40/50 transition-colors flex items-center gap-1.5 sm:gap-2 font-medium text-xs sm:text-base">
+                <button 
+                  onClick={async () => {
+                    if (user?.id && currentCompany?.id) {
+                      // Generate calendar file (ICS format)
+                      const icsContent = generateICSFile(regulatoryRequirements)
+                      const blob = new Blob([icsContent], { type: 'text/calendar' })
+                      const url = URL.createObjectURL(blob)
+                      const link = document.createElement('a')
+                      link.href = url
+                      link.download = `${currentCompany.name}-compliance-calendar.ics`
+                      document.body.appendChild(link)
+                      link.click()
+                      document.body.removeChild(link)
+                      URL.revokeObjectURL(url)
+                      
+                      // Track calendar sync
+                      await trackCalendarSync(user.id, currentCompany.id).catch(err => {
+                        console.error('Failed to track calendar sync:', err)
+                      })
+                    }
+                  }}
+                  className="bg-primary-dark-card border border-gray-700 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-white/40/50 transition-colors flex items-center gap-1.5 sm:gap-2 font-medium text-xs sm:text-base"
+                >
                 <svg
                   width="14"
                   height="14"
