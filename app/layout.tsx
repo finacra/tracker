@@ -3,6 +3,7 @@ import { Poppins } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
 import Analytics from '@/components/Analytics'
+import AnalyticsWrapper from '@/components/AnalyticsWrapper'
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -24,7 +25,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={poppins.className} suppressHydrationWarning>
         <Analytics />
-        <Providers>{children}</Providers>
+        <AnalyticsWrapper>
+          <Providers>{children}</Providers>
+        </AnalyticsWrapper>
       </body>
     </html>
   )

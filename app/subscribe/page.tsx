@@ -10,6 +10,7 @@ import PaymentButton from '@/components/PaymentButton'
 import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
 import Link from 'next/link'
 import { loadRazorpayScript, createTrialVerificationOrder, verifyPayment, openRazorpayCheckout, type RazorpayResponse } from '@/lib/razorpay/payment'
+import { trackSubscriptionEvent, trackConversion, trackButtonClick } from '@/lib/analytics'
 
 function SubscribePageInner() {
   const router = useRouter()
@@ -229,6 +230,10 @@ function SubscribePageInner() {
           throw new Error(rpcError.message || 'Failed to create trial')
         }
 
+        // Track trial start
+        trackSubscriptionEvent('trial_start', tier, undefined, undefined)
+        trackConversion('trial_start')
+        
         // Success - redirect
         if (companyId) {
           router.push(`/data-room?company_id=${companyId}`)
@@ -250,6 +255,10 @@ function SubscribePageInner() {
           throw new Error(rpcError.message || 'Failed to create trial')
         }
 
+        // Track trial start
+        trackSubscriptionEvent('trial_start', tier, undefined, undefined)
+        trackConversion('trial_start')
+        
         // Success - redirect to onboarding to create first company
         router.push('/onboarding')
         return
@@ -275,6 +284,10 @@ function SubscribePageInner() {
           throw new Error(rpcError.message || 'Failed to create trial')
         }
 
+        // Track trial start
+        trackSubscriptionEvent('trial_start', tier, undefined, undefined)
+        trackConversion('trial_start')
+        
         router.push(`/data-room?company_id=${firstCompanyId}`)
         return
       }
@@ -290,6 +303,10 @@ function SubscribePageInner() {
           throw new Error(rpcError.message || 'Failed to create trial')
         }
 
+        // Track trial start
+        trackSubscriptionEvent('trial_start', tier, undefined, undefined)
+        trackConversion('trial_start')
+        
         // Success - redirect to the company
         router.push(`/data-room?company_id=${targetCompanyId}`)
       }

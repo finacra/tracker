@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import EmbeddedPricing from '@/components/EmbeddedPricing'
 import PublicHeader from '@/components/PublicHeader'
+import { trackProductInteraction, trackButtonClick, trackLinkClick } from '@/lib/analytics'
 
 export default function HomePage() {
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null)
@@ -23,6 +24,17 @@ export default function HomePage() {
   const handleProductClick = (productId: string) => {
     setClickedProduct(productId)
     setHoveredProduct(productId)
+    
+    // Track product click
+    const productNames: { [key: string]: string } = {
+      compliance: 'Compliance Tracker',
+      vault: 'Document Vault',
+      services: 'Finacra Web Services',
+      einvoicing: 'E-Invoicing',
+      filing: 'Filing & Notices',
+      ai: 'Finacra AI',
+    }
+    trackProductInteraction(productNames[productId] || productId, 'click', '/home')
     
     // Scroll to graphic on mobile/tablet
     if (isMobile && graphicRefs[productId as keyof typeof graphicRefs]?.current) {
@@ -654,6 +666,7 @@ export default function HomePage() {
                 onMouseEnter={() => {
                   setClickedProduct(null) // Clear clicked product to prevent overlap
                   setHoveredProduct('compliance')
+                  trackProductInteraction('Compliance Tracker', 'hover', '/home')
                 }}
                 onMouseLeave={() => setHoveredProduct(null)}
                 onClick={() => handleProductClick('compliance')}
@@ -673,7 +686,10 @@ export default function HomePage() {
                       </div>
                     )}
                     <Link href="/compliance-tracker">
-                      <button className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm">
+                      <button 
+                        onClick={() => trackButtonClick('Learn More - Compliance Tracker', '/home')}
+                        className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm"
+                      >
                         Learn More
                       </button>
                     </Link>

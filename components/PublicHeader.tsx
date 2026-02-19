@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { trackLinkClick, trackButtonClick } from '@/lib/analytics'
 
 export default function PublicHeader() {
   const pathname = usePathname()
@@ -21,6 +22,7 @@ export default function PublicHeader() {
       const element = document.getElementById(hash.replace('#', ''))
       if (element) {
         element.scrollIntoView({ behavior: 'smooth' })
+        trackLinkClick(`Anchor: ${hash}`, pathname + hash)
       }
     }
   }
@@ -133,6 +135,7 @@ export default function PublicHeader() {
                     onClick={(e) => {
                       e.preventDefault()
                       setShowProductsDropdown(false)
+                      trackLinkClick('Compliance Tracker', '/compliance-tracker')
                       router.push('/compliance-tracker')
                     }}
                   >
@@ -147,6 +150,7 @@ export default function PublicHeader() {
                     onClick={(e) => {
                       e.preventDefault()
                       setShowProductsDropdown(false)
+                      trackLinkClick('Company Onboarding', '/company-onboarding')
                       router.push('/company-onboarding')
                     }}
                   >
@@ -182,6 +186,7 @@ export default function PublicHeader() {
         <div className="flex items-center gap-2 sm:gap-4">
           <Link
             href="/subscribe"
+            onClick={() => trackButtonClick('Start Trial for free', pathname)}
             className="px-3 sm:px-4 py-2 bg-black border border-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors font-light text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2"
           >
             <span className="hidden sm:inline">Start Trial for free</span>
@@ -192,6 +197,7 @@ export default function PublicHeader() {
           </Link>
           <Link
             href="/login"
+            onClick={() => trackLinkClick('Log In', '/login')}
             className="text-gray-300 hover:text-white transition-colors font-light text-xs sm:text-sm"
           >
             Log In
