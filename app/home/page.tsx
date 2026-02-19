@@ -3,13 +3,12 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import EmbeddedPricing from '@/components/EmbeddedPricing'
+import PublicHeader from '@/components/PublicHeader'
 
 export default function HomePage() {
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null)
   const [clickedProduct, setClickedProduct] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
-  const [showProductsDropdown, setShowProductsDropdown] = useState(false)
-  const productsDropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const graphicRefs = {
     compliance: useRef<HTMLDivElement>(null),
     vault: useRef<HTMLDivElement>(null),
@@ -19,15 +18,6 @@ export default function HomePage() {
     ai: useRef<HTMLDivElement>(null),
   }
   const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set())
-  
-  // Cleanup timeouts on unmount
-  useEffect(() => {
-    return () => {
-      if (productsDropdownTimeoutRef.current) {
-        clearTimeout(productsDropdownTimeoutRef.current)
-      }
-    }
-  }, [])
   
   // Handle product click - set clicked product and scroll to graphic
   const handleProductClick = (productId: string) => {
@@ -536,135 +526,9 @@ export default function HomePage() {
         }
       `}</style>
       {/* Navigation Bar */}
-      <nav className="relative z-10 w-full px-4 sm:px-6 py-4 sm:py-6 animate-fade-in">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/home" className="flex items-center gap-2">
-            <img
-              src="https://aqziojkjtmyecfglifbc.supabase.co/storage/v1/object/public/logo/WhatsApp_Image_2026-02-09_at_18.02.02-removebg-preview.png"
-              alt="Finacra Logo"
-              className="h-8 w-auto sm:h-10 object-contain"
-            />
-          </Link>
-          <div className="hidden md:flex items-center gap-8">
-            {/* Products with Dropdown */}
-            <div 
-              className="relative"
-              onMouseEnter={() => {
-                if (productsDropdownTimeoutRef.current) {
-                  clearTimeout(productsDropdownTimeoutRef.current)
-                  productsDropdownTimeoutRef.current = null
-                }
-                setShowProductsDropdown(true)
-              }}
-              onMouseLeave={() => {
-                productsDropdownTimeoutRef.current = setTimeout(() => {
-                  setShowProductsDropdown(false)
-                }, 150)
-              }}
-            >
-              <Link 
-                href="#products" 
-                className="text-gray-300 hover:text-white transition-colors font-light text-sm flex items-center gap-1 py-2"
-                onClick={(e) => {
-                  e.preventDefault()
-                  document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' })
-                  setShowProductsDropdown(false)
-                }}
-              >
-                Products
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </Link>
-              {showProductsDropdown && (
-                <div 
-                  className="absolute top-full left-0 w-48 z-50"
-                  style={{ marginTop: '4px' }}
-                  onMouseEnter={() => {
-                    if (productsDropdownTimeoutRef.current) {
-                      clearTimeout(productsDropdownTimeoutRef.current)
-                      productsDropdownTimeoutRef.current = null
-                    }
-                    setShowProductsDropdown(true)
-                  }}
-                  onMouseLeave={() => {
-                    productsDropdownTimeoutRef.current = setTimeout(() => {
-                      setShowProductsDropdown(false)
-                    }, 150)
-                  }}
-                >
-                  <div className="bg-[#1a1a1a] border border-gray-800 rounded-lg shadow-xl overflow-hidden">
-                    <Link
-                      href="/compliance-tracker"
-                      className="block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-900/50 transition-colors font-light text-sm"
-                      onClick={() => {
-                        setShowProductsDropdown(false)
-                        if (productsDropdownTimeoutRef.current) {
-                          clearTimeout(productsDropdownTimeoutRef.current)
-                          productsDropdownTimeoutRef.current = null
-                        }
-                      }}
-                    >
-                      Compliance Tracker
-                    </Link>
-                    <Link
-                      href="/company-onboarding"
-                      className="block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-900/50 transition-colors font-light text-sm border-t border-gray-800"
-                      onClick={() => {
-                        setShowProductsDropdown(false)
-                        if (productsDropdownTimeoutRef.current) {
-                          clearTimeout(productsDropdownTimeoutRef.current)
-                          productsDropdownTimeoutRef.current = null
-                        }
-                      }}
-                    >
-                      Company Onboarding
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            <Link 
-              href="#solution" 
-              className="text-gray-300 hover:text-white transition-colors font-light text-sm"
-              onClick={(e) => {
-                e.preventDefault()
-                document.getElementById('solution')?.scrollIntoView({ behavior: 'smooth' })
-              }}
-            >
-              Features
-            </Link>
-            <Link href="#plans" className="text-gray-300 hover:text-white transition-colors font-light text-sm">
-              Plans
-            </Link>
-            <Link href="/customers" className="text-gray-300 hover:text-white transition-colors font-light text-sm">
-              Customers
-            </Link>
-            <Link href="/contact" className="text-gray-300 hover:text-white transition-colors font-light text-sm">
-              Contact Us
-            </Link>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <Link
-              href="/subscribe"
-              className="px-3 sm:px-4 py-2 bg-black border border-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors font-light text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2"
-            >
-              <span className="hidden sm:inline">Start Trial for free</span>
-              <span className="sm:hidden">Trial</span>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="hidden sm:block">
-                <path d="M1 11L11 1M11 1H1M11 1V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </Link>
-            <Link
-              href="/login"
-              className="text-gray-300 hover:text-white transition-colors font-light text-xs sm:text-sm"
-            >
-              Log In
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <div className="animate-fade-in">
+        <PublicHeader />
+      </div>
 
       {/* Hero Section */}
       <section 
@@ -775,16 +639,16 @@ export default function HomePage() {
       <section 
         id="products"
         data-animate-section="products"
-        className={`relative z-10 px-4 sm:px-6 pt-12 sm:pt-20 md:pt-32 pb-0 sm:pb-4 md:pb-8 border-t border-gray-800 ${visibleSections.has('products') ? 'section-visible' : 'section-hidden'}`}
+        className={`relative z-10 px-4 sm:px-6 pt-8 sm:pt-12 md:pt-16 pb-0 sm:pb-2 md:pb-4 border-t border-gray-800 ${visibleSections.has('products') ? 'section-visible' : 'section-hidden'}`}
       >
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-8 sm:mb-12 md:mb-16 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('products') ? 1 : 0 }}>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-6 sm:mb-8 md:mb-10 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('products') ? 1 : 0 }}>
             Our Products
           </h2>
           <div className="space-y-0">
               {/* Compliance Tracker */}
               <div
-                className={`border-b border-gray-800 pb-12 mb-12 cursor-pointer transition-all duration-300 ${
+                className={`border-b border-gray-800 pb-4 sm:pb-5 md:pb-6 mb-4 sm:mb-5 md:mb-6 cursor-pointer transition-all duration-300 ${
                   hoveredProduct && hoveredProduct !== 'compliance' ? 'opacity-30' : 'opacity-100'
                 }`}
                 onMouseEnter={() => {
@@ -794,12 +658,12 @@ export default function HomePage() {
                 onMouseLeave={() => setHoveredProduct(null)}
                 onClick={() => handleProductClick('compliance')}
               >
-                <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
+                <div className={`grid ${(clickedProduct === 'compliance' || hoveredProduct === 'compliance') ? 'md:grid-cols-2' : ''} gap-4 md:gap-6 lg:gap-8 items-start`}>
                   <div>
-                    <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
+                    <h3 className="text-xl sm:text-2xl font-light text-white mb-2 sm:mb-3">
                       Compliance Tracker
                     </h3>
-                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
+                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-3">
                       Track statutory and regulatory requirements across GST, Income Tax, RoC, payroll, and renewals with structured status management and due-date monitoring.
                     </p>
                     {/* Mobile Graphic - Inline - Only show when active */}
@@ -815,10 +679,10 @@ export default function HomePage() {
                     </Link>
                   </div>
                   {/* Desktop Graphic - Beside description */}
-                  <div className="hidden md:flex relative h-[300px] sm:h-[400px] items-center justify-center">
-                    {(clickedProduct === 'compliance' || hoveredProduct === 'compliance') && (
+                  {(clickedProduct === 'compliance' || hoveredProduct === 'compliance') && (
+                    <div className="hidden md:flex relative h-[250px] sm:h-[300px] lg:h-[350px] items-center justify-center">
                       <div className="w-full h-full">
-                        <div className="relative h-[300px] sm:h-[400px] flex items-center justify-center">
+                        <div className="relative h-[250px] sm:h-[300px] lg:h-[350px] flex items-center justify-center">
                           <svg
                             className="w-full h-full"
                             viewBox="0 0 1000 700"
@@ -839,14 +703,14 @@ export default function HomePage() {
                           </svg>
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Document Vault */}
               <div
-                className={`border-b border-gray-800 pb-8 sm:pb-12 mb-8 sm:mb-12 cursor-pointer transition-all duration-300 ${
+                className={`border-b border-gray-800 pb-4 sm:pb-5 md:pb-6 mb-4 sm:mb-5 md:mb-6 cursor-pointer transition-all duration-300 ${
                   hoveredProduct && hoveredProduct !== 'vault' ? 'opacity-30' : 'opacity-100'
                 }`}
                 onMouseEnter={() => {
@@ -856,12 +720,12 @@ export default function HomePage() {
                 onMouseLeave={() => setHoveredProduct(null)}
                 onClick={() => handleProductClick('vault')}
               >
-                <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
+                <div className={`grid ${(clickedProduct === 'vault' || hoveredProduct === 'vault') ? 'md:grid-cols-2' : ''} gap-4 md:gap-6 lg:gap-8 items-start`}>
                   <div>
-                    <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
+                    <h3 className="text-xl sm:text-2xl font-light text-white mb-2 sm:mb-3">
                       Document Vault
                     </h3>
-                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
+                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-3">
                       Secure storage and structured organization of financial and legal documents with role-based access.
                     </p>
                     {/* Mobile Graphic - Inline - Only show when active */}
@@ -872,10 +736,10 @@ export default function HomePage() {
                     )}
                   </div>
                   {/* Desktop Graphic - Beside description */}
-                  <div className="hidden md:flex relative h-[300px] sm:h-[400px] items-center justify-center">
-                    {(clickedProduct === 'vault' || hoveredProduct === 'vault') && (
+                  {(clickedProduct === 'vault' || hoveredProduct === 'vault') && (
+                    <div className="hidden md:flex relative h-[250px] sm:h-[300px] lg:h-[350px] items-center justify-center">
                       <div className="w-full h-full">
-                        <div className="relative h-[300px] sm:h-[400px] flex items-center justify-center">
+                        <div className="relative h-[250px] sm:h-[300px] lg:h-[350px] flex items-center justify-center">
                           <svg
                             className="w-full h-full"
                             viewBox="0 0 1000 700"
@@ -896,14 +760,14 @@ export default function HomePage() {
                           </svg>
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Finacra Web Services */}
               <div
-                className={`border-b border-gray-800 pt-8 sm:pt-12 pb-8 sm:pb-12 mb-8 sm:mb-12 cursor-pointer transition-all duration-300 ${
+                className={`border-b border-gray-800 pt-2 sm:pt-3 md:pt-4 pb-4 sm:pb-5 md:pb-6 mb-4 sm:mb-5 md:mb-6 cursor-pointer transition-all duration-300 ${
                   hoveredProduct && hoveredProduct !== 'services' ? 'opacity-30' : 'opacity-100'
                 }`}
                 onMouseEnter={() => {
@@ -913,12 +777,12 @@ export default function HomePage() {
                 onMouseLeave={() => setHoveredProduct(null)}
                 onClick={() => handleProductClick('services')}
               >
-                <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-start">
+                <div className={`grid ${(clickedProduct === 'services' || hoveredProduct === 'services') ? 'md:grid-cols-2' : ''} gap-4 md:gap-6 lg:gap-8 items-start`}>
                   <div>
-                    <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
+                    <h3 className="text-xl sm:text-2xl font-light text-white mb-2 sm:mb-3">
                       Finacra Web Services <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
                     </h3>
-                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
+                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-3">
                       Infrastructure layer that supports company onboarding, entity detection, compliance workflows, and administrative control.
                     </p>
                     {/* Mobile Graphic - Inline - Only show when active */}
@@ -934,10 +798,10 @@ export default function HomePage() {
                     </Link>
                   </div>
                   {/* Desktop Graphic - Beside description */}
-                  <div className="hidden md:flex relative h-[300px] sm:h-[400px] items-center justify-center">
-                    {(clickedProduct === 'services' || hoveredProduct === 'services') && (
+                  {(clickedProduct === 'services' || hoveredProduct === 'services') && (
+                    <div className="hidden md:flex relative h-[250px] sm:h-[300px] lg:h-[350px] items-center justify-center">
                       <div className="w-full h-full">
-                        <div className="relative h-[300px] sm:h-[400px] flex items-center justify-center">
+                        <div className="relative h-[250px] sm:h-[300px] lg:h-[350px] flex items-center justify-center">
                           <svg
                             className="w-full h-full"
                             viewBox="0 0 1000 700"
@@ -958,14 +822,14 @@ export default function HomePage() {
                           </svg>
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* E-Invoicing */}
               <div
-                className={`border-b border-gray-800 pt-8 sm:pt-12 pb-8 sm:pb-12 mb-8 sm:mb-12 cursor-pointer transition-all duration-300 ${
+                className={`border-b border-gray-800 pt-2 sm:pt-3 md:pt-4 pb-4 sm:pb-5 md:pb-6 mb-4 sm:mb-5 md:mb-6 cursor-pointer transition-all duration-300 ${
                   hoveredProduct && hoveredProduct !== 'einvoicing' ? 'opacity-30' : 'opacity-100'
                 }`}
                 onMouseEnter={() => {
@@ -975,23 +839,54 @@ export default function HomePage() {
                 onMouseLeave={() => setHoveredProduct(null)}
                 onClick={() => handleProductClick('einvoicing')}
               >
-                <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
-                  E-Invoicing <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
-                </h3>
-                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
-                  Automated & structured invoice workflows aligned with regulatory frameworks and documentation requirements.
-                </p>
-                {/* Mobile Graphic - Inline - Only show when active */}
-                {(clickedProduct === 'einvoicing' || hoveredProduct === 'einvoicing') && (
-                  <div ref={graphicRefs.einvoicing} className="md:hidden mb-4">
-                    {renderProductGraphic('einvoicing')}
+                <div className={`grid ${(clickedProduct === 'einvoicing' || hoveredProduct === 'einvoicing') ? 'md:grid-cols-2' : ''} gap-4 md:gap-6 lg:gap-8 items-start`}>
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-light text-white mb-2 sm:mb-3">
+                      E-Invoicing <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
+                    </h3>
+                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-3">
+                      Automated & structured invoice workflows aligned with regulatory frameworks and documentation requirements.
+                    </p>
+                    {/* Mobile Graphic - Inline - Only show when active */}
+                    {(clickedProduct === 'einvoicing' || hoveredProduct === 'einvoicing') && (
+                      <div ref={graphicRefs.einvoicing} className="md:hidden mb-4">
+                        {renderProductGraphic('einvoicing')}
+                      </div>
+                    )}
                   </div>
-                )}
+                  {/* Desktop Graphic - Beside description */}
+                  {(clickedProduct === 'einvoicing' || hoveredProduct === 'einvoicing') && (
+                    <div className="hidden md:flex relative h-[250px] sm:h-[300px] lg:h-[350px] items-center justify-center">
+                      <div className="w-full h-full">
+                        <div className="relative h-[250px] sm:h-[300px] lg:h-[350px] flex items-center justify-center">
+                          <svg
+                            className="w-full h-full"
+                            viewBox="0 0 1000 700"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <defs>
+                              <linearGradient id={`boxGrad-desktop-einvoicing`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.15" />
+                                <stop offset="100%" stopColor="#888888" stopOpacity="0.25" />
+                              </linearGradient>
+                              <linearGradient id={`boxGradActive-desktop-einvoicing`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.25" />
+                                <stop offset="100%" stopColor="#ffffff" stopOpacity="0.35" />
+                              </linearGradient>
+                            </defs>
+                            {renderGraphicContent('einvoicing', true, 'desktop-einvoicing')}
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Filing & Notices */}
               <div
-                className={`border-b border-gray-800 pt-8 sm:pt-12 pb-8 sm:pb-12 mb-8 sm:mb-12 cursor-pointer transition-all duration-300 ${
+                className={`border-b border-gray-800 pt-2 sm:pt-3 md:pt-4 pb-4 sm:pb-5 md:pb-6 mb-4 sm:mb-5 md:mb-6 cursor-pointer transition-all duration-300 ${
                   hoveredProduct && hoveredProduct !== 'filing' ? 'opacity-30' : 'opacity-100'
                 }`}
                 onMouseEnter={() => {
@@ -1001,23 +896,54 @@ export default function HomePage() {
                 onMouseLeave={() => setHoveredProduct(null)}
                 onClick={() => handleProductClick('filing')}
               >
-                <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
-                  Filing & Notices <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
-                </h3>
-                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
-                  Track filings, regulatory notices, and status updates across teams and entities.
-                </p>
-                {/* Mobile Graphic - Inline - Only show when active */}
-                {(clickedProduct === 'filing' || hoveredProduct === 'filing') && (
-                  <div ref={graphicRefs.filing} className="md:hidden mb-4">
-                    {renderProductGraphic('filing')}
+                <div className={`grid ${(clickedProduct === 'filing' || hoveredProduct === 'filing') ? 'md:grid-cols-2' : ''} gap-4 md:gap-6 lg:gap-8 items-start`}>
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-light text-white mb-2 sm:mb-3">
+                      Filing & Notices <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
+                    </h3>
+                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-3">
+                      Track filings, regulatory notices, and status updates across teams and entities.
+                    </p>
+                    {/* Mobile Graphic - Inline - Only show when active */}
+                    {(clickedProduct === 'filing' || hoveredProduct === 'filing') && (
+                      <div ref={graphicRefs.filing} className="md:hidden mb-4">
+                        {renderProductGraphic('filing')}
+                      </div>
+                    )}
                   </div>
-                )}
+                  {/* Desktop Graphic - Beside description */}
+                  {(clickedProduct === 'filing' || hoveredProduct === 'filing') && (
+                    <div className="hidden md:flex relative h-[250px] sm:h-[300px] lg:h-[350px] items-center justify-center">
+                      <div className="w-full h-full">
+                        <div className="relative h-[250px] sm:h-[300px] lg:h-[350px] flex items-center justify-center">
+                          <svg
+                            className="w-full h-full"
+                            viewBox="0 0 1000 700"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <defs>
+                              <linearGradient id={`boxGrad-desktop-filing`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.15" />
+                                <stop offset="100%" stopColor="#888888" stopOpacity="0.25" />
+                              </linearGradient>
+                              <linearGradient id={`boxGradActive-desktop-filing`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.25" />
+                                <stop offset="100%" stopColor="#ffffff" stopOpacity="0.35" />
+                              </linearGradient>
+                            </defs>
+                            {renderGraphicContent('filing', true, 'desktop-filing')}
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Finacra AI */}
               <div
-                className={`pt-8 sm:pt-12 pb-0 cursor-pointer transition-all duration-300 ${
+                className={`pt-2 sm:pt-3 md:pt-4 pb-0 cursor-pointer transition-all duration-300 ${
                   hoveredProduct && hoveredProduct !== 'ai' ? 'opacity-30' : 'opacity-100'
                 }`}
                 onMouseEnter={() => {
@@ -1027,18 +953,49 @@ export default function HomePage() {
                 onMouseLeave={() => setHoveredProduct(null)}
                 onClick={() => handleProductClick('ai')}
               >
-                <h3 className="text-xl sm:text-2xl font-light text-white mb-3 sm:mb-4">
-                  Finacra AI <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
-                </h3>
-                <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-4">
-                  AI-powered document understanding, compliance recommendations, and intelligent search capabilities under development.
-                </p>
-                {/* Mobile Graphic - Inline - Only show when active */}
-                {(clickedProduct === 'ai' || hoveredProduct === 'ai') && (
-                  <div ref={graphicRefs.ai} className="md:hidden mb-4">
-                    {renderProductGraphic('ai')}
+                <div className={`grid ${(clickedProduct === 'ai' || hoveredProduct === 'ai') ? 'md:grid-cols-2' : ''} gap-4 md:gap-6 lg:gap-8 items-start`}>
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-light text-white mb-2 sm:mb-3">
+                      Finacra AI <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
+                    </h3>
+                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-3">
+                      AI-powered document understanding, compliance recommendations, and intelligent search capabilities under development.
+                    </p>
+                    {/* Mobile Graphic - Inline - Only show when active */}
+                    {(clickedProduct === 'ai' || hoveredProduct === 'ai') && (
+                      <div ref={graphicRefs.ai} className="md:hidden mb-4">
+                        {renderProductGraphic('ai')}
+                      </div>
+                    )}
                   </div>
-                )}
+                  {/* Desktop Graphic - Beside description */}
+                  {(clickedProduct === 'ai' || hoveredProduct === 'ai') && (
+                    <div className="hidden md:flex relative h-[250px] sm:h-[300px] lg:h-[350px] items-center justify-center">
+                      <div className="w-full h-full">
+                        <div className="relative h-[250px] sm:h-[300px] lg:h-[350px] flex items-center justify-center">
+                          <svg
+                            className="w-full h-full"
+                            viewBox="0 0 1000 700"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <defs>
+                              <linearGradient id={`boxGrad-desktop-ai`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.15" />
+                                <stop offset="100%" stopColor="#888888" stopOpacity="0.25" />
+                              </linearGradient>
+                              <linearGradient id={`boxGradActive-desktop-ai`} x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.25" />
+                                <stop offset="100%" stopColor="#ffffff" stopOpacity="0.35" />
+                              </linearGradient>
+                            </defs>
+                            {renderGraphicContent('ai', true, 'desktop-ai')}
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
         </div>

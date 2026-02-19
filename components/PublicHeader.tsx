@@ -1,31 +1,72 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
 
 export default function PublicHeader() {
+  const pathname = usePathname()
+  const router = useRouter()
   const [showProductsDropdown, setShowProductsDropdown] = useState(false)
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 })
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const dropdownMenuRef = useRef<HTMLDivElement>(null)
+  const [mounted, setMounted] = useState(false)
+  
+  // Handle smooth scroll for anchor links on home page
+  const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, hash: string) => {
+    if (pathname === '/home') {
+      e.preventDefault()
+      const element = document.getElementById(hash.replace('#', ''))
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' })
+      }
+    }
+  }
+
+  // Set mounted state for portal (required for SSR)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Calculate dropdown position when it opens
+  useEffect(() => {
+    if (showProductsDropdown && dropdownRef.current) {
+      const rect = dropdownRef.current.getBoundingClientRect()
+      setDropdownPosition({
+        top: rect.bottom + 4, // mt-1 = 4px
+        left: rect.left
+      })
+    }
+  }, [showProductsDropdown])
 
   // Close dropdown when clicking outside
   useEffect(() => {
+    if (!showProductsDropdown) return
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node
+      const isInMenu = dropdownMenuRef.current?.contains(target) || false
+      const isInTrigger = dropdownRef.current?.contains(target) || false
+      
+      if (!isInMenu && !isInTrigger) {
         setShowProductsDropdown(false)
       }
     }
 
-    if (showProductsDropdown) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside)
+    }, 100)
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
+      clearTimeout(timeoutId)
+      document.removeEventListener('click', handleClickOutside)
     }
   }, [showProductsDropdown])
 
   return (
-    <nav className="relative z-10 w-full px-4 sm:px-6 py-4 sm:py-6">
+    <nav className="relative z-10 w-full px-4 sm:px-6 py-4 sm:py-6" style={{ overflow: 'visible', position: 'relative' }}>
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <Link href="/home" className="flex items-center gap-2">
           <img
@@ -36,7 +77,11 @@ export default function PublicHeader() {
         </Link>
         <div className="hidden md:flex items-center gap-8">
           {/* Products with Dropdown */}
-          <div className="relative" ref={dropdownRef}>
+          <div 
+            className="relative" 
+            ref={dropdownRef}
+            style={{ zIndex: 9999 }}
+          >
             <div className="flex items-center gap-1">
               <Link 
                 href="/home#products" 
@@ -68,39 +113,63 @@ export default function PublicHeader() {
                 </svg>
               </button>
             </div>
-            {showProductsDropdown && (
-              <div 
-                className="absolute top-full left-0 w-48 pt-2 z-50"
-                onMouseDown={(e) => e.stopPropagation()}
+            {showProductsDropdown && mounted && dropdownRef.current && createPortal(
+              <div
+                ref={dropdownMenuRef}
+                className="fixed w-48"
+                style={{
+                  top: `${dropdownPosition.top}px`,
+                  left: `${dropdownPosition.left}px`,
+                  pointerEvents: 'auto',
+                  zIndex: 99999
+                }}
+                onClick={(e) => e.stopPropagation()}
               >
-                <div className="bg-[#1a1a1a] border border-gray-800 rounded-lg shadow-xl overflow-hidden">
-                  <Link
+                <div className="bg-[#1a1a1a] border border-gray-800 rounded-lg shadow-xl">
+                  <a
                     href="/compliance-tracker"
-                    className="block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-900/50 transition-colors font-light text-sm"
-                    onClick={() => setShowProductsDropdown(false)}
+                    data-menu-item="compliance-tracker"
+                    className="block w-full px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-900/50 transition-colors font-light text-sm cursor-pointer text-left no-underline"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setShowProductsDropdown(false)
+                      router.push('/compliance-tracker')
+                    }}
                   >
                     Compliance Tracker
-                  </Link>
-                  <div className="h-px bg-gray-800" />
-                  <Link
+                  </a>
+                  <div className="h-px bg-gray-800 w-full" style={{ pointerEvents: 'none' }} />
+                  <a
                     href="/company-onboarding"
-                    className="block px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-900/50 transition-colors font-light text-sm"
-                    onClick={() => setShowProductsDropdown(false)}
+                    data-menu-item="company-onboarding"
+                    id="company-onboarding-link"
+                    className="block w-full px-4 py-3 text-gray-300 hover:text-white hover:bg-gray-900/50 transition-colors font-light text-sm cursor-pointer text-left no-underline"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setShowProductsDropdown(false)
+                      router.push('/company-onboarding')
+                    }}
                   >
                     Company Onboarding
-                  </Link>
+                  </a>
                 </div>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
           
           <Link 
             href="/home#solution" 
             className="text-gray-300 hover:text-white transition-colors font-light text-sm"
+            onClick={(e) => handleAnchorClick(e, '#solution')}
           >
             Features
           </Link>
-          <Link href="/home#plans" className="text-gray-300 hover:text-white transition-colors font-light text-sm">
+          <Link 
+            href="/home#plans" 
+            className="text-gray-300 hover:text-white transition-colors font-light text-sm"
+            onClick={(e) => handleAnchorClick(e, '#plans')}
+          >
             Plans
           </Link>
           <Link href="/customers" className="text-gray-300 hover:text-white transition-colors font-light text-sm">
