@@ -137,3 +137,6 @@ export const trackVideoPlay = (videoName: string, videoDuration?: number) => {
     video_duration: videoDuration,
   })
 }
+
+// Export KPI tracking functions
+export * from './analytics/kpi-tracking'
