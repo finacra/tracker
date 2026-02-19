@@ -68,7 +68,7 @@ export default function AdminPage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [allRequirements, setAllRequirements] = useState<Requirement[]>([])
   const [selectedCompany, setSelectedCompany] = useState<string>('all')
-  const [activeTab, setActiveTab] = useState<'overview' | 'companies' | 'compliances' | 'subscriptions' | 'allusers' | 'templates' | 'financials' | 'transactions' | 'vault'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'companies' | 'compliances' | 'subscriptions' | 'allusers' | 'templates' | 'financials' | 'transactions' | 'vault' | 'kpis'>('overview')
   const [templates, setTemplates] = useState<ComplianceTemplate[]>([])
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([])
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
@@ -811,6 +811,21 @@ export default function AdminPage() {
               <line x1="9" y1="21" x2="9" y2="9" />
             </svg>
             <span>Vault</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('kpis')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${
+              activeTab === 'kpis'
+                ? 'border-primary-orange bg-primary-orange/20 text-white'
+                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+            }`}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="12" y1="20" x2="12" y2="10" />
+              <line x1="18" y1="20" x2="18" y2="4" />
+              <line x1="6" y1="20" x2="6" y2="16" />
+            </svg>
+            <span>KPIs</span>
           </button>
         </div>
 
@@ -2637,6 +2652,149 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* KPIs Tab */}
+        {activeTab === 'kpis' && (
+          <KPIsTab />
+        )}
+
+      </div>
+    </div>
+  )
+}
+
+// KPI Data Structure
+interface KPI {
+  category: string
+  kpi: string
+  formula: string
+  description: string
+}
+
+// KPI Data from CSV
+const KPI_DATA: KPI[] = [
+  { category: 'General', kpi: 'Value', formula: 'Money value could be saved', description: 'How much money do we say per customer per notification' },
+  { category: 'General', kpi: 'Addictiveness', formula: 'Number of times logged into per week', description: '' },
+  { category: 'General', kpi: 'CIN Retrieval Accuracy', formula: 'API Failure Rate; Interview: was all the data correct?', description: '' },
+  { category: 'General', kpi: 'Happiness', formula: 'Would they recommend it?', description: 'NPS (Net Promoter Score): "How likely are you to recommend Finnovate to a peer?"' },
+  { category: 'General', kpi: 'Reliability', formula: 'MTBF (Mean Time Between Failures): Average time between system crashes or critical bugs.; Number of system crashes or critical bugs per week/month', description: '> 300 Hours' },
+  { category: 'General', kpi: 'Churn (Ghosting)', formula: '< 15% of Beta users stop logging in after week 1, then week 2, week 3,; Number of active users after every week? (logs in more than 2 times than week)', description: '> 40% of users stop logging in after Week 1' },
+  { category: 'General', kpi: 'Time', formula: 'Average time spent per user per login?', description: '' },
+  { category: 'General', kpi: 'Onboarding', formula: 'How many people are they onboarding?', description: '' },
+  { category: 'Company Overview', kpi: 'Accuracy of Data', formula: 'Interview', description: '' },
+  { category: 'Company Overview', kpi: 'Numbers of times "Edit Company"', formula: '', description: '' },
+  { category: 'Compliance Tracker', kpi: 'Tracker Accuracy', formula: 'Cross check tracker calculated penalties with 3rd party CA (Muneer & Associates)', description: '' },
+  { category: 'Compliance Tracker', kpi: 'Tracker Usage', formula: 'Number of times tracker tab opened in a week; Number of times status is changed per notification/week', description: '' },
+  { category: 'Compliance Tracker', kpi: 'Calendar Usage', formula: 'Number of times the user is pressing sync calendar.', description: '' },
+  { category: 'Compliance Tracker', kpi: 'Document Upload', formula: 'Frequency of documents uploaded onto the tracker page.', description: '' },
+  { category: 'DSC Management', kpi: 'Function', formula: 'How many times are they exporting DSC?', description: '' },
+  { category: 'DSC Management', kpi: 'Notifications', formula: 'Number of notifications clicked on', description: '' },
+  { category: 'DSC Management', kpi: 'Dependency', formula: 'Number of times are they viewing their platform credentials?', description: '' },
+  { category: 'Reports', kpi: 'Report Generation Efficiency', formula: 'Time taken for report to be generated', description: '' },
+  { category: 'Reports', kpi: 'Retention', formula: 'Number of Reports downloaded per client', description: '' },
+  { category: 'Reports', kpi: 'Coming soon interest', formula: 'Number of times people have clicked on notices and GST?', description: '' },
+  { category: 'Reports', kpi: 'Export Format', formula: 'Type of export', description: '' },
+  { category: 'Team Access', kpi: 'Team Adoption', formula: 'Number of users added per company', description: '' },
+  { category: 'Team Access', kpi: 'Team Adoption', formula: 'Number of unique logins per company per week', description: '' },
+  { category: 'Team Access', kpi: 'Team Adoption', formula: 'Number of changes in team access', description: '' },
+  { category: 'Team Access', kpi: 'Team Adoption', formula: "Number of CA's added per company", description: '' },
+  { category: 'Team Access', kpi: 'Cont', formula: 'Number of unique email addresses email is sent to', description: '' },
+  { category: 'Document Vault', kpi: 'Usage', formula: 'Frequency and number of files uploaded, exported, and shared?', description: '' },
+  { category: 'Document Vault', kpi: 'Password Usage', formula: 'Number of "Notes" used per customer?', description: '' },
+  { category: 'Document Vault', kpi: 'Password Usage', formula: '"Note" to document upload ratio', description: '' },
+  { category: 'Document Vault', kpi: 'Password Usage', formula: 'How many times are they looking at Notes?', description: '' },
+  { category: 'Reminders', kpi: 'Email Responsiveness', formula: 'Click Rate on Notification', description: 'Have they opened the email/notification; Use Pixel Tracker' },
+]
+
+// KPIs Tab Component
+function KPIsTab() {
+  const [selectedCategory, setSelectedCategory] = useState<string>('All')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Get unique categories
+  const categories = ['All', ...Array.from(new Set(KPI_DATA.map(kpi => kpi.category)))]
+
+  // Filter KPIs
+  const filteredKPIs = KPI_DATA.filter(kpi => {
+    const matchesCategory = selectedCategory === 'All' || kpi.category === selectedCategory
+    const matchesSearch = searchQuery === '' || 
+      kpi.kpi.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      kpi.formula.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      kpi.description.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesCategory && matchesSearch
+  })
+
+  return (
+    <div className="space-y-6">
+      {/* Filters */}
+      <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-6">
+        <div className="flex flex-col md:flex-row gap-4">
+          {/* Category Filter */}
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-400 mb-2">Category</label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full px-4 py-2 bg-primary-dark border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+            >
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+          {/* Search */}
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-400 mb-2">Search</label>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search KPIs, formulas, descriptions..."
+              className="w-full px-4 py-2 bg-primary-dark border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* KPI Table */}
+      <div className="bg-primary-dark-card border border-gray-800 rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-800">
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">Category</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">KPI</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">Formula</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredKPIs.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                    No KPIs found matching your filters.
+                  </td>
+                </tr>
+              ) : (
+                filteredKPIs.map((kpi, index) => (
+                  <tr
+                    key={index}
+                    className="border-b border-gray-800/50 hover:bg-gray-900/30 transition-colors"
+                  >
+                    <td className="px-6 py-4 text-sm text-gray-300">{kpi.category}</td>
+                    <td className="px-6 py-4 text-sm text-white font-medium">{kpi.kpi}</td>
+                    <td className="px-6 py-4 text-sm text-gray-400">{kpi.formula || '-'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-400">{kpi.description || '-'}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="px-6 py-4 border-t border-gray-800 bg-gray-900/20">
+          <p className="text-sm text-gray-400">
+            Showing {filteredKPIs.length} of {KPI_DATA.length} KPIs
+          </p>
+        </div>
       </div>
     </div>
   )
