@@ -346,6 +346,9 @@ function ContactPageContent() {
   )
 }
 
+// Force dynamic rendering to avoid build errors
+export const dynamic = 'force-dynamic'
+
 export default function ContactPage() {
   return (
     <Suspense fallback={

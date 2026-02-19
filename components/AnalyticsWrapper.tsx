@@ -1,8 +1,9 @@
 'use client'
 
+import { Suspense } from 'react'
 import { usePageView, useScrollTracking, useTimeOnPage } from '@/hooks/useAnalytics'
 
-export default function AnalyticsWrapper({ children }: { children: React.ReactNode }) {
+function AnalyticsTracking({ children }: { children: React.ReactNode }) {
   // Automatically track page views on route changes
   usePageView()
   
@@ -13,4 +14,12 @@ export default function AnalyticsWrapper({ children }: { children: React.ReactNo
   useTimeOnPage()
 
   return <>{children}</>
+}
+
+export default function AnalyticsWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<>{children}</>}>
+      <AnalyticsTracking>{children}</AnalyticsTracking>
+    </Suspense>
+  )
 }

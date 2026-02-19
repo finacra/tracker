@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import 'handsontable/dist/handsontable.full.min.css'
@@ -52,7 +52,7 @@ function formatCommaList(values: string[], optionsOrder: string[]): string {
   return optionsOrder.filter(o => set.has(o)).join(', ')
 }
 
-export default function BulkUploadPage() {
+function BulkUploadPage() {
   const router = useRouter()
   const { user } = useAuth()
   const supabase = createClient()
@@ -1522,5 +1522,24 @@ export default function BulkUploadPage() {
         </div>
       )}
     </div>
+  )
+}
+
+// Force dynamic rendering to avoid build errors
+export const dynamic = 'force-dynamic'
+
+// Wrap in Suspense to fix build error
+export default function BulkUploadPageWrapper() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#f3f3f3] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-12 h-12 border-4 border-[#217346] border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-[#666]">Loading...</p>
+        </div>
+      </div>
+    }>
+      <BulkUploadPage />
+    </Suspense>
   )
 }
