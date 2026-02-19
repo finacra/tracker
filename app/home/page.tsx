@@ -91,30 +91,30 @@ export default function HomePage() {
           <g>
             <rect x="490" y="400" width="420" height="160" rx="12" fill={boxGradActive} stroke="rgba(255,255,255,0.7)" strokeWidth="5" />
             <text x="700" y="485" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Compliance Engine</text>
-            <rect x="110" y="170" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="235" y="215" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Due Date</text>
-            <text x="235" y="245" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Tracking</text>
-            <line x1="360" y1="220" x2="530" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="1040" y="170" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="1165" y="215" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Compliance</text>
-            <text x="1165" y="245" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Type</text>
-            <line x1="1040" y1="220" x2="870" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="110" y="340" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="235" y="385" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Filing</text>
-            <text x="235" y="415" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Status</text>
-            <line x1="360" y1="390" x2="530" y2="460" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="1040" y="340" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="1165" y="385" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Penalty</text>
-            <text x="1165" y="415" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Calculation</text>
-            <line x1="1040" y1="390" x2="870" y2="460" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="110" y="730" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="235" y="775" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Status</text>
-            <text x="235" y="805" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Management</text>
-            <line x1="360" y1="780" x2="530" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="1040" y="730" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="1165" y="775" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Category</text>
-            <text x="1165" y="805" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Tracking</text>
-            <line x1="1040" y1="780" x2="870" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="100" y="150" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="240" y="200" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Due Date</text>
+            <text x="240" y="240" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Tracking</text>
+            <line x1="380" y1="220" x2="530" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="1020" y="150" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="1160" y="200" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Compliance</text>
+            <text x="1160" y="240" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Type</text>
+            <line x1="1020" y1="220" x2="870" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="100" y="310" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="240" y="360" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Filing</text>
+            <text x="240" y="400" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Status</text>
+            <line x1="380" y1="380" x2="530" y2="460" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="1020" y="310" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="1160" y="360" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Penalty</text>
+            <text x="1160" y="400" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Calculation</text>
+            <line x1="1020" y1="380" x2="870" y2="460" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="100" y="780" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="240" y="830" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Status</text>
+            <text x="240" y="870" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Management</text>
+            <line x1="380" y1="850" x2="530" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="1020" y="780" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="1160" y="830" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Category</text>
+            <text x="1160" y="870" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Tracking</text>
+            <line x1="1020" y1="850" x2="870" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
           </g>
         )
       case 'vault':
@@ -122,30 +122,30 @@ export default function HomePage() {
           <g>
             <rect x="420" y="385" width="560" height="160" rx="12" fill={boxGradActive} stroke="rgba(255,255,255,0.7)" strokeWidth="5" />
             <text x="700" y="470" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Document Vault</text>
-            <rect x="110" y="170" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="235" y="215" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Document</text>
-            <text x="235" y="245" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Storage</text>
-            <line x1="360" y1="220" x2="450" y2="430" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="1040" y="170" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="1165" y="215" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Folder</text>
-            <text x="1165" y="245" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Structure</text>
-            <line x1="1040" y1="220" x2="950" y2="430" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="110" y="340" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="235" y="385" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Role-Based</text>
-            <text x="235" y="415" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Access</text>
-            <line x1="360" y1="390" x2="450" y2="460" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="1040" y="340" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="1165" y="385" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Document</text>
-            <text x="1165" y="415" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Templates</text>
-            <line x1="1040" y1="390" x2="950" y2="460" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="110" y="730" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="235" y="775" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Search &</text>
-            <text x="235" y="805" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Filter</text>
-            <line x1="360" y1="780" x2="450" y2="490" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="1040" y="730" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="1165" y="775" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Document</text>
-            <text x="1165" y="805" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Categories</text>
-            <line x1="1040" y1="780" x2="950" y2="490" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="100" y="150" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="240" y="200" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Document</text>
+            <text x="240" y="240" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Storage</text>
+            <line x1="380" y1="220" x2="450" y2="430" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="1020" y="150" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="1160" y="200" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Folder</text>
+            <text x="1160" y="240" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Structure</text>
+            <line x1="1020" y1="220" x2="950" y2="430" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="100" y="310" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="240" y="360" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Role-Based</text>
+            <text x="240" y="400" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Access</text>
+            <line x1="380" y1="380" x2="450" y2="460" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="1020" y="310" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="1160" y="360" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Document</text>
+            <text x="1160" y="400" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Templates</text>
+            <line x1="1020" y1="380" x2="950" y2="460" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="100" y="780" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="240" y="830" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Search &</text>
+            <text x="240" y="870" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Filter</text>
+            <line x1="380" y1="850" x2="450" y2="490" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="1020" y="780" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="1160" y="830" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Document</text>
+            <text x="1160" y="870" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Categories</text>
+            <line x1="1020" y1="850" x2="950" y2="490" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
           </g>
         )
       case 'services':
@@ -153,30 +153,30 @@ export default function HomePage() {
           <g>
             <rect x="420" y="400" width="560" height="160" rx="12" fill={boxGradActive} stroke="rgba(255,255,255,0.7)" strokeWidth="5" />
             <text x="700" y="485" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">FWS Platform</text>
-            <rect x="110" y="170" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="235" y="215" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Order</text>
-            <text x="235" y="245" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Management</text>
-            <line x1="360" y1="220" x2="450" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="1040" y="170" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="1165" y="215" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Practice</text>
-            <text x="1165" y="245" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Management</text>
-            <line x1="1040" y1="220" x2="950" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="110" y="340" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="235" y="385" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Client</text>
-            <text x="235" y="415" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Management</text>
-            <line x1="360" y1="390" x2="450" y2="470" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="1040" y="340" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="1165" y="385" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Process</text>
-            <text x="1165" y="415" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Automation</text>
-            <line x1="1040" y1="390" x2="950" y2="470" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="110" y="730" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="235" y="775" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Company</text>
-            <text x="235" y="805" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Onboarding</text>
-            <line x1="360" y1="780" x2="450" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="1040" y="730" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="1165" y="775" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Workflow</text>
-            <text x="1165" y="805" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Engine</text>
-            <line x1="1040" y1="780" x2="950" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="100" y="150" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="240" y="200" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Order</text>
+            <text x="240" y="240" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Management</text>
+            <line x1="380" y1="220" x2="450" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="1020" y="150" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="1160" y="200" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Practice</text>
+            <text x="1160" y="240" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Management</text>
+            <line x1="1020" y1="220" x2="950" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="100" y="310" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="240" y="360" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Client</text>
+            <text x="240" y="400" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Management</text>
+            <line x1="380" y1="380" x2="450" y2="470" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="1020" y="310" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="1160" y="360" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Process</text>
+            <text x="1160" y="400" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Automation</text>
+            <line x1="1020" y1="380" x2="950" y2="470" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="100" y="780" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="240" y="830" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Company</text>
+            <text x="240" y="870" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Onboarding</text>
+            <line x1="380" y1="850" x2="450" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="1020" y="780" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="1160" y="830" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Workflow</text>
+            <text x="1160" y="870" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Engine</text>
+            <line x1="1020" y1="850" x2="950" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
           </g>
         )
       case 'einvoicing':
@@ -185,30 +185,30 @@ export default function HomePage() {
             <rect x="420" y="400" width="560" height="160" rx="12" fill={boxGradActive} stroke="rgba(255,255,255,0.7)" strokeWidth="5" />
             <text x="700" y="470" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">E-Invoicing</text>
             <text x="700" y="510" fill="white" fontSize="26" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Engine</text>
-            <rect x="110" y="170" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="235" y="215" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Invoice</text>
-            <text x="235" y="245" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Generation</text>
-            <line x1="360" y1="220" x2="450" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="1040" y="170" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="1165" y="215" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Regulatory</text>
-            <text x="1165" y="245" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Compliance</text>
-            <line x1="1040" y1="220" x2="950" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="110" y="340" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="235" y="385" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Workflow</text>
-            <text x="235" y="415" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Automation</text>
-            <line x1="360" y1="390" x2="450" y2="470" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="1040" y="340" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="1165" y="385" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Document</text>
-            <text x="1165" y="415" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Linking</text>
-            <line x1="1040" y1="390" x2="950" y2="470" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="110" y="730" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="235" y="775" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Validation &</text>
-            <text x="235" y="805" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Verification</text>
-            <line x1="360" y1="780" x2="450" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="1040" y="730" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="1165" y="775" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Invoice</text>
-            <text x="1165" y="805" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Tracking</text>
-            <line x1="1040" y1="780" x2="950" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="100" y="150" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="240" y="200" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Invoice</text>
+            <text x="240" y="240" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Generation</text>
+            <line x1="380" y1="220" x2="450" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="1020" y="150" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="1160" y="200" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Regulatory</text>
+            <text x="1160" y="240" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Compliance</text>
+            <line x1="1020" y1="220" x2="950" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="100" y="310" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="240" y="360" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Workflow</text>
+            <text x="240" y="400" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Automation</text>
+            <line x1="380" y1="380" x2="450" y2="470" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="1020" y="310" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="1160" y="360" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Document</text>
+            <text x="1160" y="400" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Linking</text>
+            <line x1="1020" y1="380" x2="950" y2="470" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="100" y="780" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="240" y="830" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Validation &</text>
+            <text x="240" y="870" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Verification</text>
+            <line x1="380" y1="850" x2="450" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="1020" y="780" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="1160" y="830" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Invoice</text>
+            <text x="1160" y="870" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Tracking</text>
+            <line x1="1020" y1="850" x2="950" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
           </g>
         )
       case 'filing':
@@ -217,30 +217,30 @@ export default function HomePage() {
             <rect x="420" y="400" width="560" height="160" rx="12" fill={boxGradActive} stroke="rgba(255,255,255,0.7)" strokeWidth="5" />
             <text x="700" y="470" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Filing & Notices</text>
             <text x="700" y="510" fill="white" fontSize="26" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Hub</text>
-            <rect x="110" y="170" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="235" y="215" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Filing</text>
-            <text x="235" y="245" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Management</text>
-            <line x1="360" y1="220" x2="450" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="1040" y="170" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="1165" y="215" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Notice</text>
-            <text x="1165" y="245" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Tracking</text>
-            <line x1="1040" y1="220" x2="950" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="110" y="340" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="235" y="385" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Status</text>
-            <text x="235" y="415" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Updates</text>
-            <line x1="360" y1="390" x2="450" y2="470" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="1040" y="340" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="1165" y="385" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Regulatory</text>
-            <text x="1165" y="415" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Notices</text>
-            <line x1="1040" y1="390" x2="950" y2="470" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="110" y="730" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="235" y="775" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Team</text>
-            <text x="235" y="805" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Collaboration</text>
-            <line x1="360" y1="780" x2="450" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="1040" y="730" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="1165" y="775" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Entity</text>
-            <text x="1165" y="805" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Management</text>
-            <line x1="1040" y1="780" x2="950" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="100" y="150" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="240" y="200" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Filing</text>
+            <text x="240" y="240" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Management</text>
+            <line x1="380" y1="220" x2="450" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="1020" y="150" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="1160" y="200" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Notice</text>
+            <text x="1160" y="240" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Tracking</text>
+            <line x1="1020" y1="220" x2="950" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="100" y="310" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="240" y="360" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Status</text>
+            <text x="240" y="400" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Updates</text>
+            <line x1="380" y1="380" x2="450" y2="470" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="1020" y="310" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="1160" y="360" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Regulatory</text>
+            <text x="1160" y="400" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Notices</text>
+            <line x1="1020" y1="380" x2="950" y2="470" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="100" y="780" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="240" y="830" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Team</text>
+            <text x="240" y="870" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Collaboration</text>
+            <line x1="380" y1="850" x2="450" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="1020" y="780" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="1160" y="830" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Entity</text>
+            <text x="1160" y="870" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Management</text>
+            <line x1="1020" y1="850" x2="950" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
           </g>
         )
       case 'ai':
@@ -249,30 +249,30 @@ export default function HomePage() {
             <rect x="420" y="400" width="560" height="160" rx="12" fill={boxGradActive} stroke="rgba(255,255,255,0.7)" strokeWidth="5" />
             <text x="700" y="470" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Finacra AI</text>
             <text x="700" y="510" fill="white" fontSize="26" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Engine</text>
-            <rect x="110" y="170" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="235" y="215" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Document</text>
-            <text x="235" y="245" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Understanding</text>
-            <line x1="360" y1="220" x2="450" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="1040" y="170" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="1165" y="215" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Compliance</text>
-            <text x="1165" y="245" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Recommendations</text>
-            <line x1="1040" y1="220" x2="950" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="110" y="340" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="235" y="385" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Intelligent</text>
-            <text x="235" y="415" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Search</text>
-            <line x1="360" y1="390" x2="450" y2="470" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="1040" y="340" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="1165" y="385" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Pattern</text>
-            <text x="1165" y="415" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Recognition</text>
-            <line x1="1040" y1="390" x2="950" y2="470" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="110" y="730" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="235" y="775" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Data</text>
-            <text x="235" y="805" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Extraction</text>
-            <line x1="360" y1="780" x2="450" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
-            <rect x="1040" y="730" width="250" height="100" rx="8" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
-            <text x="1165" y="775" fill="white" fontSize="22" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Predictive</text>
-            <text x="1165" y="805" fill="white" fontSize="20" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Analytics</text>
-            <line x1="1040" y1="780" x2="950" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="100" y="150" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="240" y="200" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Document</text>
+            <text x="240" y="240" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Understanding</text>
+            <line x1="380" y1="220" x2="450" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="1020" y="150" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="1160" y="200" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Compliance</text>
+            <text x="1160" y="240" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Recommendations</text>
+            <line x1="1020" y1="220" x2="950" y2="440" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="100" y="310" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="240" y="360" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Intelligent</text>
+            <text x="240" y="400" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Search</text>
+            <line x1="380" y1="380" x2="450" y2="470" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="1020" y="310" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="1160" y="360" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Pattern</text>
+            <text x="1160" y="400" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Recognition</text>
+            <line x1="1020" y1="380" x2="950" y2="470" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="100" y="780" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="240" y="830" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Data</text>
+            <text x="240" y="870" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Extraction</text>
+            <line x1="380" y1="850" x2="450" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
+            <rect x="1020" y="780" width="280" height="140" rx="10" fill={boxGrad} stroke="rgba(255,255,255,0.5)" strokeWidth="3.5" />
+            <text x="1160" y="830" fill="white" fontSize="34" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Predictive</text>
+            <text x="1160" y="870" fill="white" fontSize="32" fontFamily="sans-serif" fontWeight="400" textAnchor="middle">Analytics</text>
+            <line x1="1020" y1="850" x2="950" y2="500" stroke="rgba(255,255,255,0.4)" strokeWidth="3.5" />
           </g>
         )
       default:
