@@ -28,6 +28,8 @@ function SubscriptionRequiredInner() {
   const [company, setCompany] = useState<Company | null>(null)
   const [ownedCompanies, setOwnedCompanies] = useState<Company[]>([])
   const [accessibleCompanies, setAccessibleCompanies] = useState<CompanyWithStatus[]>([])
+  const [expiredCompanies, setExpiredCompanies] = useState<Company[]>([])
+  const [selectedExpiredCompany, setSelectedExpiredCompany] = useState<string | null>(companyId)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -58,9 +60,12 @@ function SubscriptionRequiredInner() {
         
         setOwnedCompanies(companies || [])
         
-        // Check subscription status for each company and filter to only show those with active access
+        // Check subscription status for each company and categorize into active and expired
         if (companies && companies.length > 0) {
-          const companiesWithStatus = await Promise.all(
+          const activeCompanies: CompanyWithStatus[] = []
+          const expiredCompaniesList: Company[] = []
+          
+          await Promise.all(
             companies.map(async (company) => {
               try {
                 const { data, error } = await supabase
@@ -77,26 +82,43 @@ function SubscriptionRequiredInner() {
                   }
                   
                   if (subscriptionData.has_subscription) {
-                    return {
+                    activeCompanies.push({
                       ...company,
                       status: subscriptionData.is_trial ? 'trial' : 'valid',
                       isTrial: subscriptionData.is_trial,
                       trialDaysRemaining: subscriptionData.trial_days_remaining,
-                    } as CompanyWithStatus
+                    })
+                  } else {
+                    // Company has no active subscription - it's expired
+                    expiredCompaniesList.push(company)
                   }
+                } else {
+                  // If error or no data, assume expired
+                  expiredCompaniesList.push(company)
                 }
-                return null
               } catch (err) {
                 console.error(`Error checking subscription for company ${company.id}:`, err)
-                return null
+                // On error, assume expired
+                expiredCompaniesList.push(company)
               }
             })
           )
           
-          const accessible = companiesWithStatus.filter((c): c is CompanyWithStatus => c !== null)
-          setAccessibleCompanies(accessible)
+          setAccessibleCompanies(activeCompanies)
+          setExpiredCompanies(expiredCompaniesList)
+          
+          // Set selected expired company to companyId if it exists in expired list, otherwise first expired company
+          if (companyId && expiredCompaniesList.some(c => c.id === companyId)) {
+            setSelectedExpiredCompany(companyId)
+          } else if (expiredCompaniesList.length > 0) {
+            setSelectedExpiredCompany(expiredCompaniesList[0].id)
+          } else {
+            setSelectedExpiredCompany(null)
+          }
         } else {
           setAccessibleCompanies([])
+          setExpiredCompanies([])
+          setSelectedExpiredCompany(null)
         }
       } catch (err) {
         console.error('Error fetching data:', err)
@@ -127,10 +149,57 @@ function SubscriptionRequiredInner() {
     <div className="min-h-screen bg-primary-dark relative overflow-hidden">
       <SubtleCircuitBackground />
       
-      <div className="relative z-10 flex items-center justify-center min-h-screen px-4">
-        <div className="max-w-lg w-full">
+      <div className="relative z-10 flex items-center justify-center min-h-screen px-4 py-8">
+        <div className="max-w-lg w-full space-y-6">
+          {/* Active Companies Section - Prominent at top */}
+          {accessibleCompanies.length > 0 && (
+            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h2 className="text-lg font-light text-white">Access Your Active Companies</h2>
+              </div>
+              <div className="space-y-2">
+                {accessibleCompanies.map((c) => {
+                  const getStatusBadge = () => {
+                    if (c.isTrial) {
+                      return (
+                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                          Trial {c.trialDaysRemaining !== undefined ? `(${c.trialDaysRemaining}d)` : ''}
+                        </span>
+                      )
+                    } else {
+                      return (
+                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+                          Valid
+                        </span>
+                      )
+                    }
+                  }
+                  
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => router.push(`/data-room?company_id=${c.id}`)}
+                      className="w-full text-left px-4 py-3 bg-gray-900 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors text-sm font-light flex items-center justify-between group"
+                    >
+                      <span className="truncate flex-1">{c.name}</span>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {getStatusBadge()}
+                        <svg className="w-4 h-4 text-gray-500 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Icon */}
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center">
             <div className="w-20 h-20 bg-gray-800 border border-gray-700 rounded-xl flex items-center justify-center">
               <svg
                 className="w-10 h-10 text-gray-400"
@@ -154,10 +223,14 @@ function SubscriptionRequiredInner() {
               Subscription Required
             </h1>
             
-            {company ? (
+            {selectedExpiredCompany && expiredCompanies.length > 0 ? (
               <p className="text-gray-400 mb-6 font-light">
-                Your trial for <span className="text-white font-light">{company.name}</span> has expired. 
+                Your trial for <span className="text-white font-light">{expiredCompanies.find(c => c.id === selectedExpiredCompany)?.name || 'this company'}</span> has expired. 
                 Subscribe to continue accessing this company.
+              </p>
+            ) : expiredCompanies.length > 0 ? (
+              <p className="text-gray-400 mb-6 font-light">
+                Your trial has expired. Subscribe to continue accessing your companies.
               </p>
             ) : (
               <p className="text-gray-400 mb-6 font-light">
@@ -165,14 +238,47 @@ function SubscriptionRequiredInner() {
               </p>
             )}
             
+            {/* Expired Companies Selection - Show if multiple expired companies */}
+            {expiredCompanies.length > 1 && (
+              <div className="mb-6 text-left">
+                <p className="text-sm text-gray-500 mb-3 font-light">
+                  Select company to subscribe:
+                </p>
+                <div className="space-y-2">
+                  {expiredCompanies.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelectedExpiredCompany(c.id)}
+                      className={`w-full text-left px-4 py-3 rounded-lg text-sm font-light transition-colors flex items-center gap-3 ${
+                        selectedExpiredCompany === c.id
+                          ? 'bg-gray-700 text-white border border-gray-600'
+                          : 'bg-gray-900 text-gray-300 hover:bg-gray-800 border border-gray-800'
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                        selectedExpiredCompany === c.id
+                          ? 'border-white bg-white'
+                          : 'border-gray-500'
+                      }`}>
+                        {selectedExpiredCompany === c.id && (
+                          <div className="w-2 h-2 rounded-full bg-gray-900"></div>
+                        )}
+                      </div>
+                      <span className="truncate flex-1">{c.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             {/* Actions */}
             <div className="space-y-3">
-              {company && (
+              {selectedExpiredCompany && expiredCompanies.length > 0 && (
                 <button
-                  onClick={() => router.push(`/subscribe?company_id=${company.id}`)}
+                  onClick={() => router.push(`/subscribe?company_id=${selectedExpiredCompany}`)}
                   className="w-full bg-gray-700 text-white py-3 px-6 rounded-lg font-light hover:bg-gray-600 transition-colors"
                 >
-                  Subscribe to {company.name}
+                  Subscribe to {expiredCompanies.find(c => c.id === selectedExpiredCompany)?.name || 'Selected Company'}
                 </button>
               )}
               
@@ -183,48 +289,6 @@ function SubscriptionRequiredInner() {
                 View All Plans
               </button>
             </div>
-            
-            {/* Other Companies with Active Access */}
-            {accessibleCompanies.length > 0 && (
-              <div className="mt-8 pt-6 border-t border-gray-800">
-                <p className="text-sm text-gray-500 mb-3">
-                  You have other companies you may have access to:
-                </p>
-                <div className="space-y-2">
-                  {accessibleCompanies
-                    .filter(c => c.id !== companyId)
-                    .slice(0, 3)
-                    .map((c) => {
-                      const getStatusBadge = () => {
-                        if (c.isTrial) {
-                          return (
-                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-                              Trial {c.trialDaysRemaining !== undefined ? `(${c.trialDaysRemaining}d)` : ''}
-                            </span>
-                          )
-                        } else {
-                          return (
-                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
-                              Valid
-                            </span>
-                          )
-                        }
-                      }
-                      
-                      return (
-                        <button
-                          key={c.id}
-                          onClick={() => router.push(`/data-room?company_id=${c.id}`)}
-                          className="w-full text-left px-4 py-2 bg-gray-900 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors text-sm font-light flex items-center justify-between"
-                        >
-                          <span className="truncate">{c.name}</span>
-                          {getStatusBadge()}
-                        </button>
-                      )
-                    })}
-                </div>
-              </div>
-            )}
             
             {/* Create New Company */}
             <div className="mt-6 pt-6 border-t border-gray-800">
