@@ -186,16 +186,24 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
     const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
 
     // Update overdue statuses before fetching to ensure data consistency
-    // Use a short timeout to avoid blocking too long, but ensure statuses are updated
+    // This MUST complete before fetching to avoid race conditions
     try {
-    if (companyId) {
-        await adminSupabase.rpc('update_company_overdue_statuses', { p_company_id: companyId })
-    } else if (isSuperadmin) {
-        await adminSupabase.rpc('update_overdue_statuses')
+      if (companyId) {
+        const { error: updateError } = await adminSupabase.rpc('update_company_overdue_statuses', { p_company_id: companyId })
+        if (updateError) {
+          console.error('[getRegulatoryRequirements] Status update error:', updateError)
+          // Continue anyway but log the error - status update is important but shouldn't block data fetch
+        }
+      } else if (isSuperadmin) {
+        const { error: updateError } = await adminSupabase.rpc('update_overdue_statuses')
+        if (updateError) {
+          console.error('[getRegulatoryRequirements] Status update error:', updateError)
+        }
       }
     } catch (statusUpdateError) {
       // Log but don't fail the entire request if status update fails
-      console.error('[getRegulatoryRequirements] Status update error (non-critical):', statusUpdateError)
+      // However, we've already awaited, so this catch is for unexpected errors
+      console.error('[getRegulatoryRequirements] Status update exception (non-critical):', statusUpdateError)
     }
 
     let query = adminSupabase

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useMemo, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import React from 'react'
 import Header from '@/components/Header'
@@ -531,6 +531,10 @@ function DataRoomPageInner() {
   } | null>(null)
   const [uploadingDocument, setUploadingDocument] = useState(false)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<number>(0)
+  const [uploadStage, setUploadStage] = useState<string>('')
+  const [previewFileUrl, setPreviewFileUrl] = useState<string | null>(null)
+  const [requirementUploadHistory, setRequirementUploadHistory] = useState<any[]>([])
 
   // Demo Notices Data - Now stateful so we can add to it
   const [demoNotices, setDemoNotices] = useState([
@@ -943,10 +947,13 @@ function DataRoomPageInner() {
   // Helper function to get period badge color
   const getPeriodBadgeColor = (periodType: string | null): string => {
     if (!periodType) return 'bg-gray-700'
+    // Color coding aligned with compliance types:
+    // one-time (purple, no recurring), annual (green, recurs annually)
     switch (periodType) {
-      case 'monthly': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-      case 'quarterly': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+      case 'one-time': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
       case 'annual': return 'bg-green-500/20 text-green-400 border-green-500/30'
+      case 'monthly': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+      case 'quarterly': return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
       default: return 'bg-gray-700'
     }
   }
@@ -1312,10 +1319,18 @@ function DataRoomPageInner() {
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false)
 
   // Tracker filters
-  // Calculate current financial year (Indian FY: April to March)
-  const getCurrentFinancialYear = (): string => {
+  // Calculate current financial year
+  // Note: Currently supports Indian FY (April-March), but structured to allow extension
+  const getCurrentFinancialYear = (yearType: 'FY' | 'CY' = 'FY'): string => {
     const now = new Date()
     const currentYear = now.getFullYear()
+    
+    if (yearType === 'CY') {
+      // Calendar Year: January to December
+      return `CY ${currentYear}`
+    }
+    
+    // Financial Year (Indian): April to March
     const currentMonth = now.getMonth() // 0-11 (Jan = 0, Apr = 3)
     
     // If current month is Jan-Mar (0-2), FY is previous year to current year
@@ -1328,6 +1343,57 @@ function DataRoomPageInner() {
       // Apr-Dec: FY is currentYear - (currentYear + 1)
       return `FY ${currentYear}-${(currentYear + 1).toString().slice(-2)}`
     }
+  }
+
+  // Parse financial year string robustly
+  const parseFinancialYear = (fyStr: string | null | undefined): { startYear: number; endYear: number; type: 'FY' | 'CY' } | null => {
+    if (!fyStr) return null
+    
+    // Handle Calendar Year format: "CY 2024"
+    const cyMatch = fyStr.match(/^CY\s*(\d{4})$/i)
+    if (cyMatch) {
+      const year = parseInt(cyMatch[1], 10)
+      return { startYear: year, endYear: year, type: 'CY' }
+    }
+    
+    // Handle Financial Year format: "FY 2024-25" or "FY 2024-2025"
+    const fyMatch = fyStr.match(/^FY\s*(\d{4})\s*[-–]\s*(\d{2,4})$/i)
+    if (fyMatch) {
+      const startYear = parseInt(fyMatch[1], 10)
+      const endPart = fyMatch[2]
+      let endYear: number
+      
+      if (endPart.length === 2) {
+        // Two-digit year: "FY 2024-25" -> endYear = 2025
+        const century = Math.floor(startYear / 100) * 100
+        endYear = century + parseInt(endPart, 10)
+        // Handle century rollover (e.g., FY 2099-00 should be 2100, not 2099)
+        if (endYear < startYear) {
+          endYear += 100
+        }
+      } else {
+        // Four-digit year: "FY 2024-2025"
+        endYear = parseInt(endPart, 10)
+      }
+      
+      return { startYear, endYear, type: 'FY' }
+    }
+    
+    return null
+  }
+
+  // Get months included in a financial year (for context display)
+  const getFinancialYearMonths = (fyStr: string): string[] => {
+    const parsed = parseFinancialYear(fyStr)
+    if (!parsed) return []
+    
+    if (parsed.type === 'CY') {
+      // Calendar Year: All 12 months
+      return ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    }
+    
+    // Financial Year (Indian): April to March
+    return ['April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March']
   }
 
   // Get current month name
@@ -1438,28 +1504,259 @@ function DataRoomPageInner() {
     }
   }, [activeTab, currentCompany?.id, user?.id])
 
-  // Helper function to format date for display
+  // Date normalization utilities for consistency
+  // Normalize date to UTC midnight for consistent comparisons (avoids timezone issues)
+  const normalizeDate = (dateStr: string | Date | null | undefined): Date | null => {
+    if (!dateStr) return null
+    try {
+      const date = dateStr instanceof Date ? dateStr : new Date(dateStr)
+      if (isNaN(date.getTime())) return null
+      // Normalize to UTC midnight for consistent comparisons
+      return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+    } catch {
+      return null
+    }
+  }
+
+  // Compare dates ignoring time (for due date comparisons)
+  const compareDates = (date1: string | Date | null, date2: string | Date | null): number => {
+    const d1 = normalizeDate(date1)
+    const d2 = normalizeDate(date2)
+    if (!d1 && !d2) return 0
+    if (!d1) return 1
+    if (!d2) return -1
+    return d1.getTime() - d2.getTime()
+  }
+
+  // Check if date is in the future (for validation)
+  const isDateInFuture = (dateStr: string | Date | null): boolean => {
+    const date = normalizeDate(dateStr)
+    if (!date) return false
+    const today = normalizeDate(new Date())
+    if (!today) return false
+    return date.getTime() > today.getTime()
+  }
+
+  // Validate due date for upcoming items
+  const validateDueDate = (dueDate: string, status: string): { valid: boolean; error?: string } => {
+    if (!dueDate) {
+      return { valid: false, error: 'Due date is required' }
+    }
+
+    const normalized = normalizeDate(dueDate)
+    if (!normalized) {
+      return { valid: false, error: 'Invalid date format' }
+    }
+
+    // For "upcoming" status, due date should be in the future
+    if (status === 'upcoming') {
+      if (!isDateInFuture(dueDate)) {
+        return { valid: false, error: 'Due date for upcoming items must be in the future' }
+      }
+    }
+
+    return { valid: true }
+  }
+
+  // Helper function to format date for display (consistent format)
   const formatDate = (dateStr: string): string => {
     try {
-      const date = new Date(dateStr)
+      const date = normalizeDate(dateStr)
+      if (!date) return dateStr
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-      return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
+      return `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`
     } catch {
       return dateStr
     }
   }
 
-  // Helper function to format date with full month name
+  // Helper function to format date with full month name (consistent format)
   const formatDateForDisplay = (dateStr: string): string => {
     if (!dateStr) return ''
     try {
-      const date = new Date(dateStr)
-      if (isNaN(date.getTime())) return dateStr
-      return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      const date = normalizeDate(dateStr)
+      if (!date) return dateStr
+      // Use UTC to avoid timezone issues
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+      return `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`
     } catch {
       return dateStr
     }
   }
+
+  // Format date as ISO string for storage (consistent format)
+  const formatDateForStorage = (dateStr: string | Date | null): string | null => {
+    const date = normalizeDate(dateStr)
+    if (!date) return null
+    // Return ISO string in YYYY-MM-DD format
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`
+  }
+
+  // Memoized penalty calculation function
+  const calculatePenaltyMemoized = useCallback((penaltyStr: string | null, daysDelayed: number | null): string => {
+    // If no delay or penalty string is empty, return '-'
+    if (daysDelayed === null || daysDelayed <= 0 || !penaltyStr || penaltyStr.trim() === '') {
+      return '-'
+    }
+
+    const penalty = penaltyStr.trim()
+
+    // Handle NULL (from database)
+    if (penalty === 'NULL' || penalty === 'null' || penalty === '') {
+      return 'Refer to Act'
+    }
+
+    // Simple daily rate: "50", "100", "200"
+    if (/^\d+$/.test(penalty)) {
+      const dailyRate = parseInt(penalty, 10)
+      if (!isNaN(dailyRate) && dailyRate > 0) {
+        return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+      }
+    }
+
+    // Complex format with max cap: "100|500000" (daily|max)
+    if (/^\d+\|\d+$/.test(penalty)) {
+      const [dailyRateStr, maxCapStr] = penalty.split('|')
+      const dailyRate = parseInt(dailyRateStr, 10)
+      const maxCap = parseInt(maxCapStr, 10)
+      
+      if (!isNaN(dailyRate) && dailyRate > 0) {
+        let calculated = dailyRate * daysDelayed
+        if (!isNaN(maxCap) && maxCap > 0) {
+          calculated = Math.min(calculated, maxCap)
+        }
+        return `₹${Math.round(calculated).toLocaleString('en-IN')}`
+      }
+    }
+
+    // Extract daily rate from penalty string (e.g., "₹100/day", "100/day")
+    let dailyRateMatch = penalty.match(/(\d+)\/day\s*\([^)]*NIL[^)]*\)/i)
+    if (!dailyRateMatch) {
+      dailyRateMatch = penalty.match(/(?:₹)?[\d,]+(?:\.[\d]+)?\/day/i)
+    }
+    if (dailyRateMatch) {
+      const rateStr = dailyRateMatch[1] || dailyRateMatch[0].replace(/₹/gi, '').replace(/\/day/gi, '').replace(/,/g, '')
+      const dailyRate = parseFloat(rateStr.replace(/,/g, ''))
+      if (!isNaN(dailyRate) && dailyRate > 0) {
+        let calculatedPenalty = dailyRate * daysDelayed
+        
+        // Check for maximum limit
+        const maxMatch = penalty.match(/max\s*(?:₹)?[\d,]+(?:\.[\d]+)?/i)
+        if (maxMatch) {
+          const maxStr = maxMatch[0].replace(/max\s*(?:₹)?/gi, '').replace(/,/g, '')
+          const maxAmount = parseFloat(maxStr)
+          if (!isNaN(maxAmount) && maxAmount > 0) {
+            calculatedPenalty = Math.min(calculatedPenalty, maxAmount)
+          }
+        }
+        
+        return `₹${calculatedPenalty.toLocaleString('en-IN')}`
+      }
+    }
+
+    // Handle "200/day + 10000-100000" - extract daily rate before the +
+    const dailyWithRangeMatch = penalty.match(/(\d+)\/day\s*\+\s*[\d-]+/i)
+    if (dailyWithRangeMatch) {
+      const dailyRate = parseFloat(dailyWithRangeMatch[1].replace(/,/g, ''))
+      if (!isNaN(dailyRate) && dailyRate > 0) {
+        return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+      }
+    }
+    
+    // Handle "2%/month + 5/day" - extract daily rate after the +
+    const interestPlusDailyMatch = penalty.match(/[\d.]+%[^+]*\+\s*(\d+)\/day/i)
+    if (interestPlusDailyMatch) {
+      const dailyRate = parseFloat(interestPlusDailyMatch[1].replace(/,/g, ''))
+      if (!isNaN(dailyRate) && dailyRate > 0) {
+        return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+      }
+    }
+    
+    // Handle range formats like "25000-300000" - extract minimum
+    const rangeMatch = penalty.match(/(\d+)\s*-\s*(\d+)/)
+    if (rangeMatch && !penalty.includes('%') && !penalty.includes('/day')) {
+      const minAmount = parseFloat(rangeMatch[1].replace(/,/g, ''))
+      if (!isNaN(minAmount) && minAmount > 0) {
+        return `₹${Math.round(minAmount).toLocaleString('en-IN')} (minimum)`
+      }
+    }
+
+    // Check for explicit fixed penalty amounts
+    const fixedKeywords = /(?:fixed|one-time|one time|flat|lump)/i
+    if (fixedKeywords.test(penalty)) {
+      let fixedMatch = penalty.match(/₹[\d,]+(?:\.[\d]+)?/i)
+      if (!fixedMatch) {
+        const plainNumberMatch = penalty.match(/[\d,]+(?:\.[\d]+)?/i)
+        if (plainNumberMatch) {
+          const amount = plainNumberMatch[0].replace(/,/g, '')
+          const numAmount = parseFloat(amount)
+          if (!isNaN(numAmount) && numAmount > 0) {
+            return `₹${numAmount.toLocaleString('en-IN')}`
+          }
+        }
+      } else {
+        return fixedMatch[0]
+      }
+    }
+
+    // Plain number as daily rate (fallback for text format)
+    const plainNumberMatch = penalty.match(/^[\d,]+(?:\.[\d]+)?$/i)
+    if (plainNumberMatch && !penalty.includes('/day') && !penalty.includes('Interest') && !penalty.includes('+')) {
+      const amount = plainNumberMatch[0].replace(/,/g, '')
+      const numAmount = parseFloat(amount)
+      if (!isNaN(numAmount) && numAmount > 0) {
+        const calculatedPenalty = numAmount * daysDelayed
+        return `₹${calculatedPenalty.toLocaleString('en-IN')}`
+      }
+    }
+
+    // Check for penalties with Interest
+    if (penalty.includes('Interest') || penalty.includes('+ Interest')) {
+      return 'Cannot calculate - Insufficient information (Interest calculation requires principal amount)'
+    }
+
+    // Check for vague "as per Act" references
+    if (/as per.*Act/i.test(penalty) || /as per.*guidelines/i.test(penalty)) {
+      return 'Refer to Act'
+    }
+
+    // Check for penalties that are too complex
+    if (penalty.includes('+') && !penalty.includes('/day')) {
+      return 'Cannot calculate - Complex penalty structure requires additional information'
+    }
+
+    return 'Cannot calculate - Insufficient information'
+  }, [])
+
+  // Memoized delay calculation
+  const calculateDelayMemoized = useCallback((dueDateStr: string, status: string): number | null => {
+    // For not_started, pending, or overdue status, calculate delay if date has passed
+    if (status === 'completed' || status === 'upcoming') return null
+    
+    try {
+      const months: { [key: string]: number } = {
+        'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+        'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+      }
+      const parts = dueDateStr.split(' ')
+      if (parts.length >= 3) {
+        const day = parseInt(parts[1].replace(',', ''))
+        const month = months[parts[0]]
+        const year = parseInt(parts[2])
+        const dueDate = new Date(year, month, day)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        dueDate.setHours(0, 0, 0, 0)
+        const diffTime = today.getTime() - dueDate.getTime()
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+        // Return delay if date has passed (diffDays > 0)
+        return diffDays > 0 ? diffDays : null
+      }
+    } catch {
+      // Invalid date format
+    }
+    return null
+  }, [])
 
   // Refresh requirements
   const refreshRequirements = async () => {
@@ -1482,14 +1779,61 @@ function DataRoomPageInner() {
     }
   }
 
+  // Validate status transition
+  const isValidStatusTransition = (oldStatus: string, newStatus: string): { valid: boolean; reason?: string } => {
+    // Define valid status transitions
+    const validTransitions: Record<string, string[]> = {
+      'not_started': ['upcoming', 'pending', 'overdue', 'completed'],
+      'upcoming': ['pending', 'overdue', 'completed', 'not_started'],
+      'pending': ['completed', 'overdue', 'upcoming', 'not_started'],
+      'overdue': ['completed', 'pending', 'upcoming', 'not_started'],
+      'completed': ['pending', 'overdue', 'upcoming', 'not_started'] // Allow reopening completed items
+    }
+
+    // Same status is always valid (no-op)
+    if (oldStatus === newStatus) {
+      return { valid: true }
+    }
+
+    // Check if transition is allowed
+    const allowedTransitions = validTransitions[oldStatus] || []
+    if (!allowedTransitions.includes(newStatus)) {
+      return {
+        valid: false,
+        reason: `Cannot change status from "${oldStatus}" to "${newStatus}". Valid transitions: ${allowedTransitions.join(', ')}`
+      }
+    }
+
+    return { valid: true }
+  }
+
   // Handle status change
   const handleStatusChange = async (requirementId: string, newStatus: 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed') => {
     if (!currentCompany) return
 
     try {
-      // Get old status for tracking
+      // Get old status for validation and tracking
       const oldRequirement = regulatoryRequirements.find(req => req.id === requirementId)
-      const oldStatus = oldRequirement?.status || 'not_started'
+      if (!oldRequirement) {
+        showToast('Requirement not found', 'error')
+        return
+      }
+
+      const oldStatus = oldRequirement.status
+
+      // Validate status transition
+      const validation = isValidStatusTransition(oldStatus, newStatus)
+      if (!validation.valid) {
+        showToast(validation.reason || 'Invalid status transition', 'error')
+        return
+      }
+
+      // For critical items or moving to completed, show confirmation
+      if ((oldRequirement.is_critical || oldStatus === 'overdue') && newStatus === 'completed') {
+        if (!confirm(`Are you sure you want to mark this ${oldRequirement.is_critical ? 'critical ' : ''}requirement as completed?`)) {
+          return
+        }
+      }
 
       const result = await updateRequirementStatus(requirementId, currentCompany.id, newStatus)
       if (result.success) {
@@ -1508,12 +1852,13 @@ function DataRoomPageInner() {
               : req
           )
         )
+        showToast('Status updated successfully', 'success')
       } else {
-        alert(`Failed to update status: ${result.error}`)
+        showToast(`Failed to update status: ${result.error}`, 'error')
       }
     } catch (error: any) {
       console.error('Error updating status:', error)
-      alert(`Error: ${error.message}`)
+      showToast(`Error: ${error.message}`, 'error')
     }
   }
 
@@ -1594,12 +1939,27 @@ function DataRoomPageInner() {
       const lastDay = new Date(year, quarterEndMonth, 0).getDate()
       periodEnd = `${year}-${String(quarterEndMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
     } else if (complianceType === 'annual') {
+      // Annual compliance: recurs every year
       periodType = 'annual'
       const year = dueDate.getFullYear()
       periodKey = `FY-${year}`
       periodStart = `${year}-04-01`
       periodEnd = `${year + 1}-03-31`
       periodFinancialYear = `FY ${year}-${String(year + 1).slice(-2)}`
+    } else if (complianceType === 'one-time') {
+      // One-time compliance: happens once, no recurring
+      periodType = 'one-time'
+      const year = dueDate.getFullYear()
+      periodKey = `one-time-${year}`
+      const normalizedDate = normalizeDate(dueDate)
+      if (normalizedDate) {
+        periodStart = formatDateForStorage(normalizedDate) || ''
+        periodEnd = formatDateForStorage(normalizedDate) || ''
+      } else {
+        periodStart = `${year}-01-01`
+        periodEnd = `${year}-12-31`
+      }
+      periodFinancialYear = null // One-time items don't have a recurring financial year
     }
 
     return { periodType, periodKey, periodStart, periodEnd, periodFinancialYear }
@@ -1610,8 +1970,11 @@ function DataRoomPageInner() {
     if (!documentUploadModal || !uploadFile || !currentCompany) return
 
     setUploadingDocument(true)
+    setUploadProgress(0)
+    setUploadStage('Uploading file...')
+    
     try {
-      const supabase = await createClient()
+      const supabase = createClient()
       
       // Upload file to storage
       const fileExt = uploadFile.name.split('.').pop()
@@ -1647,9 +2010,15 @@ function DataRoomPageInner() {
           registrationDate: undefined,
           expiryDate: undefined,
           isPortalRequired: false,
-          frequency: documentUploadModal.complianceType === 'one-time' ? 'annually' : 
+          // Map compliance_type to frequency:
+          // - 'one-time': no recurring, happens once (use 'one-time' or null)
+          // - 'annual': recurs annually (use 'annually')
+          // - 'monthly': recurs monthly (use 'monthly')
+          // - 'quarterly': recurs quarterly (use 'quarterly')
+          frequency: documentUploadModal.complianceType === 'one-time' ? 'one-time' : 
+                     documentUploadModal.complianceType === 'annual' ? 'annually' :
                      documentUploadModal.complianceType === 'monthly' ? 'monthly' :
-                     documentUploadModal.complianceType === 'quarterly' ? 'quarterly' : 'annually',
+                     documentUploadModal.complianceType === 'quarterly' ? 'quarterly' : 'one-time',
           filePath,
           fileName: uploadFile.name,
           periodType: periodMeta.periodType,
@@ -1674,26 +2043,61 @@ function DataRoomPageInner() {
         throw new Error(uploadError.message || 'Failed to upload document')
       }
 
+      setUploadStage('Verifying upload...')
+      setUploadProgress(90)
+
       // Check if all required documents are uploaded
       const allDocs = documentUploadModal.allRequiredDocs
       const uploadedDocs = await getCompanyDocuments(currentCompany.id)
       if (!uploadedDocs.success) throw new Error('Failed to check uploaded documents')
 
       // Filter documents for this requirement by period_key and document_type
-      const requirementDocs = (uploadedDocs.documents || []).filter((doc: any) => 
-        doc.period_key === periodMeta.periodKey && 
-        allDocs.some(reqDoc => 
-          doc.document_type.toLowerCase().includes(reqDoc.toLowerCase()) ||
-          reqDoc.toLowerCase().includes(doc.document_type.toLowerCase())
-        )
-      )
+      // Improved matching: exact match preferred, then normalized comparison
+      const normalizeDocName = (name: string): string => {
+        return name.toLowerCase()
+          .replace(/[^a-z0-9]/g, '') // Remove special chars
+          .replace(/\s+/g, '') // Remove spaces
+          .trim()
+      }
 
-      const uploadedDocNames = requirementDocs.map((doc: any) => doc.document_type.toLowerCase())
-      const allRequiredUploaded = allDocs.every(doc => 
-        uploadedDocNames.some(uploaded => 
-          uploaded.includes(doc.toLowerCase()) || doc.toLowerCase().includes(uploaded)
-        )
-      )
+      const requirementDocs = (uploadedDocs.documents || []).filter((doc: any) => {
+        // Must match period
+        if (doc.period_key !== periodMeta.periodKey) return false
+        
+        // Check for document match with improved logic
+        const docTypeNormalized = normalizeDocName(doc.document_type || '')
+        return allDocs.some(reqDoc => {
+          const reqDocNormalized = normalizeDocName(reqDoc)
+          // Exact normalized match (preferred)
+          if (docTypeNormalized === reqDocNormalized) return true
+          // Check if one contains the other (but require at least 3 chars to avoid false positives)
+          if (docTypeNormalized.length >= 3 && reqDocNormalized.length >= 3) {
+            if (docTypeNormalized.includes(reqDocNormalized) || reqDocNormalized.includes(docTypeNormalized)) {
+              // Additional validation: ensure it's not a substring match that's too short
+              const minLength = Math.min(docTypeNormalized.length, reqDocNormalized.length)
+              if (minLength >= 5) return true // Only allow substring match if at least 5 chars
+            }
+          }
+          return false
+        })
+      })
+
+      const uploadedDocNames = requirementDocs.map((doc: any) => normalizeDocName(doc.document_type || ''))
+      const allRequiredUploaded = allDocs.every(doc => {
+        const reqDocNormalized = normalizeDocName(doc)
+        return uploadedDocNames.some(uploaded => {
+          // Exact match
+          if (uploaded === reqDocNormalized) return true
+          // Substring match with minimum length requirement
+          if (uploaded.length >= 5 && reqDocNormalized.length >= 5) {
+            return uploaded.includes(reqDocNormalized) || reqDocNormalized.includes(uploaded)
+          }
+          return false
+        })
+      })
+
+      setUploadStage('Updating requirement status...')
+      setUploadProgress(95)
 
       // Update requirement status
       let newStatus: 'pending' | 'completed' = 'pending'
@@ -1714,6 +2118,9 @@ function DataRoomPageInner() {
         console.error('Failed to update status:', statusResult.error)
       }
 
+      setUploadProgress(100)
+      setUploadStage('Complete!')
+
       // Refresh requirements and vault documents
       const refreshResult = await getRegulatoryRequirements(currentCompany.id)
       if (refreshResult.success && refreshResult.requirements) {
@@ -1725,20 +2132,73 @@ function DataRoomPageInner() {
         setVaultDocuments(vaultResult.documents || [])
       }
 
-      // Close modal
-      setDocumentUploadModal(null)
-      setUploadFile(null)
-      showToast(
-        `Document uploaded successfully! ${allRequiredUploaded ? 'All documents uploaded - status set to completed.' : 'Status set to pending.'}`,
-        'success'
-      )
+      // Show success message with more detail
+      const successMessage = allRequiredUploaded 
+        ? `✅ Document uploaded successfully! All required documents are now uploaded. Requirement status updated to "Completed".`
+        : `✅ Document uploaded successfully! ${allDocs.length - requirementDocs.length - 1} document(s) remaining. Requirement status updated to "Pending".`
+      
+      showToast(successMessage, 'success')
+
+      // Keep modal open briefly to show success, then close
+      setTimeout(() => {
+        setDocumentUploadModal(null)
+        setUploadFile(null)
+        setUploadProgress(0)
+        setUploadStage('')
+        setPreviewFileUrl(null)
+      }, 1500)
     } catch (error: any) {
       console.error('Error uploading document:', error)
-      showToast(`Error uploading document: ${error.message}`, 'error')
+      showToast(`❌ Error uploading document: ${error.message}`, 'error')
+      setUploadProgress(0)
+      setUploadStage('')
     } finally {
       setUploadingDocument(false)
     }
   }
+
+  // Fetch upload history for requirement
+  useEffect(() => {
+    const fetchUploadHistory = async () => {
+      if (!documentUploadModal || !currentCompany) {
+        setRequirementUploadHistory([])
+        return
+      }
+
+      try {
+        const result = await getCompanyDocuments(currentCompany.id)
+        if (result.success && result.documents) {
+          // Filter documents for this requirement
+          const history = result.documents.filter((doc: any) => 
+            doc.requirement_id === documentUploadModal.requirementId
+          ).sort((a: any, b: any) => {
+            const dateA = new Date(a.created_at || 0).getTime()
+            const dateB = new Date(b.created_at || 0).getTime()
+            return dateB - dateA // Newest first
+          })
+          setRequirementUploadHistory(history)
+        }
+      } catch (error) {
+        console.error('Error fetching upload history:', error)
+        setRequirementUploadHistory([])
+      }
+    }
+
+    fetchUploadHistory()
+  }, [documentUploadModal, currentCompany])
+
+  // Generate preview URL for file
+  useEffect(() => {
+    if (uploadFile) {
+      const url = URL.createObjectURL(uploadFile)
+      setPreviewFileUrl(url)
+      return () => {
+        URL.revokeObjectURL(url)
+      }
+    } else {
+      setPreviewFileUrl(null)
+    }
+  }, [uploadFile])
 
   // Convert database requirements to display format
   const displayRequirements = regulatoryRequirements.map(req => ({
@@ -3083,11 +3543,12 @@ function DataRoomPageInner() {
                   yPos = margin
                 }
                 
+                // Compliance type labels: one-time (no recurring), annual (recurs annually)
                 const typeLabels: Record<string, string> = {
-                  'one-time': 'One-time',
-                  'monthly': 'Monthly',
-                  'quarterly': 'Quarterly',
-                  'annual': 'Annual'
+                  'one-time': 'One-time (No Recurring)',
+                  'annual': 'Annual (Recurring)',
+                  'monthly': 'Monthly (Recurring)',
+                  'quarterly': 'Quarterly (Recurring)'
                 }
                 const completionRate = data.total > 0 ? (data.completed / data.total) * 100 : 0
                 
@@ -3883,11 +4344,12 @@ function DataRoomPageInner() {
                         'quarterly': 'Quarterly',
                         'annual': 'Annual'
                       }
+                      // Color coding: one-time (purple), annual (green), monthly (blue), quarterly (cyan)
                       const typeColors: Record<string, { bg: string; text: string; border: string; bar: string }> = {
-                        'one-time': { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', bar: 'bg-blue-400' },
-                        'monthly': { bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/30', bar: 'bg-purple-400' },
-                        'quarterly': { bg: 'bg-indigo-500/20', text: 'text-indigo-400', border: 'border-indigo-500/30', bar: 'bg-indigo-400' },
-                        'annual': { bg: 'bg-cyan-500/20', text: 'text-cyan-400', border: 'border-cyan-500/30', bar: 'bg-cyan-400' }
+                        'one-time': { bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/30', bar: 'bg-purple-400' },
+                        'annual': { bg: 'bg-green-500/20', text: 'text-green-400', border: 'border-green-500/30', bar: 'bg-green-400' },
+                        'monthly': { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', bar: 'bg-blue-400' },
+                        'quarterly': { bg: 'bg-cyan-500/20', text: 'text-cyan-400', border: 'border-cyan-500/30', bar: 'bg-cyan-400' }
                       }
                       const colors = typeColors[type] || typeColors['one-time']
                       const completionRate = data.total > 0 ? (data.completed / data.total) * 100 : 0
@@ -5725,27 +6187,40 @@ function DataRoomPageInner() {
 
             {/* Super Filters - Stack on Mobile */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
-              {/* Financial Year Dropdown */}
+              {/* Financial Year Dropdown with Context */}
               <div className="relative flex-1 sm:flex-initial">
-                <select
-                  value={selectedTrackerFY}
-                  onChange={(e) => {
-                    const newFY = e.target.value
-                    setSelectedTrackerFY(newFY)
-                  }}
-                  className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 appearance-none cursor-pointer ${
-                    selectedTrackerFY 
-                      ? 'border-white/40 bg-white/10 text-white' 
-                      : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
-                  }`}
-                >
-                  <option value="">All Years</option>
-                  {financialYears.map((fy) => (
-                    <option key={fy} value={fy}>
-                      {fy}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={selectedTrackerFY}
+                    onChange={(e) => {
+                      const newFY = e.target.value
+                      setSelectedTrackerFY(newFY)
+                      // Clear month/quarter when FY changes to avoid confusion
+                      if (newFY) {
+                        setSelectedMonth(null)
+                        setSelectedQuarter(null)
+                      }
+                    }}
+                    className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 appearance-none cursor-pointer ${
+                      selectedTrackerFY 
+                        ? 'border-white/40 bg-white/10 text-white' 
+                        : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
+                    }`}
+                    title={selectedTrackerFY ? `Includes months: ${getFinancialYearMonths(selectedTrackerFY).join(', ')}` : 'Select financial year'}
+                  >
+                    <option value="">All Years</option>
+                    {financialYears.map((fy) => (
+                      <option key={fy} value={fy}>
+                        {fy}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedTrackerFY && (
+                    <div className="absolute top-full left-0 mt-1 px-2 py-1 bg-gray-900 border border-gray-800 rounded text-xs text-gray-400 z-10 whitespace-nowrap shadow-lg">
+                      Months: {getFinancialYearMonths(selectedTrackerFY).slice(0, 4).join(', ')}...
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Monthly Dropdown */}
@@ -6020,9 +6495,62 @@ function DataRoomPageInner() {
                       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                     </svg>
                   </div>
-                  <p className="text-gray-500 text-sm sm:text-base">No regulatory requirements found</p>
-                  {canEdit && (
-                    <p className="text-gray-600 text-xs sm:text-sm mt-2 text-center px-4">You can create requirements once the feature is available</p>
+                  {trackerSearchQuery || selectedTrackerFY || selectedMonth || selectedQuarter || categoryFilter !== 'all' ? (
+                    <>
+                      <p className="text-gray-400 text-sm sm:text-base font-medium mb-2">No requirements match your filters</p>
+                      <p className="text-gray-500 text-xs sm:text-sm mb-4 text-center px-4">
+                        Try adjusting your search or filters to see more results
+                      </p>
+                      <button
+                        onClick={() => {
+                          setTrackerSearchQuery('')
+                          setSelectedTrackerFY('')
+                          setSelectedMonth(null)
+                          setSelectedQuarter(null)
+                          setCategoryFilter('all')
+                        }}
+                        className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                      >
+                        Clear All Filters
+                      </button>
+                    </>
+                  ) : displayRequirements.length === 0 && regulatoryRequirements.length === 0 ? (
+                    <>
+                      <p className="text-gray-400 text-sm sm:text-base font-medium mb-2">No regulatory requirements yet</p>
+                      <p className="text-gray-500 text-xs sm:text-sm mb-4 text-center px-4">
+                        {canEdit 
+                          ? "Get started by adding your first compliance requirement. Requirements are automatically generated based on your company profile, or you can add custom ones."
+                          : "No compliance requirements have been set up for this company yet."}
+                      </p>
+                      {canEdit && (
+                        <button
+                          onClick={() => {
+                            setRequirementForm({
+                              category: '',
+                              requirement: '',
+                              description: '',
+                              due_date: '',
+                              penalty: '',
+                              is_critical: false,
+                              financial_year: selectedTrackerFY || '',
+                              status: 'not_started',
+                              compliance_type: 'one-time',
+                              year: new Date().getFullYear().toString()
+                            })
+                            setIsCreateModalOpen(true)
+                          }}
+                          className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium flex items-center gap-2"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                          </svg>
+                          Add First Requirement
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-gray-500 text-sm sm:text-base">No regulatory requirements found</p>
                   )}
                 </div>
               ) : (
@@ -6051,43 +6579,20 @@ function DataRoomPageInner() {
                     return months[monthIndex]
                   }
 
-                  // Helper function to parse date string and calculate delay
+                  // Improved date parsing with multiple format support and normalization
                   const parseDate = (dateStr: string): Date | null => {
-                    try {
-                      const months: { [key: string]: number } = {
-                        'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
-                        'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
-                      }
-                      const parts = dateStr.split(' ')
-                      if (parts.length >= 3) {
-                        const day = parseInt(parts[1].replace(',', ''))
-                        const month = months[parts[0]]
-                        const year = parseInt(parts[2])
-                        return new Date(year, month, day)
-                      }
-                      return null
-                    } catch {
-                      return null
-                    }
+                    if (!dateStr) return null
+                    
+                    // Use the normalized date function for consistency
+                    return normalizeDate(dateStr)
                   }
 
-                  // Calculate days delayed
-                  const calculateDelay = (dueDateStr: string, status: string): number | null => {
-                    // For not_started, pending, or overdue status, calculate delay if date has passed
-                    if (status === 'completed' || status === 'upcoming') return null
-                    const dueDate = parseDate(dueDateStr)
-                    if (!dueDate) return null
-                    const today = new Date()
-                    today.setHours(0, 0, 0, 0)
-                    dueDate.setHours(0, 0, 0, 0)
-                    const diffTime = today.getTime() - dueDate.getTime()
-                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-                    // Return delay if date has passed (diffDays > 0)
-                    return diffDays > 0 ? diffDays : null
-                  }
+                  // Use memoized functions for performance
+                  const calculateDelay = calculateDelayMemoized
+                  const calculatePenalty = calculatePenaltyMemoized
 
-                  // Calculate penalty amount
-                  const calculatePenalty = (penaltyStr: string | null, daysDelayed: number | null): string => {
+                  // Legacy calculatePenalty function kept for reference but replaced above
+                  const _calculatePenaltyLegacy = (penaltyStr: string | null, daysDelayed: number | null): string => {
                     // If no delay or penalty string is empty, return '-'
                     if (daysDelayed === null || daysDelayed <= 0 || !penaltyStr || penaltyStr.trim() === '') {
                       return '-'
@@ -6120,8 +6625,10 @@ function DataRoomPageInner() {
                       
                       if (!isNaN(dailyRate) && dailyRate > 0) {
                         let calculated = dailyRate * daysDelayed
-                        if (!isNaN(maxCap) && maxCap > 0) {
-                          calculated = Math.min(calculated, maxCap)
+                        const isCapped = !isNaN(maxCap) && maxCap > 0 && calculated > maxCap
+                        if (isCapped) {
+                          calculated = maxCap
+                          return `₹${Math.round(calculated).toLocaleString('en-IN')} (capped at ₹${maxCap.toLocaleString('en-IN')})`
                         }
                         return `₹${Math.round(calculated).toLocaleString('en-IN')}`
                       }
@@ -6149,7 +6656,11 @@ function DataRoomPageInner() {
                           const maxStr = maxMatch[0].replace(/max\s*(?:₹)?/gi, '').replace(/,/g, '')
                           const maxAmount = parseFloat(maxStr)
                           if (!isNaN(maxAmount) && maxAmount > 0) {
+                            const isCapped = calculatedPenalty > maxAmount
                             calculatedPenalty = Math.min(calculatedPenalty, maxAmount)
+                            if (isCapped) {
+                              return `₹${calculatedPenalty.toLocaleString('en-IN')} (capped at ₹${maxAmount.toLocaleString('en-IN')})`
+                            }
                           }
                         }
                         
@@ -6256,19 +6767,26 @@ function DataRoomPageInner() {
                     })
                   }
                   
-                  // Filter by Month (if selected) - works independently
+                  // Filter by Month (if selected) - works independently but shows relationship
                   if (selectedMonth) {
                     const monthIndex = months.indexOf(selectedMonth)
                     dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
-                      const reqMonth = getMonthFromDate(req.dueDate)
-                      return reqMonth === monthIndex
+                      const reqDate = parseDate(req.dueDate)
+                      if (!reqDate) return false
+                      return reqDate.getUTCMonth() === monthIndex
                     })
                   }
                   
-                  // Filter by Quarter (if selected) - works independently
+                  // Filter by Quarter (if selected) - works independently but shows relationship
                   if (selectedQuarter) {
                     dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
-                      const reqQuarter = getQuarterFromDate(req.dueDate)
+                      const reqDate = parseDate(req.dueDate)
+                      if (!reqDate) return false
+                      const reqMonth = reqDate.getUTCMonth()
+                      const reqQuarter = reqMonth >= 3 && reqMonth <= 5 ? 'q1' : // Apr-Jun
+                                        reqMonth >= 6 && reqMonth <= 8 ? 'q2' : // Jul-Sep
+                                        reqMonth >= 9 && reqMonth <= 11 ? 'q3' : // Oct-Dec
+                                        'q4' // Jan-Mar
                       return reqQuarter === selectedQuarter
                     })
                   }
@@ -6658,11 +7176,20 @@ function DataRoomPageInner() {
                                       {complianceType && (
                                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                                           complianceType === 'one-time' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
+                                          complianceType === 'annual' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
                                           complianceType === 'monthly' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                                          complianceType === 'quarterly' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                                          complianceType === 'quarterly' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' :
                                           'bg-gray-500/20 text-white border border-gray-500/30'
-                                        }`}>
-                                          {complianceType.toUpperCase()}
+                                        }`} title={
+                                          complianceType === 'one-time' ? 'One-time: happens once, no recurring' :
+                                          complianceType === 'annual' ? 'Annual: recurs every year' :
+                                          complianceType === 'monthly' ? 'Monthly: recurs every month' :
+                                          complianceType === 'quarterly' ? 'Quarterly: recurs every quarter' :
+                                          ''
+                                        }>
+                                          {complianceType === 'one-time' ? 'ONE-TIME' :
+                                           complianceType === 'annual' ? 'ANNUAL' :
+                                           complianceType.toUpperCase()}
                                         </span>
                                       )}
                                     </div>
@@ -6953,11 +7480,20 @@ function DataRoomPageInner() {
                                       return (
                                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                                           complianceType === 'one-time' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
+                                          complianceType === 'annual' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
                                           complianceType === 'monthly' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                                          complianceType === 'quarterly' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                                          complianceType === 'quarterly' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' :
                                           'bg-gray-500/20 text-white border border-gray-500/30'
-                                        }`}>
-                                          {complianceType.toUpperCase()}
+                                        }`} title={
+                                          complianceType === 'one-time' ? 'One-time: happens once, no recurring' :
+                                          complianceType === 'annual' ? 'Annual: recurs every year' :
+                                          complianceType === 'monthly' ? 'Monthly: recurs every month' :
+                                          complianceType === 'quarterly' ? 'Quarterly: recurs every quarter' :
+                                          ''
+                                        }>
+                                          {complianceType === 'one-time' ? 'ONE-TIME' :
+                                           complianceType === 'annual' ? 'ANNUAL' :
+                                           complianceType.toUpperCase()}
                                         </span>
                                       )
                                     })()}
@@ -9677,19 +10213,28 @@ function DataRoomPageInner() {
           </div>
         )}
       </div>
-      {/* Document Upload Modal from Tracker */}
+      {/* Document Upload Modal from Tracker - Enhanced */}
       {documentUploadModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-800">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-light text-white">Upload Document</h3>
+                <div>
+                  <h3 className="text-xl font-light text-white">Upload Document</h3>
+                  <p className="text-sm text-gray-400 mt-1">Upload document for compliance requirement</p>
+                </div>
                 <button
                   onClick={() => {
-                    setDocumentUploadModal(null)
-                    setUploadFile(null)
+                    if (!uploadingDocument) {
+                      setDocumentUploadModal(null)
+                      setUploadFile(null)
+                      setUploadProgress(0)
+                      setUploadStage('')
+                      setPreviewFileUrl(null)
+                    }
                   }}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  disabled={uploadingDocument}
+                  className="text-gray-400 hover:text-white transition-colors disabled:opacity-50"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -9698,42 +10243,201 @@ function DataRoomPageInner() {
               </div>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Requirement</label>
-                <div className="text-white">{documentUploadModal.requirement}</div>
+            <div className="p-6 space-y-6">
+              {/* Requirement Info */}
+              <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">Requirement</label>
+                    <div className="text-white font-medium">{documentUploadModal.requirement}</div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">Document Type</label>
+                    <div className="text-blue-400 font-medium">{documentUploadModal.documentName}</div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">Category</label>
+                    <div className="text-gray-300 text-sm">{documentUploadModal.category}</div>
+                  </div>
+                </div>
               </div>
 
+              {/* File Upload Area with Drag & Drop */}
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Document to Upload</label>
-                <div className="text-blue-400 font-medium">{documentUploadModal.documentName}</div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Select File</label>
-                <input
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) {
+                <label className="block text-sm font-medium text-gray-300 mb-2">Select File</label>
+                <div
+                  className={`border-2 border-dashed rounded-lg p-6 transition-colors ${
+                    uploadFile
+                      ? 'border-green-500/50 bg-green-500/10'
+                      : 'border-gray-700 bg-gray-900/50 hover:border-gray-600'
+                  }`}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    const file = e.dataTransfer.files[0]
+                    if (file && (file.type.startsWith('image/') || file.type === 'application/pdf' || file.name.endsWith('.doc') || file.name.endsWith('.docx'))) {
                       setUploadFile(file)
                     }
                   }}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-white/40"
-                />
-                {uploadFile && (
-                  <div className="mt-2 text-sm text-gray-400">
-                    Selected: {uploadFile.name}
-                  </div>
-                )}
+                >
+                  {!uploadFile ? (
+                    <div className="text-center">
+                      <svg className="w-12 h-12 mx-auto text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      <p className="text-gray-400 text-sm mb-2">Drag and drop a file here, or click to browse</p>
+                      <p className="text-gray-500 text-xs">Supports: PDF, Images (JPG, PNG), Word (DOC, DOCX)</p>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            setUploadFile(file)
+                          }
+                        }}
+                        className="hidden"
+                        id="file-upload-input"
+                      />
+                      <label
+                        htmlFor="file-upload-input"
+                        className="mt-3 inline-block px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors cursor-pointer text-sm font-medium"
+                      >
+                        Browse Files
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-white font-medium truncate">{uploadFile.name}</p>
+                              <p className="text-gray-400 text-xs mt-0.5">
+                                {(uploadFile.size / 1024 / 1024).toFixed(2)} MB • {uploadFile.type || 'Unknown type'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setUploadFile(null)}
+                          disabled={uploadingDocument}
+                          className="text-gray-400 hover:text-red-400 transition-colors disabled:opacity-50 ml-2"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* File Preview */}
+                      {previewFileUrl && (
+                        <div className="mt-3 border border-gray-700 rounded-lg overflow-hidden bg-gray-900">
+                          {uploadFile.type.startsWith('image/') ? (
+                            <img
+                              src={previewFileUrl}
+                              alt="Preview"
+                              className="w-full max-h-48 object-contain"
+                            />
+                          ) : uploadFile.type === 'application/pdf' ? (
+                            <div className="p-4 text-center">
+                              <svg className="w-16 h-16 mx-auto text-red-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                              </svg>
+                              <p className="text-gray-400 text-sm">PDF Preview not available</p>
+                              <p className="text-gray-500 text-xs mt-1">File will be uploaded as-is</p>
+                            </div>
+                          ) : (
+                            <div className="p-4 text-center">
+                              <svg className="w-16 h-16 mx-auto text-blue-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                              </svg>
+                              <p className="text-gray-400 text-sm">{uploadFile.name}</p>
+                              <p className="text-gray-500 text-xs mt-1">Document file</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
+              {/* Upload Progress */}
+              {uploadingDocument && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-400">{uploadStage}</span>
+                    <span className="text-white font-medium">{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden">
+                    <div
+                      className="bg-white h-full rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Upload History */}
+              {requirementUploadHistory.length > 0 && !uploadingDocument && (
+                <div className="border-t border-gray-800 pt-4">
+                  <h4 className="text-sm font-medium text-gray-300 mb-3">Previous Uploads</h4>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {requirementUploadHistory.slice(0, 5).map((doc: any, idx: number) => (
+                      <div key={doc.id || idx} className="flex items-center justify-between p-2 bg-gray-900/50 rounded border border-gray-800">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-white text-sm truncate">{doc.file_name || doc.document_type}</p>
+                            <p className="text-gray-500 text-xs">
+                              {doc.created_at ? formatRelativeTime(doc.created_at) : 'Unknown date'}
+                            </p>
+                          </div>
+                        </div>
+                        {doc.file_path && (
+                          <button
+                            onClick={() => handlePreview(doc)}
+                            className="text-blue-400 hover:text-blue-300 p-1.5 rounded hover:bg-blue-500/20 transition-colors"
+                            title="Preview"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {requirementUploadHistory.length > 5 && (
+                    <p className="text-gray-500 text-xs mt-2 text-center">
+                      Showing 5 of {requirementUploadHistory.length} previous uploads
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Action Buttons */}
               <div className="pt-4 border-t border-gray-800 flex justify-end gap-3">
                 <button
                   onClick={() => {
-                    setDocumentUploadModal(null)
-                    setUploadFile(null)
+                    if (!uploadingDocument) {
+                      setDocumentUploadModal(null)
+                      setUploadFile(null)
+                      setUploadProgress(0)
+                      setUploadStage('')
+                      setPreviewFileUrl(null)
+                    }
                   }}
                   disabled={uploadingDocument}
                   className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
@@ -9743,19 +10447,26 @@ function DataRoomPageInner() {
                 <button
                   onClick={handleTrackerDocumentUpload}
                   disabled={!uploadFile || uploadingDocument}
-                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
                 >
                   {uploadingDocument ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Uploading...
+                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                      {uploadStage || 'Uploading...'}
+                    </>
+                  ) : uploadProgress === 100 ? (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Success!
                     </>
                   ) : (
                     <>
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                       </svg>
-                      Upload
+                      Upload Document
                     </>
                   )}
                 </button>
