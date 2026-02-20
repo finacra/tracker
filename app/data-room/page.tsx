@@ -668,6 +668,8 @@ function DataRoomPageInner() {
   const [expiringSoonFilter, setExpiringSoonFilter] = useState<'all' | 'expiring' | 'expired'>('all')
   const [selectedVersions, setSelectedVersions] = useState<Record<string, number>>({})
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
+  const [expandedDocumentVersions, setExpandedDocumentVersions] = useState<Set<string>>(new Set())
+  const [expandedYearGroups, setExpandedYearGroups] = useState<Record<string, Set<string>>>({})
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [isSendModalOpen, setIsSendModalOpen] = useState(false)
   const [isEmailTemplateOpen, setIsEmailTemplateOpen] = useState(false)
@@ -947,6 +949,117 @@ function DataRoomPageInner() {
       case 'annual': return 'bg-green-500/20 text-green-400 border-green-500/30'
       default: return 'bg-gray-700'
     }
+  }
+
+  // Helper function to extract financial year from document
+  const getFinancialYearFromDoc = (doc: any): string | null => {
+    // Prefer period_financial_year if available
+    if (doc.period_financial_year) {
+      return doc.period_financial_year
+    }
+    // Fallback to created_at
+    if (doc.created_at) {
+      return getFinancialYear(doc.created_at)
+    }
+    // Fallback to registration_date
+    if (doc.registration_date) {
+      return getFinancialYear(doc.registration_date)
+    }
+    return null
+  }
+
+  // Helper function to format relative time
+  const formatRelativeTime = (dateStr: string): string => {
+    if (!dateStr) return 'Unknown'
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    const diffMonths = Math.floor(diffDays / 30)
+    const diffYears = Math.floor(diffDays / 365)
+
+    if (diffDays === 0) return 'Today'
+    if (diffDays === 1) return 'Yesterday'
+    if (diffDays < 7) return `${diffDays} days ago`
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
+    if (diffMonths < 12) return `${diffMonths} months ago`
+    return `${diffYears} years ago`
+  }
+
+  // Helper function to format file size
+  const formatFileSize = (bytes: number | null | undefined): string => {
+    if (!bytes) return 'Unknown size'
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  // Interface for version groups
+  interface VersionGroup {
+    documentType: string
+    latestVersion: any
+    yearlyVersions: Map<string, any[]> // Key: financial year, Value: array of versions
+    totalVersions: number
+    folderName: string
+  }
+
+  // Function to group documents by type, then by financial year
+  const groupDocumentsByVersion = (documents: any[]): VersionGroup[] => {
+    const groups = new Map<string, VersionGroup>()
+
+    documents.forEach(doc => {
+      const docType = doc.document_type
+      if (!docType) return
+
+      // Get or create group for this document type
+      if (!groups.has(docType)) {
+        groups.set(docType, {
+          documentType: docType,
+          latestVersion: doc,
+          yearlyVersions: new Map(),
+          totalVersions: 0,
+          folderName: doc.folder_name || ''
+        })
+      }
+
+      const group = groups.get(docType)!
+      group.totalVersions++
+
+      // Get financial year for this document
+      const fy = getFinancialYearFromDoc(doc)
+      if (fy) {
+        if (!group.yearlyVersions.has(fy)) {
+          group.yearlyVersions.set(fy, [])
+        }
+        group.yearlyVersions.get(fy)!.push(doc)
+      } else {
+        // If no FY, put in "Other" category
+        if (!group.yearlyVersions.has('Other')) {
+          group.yearlyVersions.set('Other', [])
+        }
+        group.yearlyVersions.get('Other')!.push(doc)
+      }
+
+      // Update latest version if this is newer
+      const docDate = doc.created_at || doc.period_key || ''
+      const latestDate = group.latestVersion.created_at || group.latestVersion.period_key || ''
+      if (docDate > latestDate) {
+        group.latestVersion = doc
+      }
+    })
+
+    // Sort versions within each year (newest first)
+    groups.forEach(group => {
+      group.yearlyVersions.forEach((versions, fy) => {
+        versions.sort((a, b) => {
+          const dateA = a.created_at || a.period_key || ''
+          const dateB = b.created_at || b.period_key || ''
+          return dateB.localeCompare(dateA)
+        })
+      })
+    })
+
+    return Array.from(groups.values())
   }
 
   // Helper function to check if document matches search query
@@ -7645,22 +7758,25 @@ function DataRoomPageInner() {
             </div>
 
             {/* Expand/Collapse All Controls */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="text-sm text-gray-400">
                 {documentFolders.length} folders • {expandedFolders.size} expanded
+                {expandedDocumentVersions.size > 0 && ` • ${expandedDocumentVersions.size} document versions shown`}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   onClick={() => {
                     setExpandedFolders(new Set(documentFolders))
                   }}
                   className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-gray-800 transition-colors"
                 >
-                  Expand All
+                  Expand All Folders
                 </button>
                 <button
                   onClick={() => {
                     setExpandedFolders(new Set())
+                    setExpandedDocumentVersions(new Set())
+                    setExpandedYearGroups({})
                   }}
                   className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-gray-800 transition-colors"
                 >
@@ -7708,54 +7824,39 @@ function DataRoomPageInner() {
                   
                   const predefinedNames = predefinedDocuments[folderName] || []
                   
-                  // Group uploaded docs by document_type and period
-                  const docsByType = new Map<string, any[]>()
-                  uploadedDocs.forEach(doc => {
-                    const key = doc.document_type
-                    if (!docsByType.has(key)) {
-                      docsByType.set(key, [])
-                    }
-                    docsByType.get(key)!.push(doc)
-                  })
+                  // Use new version grouping system
+                  const versionGroups = groupDocumentsByVersion(uploadedDocs)
                   
                   // Combine predefined and uploaded docs
-                  // Map predefined names to a status
                   const folderDocs: any[] = []
                   
                   predefinedNames.forEach((name: string) => {
-                    const uploadedVersions = docsByType.get(name) || []
-                    if (uploadedVersions.length === 0) {
+                    const versionGroup = versionGroups.find(g => g.documentType === name)
+                    if (!versionGroup) {
                       // No uploaded version, show as pending
-                      folderDocs.push({ document_type: name, status: 'pending', id: `pending-${name}` })
-                    } else if (uploadedVersions.length === 1) {
-                      // Single version, show it
-                      folderDocs.push({ ...uploadedVersions[0], status: 'uploaded', versions: [uploadedVersions[0]] })
+                      folderDocs.push({ document_type: name, status: 'pending', id: `pending-${name}`, folder_name: folderName })
                     } else {
-                      // Multiple versions - group them
-                      // Sort versions by period_key (newest first)
-                      const sortedVersions = [...uploadedVersions].sort((a, b) => {
-                        if (a.period_key && b.period_key) {
-                          return b.period_key.localeCompare(a.period_key)
-                        }
-                        if (a.period_key) return -1
-                        if (b.period_key) return 1
-                        return 0
-                      })
-                      // Show the latest version as the main document, with all versions grouped
-                      folderDocs.push({ 
-                        ...sortedVersions[0], 
-                        status: 'uploaded', 
-                        versions: sortedVersions,
+                      // Create version group document
+                      folderDocs.push({
+                        ...versionGroup.latestVersion,
+                        status: 'uploaded',
+                        versionGroup: versionGroup,
                         isVersionGroup: true,
-                        selectedVersionIndex: 0
+                        folder_name: folderName
                       })
                     }
                   })
 
                   // Add any uploaded docs that aren't in the predefined list
-                  uploadedDocs.forEach(uploaded => {
-                    if (!predefinedNames.includes(uploaded.document_type)) {
-                      folderDocs.push({ ...uploaded, status: 'uploaded' })
+                  versionGroups.forEach(group => {
+                    if (!predefinedNames.includes(group.documentType)) {
+                      folderDocs.push({
+                        ...group.latestVersion,
+                        status: 'uploaded',
+                        versionGroup: group,
+                        isVersionGroup: true,
+                        folder_name: folderName
+                      })
                     }
                   })
                   
@@ -7912,121 +8013,365 @@ function DataRoomPageInner() {
                             </div>
                           ))
                         ) : filteredFolderDocs.length > 0 ? filteredFolderDocs.map((doc: any) => {
-                          // Handle version selection
-                          let displayDoc = doc
-                          if (doc.isVersionGroup && doc.versions && doc.versions.length > 1) {
-                            const selectedIndex = selectedVersions[doc.id] ?? 0
-                            displayDoc = { ...doc.versions[selectedIndex], ...doc, selectedVersionIndex: selectedIndex }
+                          // Handle version groups with tree structure
+                          if (doc.isVersionGroup && doc.versionGroup) {
+                            const versionGroup = doc.versionGroup as VersionGroup
+                            const docKey = `${folderName}-${doc.document_type}`
+                            const isVersionsExpanded = expandedDocumentVersions.has(docKey)
+                            const latestVersion = versionGroup.latestVersion
+                            const latestDocStatus = getDocumentStatus(latestVersion)
+                            
+                            return (
+                              <div key={docKey} className="space-y-2">
+                                {/* Parent Document Card - Latest Version Preview */}
+                                <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border transition-colors ${
+                                  latestDocStatus === 'expired' 
+                                    ? 'bg-red-900/20 border-red-500/30 hover:border-red-500/50' 
+                                    : latestDocStatus === 'expiring'
+                                    ? 'bg-yellow-900/20 border-yellow-500/30 hover:border-yellow-500/50'
+                                    : 'bg-gray-900 border-gray-800 hover:border-white/40/50'
+                                }`}>
+                                  <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                                    <div className={`flex-shrink-0 mt-0.5 sm:mt-0 ${
+                                      latestDocStatus === 'expired' ? 'text-red-400' :
+                                      latestDocStatus === 'expiring' ? 'text-yellow-400' :
+                                      latestDocStatus === 'valid' ? 'text-green-400' :
+                                      'text-gray-400'
+                                    }`}>
+                                      {getFileTypeIcon(latestVersion.file_name || latestVersion.document_type)}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-sm sm:text-base break-words font-medium text-white">
+                                          {latestVersion.document_type}
+                                        </span>
+                                        <span className="px-2 py-0.5 text-xs rounded-full border bg-green-500/20 text-green-400 border-green-500/30 font-medium">
+                                          Latest
+                                        </span>
+                                        <span className="px-1.5 py-0.5 text-xs rounded bg-gray-800 text-gray-400">
+                                          {versionGroup.totalVersions} version{versionGroup.totalVersions !== 1 ? 's' : ''}
+                                        </span>
+                                        {formatPeriodInfo(latestVersion) && (
+                                          <span className={`px-1.5 py-0.5 text-xs rounded border ${getPeriodBadgeColor(latestVersion.period_type)}`}>
+                                            {formatPeriodInfo(latestVersion)}
+                                          </span>
+                                        )}
+                                        {latestDocStatus && (
+                                          <span className={`px-1.5 py-0.5 text-xs rounded border font-medium ${getStatusBadgeColor(latestDocStatus)}`}>
+                                            {latestDocStatus === 'expired' ? 'Expired' :
+                                             latestDocStatus === 'expiring' ? 'Expiring' :
+                                             latestDocStatus === 'valid' ? 'Valid' : 'No Expiry'}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-xs mt-1 flex items-center gap-3 text-gray-500">
+                                        {latestVersion.created_at && (
+                                          <span>Uploaded {formatRelativeTime(latestVersion.created_at)}</span>
+                                        )}
+                                        {latestVersion.file_size && (
+                                          <span>{formatFileSize(latestVersion.file_size)}</span>
+                                        )}
+                                        {latestVersion.expiry_date && (
+                                          <span>Expires: {formatDateForDisplay(latestVersion.expiry_date)}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                                    <button 
+                                      onClick={() => handlePreview(latestVersion)}
+                                      className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0 flex items-center gap-1"
+                                      title="Preview document"
+                                    >
+                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                      </svg>
+                                      Preview
+                                    </button>
+                                    <button 
+                                      onClick={() => handleView(latestVersion.file_path)}
+                                      className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
+                                    >
+                                      View
+                                    </button>
+                                    <button 
+                                      onClick={() => handleExport(latestVersion.file_path, latestVersion.file_name)}
+                                      className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
+                                    >
+                                      Export
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setExpandedDocumentVersions(prev => {
+                                          const newSet = new Set(prev)
+                                          if (newSet.has(docKey)) {
+                                            newSet.delete(docKey)
+                                          } else {
+                                            newSet.add(docKey)
+                                          }
+                                          return newSet
+                                        })
+                                      }}
+                                      className="text-gray-400 hover:text-white font-medium text-xs sm:text-sm border border-gray-700 px-2 sm:px-3 py-1 rounded-lg hover:bg-gray-800 transition-colors flex-shrink-0 flex items-center gap-1"
+                                    >
+                                      <svg className={`w-3 h-3 transition-transform ${isVersionsExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                      </svg>
+                                      Versions
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Collapsible Yearly Versions Section */}
+                                {isVersionsExpanded && (
+                                  <div className="ml-4 sm:ml-6 pl-4 sm:pl-6 border-l-2 border-gray-800 space-y-2">
+                                    {Array.from(versionGroup.yearlyVersions.entries())
+                                      .sort(([fyA], [fyB]) => {
+                                        // Sort years: newest first, "Other" last
+                                        if (fyA === 'Other') return 1
+                                        if (fyB === 'Other') return -1
+                                        return fyB.localeCompare(fyA)
+                                      })
+                                      .map(([financialYear, versions]) => {
+                                        const yearKey = `${docKey}-${financialYear}`
+                                        const isYearExpanded = expandedYearGroups[docKey]?.has(financialYear) ?? false
+                                        const latestInYear = versions[0] // Already sorted newest first
+                                        
+                                        return (
+                                          <div key={yearKey} className="space-y-1.5">
+                                            {/* Year Group Header */}
+                                            <button
+                                              onClick={() => {
+                                                setExpandedYearGroups(prev => {
+                                                  const docGroups = prev[docKey] || new Set()
+                                                  const newSet = new Set(docGroups)
+                                                  if (newSet.has(financialYear)) {
+                                                    newSet.delete(financialYear)
+                                                  } else {
+                                                    newSet.add(financialYear)
+                                                  }
+                                                  return { ...prev, [docKey]: newSet }
+                                                })
+                                              }}
+                                              className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-900/50 transition-colors text-left"
+                                            >
+                                              <div className="flex items-center gap-2">
+                                                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                                <span className="text-sm font-medium text-gray-300">{financialYear}</span>
+                                                <span className="text-xs text-gray-500">({versions.length} version{versions.length !== 1 ? 's' : ''})</span>
+                                              </div>
+                                              <svg className={`w-4 h-4 text-gray-500 transition-transform ${isYearExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                              </svg>
+                                            </button>
+
+                                            {/* Versions in Year - Collapsible */}
+                                            {isYearExpanded && (
+                                              <div className="ml-2 space-y-1.5">
+                                                {versions.map((version: any, idx: number) => {
+                                                  const versionStatus = getDocumentStatus(version)
+                                                  const isLatestInYear = idx === 0
+                                                  
+                                                  return (
+                                                    <div
+                                                      key={version.id}
+                                                      className={`flex items-center justify-between gap-2 p-2 rounded-lg border transition-colors ${
+                                                        isLatestInYear
+                                                          ? 'bg-gray-900/50 border-gray-700'
+                                                          : 'bg-gray-900/30 border-gray-800/50'
+                                                      }`}
+                                                    >
+                                                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                        {/* Timeline connector */}
+                                                        <div className="flex flex-col items-center">
+                                                          <div className={`w-2 h-2 rounded-full ${
+                                                            isLatestInYear ? 'bg-green-400' : 'bg-gray-600'
+                                                          }`}></div>
+                                                          {idx < versions.length - 1 && (
+                                                            <div className="w-0.5 h-4 bg-gray-700 mt-0.5"></div>
+                                                          )}
+                                                        </div>
+                                                        
+                                                        <div className="min-w-0 flex-1">
+                                                          <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className="text-xs text-gray-400">v{versions.length - idx}</span>
+                                                            {isLatestInYear && (
+                                                              <span className="px-1.5 py-0.5 text-xs rounded border bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                                                Latest in {financialYear}
+                                                              </span>
+                                                            )}
+                                                            {formatPeriodInfo(version) && (
+                                                              <span className={`px-1.5 py-0.5 text-xs rounded border ${getPeriodBadgeColor(version.period_type)}`}>
+                                                                {formatPeriodInfo(version)}
+                                                              </span>
+                                                            )}
+                                                            {versionStatus && (
+                                                              <span className={`px-1.5 py-0.5 text-xs rounded border font-medium ${getStatusBadgeColor(versionStatus)}`}>
+                                                                {versionStatus === 'expired' ? 'Expired' :
+                                                                 versionStatus === 'expiring' ? 'Expiring' :
+                                                                 versionStatus === 'valid' ? 'Valid' : 'No Expiry'}
+                                                              </span>
+                                                            )}
+                                                          </div>
+                                                          <div className="text-xs mt-0.5 text-gray-500 flex items-center gap-2">
+                                                            {version.created_at && (
+                                                              <span>{formatRelativeTime(version.created_at)}</span>
+                                                            )}
+                                                            {version.file_size && (
+                                                              <span>• {formatFileSize(version.file_size)}</span>
+                                                            )}
+                                                          </div>
+                                                        </div>
+                                                      </div>
+                                                      <div className="flex items-center gap-1 flex-shrink-0">
+                                                        <button
+                                                          onClick={() => handlePreview(version)}
+                                                          className="text-gray-400 hover:text-white p-1.5 rounded hover:bg-gray-800 transition-colors"
+                                                          title="Preview"
+                                                        >
+                                                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                          </svg>
+                                                        </button>
+                                                        <button
+                                                          onClick={() => handleView(version.file_path)}
+                                                          className="text-gray-400 hover:text-white p-1.5 rounded hover:bg-gray-800 transition-colors"
+                                                          title="View"
+                                                        >
+                                                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                          </svg>
+                                                        </button>
+                                                        <button
+                                                          onClick={() => handleExport(version.file_path, version.file_name)}
+                                                          className="text-gray-400 hover:text-white p-1.5 rounded hover:bg-gray-800 transition-colors"
+                                                          title="Export"
+                                                        >
+                                                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                          </svg>
+                                                        </button>
+                                                      </div>
+                                                    </div>
+                                                  )
+                                                })}
+                                              </div>
+                                            )}
+                                          </div>
+                                        )
+                                      })}
+                                  </div>
+                                )}
+                              </div>
+                            )
                           }
-                          const docStatus = displayDoc.status === 'uploaded' ? getDocumentStatus(displayDoc) : null
+                          
+                          // Handle pending documents
+                          if (doc.status === 'pending') {
+                            return (
+                              <div key={doc.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-dashed bg-yellow-900/10 border-yellow-500/20">
+                                <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                                  <svg
+                                    width="16"
+                                    height="16"
+                                    className="sm:w-5 sm:h-5 flex-shrink-0 mt-0.5 sm:mt-0 text-yellow-500"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                  >
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="12" y1="8" x2="12" y2="12" />
+                                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                                  </svg>
+                                  <div className="min-w-0 flex-1">
+                                    <span className="text-sm sm:text-base break-words font-medium text-yellow-400 italic">
+                                      {doc.document_type} (Pending Upload)
+                                    </span>
+                                  </div>
+                                </div>
+                                <button 
+                                  onClick={() => {
+                                    setUploadFormData(prev => ({ 
+                                      ...prev, 
+                                      folder: folderName,
+                                      documentName: doc.document_type
+                                    }))
+                                    setIsUploadModalOpen(true)
+                                  }}
+                                  className="text-white hover:text-white font-medium text-xs sm:text-sm border border-white/40 px-3 sm:px-4 py-1.5 rounded-lg hover:bg-white/20 transition-colors w-full sm:w-auto"
+                                >
+                                  Upload Now
+                                </button>
+                              </div>
+                            )
+                          }
+                          
+                          // Handle single version documents (no version group)
+                          const docStatus = getDocumentStatus(doc)
                           return (
-                          <div key={displayDoc.id} className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg border transition-colors ${
-                            displayDoc.status === 'uploaded' 
-                              ? docStatus === 'expired' 
+                            <div key={doc.id} className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg border transition-colors ${
+                              docStatus === 'expired' 
                                 ? 'bg-red-900/20 border-red-500/30 hover:border-red-500/50' 
                                 : docStatus === 'expiring'
                                 ? 'bg-yellow-900/20 border-yellow-500/30 hover:border-yellow-500/50'
-                                : 'bg-gray-900 border-gray-800 hover:border-white/40/50' 
-                              : 'bg-yellow-900/10 border-yellow-500/20 border-dashed'
-                          }`}>
-                      <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                        {displayDoc.status === 'pending' ? (
-                          <svg
-                            width="16"
-                            height="16"
-                            className="sm:w-5 sm:h-5 flex-shrink-0 mt-0.5 sm:mt-0 text-yellow-500"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <circle cx="12" cy="12" r="10" />
-                            <line x1="12" y1="8" x2="12" y2="12" />
-                            <line x1="12" y1="16" x2="12.01" y2="16" />
-                          </svg>
-                        ) : (
-                          <div className={`flex-shrink-0 mt-0.5 sm:mt-0 ${
-                            docStatus === 'expired' ? 'text-red-400' :
-                            docStatus === 'expiring' ? 'text-yellow-400' :
-                            docStatus === 'valid' ? 'text-green-400' :
-                            'text-gray-400'
-                          }`}>
-                            {getFileTypeIcon(displayDoc.file_name || displayDoc.document_type)}
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className={`text-sm sm:text-base break-words font-medium ${
-                                    displayDoc.status === 'pending' 
-                                      ? 'text-yellow-400 italic' 
-                                      : docStatus === 'expired'
-                                      ? 'text-red-400'
-                                      : docStatus === 'expiring'
-                                      ? 'text-yellow-400'
-                                      : 'text-white'
-                                  }`}>
-                                  {displayDoc.document_type}
-                                  {displayDoc.status === 'pending' && ' (Pending Upload)'}
-                                  {doc.isVersionGroup && doc.versions && doc.versions.length > 1 && (
-                                    <span className="ml-2 text-xs text-gray-400">({doc.versions.length} versions)</span>
-                                  )}
-                                </span>
-                                  {displayDoc.status === 'uploaded' && formatPeriodInfo(displayDoc) && (
-                                    <span className={`px-2 py-0.5 text-xs rounded-full border ${getPeriodBadgeColor(displayDoc.period_type)}`}>
-                                      {formatPeriodInfo(displayDoc)}
-                                    </span>
-                                  )}
-                                  {doc.isVersionGroup && doc.versions && doc.versions.length > 1 && (selectedVersions[doc.id] ?? 0) === 0 && (
-                                    <span className="px-2 py-0.5 text-xs rounded-full border bg-blue-500/20 text-blue-400 border-blue-500/30">
-                                      Latest
-                                    </span>
-                                  )}
-                                  {displayDoc.status === 'uploaded' && docStatus && (
-                                    <span className={`px-2 py-0.5 text-xs rounded-full border font-medium ${getStatusBadgeColor(docStatus)}`}>
-                                      {docStatus === 'expired' ? 'Expired' :
-                                       docStatus === 'expiring' ? 'Expiring Soon' :
-                                       docStatus === 'valid' ? 'Valid' : 'No Expiry'}
-                                    </span>
-                                  )}
+                                : 'bg-gray-900 border-gray-800 hover:border-white/40/50'
+                            }`}>
+                              <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                                <div className={`flex-shrink-0 mt-0.5 sm:mt-0 ${
+                                  docStatus === 'expired' ? 'text-red-400' :
+                                  docStatus === 'expiring' ? 'text-yellow-400' :
+                                  docStatus === 'valid' ? 'text-green-400' :
+                                  'text-gray-400'
+                                }`}>
+                                  {getFileTypeIcon(doc.file_name || doc.document_type)}
                                 </div>
-                                {doc.isVersionGroup && doc.versions && doc.versions.length > 1 && (
-                                  <div className="mt-2 flex items-center gap-2">
-                                    <span className="text-xs text-gray-400">Version:</span>
-                                    <select
-                                      onChange={(e) => {
-                                        const selectedIndex = parseInt(e.target.value)
-                                        setSelectedVersions(prev => ({
-                                          ...prev,
-                                          [doc.id]: selectedIndex
-                                        }))
-                                      }}
-                                      value={selectedVersions[doc.id] ?? 0}
-                                      className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs focus:outline-none focus:border-white/40 flex-1"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      {doc.versions.map((version: any, idx: number) => (
-                                        <option key={idx} value={idx}>
-                                          {formatPeriodInfo(version) || `Version ${idx + 1}`} {idx === 0 ? '(Latest)' : ''}
-                                        </option>
-                                      ))}
-                                    </select>
-                                    <span className="text-xs text-gray-500">({doc.versions.length} total)</span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`text-sm break-words font-medium ${
+                                      docStatus === 'expired' ? 'text-red-400' :
+                                      docStatus === 'expiring' ? 'text-yellow-400' :
+                                      'text-white'
+                                    }`}>
+                                      {doc.document_type}
+                                    </span>
+                                    {formatPeriodInfo(doc) && (
+                                      <span className={`px-1.5 py-0.5 text-xs rounded border ${getPeriodBadgeColor(doc.period_type)}`}>
+                                        {formatPeriodInfo(doc)}
+                                      </span>
+                                    )}
+                                    {docStatus && (
+                                      <span className={`px-1.5 py-0.5 text-xs rounded border font-medium ${getStatusBadgeColor(docStatus)}`}>
+                                        {docStatus === 'expired' ? 'Expired' :
+                                         docStatus === 'expiring' ? 'Expiring' :
+                                         docStatus === 'valid' ? 'Valid' : 'No Expiry'}
+                                      </span>
+                                    )}
                                   </div>
-                                )}
-                                {displayDoc.status === 'uploaded' && (
                                   <div className={`text-xs mt-0.5 break-words flex items-center gap-2 flex-wrap ${
                                     docStatus === 'expired' ? 'text-red-400/80' :
                                     docStatus === 'expiring' ? 'text-yellow-400/80' :
                                     'text-gray-500'
                                   }`}>
-                                    {displayDoc.expiry_date && (
-                                      <span>Expires: {formatDateForDisplay(displayDoc.expiry_date)}</span>
+                                    {doc.created_at && (
+                                      <span>Uploaded {formatRelativeTime(doc.created_at)}</span>
                                     )}
-                                    {displayDoc.requirement_id && (
+                                    {doc.file_size && (
+                                      <span>• {formatFileSize(doc.file_size)}</span>
+                                    )}
+                                    {doc.expiry_date && (
+                                      <span>• Expires: {formatDateForDisplay(doc.expiry_date)}</span>
+                                    )}
+                                    {doc.requirement_id && (
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation()
-                                          router.push(`/data-room?tab=tracker&requirement_id=${displayDoc.requirement_id}`)
+                                          router.push(`/data-room?tab=tracker&requirement_id=${doc.requirement_id}`)
                                         }}
                                         className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1"
                                       >
@@ -8036,60 +8381,41 @@ function DataRoomPageInner() {
                                         Tracker
                                       </button>
                                     )}
-                      </div>
-                                )}
-                      </div>
-                    </div>
-                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                              {displayDoc.status === 'uploaded' ? (
-                                <>
-                                  <button 
-                                    onClick={() => handlePreview(displayDoc)}
-                                    className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0 flex items-center gap-1"
-                                    title="Preview document"
-                                  >
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                    Preview
-                                  </button>
-                                  <button 
-                                    onClick={() => handleView(displayDoc.file_path)}
-                                    className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
-                                  >
-                          View
-                        </button>
-                                  <button 
-                                    onClick={() => handleExport(displayDoc.file_path, displayDoc.file_name)}
-                                    className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
-                                  >
-                          Export
-                        </button>
-                                  <button 
-                                    onClick={() => handleRemove(displayDoc.id, displayDoc.file_path)}
-                                    className="text-red-400 hover:text-red-300 font-medium text-xs sm:text-sm border border-red-500/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-red-500/10 transition-colors flex-shrink-0"
-                                  >
-                          Remove
-                        </button>
-                                </>
-                              ) : (
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                                 <button 
-                                  onClick={() => {
-                                    setUploadFormData(prev => ({ 
-                                      ...prev, 
-                                      folder: folderName,
-                                      documentName: displayDoc.document_type
-                                    }))
-                                    setIsUploadModalOpen(true)
-                                  }}
-                                  className="text-white hover:text-white font-medium text-xs sm:text-sm border border-white/40 px-3 sm:px-4 py-1.5 rounded-lg hover:bg-white/20 transition-colors w-full sm:w-auto"
+                                  onClick={() => handlePreview(doc)}
+                                  className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0 flex items-center gap-1"
+                                  title="Preview document"
                                 >
-                                  Upload Now
-                        </button>
-                              )}
-                      </div>
-                    </div>
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  </svg>
+                                  Preview
+                                </button>
+                                <button 
+                                  onClick={() => handleView(doc.file_path)}
+                                  className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
+                                >
+                                  View
+                                </button>
+                                <button 
+                                  onClick={() => handleExport(doc.file_path, doc.file_name)}
+                                  className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
+                                >
+                                  Export
+                                </button>
+                                <button 
+                                  onClick={() => handleRemove(doc.id, doc.file_path)}
+                                  className="text-red-400 hover:text-red-300 font-medium text-xs sm:text-sm border border-red-500/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-red-500/10 transition-colors flex-shrink-0"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
                           )
                         }) : (
                           <div className="p-6 sm:p-8 text-center bg-gray-900/50 rounded-lg border border-dashed border-gray-800">
