@@ -25,6 +25,8 @@
     "razorpay": "^2.9.2",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-katex": "^3.0.1",
+    "katex": "^0.16.11",
     "resend": "^6.9.1"
   },
   "devDependencies": {
