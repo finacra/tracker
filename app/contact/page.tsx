@@ -253,7 +253,7 @@ function ContactPageContent() {
                     <p className="text-gray-300 font-light leading-relaxed text-sm sm:text-base">
                       4th Floor, Downtown Mall,<br />
                       Lakdikapul, Khairatabad,<br />
-                      Hyderabad, Telangana, 500004
+                      Hyderabad - 500004, India
                     </p>
                   </div>
                 </div>
@@ -266,11 +266,11 @@ function ContactPageContent() {
                   </div>
                   <div className="pl-6 space-y-2">
                     <p className="text-white font-light text-sm sm:text-base font-medium">
-                      Finacra LLC,
+                      RAZR CAPITAL LLC,
                     </p>
                     <p className="text-gray-300 font-light leading-relaxed text-sm sm:text-base">
                       2302 Stillbrooke Lane,<br />
-                      Princeton, New Jersey, 08540
+                      Princeton, New Jersey, 08540, United States
                     </p>
                   </div>
                 </div>

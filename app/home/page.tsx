@@ -585,7 +585,7 @@ export default function HomePage() {
                   </svg>
                 </Link>
                 <Link
-                  href="https://app.finnovateai.com/"
+                  href="/coming-soon"
                   className="px-5 sm:px-6 py-2.5 sm:py-3 text-white hover:text-gray-300 transition-colors font-light text-xs sm:text-sm flex items-center justify-center gap-2 min-h-[44px]"
                 >
                   Buy Compliance
@@ -1579,13 +1579,13 @@ export default function HomePage() {
               <p className="text-gray-400 text-xs sm:text-sm font-light mb-4">
                 4th Floor, Downtown Mall,<br />
                 Lakdikapul, Khairatabad,<br />
-                Hyderabad, Telangana, 500004
+                Hyderabad - 500004, India
               </p>
               <h3 className="text-white text-base sm:text-lg font-light mb-3 sm:mb-4 mt-6">USA</h3>
-              <p className="text-gray-300 text-xs sm:text-sm font-light mb-2">Finacra LLC</p>
+              <p className="text-gray-300 text-xs sm:text-sm font-light mb-2">RAZR CAPITAL LLC</p>
               <p className="text-gray-400 text-xs sm:text-sm font-light mb-3">
                 2302 Stillbrooke Lane,<br />
-                Princeton, New Jersey, 08540
+                Princeton, New Jersey, 08540, United States
               </p>
               <div className="flex gap-4 mt-4">
                 <a 
