@@ -667,6 +667,7 @@ function DataRoomPageInner() {
   const [isStorageBreakdownOpen, setIsStorageBreakdownOpen] = useState(false)
   const [expiringSoonFilter, setExpiringSoonFilter] = useState<'all' | 'expiring' | 'expired'>('all')
   const [selectedVersions, setSelectedVersions] = useState<Record<string, number>>({})
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [isSendModalOpen, setIsSendModalOpen] = useState(false)
   const [isEmailTemplateOpen, setIsEmailTemplateOpen] = useState(false)
@@ -7643,9 +7644,34 @@ function DataRoomPageInner() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+            {/* Expand/Collapse All Controls */}
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-400">
+                {documentFolders.length} folders • {expandedFolders.size} expanded
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setExpandedFolders(new Set(documentFolders))
+                  }}
+                  className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-gray-800 transition-colors"
+                >
+                  Expand All
+                </button>
+                <button
+                  onClick={() => {
+                    setExpandedFolders(new Set())
+                  }}
+                  className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-gray-800 transition-colors"
+                >
+                  Collapse All
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
               {/* Left Side - Document Categories */}
-              <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+              <div className="lg:col-span-2 space-y-2 sm:space-y-3">
                 {documentFolders.map((folderName) => {
                   const filteredVaultDocs = vaultDocuments.filter(doc => {
                     // If no FY selected, show all documents
@@ -7805,39 +7831,69 @@ function DataRoomPageInner() {
                                    folderName === 'Financials and licenses' ? 'bg-purple-500' :
                                    folderName === 'Taxation & GST Compliance' ? 'bg-green-500' : 'bg-blue-500'
                   
+                  const isExpanded = expandedFolders.has(folderName)
+                  const uploadedCount = filteredFolderDocs.filter((d: any) => d.status === 'uploaded').length
+                  const pendingCount = filteredFolderDocs.filter((d: any) => d.status === 'pending').length
+                  
                   return (
-                    <div key={folderName} className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
-                  <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                    <div key={folderName} className="bg-black border border-white/10 rounded-xl sm:rounded-2xl overflow-hidden">
+                      {/* Folder Header - Clickable to expand/collapse */}
+                      <button
+                        onClick={() => {
+                          setExpandedFolders(prev => {
+                            const newSet = new Set(prev)
+                            if (newSet.has(folderName)) {
+                              newSet.delete(folderName)
+                            } else {
+                              newSet.add(folderName)
+                            }
+                            return newSet
+                          })
+                        }}
+                        className="w-full flex items-center gap-2 sm:gap-3 p-4 sm:p-6 hover:bg-gray-900/50 transition-colors text-left"
+                      >
                         <div className={`w-8 h-8 sm:w-10 sm:h-10 ${iconColor} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                      <svg
-                        width="16"
-                        height="16"
-                        className="sm:w-5 sm:h-5"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="white"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        >
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                          <polyline points="14 2 14 8 20 8" />
-                        </svg>
-                      </div>
-                    <div className="min-w-0 flex-1">
+                          <svg
+                            width="16"
+                            height="16"
+                            className="sm:w-5 sm:h-5"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                          </svg>
+                        </div>
+                        <div className="min-w-0 flex-1">
                           <h3 className="text-base sm:text-xl font-light text-white break-words">{folderName}</h3>
                           <p className="text-gray-400 text-xs sm:text-sm">
-                            {filteredFolderDocs.filter((d: any) => d.status === 'uploaded').length} DOCUMENTS
+                            {uploadedCount} uploaded
+                            {pendingCount > 0 && ` • ${pendingCount} pending`}
                             {searchQuery && filteredFolderDocs.length !== folderDocs.length && (
                               <span className="ml-2 text-gray-500">
                                 ({filteredFolderDocs.length} of {folderDocs.length} shown)
                               </span>
                             )}
                           </p>
-                      </div>
-                    </div>
+                        </div>
+                        <svg
+                          className={`w-5 h-5 text-gray-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
                       
-                  <div className="space-y-2 sm:space-y-3">
+                      {/* Folder Content - Collapsible */}
+                      {isExpanded && (
+                        <div className="px-4 sm:px-6 pb-4 sm:pb-6">
+                  <div className="space-y-1.5 sm:space-y-2">
                         {isLoadingVaultDocuments ? (
                           // Skeleton loaders
                           Array.from({ length: 3 }).map((_, idx) => (
@@ -7864,7 +7920,7 @@ function DataRoomPageInner() {
                           }
                           const docStatus = displayDoc.status === 'uploaded' ? getDocumentStatus(displayDoc) : null
                           return (
-                          <div key={displayDoc.id} className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border transition-colors ${
+                          <div key={displayDoc.id} className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg border transition-colors ${
                             displayDoc.status === 'uploaded' 
                               ? docStatus === 'expired' 
                                 ? 'bg-red-900/20 border-red-500/30 hover:border-red-500/50' 
@@ -7934,8 +7990,8 @@ function DataRoomPageInner() {
                                   )}
                                 </div>
                                 {doc.isVersionGroup && doc.versions && doc.versions.length > 1 && (
-                                  <div className="mt-2">
-                                    <label className="text-xs text-gray-400 mb-1 block">Select Version:</label>
+                                  <div className="mt-2 flex items-center gap-2">
+                                    <span className="text-xs text-gray-400">Version:</span>
                                     <select
                                       onChange={(e) => {
                                         const selectedIndex = parseInt(e.target.value)
@@ -7945,7 +8001,8 @@ function DataRoomPageInner() {
                                         }))
                                       }}
                                       value={selectedVersions[doc.id] ?? 0}
-                                      className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs focus:outline-none focus:border-white/40"
+                                      className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs focus:outline-none focus:border-white/40 flex-1"
+                                      onClick={(e) => e.stopPropagation()}
                                     >
                                       {doc.versions.map((version: any, idx: number) => (
                                         <option key={idx} value={idx}>
@@ -7953,32 +8010,31 @@ function DataRoomPageInner() {
                                         </option>
                                       ))}
                                     </select>
+                                    <span className="text-xs text-gray-500">({doc.versions.length} total)</span>
                                   </div>
                                 )}
                                 {displayDoc.status === 'uploaded' && (
-                                  <div className={`text-xs mt-1 break-words ${
+                                  <div className={`text-xs mt-0.5 break-words flex items-center gap-2 flex-wrap ${
                                     docStatus === 'expired' ? 'text-red-400/80' :
                                     docStatus === 'expiring' ? 'text-yellow-400/80' :
                                     'text-gray-500'
                                   }`}>
-                                    {displayDoc.expiry_date ? `Expires: ${formatDateForDisplay(displayDoc.expiry_date)}` : 'No expiry date'}
-                                    {displayDoc.frequency && !formatPeriodInfo(displayDoc) && ` • ${displayDoc.frequency.toUpperCase()}`}
-                                    {displayDoc.period_type && formatPeriodInfo(displayDoc) && ` • ${displayDoc.period_type.charAt(0).toUpperCase() + displayDoc.period_type.slice(1)}`}
+                                    {displayDoc.expiry_date && (
+                                      <span>Expires: {formatDateForDisplay(displayDoc.expiry_date)}</span>
+                                    )}
                                     {displayDoc.requirement_id && (
-                                      <div className="mt-1">
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            router.push(`/data-room?tab=tracker&requirement_id=${displayDoc.requirement_id}`)
-                                          }}
-                                          className="text-blue-400 hover:text-blue-300 text-xs underline flex items-center gap-1"
-                                        >
-                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                          </svg>
-                                          View in Tracker
-                                        </button>
-                                      </div>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          router.push(`/data-room?tab=tracker&requirement_id=${displayDoc.requirement_id}`)
+                                        }}
+                                        className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1"
+                                      >
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                        </svg>
+                                        Tracker
+                                      </button>
                                     )}
                       </div>
                                 )}
@@ -8041,6 +8097,8 @@ function DataRoomPageInner() {
                       </div>
                         )}
                       </div>
+                        </div>
+                      )}
                     </div>
                   )
                 })}
