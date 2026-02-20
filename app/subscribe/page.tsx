@@ -454,38 +454,49 @@ function SubscribePageInner() {
                   <h3 className="text-2xl font-light mb-2 text-white">{tier.name}</h3>
                   <p className="text-gray-400 text-sm mb-4 font-light">{tier.description}</p>
 
-                  {/* Price */}
-                  <div className="mb-4">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-light text-white">
-                        {formatPrice(selectedPricing.price)}
-                      </span>
-                      {selectedBillingCycle !== 'monthly' && (
-                        <span className="text-gray-500 text-sm">
-                          /{selectedBillingCycle === 'quarterly' ? 'quarter' : selectedBillingCycle === 'half-yearly' ? '6 months' : 'year'}
+                  {/* Price - Hidden for Enterprise */}
+                  {tier.id !== 'enterprise' && (
+                    <div className="mb-4">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-4xl font-light text-white">
+                          {formatPrice(selectedPricing.price)}
                         </span>
-                      )}
-                    </div>
-                    {selectedBillingCycle !== 'monthly' && (
-                      <div className="mt-2">
-                        <span className="text-gray-400 text-sm">
-                          {formatPrice(selectedPricing.effectiveMonthly)}/month
-                        </span>
-                        {selectedPricing.savings && (
-                          <span className="ml-2 text-green-400 text-sm font-medium">
-                            Save {formatPrice(selectedPricing.savings)}
+                        {selectedBillingCycle !== 'monthly' && (
+                          <span className="text-gray-500 text-sm">
+                            /{selectedBillingCycle === 'quarterly' ? 'quarter' : selectedBillingCycle === 'half-yearly' ? '6 months' : 'year'}
                           </span>
                         )}
                       </div>
-                    )}
-                    {selectedPricing.discount > 0 && (
-                      <div className="mt-1">
-                        <span className="text-gray-400 text-sm font-light">
-                          {selectedPricing.discount}% discount
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                      {selectedBillingCycle !== 'monthly' && (
+                        <div className="mt-2">
+                          <span className="text-gray-400 text-sm">
+                            {formatPrice(selectedPricing.effectiveMonthly)}/month
+                          </span>
+                          {selectedPricing.savings && (
+                            <span className="ml-2 text-green-400 text-sm font-medium">
+                              Save {formatPrice(selectedPricing.savings)}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {selectedPricing.discount > 0 && (
+                        <div className="mt-1">
+                          <span className="text-gray-400 text-sm font-light">
+                            {selectedPricing.discount}% discount
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Enterprise Custom Message */}
+                  {tier.id === 'enterprise' && (
+                    <div className="mb-4">
+                      <p className="text-gray-300 text-lg font-light">
+                        Contact us for custom pricing
+                      </p>
+                    </div>
+                  )}
 
                   {/* Company/User Limits */}
                   <div className="text-xs text-gray-500 space-y-1 mb-4 border-t border-gray-800 pt-3">
@@ -495,21 +506,32 @@ function SubscribePageInner() {
                 </div>
 
                 {/* CTA Button */}
-                <PaymentButton
-                  tier={tier.id}
-                  billingCycle={selectedBillingCycle}
-                  price={selectedPricing.price}
-                  companyId={
-                    tier.id === 'enterprise' 
-                      ? undefined // Enterprise: user-first, no company_id
-                      : (selectedCompanyForSubscription || companyId || undefined) // Starter/Pro: company-first
-                  }
-                  className={`w-full py-3 px-6 rounded-lg font-light transition-all mb-6 ${
-                    tier.popular
-                      ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                      : 'bg-transparent border border-gray-700 text-gray-300 hover:border-gray-600 hover:text-white'
-                  }`}
-                />
+                {tier.id === 'enterprise' ? (
+                  <Link
+                    href="/contact"
+                    className={`w-full py-3 px-6 rounded-lg font-light transition-all mb-6 text-center block ${
+                      tier.popular
+                        ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                        : 'bg-transparent border border-gray-700 text-gray-300 hover:border-gray-600 hover:text-white'
+                    }`}
+                  >
+                    Contact Us
+                  </Link>
+                ) : (
+                  <PaymentButton
+                    tier={tier.id}
+                    billingCycle={selectedBillingCycle}
+                    price={selectedPricing.price}
+                    companyId={
+                      selectedCompanyForSubscription || companyId || undefined
+                    }
+                    className={`w-full py-3 px-6 rounded-lg font-light transition-all mb-6 ${
+                      tier.popular
+                        ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                        : 'bg-transparent border border-gray-700 text-gray-300 hover:border-gray-600 hover:text-white'
+                    }`}
+                  />
+                )}
 
                 {/* Features */}
                 <div className="space-y-3">
