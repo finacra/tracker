@@ -11,6 +11,12 @@ interface Company {
   name: string
 }
 
+interface CompanyWithStatus extends Company {
+  status: 'trial' | 'valid' | 'expired'
+  isTrial: boolean
+  trialDaysRemaining?: number
+}
+
 function SubscriptionRequiredInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -21,6 +27,7 @@ function SubscriptionRequiredInner() {
   
   const [company, setCompany] = useState<Company | null>(null)
   const [ownedCompanies, setOwnedCompanies] = useState<Company[]>([])
+  const [accessibleCompanies, setAccessibleCompanies] = useState<CompanyWithStatus[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -50,6 +57,47 @@ function SubscriptionRequiredInner() {
           .eq('user_id', user.id)
         
         setOwnedCompanies(companies || [])
+        
+        // Check subscription status for each company and filter to only show those with active access
+        if (companies && companies.length > 0) {
+          const companiesWithStatus = await Promise.all(
+            companies.map(async (company) => {
+              try {
+                const { data, error } = await supabase
+                  .rpc('check_company_subscription', { p_company_id: company.id })
+                  .single()
+                
+                if (!error && data) {
+                  const subscriptionData = data as {
+                    has_subscription: boolean
+                    tier: string
+                    is_trial: boolean
+                    trial_days_remaining: number
+                    user_limit: number
+                  }
+                  
+                  if (subscriptionData.has_subscription) {
+                    return {
+                      ...company,
+                      status: subscriptionData.is_trial ? 'trial' : 'valid',
+                      isTrial: subscriptionData.is_trial,
+                      trialDaysRemaining: subscriptionData.trial_days_remaining,
+                    } as CompanyWithStatus
+                  }
+                }
+                return null
+              } catch (err) {
+                console.error(`Error checking subscription for company ${company.id}:`, err)
+                return null
+              }
+            })
+          )
+          
+          const accessible = companiesWithStatus.filter((c): c is CompanyWithStatus => c !== null)
+          setAccessibleCompanies(accessible)
+        } else {
+          setAccessibleCompanies([])
+        }
       } catch (err) {
         console.error('Error fetching data:', err)
       } finally {
@@ -136,25 +184,44 @@ function SubscriptionRequiredInner() {
               </button>
             </div>
             
-            {/* Other Companies */}
-            {ownedCompanies.length > 1 && (
+            {/* Other Companies with Active Access */}
+            {accessibleCompanies.length > 0 && (
               <div className="mt-8 pt-6 border-t border-gray-800">
                 <p className="text-sm text-gray-500 mb-3">
                   You have other companies you may have access to:
                 </p>
                 <div className="space-y-2">
-                  {ownedCompanies
+                  {accessibleCompanies
                     .filter(c => c.id !== companyId)
                     .slice(0, 3)
-                    .map((c) => (
-                      <button
-                        key={c.id}
-                        onClick={() => router.push(`/subscribe?company_id=${c.id}`)}
-                        className="w-full text-left px-4 py-2 bg-gray-900 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors text-sm font-light"
-                      >
-                        {c.name}
-                      </button>
-                    ))}
+                    .map((c) => {
+                      const getStatusBadge = () => {
+                        if (c.isTrial) {
+                          return (
+                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                              Trial {c.trialDaysRemaining !== undefined ? `(${c.trialDaysRemaining}d)` : ''}
+                            </span>
+                          )
+                        } else {
+                          return (
+                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+                              Valid
+                            </span>
+                          )
+                        }
+                      }
+                      
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => router.push(`/data-room?company_id=${c.id}`)}
+                          className="w-full text-left px-4 py-2 bg-gray-900 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors text-sm font-light flex items-center justify-between"
+                        >
+                          <span className="truncate">{c.name}</span>
+                          {getStatusBadge()}
+                        </button>
+                      )
+                    })}
                 </div>
               </div>
             )}

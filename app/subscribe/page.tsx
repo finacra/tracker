@@ -37,6 +37,34 @@ function SubscribePageInner() {
   const [companyHasActiveSubscription, setCompanyHasActiveSubscription] = useState<boolean>(false)
   const [isCheckingCompanySubscription, setIsCheckingCompanySubscription] = useState(false)
   const [isRazorpayScriptLoaded, setIsRazorpayScriptLoaded] = useState(false)
+  const [companyTrialEligible, setCompanyTrialEligible] = useState<boolean>(true)
+  const [isCheckingTrialEligibility, setIsCheckingTrialEligibility] = useState(false)
+
+  // Check if company has ever used a trial (even expired)
+  async function checkCompanyTrialEligibility(companyId: string | null): Promise<boolean> {
+    if (!companyId) return false
+    
+    try {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('is_trial', true)
+        .limit(1)
+        .maybeSingle()
+      
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error checking trial eligibility:', error)
+        return false
+      }
+      
+      // Eligible if no trial found (data is null)
+      return !data
+    } catch (err) {
+      console.error('Error checking trial eligibility:', err)
+      return false
+    }
+  }
 
   // Check if selected company has active subscription/trial
   useEffect(() => {
@@ -118,6 +146,24 @@ function SubscribePageInner() {
     fetchCompanies()
   }, [companyId, user, supabase])
 
+  // Check trial eligibility when company changes
+  useEffect(() => {
+    async function checkTrialEligibility() {
+      const targetCompanyId = selectedCompanyForSubscription || companyId
+      if (!targetCompanyId) {
+        setCompanyTrialEligible(true)
+        return
+      }
+
+      setIsCheckingTrialEligibility(true)
+      const eligible = await checkCompanyTrialEligibility(targetCompanyId)
+      setCompanyTrialEligible(eligible)
+      setIsCheckingTrialEligibility(false)
+    }
+
+    checkTrialEligibility()
+  }, [selectedCompanyForSubscription, companyId])
+
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
@@ -148,7 +194,7 @@ function SubscribePageInner() {
       })
   }, [])
 
-  const handleStartTrial = async (tier: 'starter' | 'professional' | 'enterprise' = 'starter') => {
+  const handleStartTrial = async () => {
     if (!user) {
       setError('Please sign in first')
       return
@@ -159,15 +205,20 @@ function SubscribePageInner() {
       return
     }
 
+    // Check trial eligibility
+    const targetCompanyId = selectedCompanyForSubscription || companyId || null
+    if (targetCompanyId && !companyTrialEligible) {
+      setError('This company has already used its trial. Please subscribe to continue.')
+      return
+    }
+
     setIsStartingTrial(true)
     setError(null)
 
     try {
-      // Determine target company ID
-      const targetCompanyId = selectedCompanyForSubscription || companyId || null
-
       // Step 1: Create trial verification payment (₹2)
-      const orderData = await createTrialVerificationOrder(targetCompanyId || undefined, tier)
+      // Use 'starter' as default tier for trial verification (tier doesn't matter for trial)
+      const orderData = await createTrialVerificationOrder(targetCompanyId || undefined, 'starter')
 
       // Step 2: Open Razorpay checkout for verification
       openRazorpayCheckout({
@@ -195,7 +246,7 @@ function SubscribePageInner() {
 
             if (verification.success) {
               // Step 4: Payment verified, now create the trial
-              await createTrialAfterVerification(tier, targetCompanyId)
+              await createTrialAfterVerification(targetCompanyId)
             } else {
               setError('Payment verification failed. Please try again.')
               setIsStartingTrial(false)
@@ -219,33 +270,9 @@ function SubscribePageInner() {
     }
   }
 
-  const createTrialAfterVerification = async (tier: 'starter' | 'professional' | 'enterprise', targetCompanyId: string | null) => {
+  const createTrialAfterVerification = async (targetCompanyId: string | null) => {
     try {
-      // Enterprise: user-first trial
-      if (tier === 'enterprise') {
-        const { data, error: rpcError } = await supabase
-          .rpc('create_user_trial', { target_user_id: user!.id })
-
-        if (rpcError) {
-          throw new Error(rpcError.message || 'Failed to create trial')
-        }
-
-        // Track trial start
-        trackSubscriptionEvent('trial_start', tier, undefined, undefined)
-        trackConversion('trial_start')
-        
-        // Success - redirect
-        if (companyId) {
-          router.push(`/data-room?company_id=${companyId}`)
-        } else if (currentCompanyCount > 0) {
-          router.push('/data-room')
-        } else {
-          router.push('/onboarding')
-        }
-        return
-      }
-
-      // Starter/Professional: company-first trial
+      // Always create company-level trial
       // If user has no companies, create a user-level trial first (allows creating first company)
       if (currentCompanyCount === 0) {
         const { data, error: rpcError } = await supabase
@@ -255,8 +282,8 @@ function SubscribePageInner() {
           throw new Error(rpcError.message || 'Failed to create trial')
         }
 
-        // Track trial start
-        trackSubscriptionEvent('trial_start', tier, undefined, undefined)
+        // Track trial start (use 'starter' as default tier for tracking)
+        trackSubscriptionEvent('trial_start', 'starter', undefined, undefined)
         trackConversion('trial_start')
         
         // Success - redirect to onboarding to create first company
@@ -284,8 +311,8 @@ function SubscribePageInner() {
           throw new Error(rpcError.message || 'Failed to create trial')
         }
 
-        // Track trial start
-        trackSubscriptionEvent('trial_start', tier, undefined, undefined)
+        // Track trial start (use 'starter' as default tier for tracking)
+        trackSubscriptionEvent('trial_start', 'starter', undefined, undefined)
         trackConversion('trial_start')
         
         router.push(`/data-room?company_id=${firstCompanyId}`)
@@ -303,8 +330,8 @@ function SubscribePageInner() {
           throw new Error(rpcError.message || 'Failed to create trial')
         }
 
-        // Track trial start
-        trackSubscriptionEvent('trial_start', tier, undefined, undefined)
+        // Track trial start (use 'starter' as default tier for tracking)
+        trackSubscriptionEvent('trial_start', 'starter', undefined, undefined)
         trackConversion('trial_start')
         
         // Success - redirect to the company
@@ -635,8 +662,8 @@ function SubscribePageInner() {
           </div>
         )}
 
-        {/* Pay Later / Trial Option - Show if no company subscription or user has no companies */}
-        {(!companyHasActiveSubscription && (selectedCompanyForSubscription || companyId || currentCompanyCount === 0)) && (
+        {/* Pay Later / Trial Option - Show if no company subscription, company is eligible, and user has no companies or company selected */}
+        {(!companyHasActiveSubscription && companyTrialEligible && !isCheckingTrialEligibility && (selectedCompanyForSubscription || companyId || currentCompanyCount === 0)) && (
           <div className="max-w-2xl mx-auto mb-12">
             <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 text-center">
               <div className="flex items-center justify-center gap-2 mb-3">
@@ -652,26 +679,19 @@ function SubscribePageInner() {
                 ) : selectedCompanyForSubscription ? (
                   <> This trial is for <span className="text-white font-medium">{userCompanies.find(c => c.id === selectedCompanyForSubscription)?.name || 'selected company'}</span> only.</>
                 ) : (
-                  <> Enterprise trial covers all your companies.</>
+                  <> After the trial, you can choose any plan (Starter, Professional, or Enterprise) when subscribing.</>
                 )}
               </p>
               <p className="text-gray-500 text-xs mb-4 font-light">
                 A ₹2 verification charge will be made to verify your payment method. This amount will be automatically refunded within 24 hours.
               </p>
-              <div className="flex items-center justify-center gap-3">
+              <div className="flex items-center justify-center">
                 <button
-                  onClick={() => handleStartTrial('starter')}
-                  disabled={isStartingTrial || isCheckingCompanySubscription}
-                  className="bg-gray-700 text-white px-6 py-2 rounded-lg font-light hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  onClick={handleStartTrial}
+                  disabled={isStartingTrial || isCheckingCompanySubscription || isCheckingTrialEligibility}
+                  className="bg-gray-700 text-white px-8 py-3 rounded-lg font-light hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
-                  {isStartingTrial ? 'Starting...' : currentCompanyCount === 0 ? 'Start Trial' : 'Trial for Starter'}
-                </button>
-                <button
-                  onClick={() => handleStartTrial('enterprise')}
-                  disabled={isStartingTrial || isCheckingCompanySubscription}
-                  className="bg-transparent border border-gray-700 text-gray-300 px-6 py-2 rounded-lg font-light hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                >
-                  {isStartingTrial ? 'Starting...' : 'Trial for Enterprise'}
+                  {isStartingTrial ? 'Starting...' : 'Start 15-Day Trial'}
                 </button>
               </div>
             </div>
@@ -704,15 +724,17 @@ function SubscribePageInner() {
         {renderPricingContent()}
 
         {/* Skip for now link */}
-        <div className="text-center mt-12">
-          <button
-            onClick={() => handleStartTrial('starter')}
-            disabled={isStartingTrial}
-            className="text-gray-500 hover:text-gray-400 text-sm underline transition-colors disabled:opacity-50"
-          >
-            Skip for now and start free trial (₹2 verification required)
-          </button>
-        </div>
+        {companyTrialEligible && !isCheckingTrialEligibility && (
+          <div className="text-center mt-12">
+            <button
+              onClick={handleStartTrial}
+              disabled={isStartingTrial}
+              className="text-gray-500 hover:text-gray-400 text-sm underline transition-colors disabled:opacity-50"
+            >
+              Skip for now and start free trial (₹2 verification required)
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
