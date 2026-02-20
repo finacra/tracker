@@ -1432,6 +1432,7 @@ function DataRoomPageInner() {
     description: '',
     due_date: '',
     penalty: '',
+    penalty_base_amount: null as number | null,
     is_critical: false,
     financial_year: '',
     status: 'not_started' as 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed',
@@ -1593,7 +1594,11 @@ function DataRoomPageInner() {
   }
 
   // Memoized penalty calculation function
-  const calculatePenaltyMemoized = useCallback((penaltyStr: string | null, daysDelayed: number | null): string => {
+  const calculatePenaltyMemoized = useCallback((
+    penaltyStr: string | null, 
+    daysDelayed: number | null,
+    penaltyBaseAmount?: number | null  // Base amount for interest calculations
+  ): string => {
     // If no delay or penalty string is empty, return '-'
     if (daysDelayed === null || daysDelayed <= 0 || !penaltyStr || penaltyStr.trim() === '') {
       return '-'
@@ -1710,9 +1715,63 @@ function DataRoomPageInner() {
       }
     }
 
-    // Check for penalties with Interest
-    if (penalty.includes('Interest') || penalty.includes('+ Interest')) {
-      return 'Cannot calculate - Insufficient information (Interest calculation requires principal amount)'
+    // Check for penalties with Interest - IMPROVED: Calculate if base amount is available
+    if (penalty.includes('Interest') || penalty.includes('+ Interest') || penalty.includes('interest')) {
+      // Try to calculate interest if base amount is available
+      if (penaltyBaseAmount && penaltyBaseAmount > 0) {
+        // Extract interest rate from penalty string
+        // Common formats: "1%/month", "12%/year", "1.5%/month", "Interest @ 1%/month", "u/s 234B & 234C"
+        const interestRateMatch = penalty.match(/([\d.]+)\s*%\s*(?:\/|\s*)(month|year|annum|annually|per month|per year)/i)
+        
+        if (interestRateMatch) {
+          const rate = parseFloat(interestRateMatch[1])
+          const period = interestRateMatch[2].toLowerCase()
+          
+          if (!isNaN(rate) && rate > 0 && daysDelayed) {
+            // Calculate interest based on period
+            let interest = 0
+            
+            if (period.includes('month')) {
+              // Monthly interest: (principal * rate/100) * (days/30)
+              const months = daysDelayed / 30
+              interest = (penaltyBaseAmount * rate / 100) * months
+            } else if (period.includes('year') || period.includes('annum') || period.includes('annually')) {
+              // Annual interest: (principal * rate/100) * (days/365)
+              const years = daysDelayed / 365
+              interest = (penaltyBaseAmount * rate / 100) * years
+            }
+            
+            if (interest > 0) {
+              return `₹${Math.round(interest).toLocaleString('en-IN')} (Interest @ ${rate}%/${period.includes('month') ? 'month' : 'year'} on ₹${penaltyBaseAmount.toLocaleString('en-IN')})`
+            }
+          }
+        }
+        
+        // Special handling for Income Tax sections 234B & 234C (default 1% per month)
+        if (penalty.includes('234B') || penalty.includes('234C') || penalty.includes('u/s 234') || penalty.includes('section 234')) {
+          if (daysDelayed) {
+            // Default to 1% per month for Income Tax interest
+            const months = daysDelayed / 30
+            const interest = (penaltyBaseAmount * 0.01) * months
+            return `₹${Math.round(interest).toLocaleString('en-IN')} (Interest @ 1%/month u/s 234B/234C on ₹${penaltyBaseAmount.toLocaleString('en-IN')})`
+          }
+        }
+        
+        // If rate format not found but base amount exists, try to extract any percentage
+        const anyPercentMatch = penalty.match(/([\d.]+)\s*%/i)
+        if (anyPercentMatch && daysDelayed) {
+          const rate = parseFloat(anyPercentMatch[1])
+          if (!isNaN(rate) && rate > 0) {
+            // Default to monthly calculation if period not specified
+            const months = daysDelayed / 30
+            const interest = (penaltyBaseAmount * rate / 100) * months
+            return `₹${Math.round(interest).toLocaleString('en-IN')} (Interest @ ${rate}%/month on ₹${penaltyBaseAmount.toLocaleString('en-IN')})`
+          }
+        }
+      }
+      
+      // If base amount not available, return helpful error message
+      return 'Cannot calculate - Please provide principal amount (Base Amount) for interest calculation'
     }
 
     // Check for vague "as per Act" references
@@ -2813,8 +2872,13 @@ function DataRoomPageInner() {
             }
           })
 
-          // Calculate penalty amount
-          const calculatePenalty = (penaltyStr: string | null, daysDelayed: number | null): string => {
+          // Calculate penalty amount - use memoized version with base amount support
+          const calculatePenalty = (penaltyStr: string | null, daysDelayed: number | null, penaltyBaseAmount?: number | null): string => {
+            return calculatePenaltyMemoized(penaltyStr, daysDelayed, penaltyBaseAmount)
+          }
+          
+          // Legacy calculatePenalty function kept for reference but replaced above
+          const _calculatePenaltyLegacyDashboard = (penaltyStr: string | null, daysDelayed: number | null): string => {
             if (daysDelayed === null || daysDelayed <= 0 || !penaltyStr || penaltyStr.trim() === '') {
               return '-'
             }
@@ -3025,9 +3089,9 @@ function DataRoomPageInner() {
           const calculateTotalPenalty = (): number => {
             let total = 0
             displayRequirements.forEach(req => {
-              const delay = calculateDelay(req.dueDate, req.status)
+              const delay = calculateDelayMemoized(req.dueDate, req.status)
               if (delay !== null && delay > 0 && req.penalty) {
-                const penaltyStr = calculatePenalty(req.penalty, delay)
+                const penaltyStr = calculatePenaltyMemoized(req.penalty, delay, req.penalty_base_amount)
                 if (penaltyStr !== '-' && !penaltyStr.includes('Cannot calculate')) {
                   const amount = parseFloat(penaltyStr.replace(/₹/g, '').replace(/,/g, ''))
                   if (!isNaN(amount)) {
@@ -3043,7 +3107,7 @@ function DataRoomPageInner() {
 
           // Overdue compliances
           const overdueCompliances = displayRequirements.filter(req => {
-            const delay = calculateDelay(req.dueDate, req.status)
+            const delay = calculateDelayMemoized(req.dueDate, req.status)
             return delay !== null && delay > 0 && req.status !== 'completed'
           })
 
@@ -3096,7 +3160,7 @@ function DataRoomPageInner() {
           const exportOverdueReport = () => {
             const reportData = overdueCompliances.map(req => {
               const delay = calculateDelay(req.dueDate, req.status)
-              const penalty = calculatePenalty(req.penalty || '', delay)
+              const penalty = calculatePenalty(req.penalty || '', delay, req.penalty_base_amount)
               return {
                 'Category': req.category,
                 'Requirement': req.requirement,
@@ -3636,8 +3700,8 @@ function DataRoomPageInner() {
               // To keep report generation fast, show only top 10 individual overdue items
               overdueCompliances.slice(0, 10).forEach((req, index) => {
                 checkNewPage(30)
-                const delay = calculateDelay(req.dueDate, req.status)
-                let penalty = calculatePenalty(req.penalty || '', delay)
+                const delay = calculateDelayMemoized(req.dueDate, req.status)
+                let penalty = calculatePenalty(req.penalty || '', delay, req.penalty_base_amount)
                 // Remove leading apostrophe if present
                 if (penalty.startsWith("'")) {
                   penalty = penalty.substring(1)
@@ -4434,8 +4498,8 @@ function DataRoomPageInner() {
                     {/* Mobile Card View */}
                     <div className="block sm:hidden space-y-3">
                       {overdueCompliances.slice(0, 10).map((req) => {
-                        const delay = calculateDelay(req.dueDate, req.status)
-                        const penalty = calculatePenalty(req.penalty || '', delay)
+                        const delay = calculateDelayMemoized(req.dueDate, req.status)
+                        const penalty = calculatePenalty(req.penalty || '', delay, req.penalty_base_amount)
                         return (
                           <div key={req.id} className="bg-black border border-white/10 rounded-lg p-3 space-y-2">
                             <div>
@@ -4487,7 +4551,7 @@ function DataRoomPageInner() {
                       <tbody>
                         {overdueCompliances.slice(0, 10).map((req) => {
                           const delay = calculateDelay(req.dueDate, req.status)
-                          const penalty = calculatePenalty(req.penalty || '', delay)
+                          const penalty = calculatePenalty(req.penalty || '', delay, req.penalty_base_amount)
                           return (
                             <tr key={req.id} className="border-b border-white/10 hover:bg-black/50">
                               <td className="py-3 px-4 text-white">{req.category}</td>
@@ -6112,6 +6176,7 @@ function DataRoomPageInner() {
                         description: '',
                         due_date: '',
                         penalty: '',
+                        penalty_base_amount: null,
                         is_critical: false,
                         financial_year: selectedTrackerFY || '',
                         status: 'not_started',
@@ -6531,6 +6596,7 @@ function DataRoomPageInner() {
                               description: '',
                               due_date: '',
                               penalty: '',
+                              penalty_base_amount: null,
                               is_critical: false,
                               financial_year: selectedTrackerFY || '',
                               status: 'not_started',
@@ -6556,10 +6622,18 @@ function DataRoomPageInner() {
               ) : (
               <div className="sm:overflow-x-auto scrollbar-hide">
                 {(() => {
-                  const categoryOrder = ['Income Tax', 'GST', 'Payroll', 'RoC', 'Renewals', 'Others']
+                  // Get all unique categories from ALL requirements (before filtering) - dynamic, not hardcoded
+                  const allCategories = Array.from(new Set(displayRequirements.map(req => req.category).filter(Boolean)))
+                  // Define preferred order for common categories, but include all others
+                  const preferredOrder = ['Income Tax', 'GST', 'Payroll', 'RoC', 'Renewals', 'Prof.Tax', 'Other', 'Others']
+                  const categoryOrder = [
+                    ...preferredOrder.filter(cat => allCategories.includes(cat)),
+                    ...allCategories.filter(cat => !preferredOrder.includes(cat)).sort()
+                  ]
                   
                   // Helper function to parse date and get month/quarter
-                  const getMonthFromDate = (dateStr: string) => {
+                  const getMonthFromDate = (dateStr: string | null | undefined) => {
+                    if (!dateStr) return -1
                     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
                     const monthStr = dateStr.split(' ')[0]
                     return months.indexOf(monthStr)
@@ -6589,7 +6663,9 @@ function DataRoomPageInner() {
 
                   // Use memoized functions for performance
                   const calculateDelay = calculateDelayMemoized
-                  const calculatePenalty = calculatePenaltyMemoized
+                  const calculatePenalty = (penaltyStr: string | null, daysDelayed: number | null, penaltyBaseAmount?: number | null) => {
+                    return calculatePenaltyMemoized(penaltyStr, daysDelayed, penaltyBaseAmount)
+                  }
 
                   // Legacy calculatePenalty function kept for reference but replaced above
                   const _calculatePenaltyLegacy = (penaltyStr: string | null, daysDelayed: number | null): string => {
@@ -6745,26 +6821,43 @@ function DataRoomPageInner() {
                   // Filter by date (Financial Year, Month, Quarter - all independent/loosely coupled)
                   let dateFilteredRequirements = displayRequirements
                   
-                  // Helper to check if date falls within a financial year
-                  const isInFinancialYear = (reqMonth: number, reqYear: number, fyYear: number) => {
-                    // FY spans from April (month 3) of fyYear to March (month 2) of fyYear + 1
+                  // Helper to check if date falls within a financial year (improved version with null safety)
+                  const isInFinancialYear = (reqDate: Date | null, fyStr: string): boolean => {
+                    if (!reqDate || !fyStr) return false
+                    const parsed = parseFinancialYear(fyStr)
+                    if (!parsed) return false
+                    
+                    const reqYear = reqDate.getUTCFullYear()
+                    const reqMonth = reqDate.getUTCMonth() // 0-11
+                    
+                    if (parsed.type === 'CY') {
+                      // Calendar Year: January to December of the same year
+                      return reqYear === parsed.startYear
+                    }
+                    
+                    // Financial Year (Indian): April to March
+                    // FY 2024-25 spans from April 2024 to March 2025
                     if (reqMonth >= 3) {
-                      // Apr-Dec are in fyYear
-                      return reqYear === fyYear
+                      // Apr-Dec are in the start year
+                      return reqYear === parsed.startYear
                     } else {
-                      // Jan-Mar are in fyYear + 1
-                      return reqYear === fyYear + 1
+                      // Jan-Mar are in the end year
+                      return reqYear === parsed.endYear
                     }
                   }
                   
-                  // Filter by Financial Year (if selected)
+                  // Filter by Financial Year (if selected) - with null safety
                   if (selectedTrackerFY) {
-                    const fyYear = parseInt(selectedTrackerFY.split(' ')[1].split('-')[0])
-                    dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
-                      const reqYear = parseInt(req.dueDate.split(', ')[1] || req.dueDate.split(' ')[2] || '2026')
-                      const reqMonth = getMonthFromDate(req.dueDate)
-                      return isInFinancialYear(reqMonth, reqYear, fyYear)
-                    })
+                    try {
+                      dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
+                        if (!req.dueDate) return false
+                        const reqDate = parseDate(req.dueDate)
+                        return isInFinancialYear(reqDate, selectedTrackerFY)
+                      })
+                    } catch (error) {
+                      console.error('Error filtering by financial year:', error)
+                      // Fallback: don't filter if parsing fails
+                    }
                   }
                   
                   // Filter by Month (if selected) - works independently but shows relationship
@@ -6850,24 +6943,10 @@ function DataRoomPageInner() {
                     return { category, items }
                   }).filter((group) => group.items.length > 0)
 
-                  // Calendar view helper functions
-                  const parseDateForCalendar = (dateStr: string): Date | null => {
-                    try {
-                      const months: { [key: string]: number } = {
-                        'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
-                        'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
-                      }
-                      const parts = dateStr.split(' ')
-                      if (parts.length >= 3) {
-                        const day = parseInt(parts[1].replace(',', ''))
-                        const month = months[parts[0]]
-                        const year = parseInt(parts[2])
-                        return new Date(year, month, day)
-                      }
-                      return null
-                    } catch {
-                      return null
-                    }
+                  // Calendar view helper functions - use improved parseDate for consistency and null safety
+                  const parseDateForCalendar = (dateStr: string | null | undefined): Date | null => {
+                    if (!dateStr) return null
+                    return parseDate(dateStr)
                   }
 
                   // Group requirements by date for calendar view
@@ -6999,7 +7078,7 @@ function DataRoomPageInner() {
                                   {dayRequirements.map((req) => {
                                     const isOverdue = req.status === 'overdue' || (parseDateForCalendar(req.dueDate) && parseDateForCalendar(req.dueDate)! < new Date())
                                     const daysDelayed = calculateDelay(req.dueDate, req.status)
-                                    const calculatedPenalty = calculatePenalty(req.penalty, daysDelayed)
+                                    const calculatedPenalty = calculatePenalty(req.penalty, daysDelayed, req.penalty_base_amount)
                                     
                                     return (
                                       <div
@@ -7287,6 +7366,7 @@ function DataRoomPageInner() {
                                                 description: originalReq.description || '',
                                                 due_date: originalReq.due_date,
                                                 penalty: originalReq.penalty || '',
+                                                penalty_base_amount: originalReq.penalty_base_amount || null,
                                                 is_critical: originalReq.is_critical,
                                                 financial_year: originalReq.financial_year || '',
                                                 status: originalReq.status,
@@ -7690,7 +7770,7 @@ function DataRoomPageInner() {
                                   <td className="px-6 py-4 hidden lg:table-cell">
                                   {(() => {
                                     const daysDelayed = calculateDelay(req.dueDate, req.status)
-                                    const calculatedPenalty = calculatePenalty(req.penalty, daysDelayed)
+                                    const calculatedPenalty = calculatePenalty(req.penalty, daysDelayed, req.penalty_base_amount)
                                     if (calculatedPenalty === '-') {
                                       return <div className="text-gray-500 text-sm">-</div>
                                     }
@@ -7750,6 +7830,7 @@ function DataRoomPageInner() {
                                                 description: originalReq.description || '',
                                                 due_date: originalReq.due_date,
                                                 penalty: originalReq.penalty || '',
+                                                penalty_base_amount: originalReq.penalty_base_amount || null,
                                                 is_critical: originalReq.is_critical,
                                                 financial_year: originalReq.financial_year || '',
                                                 status: originalReq.status,
@@ -7833,6 +7914,7 @@ function DataRoomPageInner() {
                             description: '',
                             due_date: '',
                             penalty: '',
+                            penalty_base_amount: null,
                             is_critical: false,
                             financial_year: '',
                             status: 'not_started',
@@ -7972,9 +8054,39 @@ function DataRoomPageInner() {
                         value={requirementForm.penalty}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, penalty: e.target.value }))}
                         className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
-                        placeholder="e.g., Late fee ₹200/day"
+                        placeholder="e.g., Late fee ₹200/day or Interest @ 1%/month"
                       />
+                      <p className="text-xs text-gray-400 mt-1">
+                        For interest-based penalties, include the rate (e.g., "Interest @ 1%/month" or "u/s 234B & 234C")
+                      </p>
                     </div>
+
+                    {/* Base Amount for Interest Calculations - Show when penalty includes "Interest" */}
+                    {(requirementForm.penalty.toLowerCase().includes('interest') || 
+                      requirementForm.penalty.includes('234B') || 
+                      requirementForm.penalty.includes('234C') ||
+                      requirementForm.penalty.includes('u/s 234')) && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Base Amount (Principal) <span className="text-yellow-400">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          value={requirementForm.penalty_base_amount || ''}
+                          onChange={(e) => {
+                            const value = e.target.value === '' ? null : parseFloat(e.target.value)
+                            setRequirementForm(prev => ({ ...prev, penalty_base_amount: value }))
+                          }}
+                          className="w-full px-4 py-3 bg-black border border-yellow-500/30 rounded-lg text-white focus:outline-none focus:border-yellow-500/50 focus:ring-1 focus:ring-yellow-500/50 transition-colors"
+                          placeholder="e.g., 100000"
+                          min="0"
+                          step="0.01"
+                        />
+                        <p className="text-xs text-yellow-400 mt-1">
+                          Required for interest calculation. Enter the principal amount on which interest is calculated (e.g., unpaid tax amount).
+                        </p>
+                      </div>
+                    )}
 
                     {/* Financial Year */}
                     <div>
@@ -8064,6 +8176,7 @@ function DataRoomPageInner() {
                                 description: '',
                                 due_date: '',
                                 penalty: '',
+                                penalty_base_amount: null,
                                 is_critical: false,
                                 financial_year: '',
                                 status: 'not_started',
@@ -8094,6 +8207,7 @@ function DataRoomPageInner() {
                             description: '',
                             due_date: '',
                             penalty: '',
+                            penalty_base_amount: null,
                             is_critical: false,
                             financial_year: '',
                             status: 'not_started',

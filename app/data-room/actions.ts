@@ -289,6 +289,7 @@ export async function updateRequirement(
     description?: string
     due_date?: string
     penalty?: string
+    penalty_base_amount?: number | null
     is_critical?: boolean
     financial_year?: string
     status?: 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed'
@@ -337,6 +338,7 @@ export async function updateRequirement(
     if (requirement.description !== undefined) updateData.description = requirement.description
     if (requirement.due_date !== undefined) updateData.due_date = requirement.due_date
     if (requirement.penalty !== undefined) updateData.penalty = requirement.penalty
+    if (requirement.penalty_base_amount !== undefined) updateData.penalty_base_amount = requirement.penalty_base_amount
     if (requirement.is_critical !== undefined) updateData.is_critical = requirement.is_critical
     if (requirement.financial_year !== undefined) updateData.financial_year = requirement.financial_year
     if (requirement.status !== undefined) updateData.status = requirement.status
@@ -866,6 +868,7 @@ export async function createRequirement(
     description?: string
     due_date: string
     penalty?: string
+    penalty_base_amount?: number | null
     is_critical?: boolean
     financial_year?: string
     compliance_type?: 'one-time' | 'monthly' | 'quarterly' | 'annual'
@@ -938,6 +941,7 @@ export async function createRequirement(
         description: requirement.description || null,
         due_date: requirement.due_date,
         penalty: requirement.penalty || null,
+        penalty_base_amount: requirement.penalty_base_amount || null,
         is_critical: requirement.is_critical || false,
         financial_year: requirement.financial_year || null,
         compliance_type: requirement.compliance_type || 'one-time',
