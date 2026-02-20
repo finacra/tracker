@@ -72,16 +72,17 @@ function generateICSFile(requirements: RegulatoryRequirement[]): string {
     const uid = `compliance-${req.id}-${index}@finacra.com`
     
     // Escape text for ICS format
-    const escapeText = (text: string) => {
+    const escapeText = (text: string | null | undefined) => {
+      if (!text) return ''
       return text.replace(/\\/g, '\\\\')
         .replace(/;/g, '\\;')
         .replace(/,/g, '\\,')
         .replace(/\n/g, '\\n')
     }
     
-    const summary = escapeText(req.requirement)
+    const summary = escapeText(req.requirement || '')
     const description = escapeText(
-      `${req.category}${req.description ? ': ' + req.description : ''}${req.penalty ? ' | Penalty: ' + req.penalty : ''}`
+      `${req.category || ''}${req.description ? ': ' + req.description : ''}${req.penalty ? ' | Penalty: ' + req.penalty : ''}`
     )
     
     icsContent += [
@@ -1061,6 +1062,9 @@ function DataRoomPageInner() {
         versions.sort((a, b) => {
           const dateA = a.created_at || a.period_key || ''
           const dateB = b.created_at || b.period_key || ''
+          if (!dateA && !dateB) return 0
+          if (!dateA) return 1
+          if (!dateB) return -1
           return dateB.localeCompare(dateA)
         })
       })
@@ -1131,12 +1135,18 @@ function DataRoomPageInner() {
         return sorted.sort((a, b) => {
           const dateA = a.period_key || a.created_at || ''
           const dateB = b.period_key || b.created_at || ''
+          if (!dateA && !dateB) return 0
+          if (!dateA) return 1
+          if (!dateB) return -1
           return dateB.localeCompare(dateA)
         })
       case 'date-oldest':
         return sorted.sort((a, b) => {
           const dateA = a.period_key || a.created_at || ''
           const dateB = b.period_key || b.created_at || ''
+          if (!dateA && !dateB) return 0
+          if (!dateA) return 1
+          if (!dateB) return -1
           return dateA.localeCompare(dateB)
         })
       case 'expiry':
@@ -1159,7 +1169,7 @@ function DataRoomPageInner() {
     }
   }
 
-  const allDocuments = vaultDocuments
+  const allDocuments = (vaultDocuments || [])
     .filter(doc => {
       // If no FY selected, show all documents
       if (!selectedFY) return true
@@ -1872,7 +1882,7 @@ function DataRoomPageInner() {
 
     try {
       // Get old status for validation and tracking
-      const oldRequirement = regulatoryRequirements.find(req => req.id === requirementId)
+      const oldRequirement = (regulatoryRequirements || []).find(req => req.id === requirementId)
       if (!oldRequirement) {
         showToast('Requirement not found', 'error')
         return
@@ -2049,7 +2059,7 @@ function DataRoomPageInner() {
       }
 
       // Get the requirement to calculate period metadata
-      const requirement = regulatoryRequirements.find(r => r.id === documentUploadModal.requirementId)
+      const requirement = (regulatoryRequirements || []).find(r => r.id === documentUploadModal.requirementId)
       if (!requirement) throw new Error('Requirement not found')
 
       const periodMeta = calculatePeriodMetadata({
@@ -2260,7 +2270,7 @@ function DataRoomPageInner() {
   }, [uploadFile])
 
   // Convert database requirements to display format
-  const displayRequirements = regulatoryRequirements.map(req => ({
+  const displayRequirements = (regulatoryRequirements || []).map(req => ({
     id: req.id,
     template_id: (req as any).template_id ?? null,
     category: req.category,
@@ -2801,10 +2811,10 @@ function DataRoomPageInner() {
           }
 
           // Calculate statistics
-          const totalCompliances = displayRequirements.length
-          const completed = displayRequirements.filter(r => r.status === 'completed').length
-          const pending = displayRequirements.filter(r => r.status === 'pending').length
-          const overdue = displayRequirements.filter(r => {
+          const totalCompliances = (displayRequirements || []).length
+          const completed = (displayRequirements || []).filter(r => r.status === 'completed').length
+          const pending = (displayRequirements || []).filter(r => r.status === 'pending').length
+          const overdue = (displayRequirements || []).filter(r => {
             if (r.status === 'overdue') return true
             if (r.status === 'completed') return false
             const dueDate = parseDate(r.dueDate)
@@ -6623,12 +6633,19 @@ function DataRoomPageInner() {
               <div className="sm:overflow-x-auto scrollbar-hide">
                 {(() => {
                   // Get all unique categories from ALL requirements (before filtering) - dynamic, not hardcoded
-                  const allCategories = Array.from(new Set(displayRequirements.map(req => req.category).filter(Boolean)))
+                  const allCategories = Array.from(new Set((displayRequirements || []).map(req => req.category).filter(Boolean)))
                   // Define preferred order for common categories, but include all others
                   const preferredOrder = ['Income Tax', 'GST', 'Payroll', 'RoC', 'Renewals', 'Prof.Tax', 'Other', 'Others']
                   const categoryOrder = [
                     ...preferredOrder.filter(cat => allCategories.includes(cat)),
-                    ...allCategories.filter(cat => !preferredOrder.includes(cat)).sort()
+                    ...allCategories.filter(cat => !preferredOrder.includes(cat) && cat).sort((a, b) => {
+                      const catA = a || ''
+                      const catB = b || ''
+                      if (!catA && !catB) return 0
+                      if (!catA) return 1
+                      if (!catB) return -1
+                      return catA.localeCompare(catB)
+                    })
                   ]
                   
                   // Helper function to parse date and get month/quarter
@@ -6939,7 +6956,14 @@ function DataRoomPageInner() {
                   const groupedByCategory = categoryOrder.map((category) => {
                     const items = filteredRequirements
                       .filter((req) => req.category === category)
-                      .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+                      .sort((a, b) => {
+                        const dateA = a.dueDate || ''
+                        const dateB = b.dueDate || ''
+                        if (!dateA && !dateB) return 0
+                        if (!dateA) return 1
+                        if (!dateB) return -1
+                        return dateA.localeCompare(dateB)
+                      })
                     return { category, items }
                   }).filter((group) => group.items.length > 0)
 
@@ -7357,7 +7381,7 @@ function DataRoomPageInner() {
                                       <div className="flex items-center gap-2 pt-2 border-t border-white/10">
                                         <button
                                           onClick={() => {
-                                            const originalReq = regulatoryRequirements.find(r => r.id === req.id)
+                                            const originalReq = (regulatoryRequirements || []).find(r => r.id === req.id)
                                             if (originalReq) {
                                               setEditingRequirement(originalReq)
                                               setRequirementForm({
@@ -7682,7 +7706,7 @@ function DataRoomPageInner() {
                                           <button
                                             key={idx}
                                             onClick={() => {
-                                              const requirement = regulatoryRequirements.find(r => r.id === req.id)
+                                              const requirement = (regulatoryRequirements || []).find(r => r.id === req.id)
                                               if (requirement) {
                                                 setDocumentUploadModal({
                                                   isOpen: true,
@@ -7821,7 +7845,7 @@ function DataRoomPageInner() {
                                       <div className="flex items-center gap-2">
                                         <button
                                           onClick={() => {
-                                            const originalReq = regulatoryRequirements.find(r => r.id === req.id)
+                                            const originalReq = (regulatoryRequirements || []).find(r => r.id === req.id)
                                             if (originalReq) {
                                               setEditingRequirement(originalReq)
                                               setRequirementForm({
@@ -8439,7 +8463,7 @@ function DataRoomPageInner() {
               {/* Left Side - Document Categories */}
               <div className="lg:col-span-2 space-y-2 sm:space-y-3">
                 {documentFolders.map((folderName) => {
-                  const filteredVaultDocs = vaultDocuments.filter(doc => {
+                  const filteredVaultDocs = (vaultDocuments || []).filter(doc => {
                     // If no FY selected, show all documents
                     if (!selectedFY) return true
                     
