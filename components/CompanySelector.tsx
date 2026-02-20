@@ -1,13 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/utils/supabase/client'
 
 interface Company {
   id: string
   name: string
   type: string
   year: string
+}
+
+interface CompanySubscriptionStatus {
+  companyId: string
+  hasSubscription: boolean
+  isTrial: boolean
+  trialDaysRemaining?: number
+  tier?: string
 }
 
 interface CompanySelectorProps {
@@ -19,6 +28,106 @@ interface CompanySelectorProps {
 export default function CompanySelector({ companies, currentCompany, onCompanyChange }: CompanySelectorProps) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
+  const [subscriptionStatuses, setSubscriptionStatuses] = useState<Map<string, CompanySubscriptionStatus>>(new Map())
+  const [isLoadingStatuses, setIsLoadingStatuses] = useState(false)
+  const supabase = createClient()
+
+  // Fetch subscription status for all companies
+  useEffect(() => {
+    async function fetchSubscriptionStatuses() {
+      if (companies.length === 0) return
+
+      setIsLoadingStatuses(true)
+      const statusMap = new Map<string, CompanySubscriptionStatus>()
+
+      try {
+        // Fetch status for all companies in parallel
+        const statusPromises = companies.map(async (company) => {
+          try {
+            const { data, error } = await supabase
+              .rpc('check_company_subscription', { p_company_id: company.id })
+              .single()
+
+            if (!error && data) {
+              const subscriptionData = data as {
+                has_subscription: boolean
+                tier: string
+                is_trial: boolean
+                trial_days_remaining: number
+                user_limit: number
+              }
+              statusMap.set(company.id, {
+                companyId: company.id,
+                hasSubscription: subscriptionData.has_subscription,
+                isTrial: subscriptionData.is_trial,
+                trialDaysRemaining: subscriptionData.trial_days_remaining,
+                tier: subscriptionData.tier,
+              })
+            } else {
+              // No subscription found
+              statusMap.set(company.id, {
+                companyId: company.id,
+                hasSubscription: false,
+                isTrial: false,
+              })
+            }
+          } catch (err) {
+            console.error(`Error checking subscription for company ${company.id}:`, err)
+            statusMap.set(company.id, {
+              companyId: company.id,
+              hasSubscription: false,
+              isTrial: false,
+            })
+          }
+        })
+
+        await Promise.all(statusPromises)
+        setSubscriptionStatuses(statusMap)
+      } catch (err) {
+        console.error('Error fetching subscription statuses:', err)
+      } finally {
+        setIsLoadingStatuses(false)
+      }
+    }
+
+    fetchSubscriptionStatuses()
+  }, [companies, supabase])
+
+  const getSubscriptionStatus = (companyId: string): CompanySubscriptionStatus | null => {
+    return subscriptionStatuses.get(companyId) || null
+  }
+
+  const getStatusBadge = (status: CompanySubscriptionStatus | null) => {
+    if (!status) {
+      return (
+        <span className="px-2 py-0.5 rounded text-xs font-medium bg-gray-800 text-gray-400 border border-gray-700">
+          No Plan
+        </span>
+      )
+    }
+
+    if (status.hasSubscription) {
+      if (status.isTrial) {
+        return (
+          <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+            Trial ({status.trialDaysRemaining}d)
+          </span>
+        )
+      } else {
+        return (
+          <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+            Valid
+          </span>
+        )
+      }
+    } else {
+      return (
+        <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">
+          Expired
+        </span>
+      )
+    }
+  }
 
   return (
     <div className="relative">
@@ -53,8 +162,18 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
           </svg>
         </div>
         <div className="flex-1 text-left min-w-0">
-          <div className="text-gray-500 text-xs sm:text-sm mb-1.5 font-light">
-            {currentCompany ? `${currentCompany.type.toLowerCase()} – ${currentCompany.year}` : 'No company selected'}
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <div className="text-gray-500 text-xs sm:text-sm font-light">
+              {currentCompany ? `${currentCompany.type.toLowerCase()} – ${currentCompany.year}` : 'No company selected'}
+            </div>
+            {currentCompany && (() => {
+              const status = getSubscriptionStatus(currentCompany.id)
+              return status ? (
+                <div className="flex-shrink-0">
+                  {getStatusBadge(status)}
+                </div>
+              ) : null
+            })()}
           </div>
           <div className="text-white text-lg sm:text-xl font-light break-words leading-snug uppercase tracking-tight">
             {currentCompany ? currentCompany.name : 'Select Company'}
@@ -126,8 +245,18 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-gray-500 text-xs sm:text-sm mb-1.5 font-light">
-                      {company.type.toLowerCase()} – {company.year}
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <div className="text-gray-500 text-xs sm:text-sm font-light">
+                        {company.type.toLowerCase()} – {company.year}
+                      </div>
+                      {(() => {
+                        const status = getSubscriptionStatus(company.id)
+                        return status ? (
+                          <div className="flex-shrink-0">
+                            {getStatusBadge(status)}
+                          </div>
+                        ) : null
+                      })()}
                     </div>
                     <div className="text-white font-light text-sm sm:text-base break-words leading-snug uppercase tracking-tight">{company.name}</div>
                   </div>
