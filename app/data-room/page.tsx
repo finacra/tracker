@@ -115,6 +115,7 @@ function DataRoomPageInner() {
   const [isLoading, setIsLoading] = useState(true)
   const [entityDetails, setEntityDetails] = useState<EntityDetails | null>(null)
   const [vaultDocuments, setVaultDocuments] = useState<any[]>([])
+  const [isLoadingVaultDocuments, setIsLoadingVaultDocuments] = useState(false)
   const [documentTemplates, setDocumentTemplates] = useState<any[]>([])
   const [regulatoryRequirements, setRegulatoryRequirements] = useState<RegulatoryRequirement[]>([])
   const [isLoadingRequirements, setIsLoadingRequirements] = useState(false)
@@ -390,6 +391,7 @@ function DataRoomPageInner() {
 
   const fetchVaultDocuments = async () => {
     if (!currentCompany) return
+    setIsLoadingVaultDocuments(true)
     try {
       const result = await getCompanyDocuments(currentCompany.id)
       if (result.success) {
@@ -401,6 +403,8 @@ function DataRoomPageInner() {
     } catch (err) {
       console.error('Error fetching vault documents:', err)
       setVaultDocuments([])
+    } finally {
+      setIsLoadingVaultDocuments(false)
     }
   }
 
@@ -653,11 +657,22 @@ function DataRoomPageInner() {
   })
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
+  const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false)
+  const [isAdvancedOptionsOpen, setIsAdvancedOptionsOpen] = useState(false)
   const [isFolderDropdownOpen, setIsFolderDropdownOpen] = useState(false)
+  const [bulkUploadFiles, setBulkUploadFiles] = useState<File[]>([])
+  const [bulkUploadProgress, setBulkUploadProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 })
+  const [previewDocument, setPreviewDocument] = useState<any | null>(null)
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
+  const [isStorageBreakdownOpen, setIsStorageBreakdownOpen] = useState(false)
+  const [expiringSoonFilter, setExpiringSoonFilter] = useState<'all' | 'expiring' | 'expired'>('all')
+  const [selectedVersions, setSelectedVersions] = useState<Record<string, number>>({})
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [isSendModalOpen, setIsSendModalOpen] = useState(false)
   const [isEmailTemplateOpen, setIsEmailTemplateOpen] = useState(false)
   const [selectedFY, setSelectedFY] = useState<string>('')
+  const [searchQuery, setSearchQuery] = useState<string>('')
+  const [sortOption, setSortOption] = useState<'name-asc' | 'name-desc' | 'date-newest' | 'date-oldest' | 'expiry' | 'folder'>('date-newest')
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set())
   const [selectedDocumentsToSend, setSelectedDocumentsToSend] = useState<Set<string>>(new Set())
   const [isSendingEmail, setIsSendingEmail] = useState(false)
@@ -784,11 +799,61 @@ function DataRoomPageInner() {
       if (result.success && result.url) {
         window.open(result.url, '_blank')
       } else {
-        alert('Failed to get document view URL')
+        showToast('Failed to get document view URL', 'error')
       }
     } catch (err) {
       console.error('View error:', err)
-      alert('Error opening document')
+      showToast('Error opening document', 'error')
+    }
+  }
+
+  const handlePreview = async (doc: any) => {
+    try {
+      const result = await getDownloadUrl(doc.file_path)
+      if (result.success && result.url) {
+        setPreviewDocument({ ...doc, previewUrl: result.url })
+        setIsPreviewModalOpen(true)
+      } else {
+        showToast('Failed to get document preview URL', 'error')
+      }
+    } catch (err) {
+      console.error('Preview error:', err)
+      showToast('Error loading document preview', 'error')
+    }
+  }
+
+  // Helper function to get file type icon
+  const getFileTypeIcon = (fileName: string) => {
+    const ext = fileName?.split('.').pop()?.toLowerCase() || ''
+    switch (ext) {
+      case 'pdf':
+        return (
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+          </svg>
+        )
+      case 'doc':
+      case 'docx':
+        return (
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+          </svg>
+        )
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+        return (
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8.5,13.5L11,16.5L14.5,12L19,18H5M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19Z" />
+          </svg>
+        )
+      default:
+        return (
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+          </svg>
+        )
     }
   }
 
@@ -807,12 +872,13 @@ function DataRoomPageInner() {
         if (user?.id && currentCompany?.id) {
           trackVaultFileExport(user.id, currentCompany.id, 1)
         }
+        showToast('Document downloaded successfully', 'success')
       } else {
-        alert('Failed to download document')
+        showToast('Failed to download document', 'error')
       }
     } catch (err) {
       console.error('Export error:', err)
-      alert('Error downloading document')
+      showToast('Error downloading document', 'error')
     }
   }
 
@@ -823,13 +889,13 @@ function DataRoomPageInner() {
       const result = await deleteDocument(docId, filePath)
       if (result.success) {
         await fetchVaultDocuments()
-        alert('Document removed successfully')
+        showToast('Document removed successfully', 'success')
       } else {
-        alert('Failed to remove document: ' + result.error)
+        showToast('Failed to remove document: ' + result.error, 'error')
       }
     } catch (err) {
       console.error('Remove error:', err)
-      alert('Error removing document')
+      showToast('Error removing document', 'error')
     }
   }
 
@@ -882,6 +948,96 @@ function DataRoomPageInner() {
     }
   }
 
+  // Helper function to check if document matches search query
+  const matchesSearch = (doc: any, query: string): boolean => {
+    if (!query.trim()) return true
+    const lowerQuery = query.toLowerCase()
+    const docType = (doc.document_type || '').toLowerCase()
+    const folderName = (doc.folder_name || '').toLowerCase()
+    const periodInfo = formatPeriodInfo(doc)?.toLowerCase() || ''
+    const expiryDate = doc.expiry_date ? formatDateForDisplay(doc.expiry_date).toLowerCase() : ''
+    
+    return docType.includes(lowerQuery) || 
+           folderName.includes(lowerQuery) || 
+           periodInfo.includes(lowerQuery) ||
+           expiryDate.includes(lowerQuery)
+  }
+
+  // Helper function to get document status (valid, expiring, expired)
+  const getDocumentStatus = (doc: any): 'valid' | 'expiring' | 'expired' | 'no-expiry' => {
+    if (!doc.expiry_date) return 'no-expiry'
+    const expiryDate = new Date(doc.expiry_date)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+    
+    if (daysUntilExpiry < 0) return 'expired'
+    if (daysUntilExpiry <= 30) return 'expiring'
+    return 'valid'
+  }
+
+  // Helper function to get status badge color
+  const getStatusBadgeColor = (status: 'valid' | 'expiring' | 'expired' | 'no-expiry'): string => {
+    switch (status) {
+      case 'valid':
+        return 'bg-green-500/20 text-green-400 border-green-500/30'
+      case 'expiring':
+        return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+      case 'expired':
+        return 'bg-red-500/20 text-red-400 border-red-500/30'
+      default:
+        return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+    }
+  }
+
+  // Helper function to sort documents
+  const sortDocuments = (docs: any[], sortBy: typeof sortOption): any[] => {
+    const sorted = [...docs]
+    switch (sortBy) {
+      case 'name-asc':
+        return sorted.sort((a, b) => {
+          const nameA = (a.document_type || '').toLowerCase()
+          const nameB = (b.document_type || '').toLowerCase()
+          return nameA.localeCompare(nameB)
+        })
+      case 'name-desc':
+        return sorted.sort((a, b) => {
+          const nameA = (a.document_type || '').toLowerCase()
+          const nameB = (b.document_type || '').toLowerCase()
+          return nameB.localeCompare(nameA)
+        })
+      case 'date-newest':
+        return sorted.sort((a, b) => {
+          const dateA = a.period_key || a.created_at || ''
+          const dateB = b.period_key || b.created_at || ''
+          return dateB.localeCompare(dateA)
+        })
+      case 'date-oldest':
+        return sorted.sort((a, b) => {
+          const dateA = a.period_key || a.created_at || ''
+          const dateB = b.period_key || b.created_at || ''
+          return dateA.localeCompare(dateB)
+        })
+      case 'expiry':
+        return sorted.sort((a, b) => {
+          const expiryA = a.expiry_date || ''
+          const expiryB = b.expiry_date || ''
+          if (!expiryA && !expiryB) return 0
+          if (!expiryA) return 1
+          if (!expiryB) return -1
+          return expiryA.localeCompare(expiryB)
+        })
+      case 'folder':
+        return sorted.sort((a, b) => {
+          const folderA = (a.folder_name || '').toLowerCase()
+          const folderB = (b.folder_name || '').toLowerCase()
+          return folderA.localeCompare(folderB)
+        })
+      default:
+        return sorted
+    }
+  }
+
   const allDocuments = vaultDocuments
     .filter(doc => {
       // If no FY selected, show all documents
@@ -911,7 +1067,7 @@ function DataRoomPageInner() {
 
   const handleUpload = async () => {
     if (!uploadFormData.file || !uploadFormData.folder || !uploadFormData.documentName || !currentCompany) {
-      alert('Please fill all required fields and select a file.')
+      showToast('Please fill all required fields and select a file.', 'warning')
       return
     }
 
@@ -977,11 +1133,13 @@ function DataRoomPageInner() {
         })
         // Refresh documents list
         await fetchVaultDocuments()
-        alert('Document uploaded successfully!')
+        showToast('Document uploaded successfully!', 'success')
+      } else {
+        showToast('Upload failed: Unknown error', 'error')
       }
     } catch (error: any) {
       console.error('Upload failed:', error)
-      alert('Upload failed: ' + error.message)
+      showToast('Upload failed: ' + error.message, 'error')
     } finally {
       setIsUploading(false)
     }
@@ -1078,7 +1236,7 @@ function DataRoomPageInner() {
   const [industryFilter, setIndustryFilter] = useState<string>('all')
   const [industryCategoryFilter, setIndustryCategoryFilter] = useState<string>('all')
   const [complianceTypeFilter, setComplianceTypeFilter] = useState<string>('all')
-  const [searchQuery, setSearchQuery] = useState('')
+  const [trackerSearchQuery, setTrackerSearchQuery] = useState('')
   const [selectedRequirements, setSelectedRequirements] = useState<Set<string>>(new Set())
   const [isComplianceScoreModalOpen, setIsComplianceScoreModalOpen] = useState(false)
   const [isBulkActionModalOpen, setIsBulkActionModalOpen] = useState(false)
@@ -5628,8 +5786,8 @@ function DataRoomPageInner() {
                 <input
                   type="text"
                   placeholder="Search requirements, categories, descriptions..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={trackerSearchQuery}
+                  onChange={(e) => setTrackerSearchQuery(e.target.value)}
                   className="w-full px-4 py-2.5 pl-10 bg-black border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 text-sm sm:text-base"
                 />
                 <svg
@@ -5644,9 +5802,9 @@ function DataRoomPageInner() {
                   <circle cx="11" cy="11" r="8" />
                   <path d="m21 21-4.35-4.35" />
                 </svg>
-                {searchQuery && (
+                {trackerSearchQuery && (
                   <button
-                    onClick={() => setSearchQuery('')}
+                    onClick={() => setTrackerSearchQuery('')}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -6037,8 +6195,8 @@ function DataRoomPageInner() {
                     }
 
                     // Search filter
-                    if (searchQuery.trim()) {
-                      const query = searchQuery.toLowerCase().trim()
+                    if (trackerSearchQuery.trim()) {
+                      const query = trackerSearchQuery.toLowerCase().trim()
                       const searchableText = [
                         req.category,
                         req.requirement,
@@ -7358,6 +7516,28 @@ function DataRoomPageInner() {
                   <span className="sm:hidden">Send</span>
                 </button>
                 <button
+                  onClick={() => setIsBulkUploadModalOpen(true)}
+                  className="bg-black border border-white/20 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-white/40/50 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    className="sm:w-[18px] sm:h-[18px]"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  <span className="hidden sm:inline">Bulk Upload</span>
+                  <span className="sm:hidden">Bulk</span>
+                </button>
+                <button
                   onClick={() => setIsUploadModalOpen(true)}
                   className="bg-white text-black px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
                 >
@@ -7382,21 +7562,85 @@ function DataRoomPageInner() {
               </div>
             </div>
 
-            {/* FY Filter */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-              <label className="text-sm font-medium text-gray-300">Financial Year:</label>
-              <select
-                value={selectedFY}
-                onChange={(e) => setSelectedFY(e.target.value)}
-                className="px-3 sm:px-4 py-2 bg-black border border-white/20 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
-              >
-                <option value="">All Financial Years</option>
-                {financialYears.map((fy) => (
-                  <option key={fy} value={fy}>
-                    {fy}
-                  </option>
-                ))}
-              </select>
+            {/* Search and Filters */}
+            <div className="space-y-3 sm:space-y-4">
+              {/* Search Bar */}
+              <div className="relative">
+                <svg
+                  className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search documents by name, type, folder, or period..."
+                  className="w-full pl-9 sm:pl-12 pr-4 py-2.5 sm:py-3 bg-black border border-white/20 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  >
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              {/* Filters Row */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                <label className="text-sm font-medium text-gray-300">Financial Year:</label>
+                <select
+                  value={selectedFY}
+                  onChange={(e) => setSelectedFY(e.target.value)}
+                  className="px-3 sm:px-4 py-2 bg-black border border-white/20 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
+                >
+                  <option value="">All Financial Years</option>
+                  {financialYears.map((fy) => (
+                    <option key={fy} value={fy}>
+                      {fy}
+                    </option>
+                  ))}
+                </select>
+                
+                <label className="text-sm font-medium text-gray-300 sm:ml-auto">Sort by:</label>
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value as typeof sortOption)}
+                  className="px-3 sm:px-4 py-2 bg-black border border-white/20 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
+                >
+                  <option value="date-newest">Date (Newest)</option>
+                  <option value="date-oldest">Date (Oldest)</option>
+                  <option value="name-asc">Name (A-Z)</option>
+                  <option value="name-desc">Name (Z-A)</option>
+                  <option value="expiry">Expiry Date</option>
+                  <option value="folder">Folder</option>
+                </select>
+                
+                <label className="text-sm font-medium text-gray-300">Expiry:</label>
+                <select
+                  value={expiringSoonFilter}
+                  onChange={(e) => setExpiringSoonFilter(e.target.value as typeof expiringSoonFilter)}
+                  className="px-3 sm:px-4 py-2 bg-black border border-white/20 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
+                >
+                  <option value="all">All Documents</option>
+                  <option value="expiring">Expiring Soon (≤30 days)</option>
+                  <option value="expired">Expired</option>
+                </select>
+              </div>
+
+              {/* Search Results Count */}
+              {searchQuery && (
+                <div className="text-sm text-gray-400">
+                  Searching for: <span className="text-white font-medium">"{searchQuery}"</span>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -7459,11 +7703,25 @@ function DataRoomPageInner() {
                       folderDocs.push({ document_type: name, status: 'pending', id: `pending-${name}` })
                     } else if (uploadedVersions.length === 1) {
                       // Single version, show it
-                      folderDocs.push({ ...uploadedVersions[0], status: 'uploaded' })
+                      folderDocs.push({ ...uploadedVersions[0], status: 'uploaded', versions: [uploadedVersions[0]] })
                     } else {
-                      // Multiple versions (different periods), show all
-                      uploadedVersions.forEach((doc, idx) => {
-                        folderDocs.push({ ...doc, status: 'uploaded', isMultipleVersion: true, versionIndex: idx })
+                      // Multiple versions - group them
+                      // Sort versions by period_key (newest first)
+                      const sortedVersions = [...uploadedVersions].sort((a, b) => {
+                        if (a.period_key && b.period_key) {
+                          return b.period_key.localeCompare(a.period_key)
+                        }
+                        if (a.period_key) return -1
+                        if (b.period_key) return 1
+                        return 0
+                      })
+                      // Show the latest version as the main document, with all versions grouped
+                      folderDocs.push({ 
+                        ...sortedVersions[0], 
+                        status: 'uploaded', 
+                        versions: sortedVersions,
+                        isVersionGroup: true,
+                        selectedVersionIndex: 0
                       })
                     }
                   })
@@ -7475,15 +7733,73 @@ function DataRoomPageInner() {
                     }
                   })
                   
-                  // Sort by period_key if available (newest first)
-                  folderDocs.sort((a, b) => {
-                    if (a.period_key && b.period_key) {
-                      return b.period_key.localeCompare(a.period_key)
-                    }
-                    if (a.period_key) return -1
-                    if (b.period_key) return 1
-                    return 0
-                  })
+                  // Apply search filter
+                  let filteredFolderDocs = folderDocs
+                  if (searchQuery.trim()) {
+                    filteredFolderDocs = folderDocs.filter(doc => {
+                      if (doc.status === 'pending') {
+                        // For pending docs, search by document_type
+                        return (doc.document_type || '').toLowerCase().includes(searchQuery.toLowerCase())
+                      }
+                      // For uploaded docs, use the matchesSearch helper
+                      return matchesSearch(doc, searchQuery)
+                    })
+                  }
+
+                  // Apply expiry filter
+                  if (expiringSoonFilter !== 'all') {
+                    filteredFolderDocs = filteredFolderDocs.filter(doc => {
+                      if (doc.status === 'pending') return false // Pending docs don't have expiry
+                      const docStatus = getDocumentStatus(doc)
+                      if (expiringSoonFilter === 'expiring') {
+                        return docStatus === 'expiring' || docStatus === 'expired'
+                      } else if (expiringSoonFilter === 'expired') {
+                        return docStatus === 'expired'
+                      }
+                      return true
+                    })
+                  }
+
+                  // Apply sorting
+                  if (sortOption === 'name-asc' || sortOption === 'name-desc') {
+                    filteredFolderDocs.sort((a, b) => {
+                      const nameA = (a.document_type || '').toLowerCase()
+                      const nameB = (b.document_type || '').toLowerCase()
+                      return sortOption === 'name-asc' 
+                        ? nameA.localeCompare(nameB)
+                        : nameB.localeCompare(nameA)
+                    })
+                  } else if (sortOption === 'date-newest' || sortOption === 'date-oldest') {
+                    filteredFolderDocs.sort((a, b) => {
+                      const dateA = a.period_key || a.created_at || ''
+                      const dateB = b.period_key || b.created_at || ''
+                      if (!dateA && !dateB) return 0
+                      if (!dateA) return 1
+                      if (!dateB) return -1
+                      return sortOption === 'date-newest'
+                        ? dateB.localeCompare(dateA)
+                        : dateA.localeCompare(dateB)
+                    })
+                  } else if (sortOption === 'expiry') {
+                    filteredFolderDocs.sort((a, b) => {
+                      const expiryA = a.expiry_date || ''
+                      const expiryB = b.expiry_date || ''
+                      if (!expiryA && !expiryB) return 0
+                      if (!expiryA) return 1
+                      if (!expiryB) return -1
+                      return expiryA.localeCompare(expiryB)
+                    })
+                  } else {
+                    // Default: Sort by period_key if available (newest first)
+                    filteredFolderDocs.sort((a, b) => {
+                      if (a.period_key && b.period_key) {
+                        return b.period_key.localeCompare(a.period_key)
+                      }
+                      if (a.period_key) return -1
+                      if (b.period_key) return 1
+                      return 0
+                    })
+                  }
 
                   const iconColor = folderName === 'Constitutional Documents' ? 'bg-gray-500' : 
                                    folderName === 'Financials and licenses' ? 'bg-purple-500' :
@@ -7510,68 +7826,192 @@ function DataRoomPageInner() {
                       </div>
                     <div className="min-w-0 flex-1">
                           <h3 className="text-base sm:text-xl font-light text-white break-words">{folderName}</h3>
-                          <p className="text-gray-400 text-xs sm:text-sm">{folderDocs.filter((d: any) => d.status === 'uploaded').length} DOCUMENTS</p>
+                          <p className="text-gray-400 text-xs sm:text-sm">
+                            {filteredFolderDocs.filter((d: any) => d.status === 'uploaded').length} DOCUMENTS
+                            {searchQuery && filteredFolderDocs.length !== folderDocs.length && (
+                              <span className="ml-2 text-gray-500">
+                                ({filteredFolderDocs.length} of {folderDocs.length} shown)
+                              </span>
+                            )}
+                          </p>
                       </div>
                     </div>
                       
                   <div className="space-y-2 sm:space-y-3">
-                        {folderDocs.length > 0 ? folderDocs.map((doc: any) => (
-                          <div key={doc.id} className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border transition-colors ${
-                            doc.status === 'uploaded' 
-                              ? 'bg-gray-900 border-gray-800 hover:border-white/40/50' 
-                              : 'bg-gray-900/30 border-gray-800/50 border-dashed opacity-60'
+                        {isLoadingVaultDocuments ? (
+                          // Skeleton loaders
+                          Array.from({ length: 3 }).map((_, idx) => (
+                            <div key={`skeleton-${idx}`} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border border-gray-800 bg-gray-900 animate-pulse">
+                              <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                                <div className="w-4 h-4 sm:w-5 sm:h-5 bg-gray-700 rounded flex-shrink-0"></div>
+                                <div className="min-w-0 flex-1 space-y-2">
+                                  <div className="h-4 bg-gray-700 rounded w-3/4"></div>
+                                  <div className="h-3 bg-gray-800 rounded w-1/2"></div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="h-8 bg-gray-700 rounded w-16"></div>
+                                <div className="h-8 bg-gray-700 rounded w-16"></div>
+                              </div>
+                            </div>
+                          ))
+                        ) : filteredFolderDocs.length > 0 ? filteredFolderDocs.map((doc: any) => {
+                          // Handle version selection
+                          let displayDoc = doc
+                          if (doc.isVersionGroup && doc.versions && doc.versions.length > 1) {
+                            const selectedIndex = selectedVersions[doc.id] ?? 0
+                            displayDoc = { ...doc.versions[selectedIndex], ...doc, selectedVersionIndex: selectedIndex }
+                          }
+                          const docStatus = displayDoc.status === 'uploaded' ? getDocumentStatus(displayDoc) : null
+                          return (
+                          <div key={displayDoc.id} className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border transition-colors ${
+                            displayDoc.status === 'uploaded' 
+                              ? docStatus === 'expired' 
+                                ? 'bg-red-900/20 border-red-500/30 hover:border-red-500/50' 
+                                : docStatus === 'expiring'
+                                ? 'bg-yellow-900/20 border-yellow-500/30 hover:border-yellow-500/50'
+                                : 'bg-gray-900 border-gray-800 hover:border-white/40/50' 
+                              : 'bg-yellow-900/10 border-yellow-500/20 border-dashed'
                           }`}>
                       <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                        <svg
-                          width="16"
-                          height="16"
-                          className={`sm:w-5 sm:h-5 flex-shrink-0 mt-0.5 sm:mt-0 ${doc.status === 'uploaded' ? 'text-gray-400' : 'text-gray-600'}`}
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        >
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                          <polyline points="14 2 14 8 20 8" />
-                        </svg>
+                        {displayDoc.status === 'pending' ? (
+                          <svg
+                            width="16"
+                            height="16"
+                            className="sm:w-5 sm:h-5 flex-shrink-0 mt-0.5 sm:mt-0 text-yellow-500"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                          </svg>
+                        ) : (
+                          <div className={`flex-shrink-0 mt-0.5 sm:mt-0 ${
+                            docStatus === 'expired' ? 'text-red-400' :
+                            docStatus === 'expiring' ? 'text-yellow-400' :
+                            docStatus === 'valid' ? 'text-green-400' :
+                            'text-gray-400'
+                          }`}>
+                            {getFileTypeIcon(displayDoc.file_name || displayDoc.document_type)}
+                          </div>
+                        )}
                         <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className={`text-white text-sm sm:text-base break-words ${doc.status === 'pending' ? 'italic text-gray-500' : ''}`}>
-                                  {doc.document_type}
-                                  {doc.status === 'pending' && ' (Pending Upload)'}
+                                  <span className={`text-sm sm:text-base break-words font-medium ${
+                                    displayDoc.status === 'pending' 
+                                      ? 'text-yellow-400 italic' 
+                                      : docStatus === 'expired'
+                                      ? 'text-red-400'
+                                      : docStatus === 'expiring'
+                                      ? 'text-yellow-400'
+                                      : 'text-white'
+                                  }`}>
+                                  {displayDoc.document_type}
+                                  {displayDoc.status === 'pending' && ' (Pending Upload)'}
+                                  {doc.isVersionGroup && doc.versions && doc.versions.length > 1 && (
+                                    <span className="ml-2 text-xs text-gray-400">({doc.versions.length} versions)</span>
+                                  )}
                                 </span>
-                                  {doc.status === 'uploaded' && formatPeriodInfo(doc) && (
-                                    <span className={`px-2 py-0.5 text-xs rounded-full border ${getPeriodBadgeColor(doc.period_type)}`}>
-                                      {formatPeriodInfo(doc)}
+                                  {displayDoc.status === 'uploaded' && formatPeriodInfo(displayDoc) && (
+                                    <span className={`px-2 py-0.5 text-xs rounded-full border ${getPeriodBadgeColor(displayDoc.period_type)}`}>
+                                      {formatPeriodInfo(displayDoc)}
+                                    </span>
+                                  )}
+                                  {doc.isVersionGroup && doc.versions && doc.versions.length > 1 && (selectedVersions[doc.id] ?? 0) === 0 && (
+                                    <span className="px-2 py-0.5 text-xs rounded-full border bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                      Latest
+                                    </span>
+                                  )}
+                                  {displayDoc.status === 'uploaded' && docStatus && (
+                                    <span className={`px-2 py-0.5 text-xs rounded-full border font-medium ${getStatusBadgeColor(docStatus)}`}>
+                                      {docStatus === 'expired' ? 'Expired' :
+                                       docStatus === 'expiring' ? 'Expiring Soon' :
+                                       docStatus === 'valid' ? 'Valid' : 'No Expiry'}
                                     </span>
                                   )}
                                 </div>
-                                {doc.status === 'uploaded' && (
-                                  <div className="text-gray-500 text-xs mt-1 break-words">
-                                    {doc.expiry_date ? `Expires: ${formatDateForDisplay(doc.expiry_date)}` : 'No expiry date'}
-                                    {doc.frequency && !formatPeriodInfo(doc) && ` • ${doc.frequency.toUpperCase()}`}
-                                    {doc.period_type && formatPeriodInfo(doc) && ` • ${doc.period_type.charAt(0).toUpperCase() + doc.period_type.slice(1)}`}
+                                {doc.isVersionGroup && doc.versions && doc.versions.length > 1 && (
+                                  <div className="mt-2">
+                                    <label className="text-xs text-gray-400 mb-1 block">Select Version:</label>
+                                    <select
+                                      onChange={(e) => {
+                                        const selectedIndex = parseInt(e.target.value)
+                                        setSelectedVersions(prev => ({
+                                          ...prev,
+                                          [doc.id]: selectedIndex
+                                        }))
+                                      }}
+                                      value={selectedVersions[doc.id] ?? 0}
+                                      className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-white text-xs focus:outline-none focus:border-white/40"
+                                    >
+                                      {doc.versions.map((version: any, idx: number) => (
+                                        <option key={idx} value={idx}>
+                                          {formatPeriodInfo(version) || `Version ${idx + 1}`} {idx === 0 ? '(Latest)' : ''}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                )}
+                                {displayDoc.status === 'uploaded' && (
+                                  <div className={`text-xs mt-1 break-words ${
+                                    docStatus === 'expired' ? 'text-red-400/80' :
+                                    docStatus === 'expiring' ? 'text-yellow-400/80' :
+                                    'text-gray-500'
+                                  }`}>
+                                    {displayDoc.expiry_date ? `Expires: ${formatDateForDisplay(displayDoc.expiry_date)}` : 'No expiry date'}
+                                    {displayDoc.frequency && !formatPeriodInfo(displayDoc) && ` • ${displayDoc.frequency.toUpperCase()}`}
+                                    {displayDoc.period_type && formatPeriodInfo(displayDoc) && ` • ${displayDoc.period_type.charAt(0).toUpperCase() + displayDoc.period_type.slice(1)}`}
+                                    {displayDoc.requirement_id && (
+                                      <div className="mt-1">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            router.push(`/data-room?tab=tracker&requirement_id=${displayDoc.requirement_id}`)
+                                          }}
+                                          className="text-blue-400 hover:text-blue-300 text-xs underline flex items-center gap-1"
+                                        >
+                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                          </svg>
+                                          View in Tracker
+                                        </button>
+                                      </div>
+                                    )}
                       </div>
                                 )}
                       </div>
                     </div>
                       <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                              {doc.status === 'uploaded' ? (
+                              {displayDoc.status === 'uploaded' ? (
                                 <>
                                   <button 
-                                    onClick={() => handleView(doc.file_path)}
+                                    onClick={() => handlePreview(displayDoc)}
+                                    className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0 flex items-center gap-1"
+                                    title="Preview document"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    Preview
+                                  </button>
+                                  <button 
+                                    onClick={() => handleView(displayDoc.file_path)}
                                     className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
                                   >
                           View
                         </button>
                                   <button 
-                                    onClick={() => handleExport(doc.file_path, doc.file_name)}
+                                    onClick={() => handleExport(displayDoc.file_path, displayDoc.file_name)}
                                     className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
                                   >
                           Export
                         </button>
                                   <button 
-                                    onClick={() => handleRemove(doc.id, doc.file_path)}
+                                    onClick={() => handleRemove(displayDoc.id, displayDoc.file_path)}
                                     className="text-red-400 hover:text-red-300 font-medium text-xs sm:text-sm border border-red-500/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-red-500/10 transition-colors flex-shrink-0"
                                   >
                           Remove
@@ -7583,7 +8023,7 @@ function DataRoomPageInner() {
                                     setUploadFormData(prev => ({ 
                                       ...prev, 
                                       folder: folderName,
-                                      documentName: doc.document_type
+                                      documentName: displayDoc.document_type
                                     }))
                                     setIsUploadModalOpen(true)
                                   }}
@@ -7594,7 +8034,8 @@ function DataRoomPageInner() {
                               )}
                       </div>
                     </div>
-                        )) : (
+                          )
+                        }) : (
                           <div className="p-6 sm:p-8 text-center bg-gray-900/50 rounded-lg border border-dashed border-gray-800">
                             <p className="text-gray-500 text-xs sm:text-sm">No documents defined for this folder.</p>
                       </div>
@@ -7608,7 +8049,10 @@ function DataRoomPageInner() {
               {/* Right Sidebar */}
               <div className="lg:col-span-1 space-y-4 sm:space-y-6">
                 {/* Storage Stats */}
-                  <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                  <button
+                    onClick={() => setIsStorageBreakdownOpen(true)}
+                    className="w-full bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-left hover:border-white/20 transition-colors"
+                  >
                   <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
                     <svg
                       width="16"
@@ -7625,6 +8069,9 @@ function DataRoomPageInner() {
                       <line x1="9" y1="3" x2="9" y2="21" />
                     </svg>
                     <h3 className="text-base sm:text-lg font-light text-white">Storage Stats</h3>
+                    <svg className="w-4 h-4 text-gray-400 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
                   <div className="space-y-2 sm:space-y-3">
                     <div className="w-full bg-gray-900 rounded-full h-2 sm:h-2.5">
@@ -7634,8 +8081,9 @@ function DataRoomPageInner() {
                       ></div>
                     </div>
                     <div className="text-gray-400 text-xs sm:text-sm">4.2 GB / 10 GB</div>
+                    <div className="text-gray-500 text-xs mt-2">Click to view breakdown</div>
                   </div>
-                </div>
+                </button>
 
                 {/* Recent Activity */}
                   <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
@@ -7659,7 +8107,10 @@ function DataRoomPageInner() {
               <>
                 <div
                   className="fixed inset-0 bg-black/50 z-50"
-                  onClick={() => setIsUploadModalOpen(false)}
+                  onClick={() => {
+                    setIsUploadModalOpen(false)
+                    setIsAdvancedOptionsOpen(false)
+                  }}
                 />
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
                   <div
@@ -7671,7 +8122,10 @@ function DataRoomPageInner() {
                     <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-800">
                       <h2 className="text-xl sm:text-2xl font-light text-white">Upload Document</h2>
                       <button
-                        onClick={() => setIsUploadModalOpen(false)}
+                        onClick={() => {
+                          setIsUploadModalOpen(false)
+                          setIsAdvancedOptionsOpen(false)
+                        }}
                         className="text-gray-400 hover:text-white transition-colors p-1"
                       >
                         <svg
@@ -7753,122 +8207,145 @@ function DataRoomPageInner() {
                         />
                       </div>
 
-                      {/* Frequency Selection */}
-                      <div>
-                        <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                          Frequency
-                        </label>
-                        <select
-                          value={uploadFormData.frequency}
-                          onChange={(e) =>
-                            setUploadFormData((prev) => ({ ...prev, frequency: e.target.value }))
-                          }
-                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors cursor-pointer"
+                      {/* Advanced Options Collapsible */}
+                      <div className="border-t border-gray-800 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => setIsAdvancedOptionsOpen(!isAdvancedOptionsOpen)}
+                          className="w-full flex items-center justify-between text-left text-sm sm:text-base font-medium text-gray-300 hover:text-white transition-colors"
                         >
-                          <option value="one-time">One-time</option>
-                          <option value="monthly">Monthly</option>
-                          <option value="quarterly">Quarterly</option>
-                          <option value="annually">Annually</option>
-                          <option value="yearly">Yearly</option>
-                        </select>
-                      </div>
-
-                      {/* Dates */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                        <div>
-                          <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                            Date of Registration (Optional)
-                          </label>
-                          <input
-                            type="date"
-                            value={uploadFormData.registrationDate}
-                            onChange={(e) =>
-                              setUploadFormData((prev) => ({
-                                ...prev,
-                                registrationDate: e.target.value,
-                              }))
-                            }
-                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
-                          />
-                        </div>
-                      <div>
-                        <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                            Expiry Date (Optional)
-                        </label>
-                          <input
-                            type="date"
-                            value={uploadFormData.expiryDate}
-                            onChange={(e) =>
-                              setUploadFormData((prev) => ({
-                                ...prev,
-                                expiryDate: e.target.value,
-                              }))
-                            }
-                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Note Checkbox */}
-                      <div>
-                        <label className="flex items-start gap-2 sm:gap-3 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={uploadFormData.hasNote}
-                            onChange={(e) =>
-                              setUploadFormData((prev) => ({ ...prev, hasNote: e.target.checked }))
-                            }
-                            className="w-4 h-4 sm:w-5 sm:h-5 text-white bg-gray-800 border-gray-600 rounded focus:ring-white/40 focus:ring-2 mt-0.5 flex-shrink-0"
-                          />
-                          <div>
-                            <div className="text-white font-medium text-sm sm:text-base">Note</div>
-                            <div className="text-gray-400 text-xs sm:text-sm mt-1">
-                              Check this if you need to add external portal credentials
+                          <span>Advanced Options</span>
+                          <svg
+                            className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform ${isAdvancedOptionsOpen ? 'rotate-180' : ''}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        
+                        {isAdvancedOptionsOpen && (
+                          <div className="mt-4 space-y-4 sm:space-y-6">
+                            {/* Frequency Selection */}
+                            <div>
+                              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                                Frequency
+                              </label>
+                              <select
+                                value={uploadFormData.frequency}
+                                onChange={(e) =>
+                                  setUploadFormData((prev) => ({ ...prev, frequency: e.target.value }))
+                                }
+                                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors cursor-pointer"
+                              >
+                                <option value="one-time">One-time</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="quarterly">Quarterly</option>
+                                <option value="annually">Annually</option>
+                                <option value="yearly">Yearly</option>
+                              </select>
                             </div>
-                          </div>
-                        </label>
-                      </div>
 
-                      {/* External Portal Credentials */}
-                      {uploadFormData.hasNote && (
-                        <div className="bg-white/5 border border-white/40/30 rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4">
-                          <h3 className="text-white font-medium text-sm sm:text-base">External Portal Credentials</h3>
-                          <div>
-                            <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                              External Portal Email
-                            </label>
-                            <input
-                              type="email"
-                              value={uploadFormData.externalEmail}
-                              onChange={(e) =>
-                                setUploadFormData((prev) => ({
-                                  ...prev,
-                                  externalEmail: e.target.value,
-                                }))
-                              }
-                              placeholder="portal@example.com"
-                              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
-                            />
+                            {/* Dates */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                              <div>
+                                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                                  Date of Registration (Optional)
+                                </label>
+                                <input
+                                  type="date"
+                                  value={uploadFormData.registrationDate}
+                                  onChange={(e) =>
+                                    setUploadFormData((prev) => ({
+                                      ...prev,
+                                      registrationDate: e.target.value,
+                                    }))
+                                  }
+                                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                                  Expiry Date (Optional)
+                                </label>
+                                <input
+                                  type="date"
+                                  value={uploadFormData.expiryDate}
+                                  onChange={(e) =>
+                                    setUploadFormData((prev) => ({
+                                      ...prev,
+                                      expiryDate: e.target.value,
+                                    }))
+                                  }
+                                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Note Checkbox */}
+                            <div>
+                              <label className="flex items-start gap-2 sm:gap-3 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={uploadFormData.hasNote}
+                                  onChange={(e) =>
+                                    setUploadFormData((prev) => ({ ...prev, hasNote: e.target.checked }))
+                                  }
+                                  className="w-4 h-4 sm:w-5 sm:h-5 text-white bg-gray-800 border-gray-600 rounded focus:ring-white/40 focus:ring-2 mt-0.5 flex-shrink-0"
+                                />
+                                <div>
+                                  <div className="text-white font-medium text-sm sm:text-base">Note</div>
+                                  <div className="text-gray-400 text-xs sm:text-sm mt-1">
+                                    Check this if you need to add external portal credentials
+                                  </div>
+                                </div>
+                              </label>
+                            </div>
+
+                            {/* External Portal Credentials */}
+                            {uploadFormData.hasNote && (
+                              <div className="bg-white/5 border border-white/40/30 rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4">
+                                <h3 className="text-white font-medium text-sm sm:text-base">External Portal Credentials</h3>
+                                <div>
+                                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                                    External Portal Email
+                                  </label>
+                                  <input
+                                    type="email"
+                                    value={uploadFormData.externalEmail}
+                                    onChange={(e) =>
+                                      setUploadFormData((prev) => ({
+                                        ...prev,
+                                        externalEmail: e.target.value,
+                                      }))
+                                    }
+                                    placeholder="portal@example.com"
+                                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                                    External Portal Password
+                                  </label>
+                                  <input
+                                    type="password"
+                                    value={uploadFormData.externalPassword}
+                                    onChange={(e) =>
+                                      setUploadFormData((prev) => ({
+                                        ...prev,
+                                        externalPassword: e.target.value,
+                                      }))
+                                    }
+                                    placeholder="Enter password"
+                                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                                  />
+                                </div>
+                              </div>
+                            )}
                           </div>
-                          <div>
-                            <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                              External Portal Password
-                            </label>
-                            <input
-                              type="password"
-                              value={uploadFormData.externalPassword}
-                              onChange={(e) =>
-                                setUploadFormData((prev) => ({
-                                  ...prev,
-                                  externalPassword: e.target.value,
-                                }))
-                              }
-                              placeholder="Enter password"
-                              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
-                            />
-                          </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
 
                       {/* File Upload Area */}
                       <div>
@@ -7954,6 +8431,299 @@ function DataRoomPageInner() {
                             <line x1="12" y1="3" x2="12" y2="15" />
                           </svg>
                           Upload Document
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Bulk Upload Modal */}
+            {isBulkUploadModalOpen && (
+              <>
+                <div
+                  className="fixed inset-0 bg-black/50 z-50"
+                  onClick={() => {
+                    setIsBulkUploadModalOpen(false)
+                    setBulkUploadFiles([])
+                    setBulkUploadProgress({ current: 0, total: 0 })
+                  }}
+                />
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+                  <div
+                    className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto opacity-100"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ backgroundColor: '#151515' }}
+                  >
+                    {/* Modal Header */}
+                    <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-800">
+                      <h2 className="text-xl sm:text-2xl font-light text-white">Bulk Upload Documents</h2>
+                      <button
+                        onClick={() => {
+                          setIsBulkUploadModalOpen(false)
+                          setBulkUploadFiles([])
+                          setBulkUploadProgress({ current: 0, total: 0 })
+                        }}
+                        className="text-gray-400 hover:text-white transition-colors p-1"
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          className="sm:w-6 sm:h-6"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* Modal Content */}
+                    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+                      {/* Folder Selection */}
+                      <div>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                          Select Folder <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <button
+                            onClick={() => setIsFolderDropdownOpen(!isFolderDropdownOpen)}
+                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white text-black rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-between font-medium text-sm sm:text-base"
+                          >
+                            <span className="truncate">{uploadFormData.folder || 'Select folder'}</span>
+                            <svg
+                              width="14"
+                              height="14"
+                              className={`sm:w-4 sm:h-4 flex-shrink-0 ml-2 transition-transform ${isFolderDropdownOpen ? 'rotate-180' : ''}`}
+                            >
+                              <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                          </button>
+                          {isFolderDropdownOpen && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-10"
+                                onClick={() => setIsFolderDropdownOpen(false)}
+                              />
+                              <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-gray-800 rounded-lg shadow-2xl z-20 max-h-64 overflow-y-auto">
+                                {documentFolders.map((folder) => (
+                                  <button
+                                    key={folder}
+                                    onClick={() => {
+                                      setUploadFormData((prev) => ({ ...prev, folder }))
+                                      setIsFolderDropdownOpen(false)
+                                    }}
+                                    className="w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-gray-800 transition-colors text-white text-sm sm:text-base"
+                                  >
+                                    {folder}
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* File Upload Area */}
+                      <div>
+                        <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                          Select Multiple Files <span className="text-red-500">*</span>
+                        </label>
+                        <label className="flex flex-col items-center justify-center w-full h-40 sm:h-48 border-2 border-dashed border-gray-700 rounded-lg cursor-pointer hover:border-white/40 transition-colors bg-gray-900/50">
+                          <div className="flex flex-col items-center justify-center pt-4 sm:pt-5 pb-4 sm:pb-6 px-4">
+                            <svg
+                              width="32"
+                              height="32"
+                              className="sm:w-12 sm:h-12 text-gray-400 mb-2 sm:mb-4"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="17 8 12 3 7 8" />
+                              <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                            <p className="mb-1 sm:mb-2 text-xs sm:text-sm text-white font-medium text-center">
+                              Click to select multiple files or drag and drop
+                            </p>
+                            <p className="text-[10px] sm:text-xs text-gray-400 text-center">
+                              PDF, DOC, DOCX, or images (max. 10MB per file)
+                            </p>
+                          </div>
+                          <input
+                            type="file"
+                            className="hidden"
+                            multiple
+                            disabled={isUploading}
+                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || [])
+                              setBulkUploadFiles(files)
+                            }}
+                          />
+                        </label>
+                        {bulkUploadFiles.length > 0 && (
+                          <div className="mt-3 space-y-2 max-h-40 overflow-y-auto">
+                            <p className="text-xs sm:text-sm text-gray-400">
+                              {bulkUploadFiles.length} file(s) selected:
+                            </p>
+                            {bulkUploadFiles.map((file, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-2 bg-gray-900 rounded text-xs sm:text-sm text-gray-300">
+                                <span className="truncate flex-1">{file.name}</span>
+                                <button
+                                  onClick={() => {
+                                    setBulkUploadFiles(prev => prev.filter((_, i) => i !== idx))
+                                  }}
+                                  className="ml-2 text-red-400 hover:text-red-300"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Progress Bar */}
+                      {isUploading && bulkUploadProgress.total > 0 && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs sm:text-sm text-gray-400">
+                            <span>Uploading {bulkUploadProgress.current} of {bulkUploadProgress.total} files...</span>
+                            <span>{Math.round((bulkUploadProgress.current / bulkUploadProgress.total) * 100)}%</span>
+                          </div>
+                          <div className="w-full bg-gray-900 rounded-full h-2">
+                            <div
+                              className="bg-white h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${(bulkUploadProgress.current / bulkUploadProgress.total) * 100}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action Buttons */}
+                      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-4 pt-4 border-t border-gray-800">
+                        <button
+                          onClick={() => {
+                            setIsBulkUploadModalOpen(false)
+                            setBulkUploadFiles([])
+                            setBulkUploadProgress({ current: 0, total: 0 })
+                          }}
+                          disabled={isUploading}
+                          className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 text-sm sm:text-base"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!uploadFormData.folder || bulkUploadFiles.length === 0 || !currentCompany) {
+                              showToast('Please select a folder and at least one file.', 'warning')
+                              return
+                            }
+
+                            setIsUploading(true)
+                            setBulkUploadProgress({ current: 0, total: bulkUploadFiles.length })
+                            let successCount = 0
+                            let failCount = 0
+
+                            try {
+                              for (let i = 0; i < bulkUploadFiles.length; i++) {
+                                const file = bulkUploadFiles[i]
+                                try {
+                                  const fileExt = file.name.split('.').pop()
+                                  const fileName = `${file.name.replace(/\s+/g, '_').replace(/\.[^/.]+$/, '')}_${Date.now()}.${fileExt}`
+                                  const filePath = `${user?.id}/${currentCompany.id}/${fileName}`
+
+                                  // Upload to Storage
+                                  const { error: uploadError } = await supabase.storage
+                                    .from('company-documents')
+                                    .upload(filePath, file)
+
+                                  if (uploadError) throw uploadError
+
+                                  // Save metadata
+                                  const result = await uploadDocument(currentCompany.id, {
+                                    folderName: uploadFormData.folder,
+                                    documentName: file.name.replace(/\.[^/.]+$/, ''),
+                                    registrationDate: '',
+                                    expiryDate: '',
+                                    isPortalRequired: false,
+                                    portalEmail: '',
+                                    portalPassword: '',
+                                    frequency: 'one-time',
+                                    filePath: filePath,
+                                    fileName: file.name,
+                                  })
+
+                                  if (result.success) {
+                                    successCount++
+                                  } else {
+                                    failCount++
+                                  }
+                                } catch (error: any) {
+                                  console.error(`Error uploading ${file.name}:`, error)
+                                  failCount++
+                                }
+
+                                setBulkUploadProgress({ current: i + 1, total: bulkUploadFiles.length })
+                              }
+
+                              await fetchVaultDocuments()
+
+                              if (successCount > 0) {
+                                showToast(`Successfully uploaded ${successCount} file(s)${failCount > 0 ? `. ${failCount} failed.` : ''}`, successCount === bulkUploadFiles.length ? 'success' : 'warning')
+                              } else {
+                                showToast('Failed to upload files. Please try again.', 'error')
+                              }
+
+                              setIsBulkUploadModalOpen(false)
+                              setBulkUploadFiles([])
+                              setBulkUploadProgress({ current: 0, total: 0 })
+                            } catch (error: any) {
+                              console.error('Bulk upload failed:', error)
+                              showToast('Bulk upload failed: ' + error.message, 'error')
+                            } finally {
+                              setIsUploading(false)
+                            }
+                          }}
+                          disabled={isUploading || !uploadFormData.folder || bulkUploadFiles.length === 0}
+                          className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-white text-black rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center gap-2 font-medium disabled:opacity-50 text-sm sm:text-base"
+                        >
+                          {isUploading ? (
+                            <>
+                              <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <svg
+                                width="16"
+                                height="16"
+                                className="sm:w-[18px] sm:h-[18px]"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                              </svg>
+                              Upload {bulkUploadFiles.length} File{bulkUploadFiles.length !== 1 ? 's' : ''}
                             </>
                           )}
                         </button>
@@ -8073,7 +8843,7 @@ function DataRoomPageInner() {
                                 )
                                 
                                 if (selectedDocsWithPaths.length === 0) {
-                                  alert('No documents found to export. Please check your selection and financial year filter.')
+                                  showToast('No documents found to export. Please check your selection and financial year filter.', 'warning')
                                   return
                                 }
                                 
@@ -8150,19 +8920,19 @@ function DataRoomPageInner() {
                                 // Show result
                                 if (successCount > 0) {
                                   if (failCount > 0) {
-                                    alert(`Downloaded ${successCount} file(s) successfully. ${failCount} file(s) failed.`)
+                                    showToast(`Downloaded ${successCount} file(s) successfully. ${failCount} file(s) failed.`, 'warning')
                                   } else {
-                                    alert(`Successfully downloaded ${successCount} file(s)`)
+                                    showToast(`Successfully downloaded ${successCount} file(s)`, 'success')
                                   }
                                 } else {
-                                  alert('Failed to download files. Please try again or check your browser settings.')
+                                  showToast('Failed to download files. Please try again or check your browser settings.', 'error')
                                 }
                                 
                               setIsExportModalOpen(false)
                               setSelectedDocuments(new Set())
                               } catch (error: any) {
                                 console.error('Export failed:', error)
-                                alert('Export failed: ' + (error.message || 'Unknown error'))
+                                showToast('Export failed: ' + (error.message || 'Unknown error'), 'error')
                               }
                             }
                           }}
@@ -8437,7 +9207,7 @@ function DataRoomPageInner() {
                               return
                             }
                             if (!currentCompany) {
-                              alert('No company selected')
+                              showToast('No company selected', 'error')
                               return
                             }
 
@@ -8450,7 +9220,7 @@ function DataRoomPageInner() {
                                 .filter(e => e.includes('@'))
 
                               if (recipients.length === 0) {
-                                alert('Please enter valid email addresses')
+                                showToast('Please enter valid email addresses', 'warning')
                                 return
                               }
 
@@ -8464,7 +9234,7 @@ function DataRoomPageInner() {
                               })
 
                               if (result.success) {
-                                alert(result.message || 'Documents sent successfully!')
+                                showToast(result.message || 'Documents sent successfully!', 'success')
                                 setIsEmailTemplateOpen(false)
                                 setSelectedDocumentsToSend(new Set())
                                 setEmailData({
@@ -8473,11 +9243,11 @@ function DataRoomPageInner() {
                                   content: 'Please find the attached documents from our Compliance Vault.',
                                 })
                               } else {
-                                alert('Failed to send: ' + (result.error || 'Unknown error'))
+                                showToast('Failed to send: ' + (result.error || 'Unknown error'), 'error')
                               }
                             } catch (error: any) {
                               console.error('Error sending documents:', error)
-                              alert('Error sending documents: ' + error.message)
+                              showToast('Error sending documents: ' + error.message, 'error')
                             } finally {
                               setIsSendingEmail(false)
                             }
@@ -8841,6 +9611,180 @@ function DataRoomPageInner() {
           </div>
         </>
       )}
+
+      {/* Document Preview Modal */}
+      {isPreviewModalOpen && previewDocument && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
+            onClick={() => {
+              setIsPreviewModalOpen(false)
+              setPreviewDocument(null)
+            }}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+              style={{ backgroundColor: '#151515' }}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-800">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="text-gray-400 flex-shrink-0">
+                    {getFileTypeIcon(previewDocument.file_name || previewDocument.document_type)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-lg sm:text-xl font-light text-white truncate">{previewDocument.document_type}</h2>
+                    <p className="text-xs sm:text-sm text-gray-400 truncate">{previewDocument.folder_name}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => handleView(previewDocument.file_path)}
+                    className="px-3 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                  >
+                    Open Full
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsPreviewModalOpen(false)
+                      setPreviewDocument(null)
+                    }}
+                    className="text-gray-400 hover:text-white transition-colors p-1"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Preview Content */}
+              <div className="flex-1 overflow-auto p-4 sm:p-6">
+                {previewDocument.previewUrl && (
+                  <iframe
+                    src={previewDocument.previewUrl}
+                    className="w-full h-full min-h-[500px] border border-gray-800 rounded-lg"
+                    title="Document Preview"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Storage Breakdown Modal */}
+      {isStorageBreakdownOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
+            onClick={() => setIsStorageBreakdownOpen(false)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+              style={{ backgroundColor: '#151515' }}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-800">
+                <h2 className="text-2xl font-light text-white">Storage Breakdown</h2>
+                <button
+                  onClick={() => setIsStorageBreakdownOpen(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 space-y-6">
+                {/* Overall Stats */}
+                <div className="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-400 text-sm">Total Storage</span>
+                    <span className="text-white font-medium">4.2 GB / 10 GB</span>
+                  </div>
+                  <div className="w-full bg-gray-800 rounded-full h-2.5">
+                    <div className="bg-white h-2.5 rounded-full" style={{ width: '42%' }}></div>
+                  </div>
+                  <p className="text-gray-500 text-xs mt-2">42% used</p>
+                </div>
+
+                {/* Breakdown by Folder */}
+                <div>
+                  <h3 className="text-white font-medium mb-4">Storage by Folder</h3>
+                  <div className="space-y-3">
+                    {documentFolders.map((folder) => {
+                      const folderDocs = vaultDocuments.filter(d => d.folder_name === folder)
+                      const folderSize = folderDocs.length * 0.5 // Mock size calculation
+                      return (
+                        <div key={folder} className="flex items-center justify-between p-3 bg-gray-900 rounded-lg border border-gray-800">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm truncate">{folder}</p>
+                            <p className="text-gray-400 text-xs">{folderDocs.length} documents</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-white text-sm font-medium">{folderSize.toFixed(1)} GB</p>
+                            <p className="text-gray-400 text-xs">{((folderSize / 4.2) * 100).toFixed(0)}%</p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Largest Files */}
+                <div>
+                  <h3 className="text-white font-medium mb-4">Largest Files</h3>
+                  <div className="space-y-2">
+                    {vaultDocuments
+                      .sort((a, b) => (b.file_size || 0) - (a.file_size || 0))
+                      .slice(0, 5)
+                      .map((doc) => (
+                        <div key={doc.id} className="flex items-center justify-between p-2 bg-gray-900 rounded border border-gray-800">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm truncate">{doc.document_type}</p>
+                            <p className="text-gray-400 text-xs truncate">{doc.folder_name}</p>
+                          </div>
+                          <p className="text-gray-400 text-xs ml-2">{(doc.file_size || 0) / (1024 * 1024)} MB</p>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                {/* Cleanup Suggestions */}
+                <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
+                  <h3 className="text-yellow-400 font-medium mb-2">Cleanup Suggestions</h3>
+                  <ul className="text-gray-300 text-sm space-y-1">
+                    <li>• Review expired documents for deletion</li>
+                    <li>• Archive old financial year documents</li>
+                    <li>• Remove duplicate files</li>
+                  </ul>
+                </div>
+
+                {/* Upgrade CTA */}
+                {4.2 / 10 > 0.8 && (
+                  <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                    <h3 className="text-blue-400 font-medium mb-2">Storage Almost Full</h3>
+                    <p className="text-gray-300 text-sm mb-3">You're using 80% of your storage. Consider upgrading your plan.</p>
+                    <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm">
+                      Upgrade Storage
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       <ToastContainer />
     </div>
   )
