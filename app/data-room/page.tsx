@@ -429,6 +429,9 @@ function DataRoomPageInner() {
     }
   }
 
+  // Get country configuration for current company (must be before fetchDetails)
+  const { countryCode: currentCountryCode, countryConfig: currentCountryConfig } = useCompanyCountry(currentCompany)
+
   // Fetch specific company details and directors when currentCompany changes
   useEffect(() => {
     async function fetchDetails() {
@@ -455,14 +458,32 @@ function DataRoomPageInner() {
 
         // Map to EntityDetails structure
         if (company) {
-          const mappedDetails: EntityDetails = {
-            companyName: company.name,
-            type: company.type.toUpperCase(),
-            regDate: new Date(company.incorporation_date).toLocaleDateString('en-US', {
+          // Get country config for date formatting (use current company's country)
+          const companyCountryCode = company.country_code || 'IN'
+          const { getCountryConfig } = await import('@/lib/config/countries')
+          const countryConfig = getCountryConfig(companyCountryCode)
+          
+          // Format date based on country config
+          const incorporationDate = new Date(company.incorporation_date)
+          let formattedDate = ''
+          if (countryConfig?.dateFormat === 'DD/MM/YYYY') {
+            formattedDate = incorporationDate.toLocaleDateString('en-GB', {
+              day: '2-digit',
+              month: 'long',
+              year: 'numeric'
+            })
+          } else {
+            formattedDate = incorporationDate.toLocaleDateString('en-US', {
               month: 'long',
               day: 'numeric',
               year: 'numeric'
-            }),
+            })
+          }
+          
+          const mappedDetails: EntityDetails = {
+            companyName: company.name,
+            type: company.type.toUpperCase(),
+            regDate: formattedDate,
             pan: company.pan || 'Not Provided',
             cin: company.cin,
             address: company.address,
@@ -2596,15 +2617,15 @@ function DataRoomPageInner() {
                   <div className="text-white text-base sm:text-lg font-medium">{entityDetails.regDate}</div>
                 </div>
 
-                {/* PAN */}
+                {/* Tax ID (country-specific label) */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">PAN</label>
+                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">{countryConfig.labels.taxId}</label>
                   <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.pan}</div>
                 </div>
 
-                {/* CIN */}
+                {/* Registration ID (country-specific label) */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">CIN</label>
+                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">{countryConfig.labels.registrationId}</label>
                   <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.cin}</div>
                 </div>
 
@@ -2640,7 +2661,7 @@ function DataRoomPageInner() {
                           <option value="">Select a director to view profile</option>
                           {entityDetails.directors.map((director) => (
                             <option key={director.id} value={director.id}>
-                              {director.firstName} {director.middleName} {director.lastName} {director.din ? `(DIN: ${director.din})` : ''}
+                              {director.firstName} {director.middleName} {director.lastName} {director.din ? `(${countryConfig.labels.directorId || 'Director ID'}: ${director.din})` : ''}
                             </option>
                           ))}
                         </select>
@@ -2690,13 +2711,13 @@ function DataRoomPageInner() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                   {director.din && (
                                     <div className="p-3 bg-black border border-white/10 rounded-lg">
-                                      <div className="text-xs text-gray-500 mb-1">DIN Number</div>
+                                      <div className="text-xs text-gray-500 mb-1">{countryConfig.labels.directorId || 'Director ID'}</div>
                                       <div className="text-white font-mono text-sm sm:text-base break-all">{director.din}</div>
                                     </div>
                                   )}
                                   {director.pan && (
                                     <div className="p-3 bg-black border border-white/10 rounded-lg">
-                                      <div className="text-xs text-gray-500 mb-1">PAN Number</div>
+                                      <div className="text-xs text-gray-500 mb-1">{countryConfig.labels.taxId}</div>
                                       <div className="text-white font-mono text-sm sm:text-base break-all">{director.pan}</div>
                                     </div>
                                   )}
