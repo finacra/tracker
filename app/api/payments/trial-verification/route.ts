@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Store payment record in database
+    // Note: billing_cycle is required (NOT NULL), so we use 'trial' for trial verification payments
     const { data: paymentData, error: paymentError } = await supabase
       .from('payments')
       .insert({
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
         currency: 'INR',
         status: 'pending',
         tier: tier || null,
-        billing_cycle: null,
+        billing_cycle: 'trial', // Use 'trial' for trial verification (one-time payment)
         receipt: order.receipt,
         notes: order.notes as any,
         payment_type: 'trial_verification', // Mark as trial verification
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
         currency: 'INR',
         status: 'pending',
         tier: tier || null,
-        billing_cycle: null,
+        billing_cycle: 'trial',
         receipt: order.receipt,
         payment_type: 'trial_verification',
       })

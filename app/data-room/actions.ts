@@ -2618,7 +2618,9 @@ export async function bulkCreateComplianceTemplates(
     possible_legal_action: string | null
     is_critical: boolean
     is_active: boolean
-  }[]
+  }[],
+  countryCode?: string,
+  applicableRegions?: string[]
 ): Promise<{ success: boolean; created: number; errors: string[] }> {
   try {
     const supabase = await createClient()
@@ -2728,6 +2730,8 @@ export async function bulkCreateComplianceTemplates(
           due_day: template.compliance_type === 'quarterly' ? template.due_day : template.due_day,
           due_date: template.due_date && template.due_date.trim() !== '' ? template.due_date : null,
           year_type: template.year_type || 'FY',  // Default to FY for backward compatibility
+          country_code: countryCode || 'IN',  // Default to India for backward compatibility
+          applicable_regions: applicableRegions || null,
           required_documents: Array.isArray(template.required_documents)
             ? template.required_documents
             : (template.required_documents ? [template.required_documents] : []),

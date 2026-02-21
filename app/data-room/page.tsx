@@ -6200,6 +6200,18 @@ function DataRoomPageInner() {
               </div>
             </div>
 
+            {/* Country Indicator */}
+            {currentCompany && (
+              <div className="mb-3 flex items-center gap-2 text-sm text-gray-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Country: <span className="text-white font-medium">{countryConfig.name}</span></span>
+                <span className="text-gray-600">•</span>
+                <span className="text-xs">Categories and templates are country-specific</span>
+              </div>
+            )}
+
             {/* Super Filters - Stack on Mobile */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
               {/* Financial Year Dropdown with Context */}
@@ -6574,8 +6586,8 @@ function DataRoomPageInner() {
                 {(() => {
                   // Get all unique categories from ALL requirements (before filtering) - dynamic, not hardcoded
                   const allCategories = Array.from(new Set((displayRequirements || []).map(req => req.category).filter(Boolean)))
-                  // Define preferred order for common categories, but include all others
-                  const preferredOrder = ['Income Tax', 'GST', 'Payroll', 'RoC', 'Renewals', 'Prof.Tax', 'Other', 'Others']
+                  // Use country-specific categories as preferred order, fallback to dynamic categories
+                  const preferredOrder = countryConfig.compliance.defaultCategories || ['Income Tax', 'GST', 'Payroll', 'RoC', 'Renewals', 'Prof.Tax', 'Other', 'Others']
                   const categoryOrder = [
                     ...preferredOrder.filter(cat => allCategories.includes(cat)),
                     ...allCategories.filter(cat => !preferredOrder.includes(cat) && cat).sort((a, b) => {
@@ -7889,13 +7901,28 @@ function DataRoomPageInner() {
                         className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                       >
                         <option value="">Select Category</option>
-                        <option value="Income Tax">Income Tax</option>
-                        <option value="GST">GST</option>
-                        <option value="Payroll">Payroll</option>
-                        <option value="RoC">RoC</option>
-                        <option value="Renewals">Renewals</option>
-                        <option value="Others">Others</option>
+                        {/* Country-specific categories */}
+                        {countryConfig.compliance.defaultCategories.map((cat) => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                        {/* Dynamic categories from existing requirements (if not in default list) */}
+                        {(() => {
+                          const allCategories = Array.from(new Set((regulatoryRequirements || []).map(req => req.category).filter(Boolean)))
+                          const defaultCats = new Set(countryConfig.compliance.defaultCategories)
+                          const additionalCats = allCategories.filter(cat => cat && !defaultCats.has(cat)).sort()
+                          return additionalCats.length > 0 ? (
+                            <>
+                              {additionalCats.length > 0 && <option disabled>--- Other Categories ---</option>}
+                              {additionalCats.map((cat) => (
+                                <option key={cat} value={cat}>{cat}</option>
+                              ))}
+                            </>
+                          ) : null
+                        })()}
                       </select>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Categories are specific to {countryConfig.name}
+                      </p>
                     </div>
 
                     {/* Requirement Name */}

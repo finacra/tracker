@@ -25,6 +25,8 @@ import {
 import { bulkCreateComplianceTemplates } from '@/app/data-room/actions'
 import { resolveErrorsWithAI } from './actions'
 import { createClient } from '@/utils/supabase/client'
+import CountrySelector from '@/components/CountrySelector'
+import { getCountryConfig } from '@/lib/config/countries'
 
 const STORAGE_KEY_PREFIX = 'bulk_upload_spreadsheet_data'
 
@@ -83,6 +85,9 @@ function BulkUploadPage() {
   const [msSearch, setMsSearch] = useState('')
   const [msPosition, setMsPosition] = useState({ top: 100, left: 100 })
   const msRef = useRef<HTMLDivElement>(null)
+  
+  // Country selection for templates
+  const [selectedCountry, setSelectedCountry] = useState<string>('IN')
 
   // Get user-specific storage key
   const getStorageKey = useCallback(() => {
@@ -719,7 +724,9 @@ function BulkUploadPage() {
     
     try {
       const templates = rows.map(row => csvRowToTemplate(row))
-      const result = await bulkCreateComplianceTemplates(templates)
+      const countryConfig = getCountryConfig(selectedCountry)
+      const applicableRegions = countryConfig?.region ? [countryConfig.region] : undefined
+      const result = await bulkCreateComplianceTemplates(templates, selectedCountry, applicableRegions)
       setUploadResult({ created: result.created, errors: result.errors })
       
       if (result.success) {
@@ -1018,6 +1025,16 @@ function BulkUploadPage() {
                 </button>
               </div>
             )}
+            {/* Country Selector */}
+            <div className="flex items-center gap-2">
+              <label className="text-white text-sm font-medium whitespace-nowrap">Country:</label>
+              <div className="w-48">
+                <CountrySelector
+                  value={selectedCountry}
+                  onChange={setSelectedCountry}
+                />
+              </div>
+            </div>
             <button
               onClick={handleUpload}
               disabled={isUploading || !validation?.valid || nonEmptyRowCount === 0}
