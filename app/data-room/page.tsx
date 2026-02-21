@@ -429,9 +429,6 @@ function DataRoomPageInner() {
     }
   }
 
-  // Get country configuration for current company (must be before fetchDetails)
-  const { countryCode: currentCountryCode, countryConfig: currentCountryConfig } = useCompanyCountry(currentCompany)
-
   // Fetch specific company details and directors when currentCompany changes
   useEffect(() => {
     async function fetchDetails() {
