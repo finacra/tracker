@@ -195,21 +195,27 @@ export async function completeOnboarding(
       .single()
 
     const userHasSubscription = userSubData && (userSubData as any).has_subscription
+    const userTier = userSubData ? (userSubData as any).tier : null
+    const isEnterprise = userTier === 'enterprise'
 
     // #region agent log
     console.log('[completeOnboarding] Subscription check:', {
       companyId: company.id,
       companyHasSubscription,
       userHasSubscription,
+      userTier,
+      isEnterprise,
       companySubData,
       userSubData
     });
     // #endregion
 
-    // Always create a company-level trial for new companies, regardless of user-level subscription
-    // This ensures each company gets its own 15-day trial period
-    if (!companyHasSubscription) {
-      console.log('[completeOnboarding] Creating company-level trial for new company:', company.id)
+    // Logic:
+    // - Enterprise tier: User-level subscription/trial covers ALL companies (don't create company-level trial)
+    // - Starter/Professional tiers: Each company needs its own subscription/trial (create company-level trial)
+    // - If user has no subscription: Create company-level trial for the new company
+    if (!companyHasSubscription && !isEnterprise) {
+      console.log('[completeOnboarding] Creating company-level trial for new company (not Enterprise):', company.id)
       
       // Use RPC function to create company trial
       const { data: trialData, error: trialError } = await adminSupabase
@@ -229,6 +235,8 @@ export async function completeOnboarding(
       } else {
         console.log('[completeOnboarding] Trial created successfully for company:', company.id)
       }
+    } else if (isEnterprise) {
+      console.log('[completeOnboarding] User has Enterprise subscription/trial, company will use it (no company-level trial needed)')
     } else {
       console.log('[completeOnboarding] Company already has subscription/trial, skipping trial creation')
     }
