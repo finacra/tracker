@@ -115,7 +115,10 @@ function DataRoomPageInner() {
   const { user, loading: authLoading } = useAuth()
   // Memoize supabase client to prevent infinite re-renders
   const supabase = useMemo(() => createClient(), [])
-  const initialCompanyId = searchParams.get('company_id') || searchParams.get('company')
+  // Memoize initialCompanyId to prevent unnecessary re-renders
+  const initialCompanyId = useMemo(() => {
+    return searchParams.get('company_id') || searchParams.get('company') || null
+  }, [searchParams])
   
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null)
   const [companies, setCompanies] = useState<Company[]>([])
@@ -289,11 +292,22 @@ function DataRoomPageInner() {
           const selected = preferred || allCompanies[0]
           console.log('[fetchCompanies] Setting companies and current company:', selected.name)
           setCompanies(allCompanies)
-          setCurrentCompany(selected)
+          // Only update currentCompany if it's different to prevent infinite loops
+          setCurrentCompany(prev => {
+            // If the company ID is the same, keep the previous reference to prevent re-renders
+            if (prev?.id === selected.id) {
+              return prev
+            }
+            return selected
+          })
         } else {
           console.log('[fetchCompanies] No companies found, clearing state')
           setCompanies([])
-          setCurrentCompany(null)
+          setCurrentCompany(prev => {
+            // Only update if not already null to prevent unnecessary re-renders
+            if (prev === null) return prev
+            return null
+          })
         }
       } catch (err) {
         console.error('[fetchCompanies] ERROR fetching companies:', err)
