@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { verifyCIN, verifyDIN, type CINDirectorData, type DINDirectorData } from '@/lib/api/cin-din'
 import { 
@@ -53,6 +53,7 @@ export default function OnboardingPage() {
 
   const [countryCode, setCountryCode] = useState<string>('IN')
   const { config: countryConfig } = useCountryConfig(countryCode)
+  const dateInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
     companyName: '',
@@ -1051,18 +1052,74 @@ export default function OnboardingPage() {
                   readOnly
                   value={formData.dateOfIncorporation ? formatDateForDisplay(formData.dateOfIncorporation) : ''}
                   placeholder="Select date"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors cursor-pointer pr-10 font-light pointer-events-none"
+                  onClick={() => {
+                    // #region agent log
+                    console.log('[DatePicker] Text input clicked, triggering date input', { 
+                      hasRef: !!dateInputRef.current,
+                      timestamp: Date.now() 
+                    });
+                    // #endregion
+                    // Trigger click on the hidden date input
+                    if (dateInputRef.current) {
+                      dateInputRef.current.focus();
+                      dateInputRef.current.click();
+                      // Try showPicker if available
+                      if (typeof dateInputRef.current.showPicker === 'function') {
+                        try {
+                          dateInputRef.current.showPicker();
+                          console.log('[DatePicker] showPicker() called successfully');
+                        } catch (err) {
+                          console.log('[DatePicker] showPicker() failed:', err);
+                        }
+                      }
+                    }
+                  }}
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors cursor-pointer pr-10 font-light"
                 />
                 <input
                   type="date"
+                  ref={dateInputRef}
                   id="dateOfIncorporation-hidden"
                   name="dateOfIncorporation"
                   value={formData.dateOfIncorporation}
-                  onChange={handleInputChange}
+                  onChange={(e) => {
+                    // #region agent log
+                    console.log('[DatePicker] onChange triggered', { value: e.target.value, timestamp: Date.now() });
+                    // #endregion
+                    handleInputChange(e);
+                  }}
+                  onClick={(e) => {
+                    // #region agent log
+                    console.log('[DatePicker] Date input onClick triggered', { 
+                      target: e.target, 
+                      currentTarget: e.currentTarget,
+                      hasShowPicker: typeof (e.currentTarget as any).showPicker === 'function',
+                      timestamp: Date.now() 
+                    });
+                    // #endregion
+                    // Try to show picker programmatically for better browser support
+                    const dateInput = e.currentTarget as HTMLInputElement;
+                    if (typeof dateInput.showPicker === 'function') {
+                      try {
+                        dateInput.showPicker();
+                        console.log('[DatePicker] showPicker() called successfully from onClick');
+                      } catch (err) {
+                        console.log('[DatePicker] showPicker() failed in onClick:', err);
+                      }
+                    }
+                  }}
+                  onFocus={(e) => {
+                    // #region agent log
+                    console.log('[DatePicker] onFocus triggered', { 
+                      target: e.target,
+                      timestamp: Date.now() 
+                    });
+                    // #endregion
+                  }}
                   className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                  style={{ zIndex: 10 }}
+                  style={{ zIndex: 20, pointerEvents: 'auto' }}
                 />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none z-0">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                     <line x1="16" y1="2" x2="16" y2="6" />
