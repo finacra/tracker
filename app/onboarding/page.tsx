@@ -1042,27 +1042,17 @@ export default function OnboardingPage() {
                   type="text"
                   readOnly
                   value={formData.dateOfIncorporation ? formatDateForDisplay(formData.dateOfIncorporation) : ''}
-                  onClick={() => {
-                    const dateInput = document.getElementById('dateOfIncorporation-hidden') as HTMLInputElement
-                    if (dateInput) {
-                      try {
-                        dateInput.showPicker?.()
-                      } catch {
-                        dateInput.click()
-                      }
-                    }
-                  }}
                   placeholder="Select date"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors cursor-pointer pr-10 font-light"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors cursor-pointer pr-10 font-light pointer-events-none"
                 />
-              <input
-                type="date"
+                <input
+                  type="date"
                   id="dateOfIncorporation-hidden"
-                name="dateOfIncorporation"
-                value={formData.dateOfIncorporation}
-                onChange={handleInputChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  style={{ pointerEvents: 'auto' }}
+                  name="dateOfIncorporation"
+                  value={formData.dateOfIncorporation}
+                  onChange={handleInputChange}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                  style={{ zIndex: 10 }}
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
