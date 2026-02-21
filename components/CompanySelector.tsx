@@ -43,19 +43,23 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
       const statusMap = new Map<string, CompanySubscriptionStatus>()
 
       try {
+        // Get current user for user-level subscription check
+        const { data: { user } } = await supabase.auth.getUser()
+        
         // Fetch status for all companies in parallel
         const statusPromises = companies.map(async (company) => {
           try {
-            const { data, error } = await supabase
+            // First check company-level subscription (Starter/Professional)
+            const { data: companyData, error: companyError } = await supabase
               .rpc('check_company_subscription', { p_company_id: company.id })
               .single()
 
             // #region agent log
-            console.log(`[CompanySelector] RPC result for company ${company.id}:`, { data, error, companyName: company.name });
+            console.log(`[CompanySelector] Company subscription RPC result for ${company.id}:`, { data: companyData, error: companyError, companyName: company.name });
             // #endregion
 
-            if (!error && data) {
-              const subscriptionData = data as {
+            if (!companyError && companyData && (companyData as any).has_subscription) {
+              const subscriptionData = companyData as {
                 has_subscription: boolean
                 tier: string
                 is_trial: boolean
@@ -64,7 +68,7 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
               }
               
               // #region agent log
-              console.log(`[CompanySelector] Parsed subscription data for ${company.id}:`, {
+              console.log(`[CompanySelector] Company-level subscription found for ${company.id}:`, {
                 has_subscription: subscriptionData.has_subscription,
                 is_trial: subscriptionData.is_trial,
                 trial_days_remaining: subscriptionData.trial_days_remaining,
@@ -79,17 +83,63 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
                 trialDaysRemaining: subscriptionData.trial_days_remaining,
                 tier: subscriptionData.tier,
               })
-            } else {
-              // #region agent log
-              console.log(`[CompanySelector] No subscription data for ${company.id}, error:`, error);
-              // #endregion
-              // No subscription found
-              statusMap.set(company.id, {
-                companyId: company.id,
-                hasSubscription: false,
-                isTrial: false,
-              })
+              return // Company has subscription, no need to check user-level
             }
+
+            // If no company-level subscription, check user-level (Enterprise)
+            if (user) {
+              try {
+                const { data: userData, error: userError } = await supabase
+                  .rpc('check_user_subscription', { target_user_id: user.id })
+                  .single()
+
+                // #region agent log
+                console.log(`[CompanySelector] User subscription RPC result for ${company.id}:`, { data: userData, error: userError });
+                // #endregion
+
+                if (!userError && userData && (userData as any).has_subscription) {
+                  const userSubData = userData as {
+                    has_subscription: boolean
+                    tier: string
+                    is_trial: boolean
+                    trial_days_remaining: number
+                    company_limit: number
+                    user_limit: number
+                  }
+                  
+                  // #region agent log
+                  console.log(`[CompanySelector] User-level subscription found for ${company.id}:`, {
+                    has_subscription: userSubData.has_subscription,
+                    is_trial: userSubData.is_trial,
+                    trial_days_remaining: userSubData.trial_days_remaining,
+                    tier: userSubData.tier
+                  });
+                  // #endregion
+                  
+                  // Enterprise tier covers all companies
+                  statusMap.set(company.id, {
+                    companyId: company.id,
+                    hasSubscription: userSubData.has_subscription,
+                    isTrial: userSubData.is_trial,
+                    trialDaysRemaining: userSubData.trial_days_remaining,
+                    tier: userSubData.tier,
+                  })
+                  return
+                }
+              } catch (userErr) {
+                console.log(`[CompanySelector] User subscription check failed for ${company.id}:`, userErr)
+              }
+            }
+
+            // #region agent log
+            console.log(`[CompanySelector] No subscription found for ${company.id}`);
+            // #endregion
+            // No subscription found at either level
+            statusMap.set(company.id, {
+              companyId: company.id,
+              hasSubscription: false,
+              isTrial: false,
+            })
           } catch (err) {
             console.error(`Error checking subscription for company ${company.id}:`, err)
             statusMap.set(company.id, {
