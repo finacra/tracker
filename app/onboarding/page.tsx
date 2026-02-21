@@ -86,6 +86,15 @@ export default function OnboardingPage() {
     // Removed redirect for users with existing companies - they should be able to create new companies
   }, [user, loading, router])
 
+  // Update yearType when country changes - MUST be before conditional returns
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      yearType: countryConfig.financialYear.type,
+      countryCode: countryCode,
+    }))
+  }, [countryCode, countryConfig])
+
   // Show loading state while checking auth or subscription
   if (loading || subLoading) {
     return (
@@ -189,15 +198,6 @@ export default function OnboardingPage() {
       }),
     }))
   }
-
-  // Update yearType when country changes
-  useEffect(() => {
-    setFormData((prev) => ({
-      ...prev,
-      yearType: countryConfig.financialYear.type,
-      countryCode: countryCode,
-    }))
-  }, [countryCode, countryConfig])
 
   const handleCINVerification = async () => {
     // Only allow CIN verification for India

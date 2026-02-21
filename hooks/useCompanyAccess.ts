@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from './useAuth'
 import { createClient } from '@/utils/supabase/client'
 import type { CompanyAccessType } from '@/lib/subscriptions/subscription'
@@ -52,7 +52,13 @@ interface CompanyAccessResult {
  */
 export function useCompanyAccess(companyId: string | null): CompanyAccessResult {
   const { user, loading: authLoading } = useAuth()
-  const supabase = createClient()
+  // #region agent log
+  const supabase = useMemo(() => {
+    const client = createClient();
+    fetch('http://127.0.0.1:7243/ingest/119daee5-9131-427a-b4c9-395a6aa7534a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useCompanyAccess.ts:55',message:'createClient called',data:{companyId,clientRef:client.toString().substring(0,20)},timestamp:Date.now(),runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    return client;
+  }, []);
+  // #endregion
   
   const [hasAccess, setHasAccess] = useState(false)
   const [accessType, setAccessType] = useState<CompanyAccessType>(null)
@@ -64,6 +70,9 @@ export function useCompanyAccess(companyId: string | null): CompanyAccessResult 
   const [ownerSubscriptionExpired, setOwnerSubscriptionExpired] = useState(false)
 
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/119daee5-9131-427a-b4c9-395a6aa7534a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useCompanyAccess.ts:66',message:'useEffect triggered',data:{companyId,userId:user?.id,authLoading,supabaseRef:supabase.toString().substring(0,20)},timestamp:Date.now(),runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     // Reset state when companyId changes - this prevents stale state from causing incorrect redirects
     if (companyId) {
       setIsLoading(true)
@@ -379,7 +388,13 @@ export function useUserSubscription(): {
   isLoading: boolean
 } {
   const { user, loading: authLoading } = useAuth()
-  const supabase = createClient()
+  // #region agent log
+  const supabase = useMemo(() => {
+    const client = createClient();
+    fetch('http://127.0.0.1:7243/ingest/119daee5-9131-427a-b4c9-395a6aa7534a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useCompanyAccess.ts:391',message:'createClient called in useUserSubscription',data:{clientRef:client.toString().substring(0,20)},timestamp:Date.now(),runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    return client;
+  }, []);
+  // #endregion
   
   const [hasSubscription, setHasSubscription] = useState(false)
   const [tier, setTier] = useState('none')
@@ -391,6 +406,9 @@ export function useUserSubscription(): {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/119daee5-9131-427a-b4c9-395a6aa7534a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useCompanyAccess.ts:393',message:'useUserSubscription useEffect triggered',data:{userId:user?.id,authLoading,supabaseRef:supabase.toString().substring(0,20)},timestamp:Date.now(),runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     async function checkSubscription() {
       if (authLoading) return
       
@@ -471,13 +489,22 @@ export function useAnyCompanyAccess(): {
   isLoading: boolean
 } {
   const { user, loading: authLoading } = useAuth()
-  const supabase = createClient()
+  // #region agent log
+  const supabase = useMemo(() => {
+    const client = createClient();
+    fetch('http://127.0.0.1:7243/ingest/119daee5-9131-427a-b4c9-395a6aa7534a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useCompanyAccess.ts:492',message:'createClient called in useAnyCompanyAccess',data:{clientRef:client.toString().substring(0,20)},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    return client;
+  }, []);
+  // #endregion
   
   const [hasAnyAccess, setHasAnyAccess] = useState(false)
   const [accessibleCompanyIds, setAccessibleCompanyIds] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/119daee5-9131-427a-b4c9-395a6aa7534a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useCompanyAccess.ts:480',message:'useAnyCompanyAccess useEffect triggered',data:{userId:user?.id,authLoading,supabaseRef:supabase.toString().substring(0,20)},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     async function checkAnyAccess() {
       if (authLoading) return
       
