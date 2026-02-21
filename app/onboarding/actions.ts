@@ -24,6 +24,7 @@ export async function completeOnboarding(
     industryCategories: string[]
     otherIndustryCategory?: string
     yearType?: 'FY' | 'CY'
+    countryCode?: string
     companyStage?: string
     confidenceScore?: string
     documents: Array<{ type: string; path: string; name: string }>
@@ -38,6 +39,11 @@ export async function completeOnboarding(
   if (authError || !user) {
     throw new Error('Unauthorized')
   }
+
+  // Get region from country code
+  const { getCountryConfig } = await import('@/lib/config/countries')
+  const countryConfig = getCountryConfig(formData.countryCode || 'IN')
+  const region = countryConfig?.region || 'APAC'
 
   // 1. Insert Company into public schema
   // For backward compatibility, set industry to first industry from industries array
@@ -75,6 +81,8 @@ export async function completeOnboarding(
       stage: formData.companyStage || null,
       confidence_score: formData.confidenceScore || null,
       year_type: formData.yearType || 'FY',  // Default to FY for backward compatibility
+      country_code: formData.countryCode || 'IN',  // Default to India for backward compatibility
+      region: region,
       ex_directors: exDirectorsArray  // Store as TEXT[] array
     })
     .select()

@@ -13,28 +13,8 @@ import { useUserSubscription } from '@/hooks/useCompanyAccess'
 import { createClient } from '@/utils/supabase/client'
 import { completeOnboarding } from './actions'
 import { INDUSTRIES } from '@/lib/compliance/csv-template'
-
-const DOCUMENT_TYPES = [
-  'Certificate of Incorporation',
-  'MOA (Memorandum of Association)',
-  'AOA (Articles of Association)',
-  'Rental Deed',
-  'DIN Certificate',
-  'PAN',
-  'TAN',
-]
-
-const INDUSTRY_CATEGORIES = [
-  'Startups & MSMEs',
-  'Large Enterprises',
-  'NGOs & Section 8 Companies',
-  'Healthcare & Education',
-  'Real Estate & Construction',
-  'IT & Technology Services',
-  'Retail & Manufacturing',
-  'Food & Hospitality',
-  'Other',
-]
+import { useCountryConfig } from '@/hooks/useCountryConfig'
+import CountrySelector from '@/components/CountrySelector'
 
 interface Director {
   id: string
@@ -70,6 +50,9 @@ export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1) // 1 = Company Details, 2 = Documents
   const [exDirectors, setExDirectors] = useState<string>('') // Comma-separated or newline-separated names
 
+  const [countryCode, setCountryCode] = useState<string>('IN')
+  const { config: countryConfig } = useCountryConfig(countryCode)
+
   const [formData, setFormData] = useState({
     companyName: '',
     companyType: '',
@@ -87,7 +70,8 @@ export default function OnboardingPage() {
     dateOfIncorporation: '',
     industryCategories: [] as string[],
     otherIndustryCategory: '',
-    yearType: 'FY' as 'FY' | 'CY',  // Default to FY for Indian market
+    yearType: 'FY' as 'FY' | 'CY',
+    countryCode: 'IN',
     documents: {} as Record<string, File | null>,
   })
 
@@ -190,9 +174,38 @@ export default function OnboardingPage() {
     }
   }
 
+  // Handle country change
+  const handleCountryChange = (newCountryCode: string) => {
+    setCountryCode(newCountryCode)
+    setFormData((prev) => ({
+      ...prev,
+      countryCode: newCountryCode,
+      yearType: countryConfig.financialYear.type,
+      // Reset CIN/DIN related fields if switching away from India
+      ...(newCountryCode !== 'IN' && {
+        cinNumber: '',
+        panNumber: '',
+      }),
+    }))
+  }
+
+  // Update yearType when country changes
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      yearType: countryConfig.financialYear.type,
+      countryCode: countryCode,
+    }))
+  }, [countryCode, countryConfig])
+
   const handleCINVerification = async () => {
+    // Only allow CIN verification for India
+    if (countryCode !== 'IN') {
+      return
+    }
+    
     if (!formData.cinNumber.trim()) {
-      setErrors((prev) => ({ ...prev, cinNumber: 'Please enter CIN number' }))
+      setErrors((prev) => ({ ...prev, cinNumber: `Please enter ${countryConfig.labels.registrationId}` }))
       return
     }
 
@@ -368,6 +381,11 @@ export default function OnboardingPage() {
   }
 
   const handleAddDirectorByDIN = async () => {
+    // Only allow DIN verification for India
+    if (countryCode !== 'IN') {
+      return
+    }
+    
     if (!newDirectorDIN.trim()) {
       setErrors((prev) => ({ ...prev, newDirectorDIN: 'Please enter DIN number' }))
       return
@@ -677,6 +695,7 @@ export default function OnboardingPage() {
       // 2. Call the Server Action with Service Role privileges
       const result = await completeOnboarding({
         ...formData,
+        countryCode: countryCode,
         companyStage: entityDetection?.companyStage,
         confidenceScore: entityDetection?.confidenceScore,
         documents: uploadedDocuments,
@@ -781,10 +800,16 @@ export default function OnboardingPage() {
 
             {currentStep === 1 ? (
               <>
-                {/* CIN Number - MOVED TO TOP */}
+                {/* Country Selector - FIRST FIELD */}
+                <CountrySelector
+                  value={countryCode}
+                  onChange={handleCountryChange}
+                />
+
+                {/* Registration ID / CIN Number */}
                 <div>
                   <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
-                    CIN Number <span className="text-red-500">*</span>
+                    {countryConfig.labels.registrationId} <span className="text-red-500">*</span>
                   </label>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
@@ -792,31 +817,33 @@ export default function OnboardingPage() {
                       name="cinNumber"
                       value={formData.cinNumber}
                       onChange={handleInputChange}
-                      placeholder="Enter CIN number"
+                      placeholder={`Enter ${countryConfig.labels.registrationId}`}
                       className="flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                     />
-                    <button
-                      type="button"
-                      onClick={handleCINVerification}
-                      disabled={isVerifyingCIN || !formData.cinNumber.trim()}
-                      className="px-4 sm:px-6 py-2 sm:py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap font-light"
-                    >
-                      {isVerifyingCIN ? (
-                        <>
-                          <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Verifying...
-                        </>
-                      ) : (
-                        <>
-                          <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                            <polyline points="22 4 12 14.01 9 11.01" />
-                          </svg>
-                          <span className="hidden sm:inline">Verify CIN</span>
-                          <span className="sm:hidden">Verify</span>
-                        </>
-                      )}
-                    </button>
+                    {countryConfig.onboarding.verificationServices?.registration && (
+                      <button
+                        type="button"
+                        onClick={handleCINVerification}
+                        disabled={isVerifyingCIN || !formData.cinNumber.trim()}
+                        className="px-4 sm:px-6 py-2 sm:py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap font-light"
+                      >
+                        {isVerifyingCIN ? (
+                          <>
+                            <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Verifying...
+                          </>
+                        ) : (
+                          <>
+                            <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                              <polyline points="22 4 12 14.01 9 11.01" />
+                            </svg>
+                            <span className="hidden sm:inline">Verify {countryConfig.labels.registrationId}</span>
+                            <span className="sm:hidden">Verify</span>
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                   {errors.cinNumber && (
                     <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.cinNumber}</p>
@@ -866,29 +893,28 @@ export default function OnboardingPage() {
                 }`}
               >
                 <option value="">Select company type</option>
-                <option value="private">Private Limited</option>
-                <option value="public">Public Limited</option>
-                <option value="llp">LLP (Limited Liability Partnership)</option>
-                <option value="partnership">Partnership</option>
-                <option value="sole">Sole Proprietorship</option>
-                <option value="ngo">NGO / Section 8</option>
+                {countryConfig.onboarding.entityTypes.map((entityType) => (
+                  <option key={entityType} value={entityType.toLowerCase().replace(/\s+/g, '-')}>
+                    {entityType}
+                  </option>
+                ))}
               </select>
               {errors.companyType && (
                 <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.companyType}</p>
               )}
             </div>
 
-            {/* PAN Number */}
+            {/* Tax ID / PAN Number */}
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                  PAN Number <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
+                  {countryConfig.labels.taxId} <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
                 </label>
                 <input
                   type="text"
                   name="panNumber"
                   value={formData.panNumber}
                   onChange={handleInputChange}
-                  placeholder="ABCDE1234F"
+                  placeholder={`Enter ${countryConfig.labels.taxId}`}
                   className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.panNumber && (
@@ -965,7 +991,7 @@ export default function OnboardingPage() {
                 )}
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                {INDUSTRY_CATEGORIES.map((category) => (
+                {[...countryConfig.onboarding.industryCategories, ...(countryConfig.onboarding.industryCategories.includes('Other') ? [] : ['Other'])].map((category) => (
                   <label
                     key={category}
                     className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gray-900 border border-gray-700 rounded-lg transition-colors cursor-pointer hover:border-gray-600"
@@ -1108,7 +1134,7 @@ export default function OnboardingPage() {
               </div>
               <div>
                 <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
-                  State <span className="text-red-500">*</span>
+                  {countryConfig.labels.state || 'State'} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -1124,14 +1150,14 @@ export default function OnboardingPage() {
               </div>
               <div className="sm:col-span-2 md:col-span-1">
                 <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
-                  PIN Code <span className="text-red-500">*</span>
+                  {countryConfig.labels.postalCode} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   name="pinCode"
                   value={formData.pinCode}
                   onChange={handleInputChange}
-                  placeholder="PIN code"
+                  placeholder={countryConfig.labels.postalCode}
                   className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.pinCode && (
@@ -1235,13 +1261,13 @@ export default function OnboardingPage() {
                     <line x1="12" y1="5" x2="12" y2="19" />
                     <line x1="5" y1="12" x2="19" y2="12" />
                   </svg>
-                  <span className="hidden sm:inline">Add Director by DIN</span>
+                  <span className="hidden sm:inline">Add Director{countryConfig.onboarding.verificationServices?.director ? ' by DIN' : ''}</span>
                   <span className="sm:hidden">Add Director</span>
                 </button>
               </div>
 
-              {/* Add Director by DIN */}
-              {showAddDirector && (
+              {/* Add Director by DIN (only for India) */}
+              {showAddDirector && countryConfig.onboarding.verificationServices?.director && (
                 <div className="mb-4 p-3 sm:p-4 bg-gray-900 border border-gray-700 rounded-lg">
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
@@ -1431,7 +1457,7 @@ export default function OnboardingPage() {
                 Required Documents <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
               </label>
               <div className="space-y-3 sm:space-y-4">
-                {DOCUMENT_TYPES.map((docType) => (
+                {countryConfig.onboarding.documentTypes.map((docType) => (
                   <div key={docType}>
                     <label className="block text-xs sm:text-sm text-gray-400 mb-1.5 sm:mb-2 font-light">
                       {docType}

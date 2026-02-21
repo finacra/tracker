@@ -16,6 +16,8 @@ interface Company {
   name: string
   type: string
   year: string
+  country_code?: string
+  region?: string
 }
 
 interface UserRole {
@@ -61,7 +63,7 @@ export default function TeamPage() {
         // Fetch companies owned by user
         const { data: ownedCompanies, error: ownedError } = await supabase
           .from('companies')
-          .select('id, name, type, incorporation_date')
+          .select('id, name, type, incorporation_date, country_code, region')
           .eq('user_id', user.id)
 
         if (ownedError) throw ownedError
@@ -120,7 +122,7 @@ export default function TeamPage() {
         if (invitedCompanyIds.length > 0) {
           const { data: invitedData, error: invitedError } = await supabase
             .from('companies')
-            .select('id, name, type, incorporation_date')
+            .select('id, name, type, incorporation_date, country_code, region')
             .in('id', invitedCompanyIds)
 
           if (invitedError) throw invitedError

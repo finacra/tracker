@@ -17,12 +17,17 @@ import { useCompanyAccess, useAnyCompanyAccess } from '@/hooks/useCompanyAccess'
 import { enrichComplianceRequirements, type EnrichedComplianceData } from '@/app/data-room/actions-enrichment'
 import { showToast } from '@/components/Toast'
 import ToastContainer from '@/components/Toast'
+import { getCurrentFinancialYear, parseFinancialYear, getFinancialYearMonths, isInFinancialYear as isInFinancialYearUtil } from '@/lib/utils/financial-year'
+import { formatCurrency } from '@/lib/utils/currency'
+import { useCompanyCountry } from '@/hooks/useCompanyCountry'
 
 interface Company {
   id: string
   name: string
   type: string
   year: string
+  country_code?: string
+  region?: string
 }
 
 interface Director {
@@ -162,7 +167,7 @@ function DataRoomPageInner() {
         // Fetch companies owned by user
         const { data: ownedCompanies, error: ownedError } = await supabase
           .from('companies')
-          .select('id, name, type, incorporation_date')
+          .select('id, name, type, incorporation_date, country_code, region')
           .eq('user_id', user.id)
 
         if (ownedError) throw ownedError
@@ -217,7 +222,7 @@ function DataRoomPageInner() {
           
           const { data: invitedData, error: invitedError } = await supabase
             .from('companies')
-            .select('id, name, type, incorporation_date')
+            .select('id, name, type, incorporation_date, country_code, region')
             .in('id', invitedCompanyIds)
 
           console.log('[fetchCompanies] Company details query result - Data:', invitedData, 'Error:', invitedError)
@@ -690,12 +695,25 @@ function DataRoomPageInner() {
     content: 'Please find the attached documents from our Compliance Vault.',
   })
 
-  // Generate financial years from 2019 to current year
+  // Get country configuration for current company (must be before financialYears)
+  const { countryCode, countryConfig } = useCompanyCountry(currentCompany)
+
+  // Generate financial years from 2019 to current year (country-aware)
   const currentYear = new Date().getFullYear()
-  const financialYears = Array.from({ length: currentYear - 2018 }, (_, i) => {
-    const year = 2019 + i
-    return `FY ${year}-${(year + 1).toString().slice(-2)}`
-  }).reverse()
+  const financialYears = useMemo(() => {
+    const years: string[] = []
+    for (let year = 2019; year <= currentYear; year++) {
+      // Generate FY based on country's FY start month
+      const config = countryConfig
+      if (config.financialYear.type === 'CY') {
+        years.push(`CY ${year}`)
+      } else {
+        // FY format: FY 2024-25
+        years.push(`FY ${year}-${(year + 1).toString().slice(-2)}`)
+      }
+    }
+    return years.reverse()
+  }, [currentYear, countryConfig])
   const [uploadFormData, setUploadFormData] = useState({
     folder: '',
     documentName: '',
@@ -1328,84 +1346,6 @@ function DataRoomPageInner() {
   const [inviteRole, setInviteRole] = useState('viewer')
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false)
 
-  // Tracker filters
-  // Calculate current financial year
-  // Note: Currently supports Indian FY (April-March), but structured to allow extension
-  const getCurrentFinancialYear = (yearType: 'FY' | 'CY' = 'FY'): string => {
-    const now = new Date()
-    const currentYear = now.getFullYear()
-    
-    if (yearType === 'CY') {
-      // Calendar Year: January to December
-      return `CY ${currentYear}`
-    }
-    
-    // Financial Year (Indian): April to March
-    const currentMonth = now.getMonth() // 0-11 (Jan = 0, Apr = 3)
-    
-    // If current month is Jan-Mar (0-2), FY is previous year to current year
-    // If current month is Apr-Dec (3-11), FY is current year to next year
-    if (currentMonth < 3) {
-      // Jan-Mar: FY is (currentYear - 1) - currentYear
-      const fyStart = currentYear - 1
-      return `FY ${fyStart}-${currentYear.toString().slice(-2)}`
-    } else {
-      // Apr-Dec: FY is currentYear - (currentYear + 1)
-      return `FY ${currentYear}-${(currentYear + 1).toString().slice(-2)}`
-    }
-  }
-
-  // Parse financial year string robustly
-  const parseFinancialYear = (fyStr: string | null | undefined): { startYear: number; endYear: number; type: 'FY' | 'CY' } | null => {
-    if (!fyStr) return null
-    
-    // Handle Calendar Year format: "CY 2024"
-    const cyMatch = fyStr.match(/^CY\s*(\d{4})$/i)
-    if (cyMatch) {
-      const year = parseInt(cyMatch[1], 10)
-      return { startYear: year, endYear: year, type: 'CY' }
-    }
-    
-    // Handle Financial Year format: "FY 2024-25" or "FY 2024-2025"
-    const fyMatch = fyStr.match(/^FY\s*(\d{4})\s*[-–]\s*(\d{2,4})$/i)
-    if (fyMatch) {
-      const startYear = parseInt(fyMatch[1], 10)
-      const endPart = fyMatch[2]
-      let endYear: number
-      
-      if (endPart.length === 2) {
-        // Two-digit year: "FY 2024-25" -> endYear = 2025
-        const century = Math.floor(startYear / 100) * 100
-        endYear = century + parseInt(endPart, 10)
-        // Handle century rollover (e.g., FY 2099-00 should be 2100, not 2099)
-        if (endYear < startYear) {
-          endYear += 100
-        }
-      } else {
-        // Four-digit year: "FY 2024-2025"
-        endYear = parseInt(endPart, 10)
-      }
-      
-      return { startYear, endYear, type: 'FY' }
-    }
-    
-    return null
-  }
-
-  // Get months included in a financial year (for context display)
-  const getFinancialYearMonths = (fyStr: string): string[] => {
-    const parsed = parseFinancialYear(fyStr)
-    if (!parsed) return []
-    
-    if (parsed.type === 'CY') {
-      // Calendar Year: All 12 months
-      return ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-    }
-    
-    // Financial Year (Indian): April to March
-    return ['April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March']
-  }
-
   // Get current month name
   const getCurrentMonth = (): string => {
     const months = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -1625,7 +1565,7 @@ function DataRoomPageInner() {
     if (/^\d+$/.test(penalty)) {
       const dailyRate = parseInt(penalty, 10)
       if (!isNaN(dailyRate) && dailyRate > 0) {
-        return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+        return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
       }
     }
 
@@ -1640,7 +1580,7 @@ function DataRoomPageInner() {
         if (!isNaN(maxCap) && maxCap > 0) {
           calculated = Math.min(calculated, maxCap)
         }
-        return `₹${Math.round(calculated).toLocaleString('en-IN')}`
+        return formatCurrency(Math.round(calculated), countryCode)
       }
     }
 
@@ -1665,7 +1605,7 @@ function DataRoomPageInner() {
           }
         }
         
-        return `₹${calculatedPenalty.toLocaleString('en-IN')}`
+        return formatCurrency(calculatedPenalty, countryCode)
       }
     }
 
@@ -1674,7 +1614,7 @@ function DataRoomPageInner() {
     if (dailyWithRangeMatch) {
       const dailyRate = parseFloat(dailyWithRangeMatch[1].replace(/,/g, ''))
       if (!isNaN(dailyRate) && dailyRate > 0) {
-        return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+        return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
       }
     }
     
@@ -1683,7 +1623,7 @@ function DataRoomPageInner() {
     if (interestPlusDailyMatch) {
       const dailyRate = parseFloat(interestPlusDailyMatch[1].replace(/,/g, ''))
       if (!isNaN(dailyRate) && dailyRate > 0) {
-        return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+        return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
       }
     }
     
@@ -1692,7 +1632,7 @@ function DataRoomPageInner() {
     if (rangeMatch && !penalty.includes('%') && !penalty.includes('/day')) {
       const minAmount = parseFloat(rangeMatch[1].replace(/,/g, ''))
       if (!isNaN(minAmount) && minAmount > 0) {
-        return `₹${Math.round(minAmount).toLocaleString('en-IN')} (minimum)`
+        return `${formatCurrency(Math.round(minAmount), countryCode)} (minimum)`
       }
     }
 
@@ -1706,7 +1646,7 @@ function DataRoomPageInner() {
           const amount = plainNumberMatch[0].replace(/,/g, '')
           const numAmount = parseFloat(amount)
           if (!isNaN(numAmount) && numAmount > 0) {
-            return `₹${numAmount.toLocaleString('en-IN')}`
+            return formatCurrency(numAmount, countryCode)
           }
         }
       } else {
@@ -1721,7 +1661,7 @@ function DataRoomPageInner() {
       const numAmount = parseFloat(amount)
       if (!isNaN(numAmount) && numAmount > 0) {
         const calculatedPenalty = numAmount * daysDelayed
-        return `₹${calculatedPenalty.toLocaleString('en-IN')}`
+        return formatCurrency(calculatedPenalty, countryCode)
       }
     }
 
@@ -1752,7 +1692,7 @@ function DataRoomPageInner() {
             }
             
             if (interest > 0) {
-              return `₹${Math.round(interest).toLocaleString('en-IN')} (Interest @ ${rate}%/${period.includes('month') ? 'month' : 'year'} on ₹${penaltyBaseAmount.toLocaleString('en-IN')})`
+              return `${formatCurrency(Math.round(interest), countryCode)} (Interest @ ${rate}%/${period.includes('month') ? 'month' : 'year'} on ${formatCurrency(penaltyBaseAmount, countryCode)})`
             }
           }
         }
@@ -1763,7 +1703,7 @@ function DataRoomPageInner() {
             // Default to 1% per month for Income Tax interest
             const months = daysDelayed / 30
             const interest = (penaltyBaseAmount * 0.01) * months
-            return `₹${Math.round(interest).toLocaleString('en-IN')} (Interest @ 1%/month u/s 234B/234C on ₹${penaltyBaseAmount.toLocaleString('en-IN')})`
+            return `${formatCurrency(Math.round(interest), countryCode)} (Interest @ 1%/month u/s 234B/234C on ${formatCurrency(penaltyBaseAmount, countryCode)})`
           }
         }
         
@@ -1775,7 +1715,7 @@ function DataRoomPageInner() {
             // Default to monthly calculation if period not specified
             const months = daysDelayed / 30
             const interest = (penaltyBaseAmount * rate / 100) * months
-            return `₹${Math.round(interest).toLocaleString('en-IN')} (Interest @ ${rate}%/month on ₹${penaltyBaseAmount.toLocaleString('en-IN')})`
+            return `${formatCurrency(Math.round(interest), countryCode)} (Interest @ ${rate}%/month on ${formatCurrency(penaltyBaseAmount, countryCode)})`
           }
         }
       }
@@ -3043,7 +2983,7 @@ function DataRoomPageInner() {
                 // If it's a range without "per day", treat as fixed minimum
                 // But if it's part of a daily rate pattern, we already handled it above
                 if (!penalty.includes('/day') && !penalty.includes('per day')) {
-                  return `₹${Math.round(minAmount).toLocaleString('en-IN')} (minimum)`
+                  return `${formatCurrency(Math.round(minAmount), countryCode)} (minimum)`
                 }
               }
             }
@@ -6281,7 +6221,7 @@ function DataRoomPageInner() {
                         ? 'border-white/40 bg-white/10 text-white' 
                         : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
                     }`}
-                    title={selectedTrackerFY ? `Includes months: ${getFinancialYearMonths(selectedTrackerFY).join(', ')}` : 'Select financial year'}
+                    title={selectedTrackerFY ? `Includes months: ${getFinancialYearMonths(countryCode, selectedTrackerFY).join(', ')}` : 'Select financial year'}
                   >
                     <option value="">All Years</option>
                     {financialYears.map((fy) => (
@@ -6292,7 +6232,7 @@ function DataRoomPageInner() {
                   </select>
                   {selectedTrackerFY && (
                     <div className="absolute top-full left-0 mt-1 px-2 py-1 bg-gray-900 border border-gray-800 rounded text-xs text-gray-400 z-10 whitespace-nowrap shadow-lg">
-                      Months: {getFinancialYearMonths(selectedTrackerFY).slice(0, 4).join(', ')}...
+                      Months: {getFinancialYearMonths(countryCode, selectedTrackerFY).slice(0, 4).join(', ')}...
                     </div>
                   )}
                 </div>
@@ -6757,7 +6697,7 @@ function DataRoomPageInner() {
                           }
                         }
                         
-                        return `₹${calculatedPenalty.toLocaleString('en-IN')}`
+                        return formatCurrency(calculatedPenalty, countryCode)
                       }
                     }
 
@@ -6784,7 +6724,7 @@ function DataRoomPageInner() {
                     if (rangeMatch && !penalty.includes('%') && !penalty.includes('/day')) {
                       const minAmount = parseFloat(rangeMatch[1].replace(/,/g, ''))
                       if (!isNaN(minAmount) && minAmount > 0) {
-                        return `₹${Math.round(minAmount).toLocaleString('en-IN')} (minimum)`
+                        return `${formatCurrency(Math.round(minAmount), countryCode)} (minimum)`
                       }
                     }
 
@@ -6798,7 +6738,7 @@ function DataRoomPageInner() {
                           const amount = plainNumberMatch[0].replace(/,/g, '')
                           const numAmount = parseFloat(amount)
                           if (!isNaN(numAmount) && numAmount > 0) {
-                            return `₹${numAmount.toLocaleString('en-IN')}`
+                            return formatCurrency(numAmount, countryCode)
                           }
                         }
                       } else {
@@ -6813,7 +6753,7 @@ function DataRoomPageInner() {
                       const numAmount = parseFloat(amount)
                       if (!isNaN(numAmount) && numAmount > 0) {
                         const calculatedPenalty = numAmount * daysDelayed
-                        return `₹${calculatedPenalty.toLocaleString('en-IN')}`
+                        return formatCurrency(calculatedPenalty, countryCode)
                       }
                     }
 
@@ -6838,29 +6778,10 @@ function DataRoomPageInner() {
                   // Filter by date (Financial Year, Month, Quarter - all independent/loosely coupled)
                   let dateFilteredRequirements = displayRequirements
                   
-                  // Helper to check if date falls within a financial year (improved version with null safety)
+                  // Helper to check if date falls within a financial year (country-aware)
                   const isInFinancialYear = (reqDate: Date | null, fyStr: string): boolean => {
                     if (!reqDate || !fyStr) return false
-                    const parsed = parseFinancialYear(fyStr)
-                    if (!parsed) return false
-                    
-                    const reqYear = reqDate.getUTCFullYear()
-                    const reqMonth = reqDate.getUTCMonth() // 0-11
-                    
-                    if (parsed.type === 'CY') {
-                      // Calendar Year: January to December of the same year
-                      return reqYear === parsed.startYear
-                    }
-                    
-                    // Financial Year (Indian): April to March
-                    // FY 2024-25 spans from April 2024 to March 2025
-                    if (reqMonth >= 3) {
-                      // Apr-Dec are in the start year
-                      return reqYear === parsed.startYear
-                    } else {
-                      // Jan-Mar are in the end year
-                      return reqYear === parsed.endYear
-                    }
+                    return isInFinancialYearUtil(reqDate, fyStr, countryCode)
                   }
                   
                   // Filter by Financial Year (if selected) - with null safety

@@ -9,6 +9,8 @@ interface Company {
   name: string
   type: string
   year: string
+  country_code?: string
+  region?: string
 }
 
 interface CompanySubscriptionStatus {
