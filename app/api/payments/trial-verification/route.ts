@@ -48,7 +48,8 @@ export async function POST(request: NextRequest) {
     })
 
     // Store payment record in database
-    // Note: billing_cycle is required (NOT NULL), so we use 'trial' for trial verification payments
+    // Note: billing_cycle has CHECK constraint allowing only: 'monthly', 'quarterly', 'half-yearly', 'annual'
+    // For trial verification (one-time payment), we use 'monthly' as a placeholder since it's just for verification
     const { data: paymentData, error: paymentError } = await supabase
       .from('payments')
       .insert({
@@ -59,10 +60,10 @@ export async function POST(request: NextRequest) {
         currency: 'INR',
         status: 'pending',
         tier: tier || null,
-        billing_cycle: 'trial', // Use 'trial' for trial verification (one-time payment)
+        billing_cycle: 'monthly', // Use 'monthly' as placeholder (required by CHECK constraint)
         receipt: order.receipt,
         notes: order.notes as any,
-        payment_type: 'trial_verification', // Mark as trial verification
+        payment_type: 'trial_verification', // Mark as trial verification to distinguish from actual subscriptions
       })
       .select()
       .single()
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
         currency: 'INR',
         status: 'pending',
         tier: tier || null,
-        billing_cycle: 'trial',
+        billing_cycle: 'monthly',
         receipt: order.receipt,
         payment_type: 'trial_verification',
       })

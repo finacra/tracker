@@ -483,37 +483,37 @@ function SubscribePageInner() {
 
                   {/* Price - Hidden for Enterprise */}
                   {tier.id !== 'enterprise' && (
-                    <div className="mb-4">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-4xl font-light text-white">
-                          {formatPrice(selectedPricing.price)}
+                  <div className="mb-4">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-4xl font-light text-white">
+                        {formatPrice(selectedPricing.price)}
+                      </span>
+                      {selectedBillingCycle !== 'monthly' && (
+                        <span className="text-gray-500 text-sm">
+                          /{selectedBillingCycle === 'quarterly' ? 'quarter' : selectedBillingCycle === 'half-yearly' ? '6 months' : 'year'}
                         </span>
-                        {selectedBillingCycle !== 'monthly' && (
-                          <span className="text-gray-500 text-sm">
-                            /{selectedBillingCycle === 'quarterly' ? 'quarter' : selectedBillingCycle === 'half-yearly' ? '6 months' : 'year'}
+                      )}
+                    </div>
+                    {selectedBillingCycle !== 'monthly' && (
+                      <div className="mt-2">
+                        <span className="text-gray-400 text-sm">
+                          {formatPrice(selectedPricing.effectiveMonthly)}/month
+                        </span>
+                        {selectedPricing.savings && (
+                          <span className="ml-2 text-green-400 text-sm font-medium">
+                            Save {formatPrice(selectedPricing.savings)}
                           </span>
                         )}
                       </div>
-                      {selectedBillingCycle !== 'monthly' && (
-                        <div className="mt-2">
-                          <span className="text-gray-400 text-sm">
-                            {formatPrice(selectedPricing.effectiveMonthly)}/month
-                          </span>
-                          {selectedPricing.savings && (
-                            <span className="ml-2 text-green-400 text-sm font-medium">
-                              Save {formatPrice(selectedPricing.savings)}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      {selectedPricing.discount > 0 && (
-                        <div className="mt-1">
-                          <span className="text-gray-400 text-sm font-light">
-                            {selectedPricing.discount}% discount
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                    )}
+                    {selectedPricing.discount > 0 && (
+                      <div className="mt-1">
+                        <span className="text-gray-400 text-sm font-light">
+                          {selectedPricing.discount}% discount
+                        </span>
+                      </div>
+                    )}
+                  </div>
                   )}
                   
                   {/* Enterprise Custom Message */}
@@ -545,19 +545,19 @@ function SubscribePageInner() {
                     Contact Us
                   </Link>
                 ) : (
-                  <PaymentButton
-                    tier={tier.id}
-                    billingCycle={selectedBillingCycle}
-                    price={selectedPricing.price}
-                    companyId={
+                <PaymentButton
+                  tier={tier.id}
+                  billingCycle={selectedBillingCycle}
+                  price={selectedPricing.price}
+                  companyId={
                       selectedCompanyForSubscription || companyId || undefined
-                    }
-                    className={`w-full py-3 px-6 rounded-lg font-light transition-all mb-6 ${
-                      tier.popular
-                        ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                        : 'bg-transparent border border-gray-700 text-gray-300 hover:border-gray-600 hover:text-white'
-                    }`}
-                  />
+                  }
+                  className={`w-full py-3 px-6 rounded-lg font-light transition-all mb-6 ${
+                    tier.popular
+                      ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                      : 'bg-transparent border border-gray-700 text-gray-300 hover:border-gray-600 hover:text-white'
+                  }`}
+                />
                 )}
 
                 {/* Features */}
@@ -725,15 +725,15 @@ function SubscribePageInner() {
 
         {/* Skip for now link */}
         {companyTrialEligible && !isCheckingTrialEligibility && (
-          <div className="text-center mt-12">
-            <button
+        <div className="text-center mt-12">
+          <button
               onClick={handleStartTrial}
-              disabled={isStartingTrial}
-              className="text-gray-500 hover:text-gray-400 text-sm underline transition-colors disabled:opacity-50"
-            >
-              Skip for now and start free trial (₹2 verification required)
-            </button>
-          </div>
+            disabled={isStartingTrial}
+            className="text-gray-500 hover:text-gray-400 text-sm underline transition-colors disabled:opacity-50"
+          >
+            Skip for now and start free trial (₹2 verification required)
+          </button>
+        </div>
         )}
       </div>
     </div>

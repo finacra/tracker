@@ -179,6 +179,49 @@ export async function completeOnboarding(
     }
   }
 
+  // 4. Ensure company has either trial or subscription
+  // If user doesn't have a subscription, automatically create a trial for this company
+  try {
+    // Check if company already has a subscription or trial (company-level for Starter/Professional)
+    const { data: companySubData } = await adminSupabase
+      .rpc('check_company_subscription', { p_company_id: company.id })
+      .single()
+
+    const companyHasSubscription = companySubData && (companySubData as any).has_subscription
+
+    // Check if user has Enterprise subscription (covers all companies)
+    const { data: userSubData } = await adminSupabase
+      .rpc('check_user_subscription', { target_user_id: user.id })
+      .single()
+
+    const userHasSubscription = userSubData && (userSubData as any).has_subscription
+
+    // If company has no subscription/trial AND user doesn't have Enterprise subscription, create a trial
+    if (!companyHasSubscription && !userHasSubscription) {
+      console.log('[completeOnboarding] No subscription found, creating trial for company:', company.id)
+      
+      // Use RPC function to create company trial
+      const { data: trialData, error: trialError } = await adminSupabase
+        .rpc('create_company_trial', {
+          p_user_id: user.id,
+          p_company_id: company.id
+        })
+
+      if (trialError) {
+        console.error('[completeOnboarding] Error creating trial:', trialError)
+        // Don't throw - company is created, trial creation can be retried
+        // User can manually start trial via subscribe page
+      } else {
+        console.log('[completeOnboarding] Trial created successfully for company:', company.id)
+      }
+    } else {
+      console.log('[completeOnboarding] Company has subscription or user has Enterprise subscription, skipping trial creation')
+    }
+  } catch (trialErr) {
+    console.error('[completeOnboarding] Error checking/creating trial:', trialErr)
+    // Don't throw - company is created successfully
+  }
+
   return { success: true, companyId: company.id }
 }
 
