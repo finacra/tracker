@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import crypto from 'crypto'
 
 export async function POST(request: NextRequest) {
@@ -15,8 +16,19 @@ export async function POST(request: NextRequest) {
 
     const body = await request.text()
     const signature = request.headers.get('x-razorpay-signature')
+    const eventId = request.headers.get('x-razorpay-event-id')
+    const requestId = request.headers.get('request-id')
+
+    console.log(`[Webhook] Incoming webhook - Event ID: ${eventId}, Request ID: ${requestId}`)
+    console.log(`[Webhook] Headers received:`, {
+      'x-razorpay-signature': signature ? 'present' : 'missing',
+      'x-razorpay-event-id': eventId,
+      'content-type': request.headers.get('content-type'),
+      'user-agent': request.headers.get('user-agent'),
+    })
 
     if (!signature) {
+      console.error('[Webhook] Missing X-Razorpay-Signature header')
       return NextResponse.json(
         { error: 'Missing signature' },
         { status: 400 }
@@ -30,20 +42,27 @@ export async function POST(request: NextRequest) {
       .digest('hex')
 
     if (signature !== expectedSignature) {
-      console.error('Invalid webhook signature')
+      console.error('[Webhook] Invalid webhook signature')
+      console.error(`[Webhook] Expected: ${expectedSignature.substring(0, 20)}...`)
+      console.error(`[Webhook] Received: ${signature.substring(0, 20)}...`)
       return NextResponse.json(
         { error: 'Invalid signature' },
         { status: 400 }
       )
     }
 
+    console.log('[Webhook] Signature verified successfully')
+
     const event = JSON.parse(body)
     const supabase = await createClient()
+    const adminSupabase = createAdminClient()
+
+    console.log(`[Webhook] Received event: ${event.event}, Event ID: ${request.headers.get('x-razorpay-event-id')}`)
 
     // Handle different event types
     switch (event.event) {
       case 'payment.captured':
-        await handlePaymentCaptured(event.payload, supabase)
+        await handlePaymentCaptured(event.payload, supabase, adminSupabase)
         break
       case 'payment.failed':
         await handlePaymentFailed(event.payload, supabase)
@@ -52,7 +71,7 @@ export async function POST(request: NextRequest) {
         await handleOrderPaid(event.payload, supabase)
         break
       default:
-        console.log(`Unhandled webhook event: ${event.event}`)
+        console.log(`[Webhook] Unhandled webhook event: ${event.event}`)
     }
 
     return NextResponse.json({ received: true })
@@ -65,12 +84,14 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handlePaymentCaptured(payload: any, supabase: any) {
+async function handlePaymentCaptured(payload: any, supabase: any, adminSupabase: any) {
   const payment = payload.payment.entity
   const order = payload.order.entity
 
+  console.log(`[Webhook] Payment captured - Order ID: ${order.id}, Payment ID: ${payment.id}`)
+
   // Update payment status
-  await supabase
+  const { data: updatedPayment, error: updateError } = await supabase
     .from('payments')
     .update({
       razorpay_payment_id: payment.id,
@@ -81,10 +102,18 @@ async function handlePaymentCaptured(payload: any, supabase: any) {
       updated_at: new Date().toISOString(),
     })
     .eq('razorpay_order_id', order.id)
+    .select()
+    .single()
+
+  if (updateError) {
+    console.error('[Webhook] Error updating payment:', updateError)
+  }
 
   // Handle trial verification payments
   const notes = order.notes || {}
   if (notes.type === 'trial_verification') {
+    console.log(`[Webhook] Trial verification payment captured for user: ${notes.user_id}, company: ${notes.company_id || 'none'}`)
+    
     // Schedule refund for 24 hours later
     const refundScheduledAt = new Date()
     refundScheduledAt.setHours(refundScheduledAt.getHours() + 24)
@@ -97,7 +126,65 @@ async function handlePaymentCaptured(payload: any, supabase: any) {
       })
       .eq('razorpay_order_id', order.id)
     
-    console.log(`Trial verification payment captured. Refund scheduled for: ${refundScheduledAt.toISOString()}`)
+    console.log(`[Webhook] Trial verification payment captured. Refund scheduled for: ${refundScheduledAt.toISOString()}`)
+    
+    // Create trial after payment verification (if payment record has user_id and company_id)
+    if (updatedPayment && notes.user_id) {
+      try {
+        // If user has no companies, create user-level trial
+        const { data: userCompanies } = await adminSupabase
+          .from('companies')
+          .select('id')
+          .eq('user_id', notes.user_id)
+          .limit(1)
+
+        if (!userCompanies || userCompanies.length === 0) {
+          console.log('[Webhook] User has no companies, creating user-level trial')
+          const { data: trialData, error: trialError } = await adminSupabase
+            .rpc('create_user_trial', { target_user_id: notes.user_id })
+
+          if (trialError) {
+            console.error('[Webhook] Error creating user trial:', trialError)
+          } else {
+            console.log('[Webhook] User-level trial created successfully')
+          }
+        } else if (notes.company_id) {
+          // User has companies, create company-level trial
+          console.log(`[Webhook] Creating company-level trial for company: ${notes.company_id}`)
+          const { data: trialData, error: trialError } = await adminSupabase
+            .rpc('create_company_trial', {
+              p_user_id: notes.user_id,
+              p_company_id: notes.company_id
+            })
+
+          if (trialError) {
+            console.error('[Webhook] Error creating company trial:', trialError)
+          } else {
+            console.log('[Webhook] Company-level trial created successfully')
+          }
+        } else {
+          // No company_id in notes, try to get from payment record
+          if (updatedPayment.company_id) {
+            console.log(`[Webhook] Creating company-level trial from payment record for company: ${updatedPayment.company_id}`)
+            const { data: trialData, error: trialError } = await adminSupabase
+              .rpc('create_company_trial', {
+                p_user_id: notes.user_id,
+                p_company_id: updatedPayment.company_id
+              })
+
+            if (trialError) {
+              console.error('[Webhook] Error creating company trial from payment:', trialError)
+            } else {
+              console.log('[Webhook] Company-level trial created successfully from payment record')
+            }
+          }
+        }
+      } catch (trialErr) {
+        console.error('[Webhook] Error creating trial:', trialErr)
+        // Don't fail the webhook - payment is verified, trial can be created manually if needed
+      }
+    }
+    
     return
   }
 
@@ -118,7 +205,9 @@ async function handlePaymentFailed(payload: any, supabase: any) {
   const payment = payload.payment.entity
   const order = payload.order.entity
 
-  await supabase
+  console.log(`[Webhook] Payment failed - Order ID: ${order.id}, Payment ID: ${payment.id}, Error: ${payment.error_description}`)
+
+  const { error: updateError } = await supabase
     .from('payments')
     .update({
       razorpay_payment_id: payment.id,
@@ -128,6 +217,10 @@ async function handlePaymentFailed(payload: any, supabase: any) {
       updated_at: new Date().toISOString(),
     })
     .eq('razorpay_order_id', order.id)
+
+  if (updateError) {
+    console.error('[Webhook] Error updating failed payment:', updateError)
+  }
 }
 
 async function handleOrderPaid(payload: any, supabase: any) {
