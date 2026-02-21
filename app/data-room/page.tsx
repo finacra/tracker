@@ -113,7 +113,8 @@ function DataRoomPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
-  const supabase = createClient()
+  // Memoize supabase client to prevent infinite re-renders
+  const supabase = useMemo(() => createClient(), [])
   const initialCompanyId = searchParams.get('company_id') || searchParams.get('company')
   
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null)

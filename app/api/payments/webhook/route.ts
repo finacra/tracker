@@ -29,8 +29,30 @@ export async function POST(request: NextRequest) {
 
     if (!signature) {
       console.error('[Webhook] Missing X-Razorpay-Signature header')
+      console.error('[Webhook] All headers:', Object.fromEntries(request.headers.entries()))
+      console.error('[Webhook] This usually means:')
+      console.error('[Webhook] 1. Webhook secret is not configured in Razorpay dashboard')
+      console.error('[Webhook] 2. Webhook URL is not properly configured')
+      console.error('[Webhook] 3. This is a test webhook from Razorpay dashboard (test webhooks may not include signature)')
+      
+      // In production, we should reject webhooks without signatures for security
+      // But we'll log the event data for debugging purposes
+      try {
+        const event = JSON.parse(body)
+        console.error('[Webhook] Event data (for debugging):', {
+          event: event.event,
+          event_id: event.id,
+          created_at: event.created_at,
+        })
+      } catch (e) {
+        console.error('[Webhook] Could not parse event body')
+      }
+      
       return NextResponse.json(
-        { error: 'Missing signature' },
+        { 
+          error: 'Missing signature',
+          message: 'X-Razorpay-Signature header is required. Please configure webhook secret in Razorpay dashboard.'
+        },
         { status: 400 }
       )
     }
