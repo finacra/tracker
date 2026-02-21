@@ -609,13 +609,20 @@ export default function OnboardingPage() {
     if (!formData.companyType) {
       newErrors.companyType = 'Please select a company type'
     }
-    // PAN number is now optional
-    if (formData.panNumber.trim() && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber.trim().toUpperCase())) {
-      // Basic PAN validation if entered
-      newErrors.panNumber = 'Invalid PAN format (e.g., ABCDE1234F)'
+    // Tax ID validation - country-specific
+    if (formData.panNumber.trim()) {
+      if (countryCode === 'IN') {
+        // PAN validation for India
+        if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber.trim().toUpperCase())) {
+          newErrors.panNumber = 'Invalid PAN format (e.g., ABCDE1234F)'
+        }
+      }
+      // For other countries, tax ID format validation can be added if needed
     }
+    
+    // Registration ID is required for all countries (field name is cinNumber but label is country-specific)
     if (!formData.cinNumber.trim()) {
-      newErrors.cinNumber = 'CIN number is required'
+      newErrors.cinNumber = `${countryConfig.labels.registrationId} is required`
     }
     if (formData.industries.length === 0) {
       newErrors.industries = 'Please select at least one industry'
@@ -627,10 +634,11 @@ export default function OnboardingPage() {
       newErrors.city = 'City is required'
     }
     if (!formData.state.trim()) {
-      newErrors.state = 'State is required'
+      const stateLabel = countryConfig.labels.state || 'State'
+      newErrors.state = `${stateLabel} is required`
     }
     if (!formData.pinCode.trim()) {
-      newErrors.pinCode = 'PIN code is required'
+      newErrors.pinCode = `${countryConfig.labels.postalCode} is required`
     }
     // Phone number is now optional
     if (formData.phoneNumber.trim() && !/^[0-9+\s-]{10,15}$/.test(formData.phoneNumber.trim())) {
