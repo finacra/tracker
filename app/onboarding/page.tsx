@@ -1053,12 +1053,6 @@ export default function OnboardingPage() {
                   value={formData.dateOfIncorporation ? formatDateForDisplay(formData.dateOfIncorporation) : ''}
                   placeholder="Select date"
                   onClick={() => {
-                    // #region agent log
-                    console.log('[DatePicker] Text input clicked, triggering date input', { 
-                      hasRef: !!dateInputRef.current,
-                      timestamp: Date.now() 
-                    });
-                    // #endregion
                     // Trigger click on the hidden date input
                     if (dateInputRef.current) {
                       dateInputRef.current.focus();
@@ -1067,9 +1061,8 @@ export default function OnboardingPage() {
                       if (typeof dateInputRef.current.showPicker === 'function') {
                         try {
                           dateInputRef.current.showPicker();
-                          console.log('[DatePicker] showPicker() called successfully');
                         } catch (err) {
-                          console.log('[DatePicker] showPicker() failed:', err);
+                          // Fallback to native click if showPicker fails
                         }
                       }
                     }
@@ -1083,38 +1076,18 @@ export default function OnboardingPage() {
                   name="dateOfIncorporation"
                   value={formData.dateOfIncorporation}
                   onChange={(e) => {
-                    // #region agent log
-                    console.log('[DatePicker] onChange triggered', { value: e.target.value, timestamp: Date.now() });
-                    // #endregion
                     handleInputChange(e);
                   }}
                   onClick={(e) => {
-                    // #region agent log
-                    console.log('[DatePicker] Date input onClick triggered', { 
-                      target: e.target, 
-                      currentTarget: e.currentTarget,
-                      hasShowPicker: typeof (e.currentTarget as any).showPicker === 'function',
-                      timestamp: Date.now() 
-                    });
-                    // #endregion
                     // Try to show picker programmatically for better browser support
                     const dateInput = e.currentTarget as HTMLInputElement;
                     if (typeof dateInput.showPicker === 'function') {
                       try {
                         dateInput.showPicker();
-                        console.log('[DatePicker] showPicker() called successfully from onClick');
                       } catch (err) {
-                        console.log('[DatePicker] showPicker() failed in onClick:', err);
+                        // Fallback to native click if showPicker fails
                       }
                     }
-                  }}
-                  onFocus={(e) => {
-                    // #region agent log
-                    console.log('[DatePicker] onFocus triggered', { 
-                      target: e.target,
-                      timestamp: Date.now() 
-                    });
-                    // #endregion
                   }}
                   className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                   style={{ zIndex: 20, pointerEvents: 'auto' }}
