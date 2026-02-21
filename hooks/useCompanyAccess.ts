@@ -92,16 +92,35 @@ export function useCompanyAccess(companyId: string | null): CompanyAccessResult 
       setError(null)
 
       try {
-        // 1. Check if user is superadmin
-        const { data: superadminRole } = await supabase
-          .from('user_roles')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('role', 'superadmin')
-          .is('company_id', null)
-          .single()
+        // 1. Check if user is superadmin (platform-level, company_id IS NULL)
+        // Try RPC function first (most reliable)
+        let isSuperadmin = false
+        try {
+          const { data: rpcData, error: rpcError } = await supabase.rpc('is_superadmin', {
+            p_user_id: user.id
+          })
+          if (!rpcError && rpcData !== null) {
+            isSuperadmin = !!rpcData
+          }
+        } catch (rpcErr) {
+          // RPC failed, fallback to direct query
+          console.log('[useCompanyAccess] RPC failed, falling back to direct query')
+        }
 
-        if (superadminRole) {
+        // Fallback: Query all superadmin roles and check if any have company_id = null
+        if (!isSuperadmin) {
+          const { data: superadminRoles, error: rolesError } = await supabase
+            .from('user_roles')
+            .select('role, company_id')
+            .eq('user_id', user.id)
+            .eq('role', 'superadmin')
+
+          if (!rolesError && superadminRoles) {
+            isSuperadmin = superadminRoles.some(role => role.company_id === null)
+          }
+        }
+
+        if (isSuperadmin) {
           console.log('[useCompanyAccess] User is superadmin, granting access')
           setHasAccess(true)
           setAccessType('superadmin')
@@ -495,15 +514,34 @@ export function useAnyCompanyAccess(): {
 
       try {
         // Check if user is superadmin (has access to all)
-        const { data: superadminRole } = await supabase
-          .from('user_roles')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('role', 'superadmin')
-          .is('company_id', null)
-          .single()
+        // Try RPC function first (most reliable)
+        let isSuperadmin = false
+        try {
+          const { data: rpcData, error: rpcError } = await supabase.rpc('is_superadmin', {
+            p_user_id: user.id
+          })
+          if (!rpcError && rpcData !== null) {
+            isSuperadmin = !!rpcData
+          }
+        } catch (rpcErr) {
+          // RPC failed, fallback to direct query
+          console.log('[useAnyCompanyAccess] RPC failed, falling back to direct query')
+        }
 
-        if (superadminRole) {
+        // Fallback: Query all superadmin roles and check if any have company_id = null
+        if (!isSuperadmin) {
+          const { data: superadminRoles, error: rolesError } = await supabase
+            .from('user_roles')
+            .select('role, company_id')
+            .eq('user_id', user.id)
+            .eq('role', 'superadmin')
+
+          if (!rolesError && superadminRoles) {
+            isSuperadmin = superadminRoles.some(role => role.company_id === null)
+          }
+        }
+
+        if (isSuperadmin) {
           // Superadmin has access to all companies
           const { data: allCompanies } = await supabase
             .from('companies')
