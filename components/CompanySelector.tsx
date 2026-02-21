@@ -50,6 +50,10 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
               .rpc('check_company_subscription', { p_company_id: company.id })
               .single()
 
+            // #region agent log
+            console.log(`[CompanySelector] RPC result for company ${company.id}:`, { data, error, companyName: company.name });
+            // #endregion
+
             if (!error && data) {
               const subscriptionData = data as {
                 has_subscription: boolean
@@ -58,6 +62,16 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
                 trial_days_remaining: number
                 user_limit: number
               }
+              
+              // #region agent log
+              console.log(`[CompanySelector] Parsed subscription data for ${company.id}:`, {
+                has_subscription: subscriptionData.has_subscription,
+                is_trial: subscriptionData.is_trial,
+                trial_days_remaining: subscriptionData.trial_days_remaining,
+                tier: subscriptionData.tier
+              });
+              // #endregion
+              
               statusMap.set(company.id, {
                 companyId: company.id,
                 hasSubscription: subscriptionData.has_subscription,
@@ -66,6 +80,9 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
                 tier: subscriptionData.tier,
               })
             } else {
+              // #region agent log
+              console.log(`[CompanySelector] No subscription data for ${company.id}, error:`, error);
+              // #endregion
               // No subscription found
               statusMap.set(company.id, {
                 companyId: company.id,
@@ -108,20 +125,30 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
       )
     }
 
+    // #region agent log
+    console.log('[CompanySelector] getStatusBadge called with status:', {
+      companyId: status.companyId,
+      hasSubscription: status.hasSubscription,
+      isTrial: status.isTrial,
+      trialDaysRemaining: status.trialDaysRemaining
+    });
+    // #endregion
+
+    // Check for trial first, as trials are a form of subscription
+    if (status.isTrial && status.trialDaysRemaining !== undefined && status.trialDaysRemaining > 0) {
+      return (
+        <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+          Trial ({status.trialDaysRemaining}d)
+        </span>
+      )
+    }
+
     if (status.hasSubscription) {
-      if (status.isTrial) {
-        return (
-          <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-            Trial ({status.trialDaysRemaining}d)
-          </span>
-        )
-      } else {
-        return (
-          <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
-            Valid
-          </span>
-        )
-      }
+      return (
+        <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+          Valid
+        </span>
+      )
     } else {
       return (
         <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">
