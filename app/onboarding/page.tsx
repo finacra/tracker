@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { verifyCIN, verifyDIN, type CINDirectorData, type DINDirectorData } from '@/lib/api/cin-din'
 import { 
@@ -35,7 +35,8 @@ export default function OnboardingPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
   const { hasSubscription, isTrial, trialDaysRemaining, companyLimit, currentCompanyCount, canCreateCompany, tier, isLoading: subLoading } = useUserSubscription()
-  const supabase = createClient()
+  // Memoize supabase client to prevent infinite re-renders
+  const supabase = useMemo(() => createClient(), [])
   
   // All hooks must be called before any conditional returns
   const [isSubmitting, setIsSubmitting] = useState(false)

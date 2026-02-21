@@ -107,6 +107,12 @@ export async function POST(request: NextRequest) {
 }
 
 async function handlePaymentCaptured(payload: any, supabase: any, adminSupabase: any) {
+  // Add null checks for payload structure
+  if (!payload?.payment?.entity || !payload?.order?.entity) {
+    console.error('[Webhook] Invalid payload structure for payment.captured:', payload)
+    return
+  }
+
   const payment = payload.payment.entity
   const order = payload.order.entity
 
@@ -224,10 +230,16 @@ async function handlePaymentCaptured(payload: any, supabase: any, adminSupabase:
 }
 
 async function handlePaymentFailed(payload: any, supabase: any) {
-  const payment = payload.payment.entity
-  const order = payload.order.entity
+  // Add null checks for payload structure
+  if (!payload?.payment?.entity) {
+    console.error('[Webhook] Invalid payload structure for payment.failed:', payload)
+    return
+  }
 
-  console.log(`[Webhook] Payment failed - Order ID: ${order.id}, Payment ID: ${payment.id}, Error: ${payment.error_description}`)
+  const payment = payload.payment.entity
+  const order = payload.order?.entity
+
+  console.log(`[Webhook] Payment failed - Order ID: ${order?.id || 'unknown'}, Payment ID: ${payment.id}, Error: ${payment.error_description || 'unknown'}`)
 
   const { error: updateError } = await supabase
     .from('payments')
@@ -238,7 +250,7 @@ async function handlePaymentFailed(payload: any, supabase: any) {
       error_description: payment.error_description,
       updated_at: new Date().toISOString(),
     })
-    .eq('razorpay_order_id', order.id)
+    .eq('razorpay_order_id', order?.id || payment.order_id || '')
 
   if (updateError) {
     console.error('[Webhook] Error updating failed payment:', updateError)
@@ -246,13 +258,21 @@ async function handlePaymentFailed(payload: any, supabase: any) {
 }
 
 async function handleOrderPaid(payload: any, supabase: any) {
+  // Add null checks for payload structure
+  if (!payload?.order?.entity) {
+    console.error('[Webhook] Invalid payload structure for order.paid:', payload)
+    return
+  }
+
   const order = payload.order.entity
+
+  console.log(`[Webhook] Order paid - Order ID: ${order.id}`)
 
   await supabase
     .from('payments')
     .update({
       status: 'completed',
-      amount_paid: order.amount_paid / 100,
+      amount_paid: order.amount_paid ? order.amount_paid / 100 : null,
       updated_at: new Date().toISOString(),
     })
     .eq('razorpay_order_id', order.id)
