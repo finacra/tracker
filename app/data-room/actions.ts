@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
+import { validateCompanyId, validateUserId } from '@/lib/utils/input-validation'
 import { enrichComplianceItems as enrichComplianceItemsService, type EnrichedComplianceData } from '@/lib/services/compliance-enrichment'
 import { sendEmail, getSiteUrl } from '@/lib/email/resend'
 import { renderTeamInviteEmail } from '@/lib/email/templates/teamInvite'
@@ -77,6 +78,11 @@ export interface ComplianceTemplate {
  */
 export async function getUserRole(companyId: string | null): Promise<{ success: boolean; role: string | null; error?: string }> {
   try {
+    // SECURITY: Validate companyId if provided
+    if (companyId !== null && !validateCompanyId(companyId)) {
+      return { success: false, role: null, error: 'Invalid company ID format' }
+    }
+    
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     
@@ -163,6 +169,11 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
   console.log('[getRegulatoryRequirements] START - companyId:', companyId)
   
   try {
+    // SECURITY: Validate companyId if provided
+    if (companyId !== null && !validateCompanyId(companyId)) {
+      return { success: false, error: 'Invalid company ID format' }
+    }
+    
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     console.log('[getRegulatoryRequirements] Auth check:', Date.now() - startTime, 'ms')
@@ -461,6 +472,14 @@ export async function updateRequirementStatus(
   newStatus: 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed'
 ): Promise<{ success: boolean; error?: string; actualStatus?: string; missingDocs?: string[] }> {
   try {
+    // SECURITY: Validate IDs to prevent injection
+    if (!validateCompanyId(requirementId)) {
+      return { success: false, error: 'Invalid requirement ID format' }
+    }
+    if (companyId !== null && !validateCompanyId(companyId)) {
+      return { success: false, error: 'Invalid company ID format' }
+    }
+    
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     
@@ -1040,6 +1059,11 @@ export async function getCompanyUserRoles(companyId: string | null = null): Prom
   error?: string
 }> {
   try {
+    // SECURITY: Validate companyId if provided
+    if (companyId !== null && !validateCompanyId(companyId)) {
+      return { success: false, error: 'Invalid company ID format' }
+    }
+    
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     
@@ -1591,6 +1615,16 @@ export async function generateRecurringCompliances(
   monthsAhead: number = 12
 ): Promise<{ success: boolean; periodsGenerated?: number; error?: string }> {
   try {
+    // SECURITY: Validate companyId if provided
+    if (companyId !== null && !validateCompanyId(companyId)) {
+      return { success: false, error: 'Invalid company ID format' }
+    }
+    
+    // SECURITY: Validate monthsAhead to prevent injection
+    if (typeof monthsAhead !== 'number' || monthsAhead < 1 || monthsAhead > 60) {
+      return { success: false, error: 'Invalid months ahead value' }
+    }
+    
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     

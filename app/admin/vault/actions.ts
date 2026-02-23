@@ -13,6 +13,7 @@ import {
   isSubfolder,
   normalizeFolderPath,
 } from '@/lib/vault/folder-utils'
+import { sanitizeFolderPath, escapeLikePattern } from '@/lib/utils/input-validation'
 
 export interface DocumentTemplate {
   id?: string
@@ -473,8 +474,10 @@ export async function deleteFolder(path: string): Promise<{ success: boolean; er
       return { success: false, error: 'Only superadmins can manage vault' }
     }
 
+    // SECURITY: Validate and sanitize folder path to prevent SQL injection
     const normalizedPath = normalizeFolderPath(path)
-    if (!normalizedPath) {
+    const sanitizedPath = sanitizeFolderPath(normalizedPath)
+    if (!normalizedPath || !sanitizedPath || sanitizedPath !== normalizedPath) {
       return { success: false, error: 'Invalid folder path' }
     }
 
@@ -487,10 +490,12 @@ export async function deleteFolder(path: string): Promise<{ success: boolean; er
     }
 
     // Check if folder has subfolders with documents
+    // SECURITY: Escape LIKE pattern to prevent injection
+    const likePattern = `${escapeLikePattern(normalizedPath)}/%`
     const { data: subfolders } = await adminSupabase
       .from('document_templates_internal')
       .select('folder_name')
-      .like('folder_name', `${normalizedPath}/%`)
+      .like('folder_name', likePattern)
 
     if (subfolders && subfolders.length > 0) {
       // Check each subfolder for documents
@@ -505,12 +510,23 @@ export async function deleteFolder(path: string): Promise<{ success: boolean; er
     }
 
     // Delete all document templates in this folder and subfolders
-    const { error } = await adminSupabase
+    // SECURITY: Use separate queries instead of .or() with string interpolation to prevent SQL injection
+    // First delete exact matches
+    const { error: exactError } = await adminSupabase
       .from('document_templates_internal')
       .delete()
-      .or(`folder_name.eq.${normalizedPath},folder_name.like.${normalizedPath}/%`)
-
-    if (error) throw error
+      .eq('folder_name', normalizedPath)
+    
+    if (exactError) throw exactError
+    
+    // Then delete subfolders (using .like() which is safe with parameterized queries)
+    // SECURITY: Escape LIKE pattern to prevent injection (reuse the pattern from above)
+    const { error: likeError } = await adminSupabase
+      .from('document_templates_internal')
+      .delete()
+      .like('folder_name', likePattern)
+    
+    if (likeError) throw likeError
 
     revalidatePath('/admin')
     return { success: true }

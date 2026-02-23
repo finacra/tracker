@@ -4,6 +4,7 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
 import { generateEmbedding } from '@/lib/utils/embeddings'
 import { processDocumentContent } from '@/lib/utils/document-processor'
+import { validateCompanyId, sanitizeStringInput, isValidUUID } from '@/lib/utils/input-validation'
 
 export async function completeOnboarding(
   formData: {
@@ -269,6 +270,11 @@ export async function updateCompany(
     exDirectors?: string
   }
 ) {
+  // SECURITY: Validate companyId to prevent injection
+  if (!validateCompanyId(companyId)) {
+    throw new Error('Invalid company ID format')
+  }
+  
   const supabase = await createClient()
   const adminSupabase = createAdminClient()
   
@@ -367,6 +373,11 @@ export async function updateCompany(
 
 // Get directors for a company
 export async function getCompanyDirectors(companyId: string) {
+  // SECURITY: Validate companyId to prevent injection
+  if (!validateCompanyId(companyId)) {
+    return { success: false, directors: [], error: 'Invalid company ID format' }
+  }
+  
   const supabase = await createClient()
   const adminSupabase = createAdminClient()
   
@@ -427,6 +438,20 @@ export async function uploadDocument(
     requirementId?: string
   }
 ) {
+  // SECURITY: Validate companyId to prevent injection
+  if (!validateCompanyId(companyId)) {
+    throw new Error('Invalid company ID format')
+  }
+  
+  // SECURITY: Sanitize string inputs
+  const sanitizedFolderName = sanitizeStringInput(data.folderName, 500)
+  const sanitizedDocumentName = sanitizeStringInput(data.documentName, 500)
+  const sanitizedFileName = sanitizeStringInput(data.fileName, 500)
+  
+  if (!sanitizedFolderName || !sanitizedDocumentName || !sanitizedFileName) {
+    throw new Error('Invalid input: folder name, document name, or file name contains invalid characters')
+  }
+  
   const supabase = await createClient()
   const adminSupabase = createAdminClient()
   
@@ -435,14 +460,14 @@ export async function uploadDocument(
     throw new Error('Unauthorized')
   }
 
-  const embedding = await generateEmbedding(`${data.documentName} ${data.fileName}`)
+  const embedding = await generateEmbedding(`${sanitizedDocumentName} ${sanitizedFileName}`)
 
   const { data: insertedDoc, error } = await adminSupabase
     .from('company_documents_internal')
     .insert({
       company_id: companyId,
-      document_type: data.documentName,
-      folder_name: data.folderName,
+      document_type: sanitizedDocumentName,
+      folder_name: sanitizedFolderName,
       registration_date: data.registrationDate || null,
       expiry_date: data.expiryDate || null,
       is_portal_required: data.isPortalRequired,
@@ -450,7 +475,7 @@ export async function uploadDocument(
       portal_password: data.portalPassword || null,
       frequency: data.frequency,
       file_path: data.filePath,
-      file_name: data.fileName,
+      file_name: sanitizedFileName,
       embedding: embedding.length > 0 ? embedding : null,
       // Period metadata
       period_type: data.periodType || null,
@@ -501,6 +526,17 @@ export async function getDownloadUrl(filePath: string) {
 
 export async function deleteDocument(documentId: string, filePath: string) {
   try {
+    // SECURITY: Validate documentId to prevent injection
+    if (!isValidUUID(documentId)) {
+      throw new Error('Invalid document ID format')
+    }
+    
+    // SECURITY: Sanitize filePath
+    const sanitizedFilePath = sanitizeStringInput(filePath, 1000)
+    if (!sanitizedFilePath) {
+      throw new Error('Invalid file path')
+    }
+    
     const supabase = await createClient()
     const adminSupabase = createAdminClient()
     
@@ -512,7 +548,7 @@ export async function deleteDocument(documentId: string, filePath: string) {
     // 1. Delete from Storage
     const { error: storageError } = await supabase.storage
       .from('company-documents')
-      .remove([filePath])
+      .remove([sanitizedFilePath])
 
     if (storageError) {
       console.error('Storage deletion error:', storageError)
@@ -559,6 +595,11 @@ export async function getDocumentTemplates() {
 
 export async function getCompanyDocuments(companyId: string) {
   try {
+    // SECURITY: Validate companyId to prevent injection
+    if (!validateCompanyId(companyId)) {
+      return { success: false, documents: [], error: 'Invalid company ID format' }
+    }
+    
     const supabase = await createClient()
     const adminSupabase = createAdminClient()
     
