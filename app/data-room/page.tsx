@@ -142,6 +142,44 @@ function DataRoomPageInner() {
   // Check if user has access to ANY company (for initial page load check)
   const { hasAnyAccess, accessibleCompanyIds, isLoading: anyAccessLoading } = useAnyCompanyAccess()
 
+  // Fetch document templates when country code changes
+  useEffect(() => {
+    if (!countryCode) return
+    
+    async function fetchTemplates() {
+      try {
+        // Try to get country-specific templates from document_templates_internal
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('document_templates_internal')
+          .select('*')
+          .eq('country_code', countryCode) // Filter by country
+          .order('folder_name', { ascending: true })
+        
+        if (error) {
+          // If country_code column doesn't exist or error, try without filter
+          console.warn('Error fetching country-specific templates, trying without filter:', error)
+          const { data: fallbackData } = await supabase
+            .from('document_templates_internal')
+            .select('*')
+            .order('folder_name', { ascending: true })
+          setDocumentTemplates(fallbackData || [])
+        } else {
+          setDocumentTemplates(data || [])
+        }
+      } catch (error) {
+        console.error('Error fetching templates:', error)
+        // Fallback to original method
+        const result = await getDocumentTemplates()
+        if (result.success) {
+          setDocumentTemplates(result.templates || [])
+        }
+      }
+    }
+    
+    fetchTemplates()
+  }, [countryCode, supabase])
+
   // Fetch all companies for the selector (owned + invited)
   useEffect(() => {
     console.log('[fetchCompanies] useEffect triggered - authLoading:', authLoading, 'user:', user?.id, 'email:', user?.email)
@@ -263,7 +301,9 @@ function DataRoomPageInner() {
               id: c.id,
               name: c.name,
               type: c.type,
-              year: new Date(c.incorporation_date).getFullYear().toString()
+              year: new Date(c.incorporation_date).getFullYear().toString(),
+              country_code: c.country_code || 'IN', // Include country_code, default to IN
+              region: c.region || 'APAC' // Include region
             })
           })
         }
@@ -275,7 +315,9 @@ function DataRoomPageInner() {
               id: c.id,
               name: c.name,
               type: c.type,
-              year: new Date(c.incorporation_date).getFullYear().toString()
+              year: new Date(c.incorporation_date).getFullYear().toString(),
+              country_code: c.country_code || 'IN', // Include country_code, default to IN
+              region: c.region || 'APAC' // Include region
             })
           }
         })
@@ -318,16 +360,8 @@ function DataRoomPageInner() {
 
     console.log('[fetchCompanies] useEffect setup complete, calling fetchCompanies...')
 
-    async function fetchTemplates() {
-      const result = await getDocumentTemplates()
-      if (result.success) {
-        setDocumentTemplates(result.templates || [])
-      }
-    }
-
-    // Run both in parallel
+    // Run fetchCompanies
     fetchCompanies()
-    fetchTemplates()
   }, [user, supabase, authLoading, initialCompanyId])
 
   // Check if user has access to ANY company - redirect if no access at all
@@ -1029,16 +1063,63 @@ function DataRoomPageInner() {
   }
 
   // Get country-specific defaults
-  const DEFAULT_FOLDERS = useMemo(() => getCountryDefaultFolders(countryCode || 'IN'), [countryCode, countryConfig])
-  const DEFAULT_DOCUMENTS = useMemo(() => getCountryDefaultDocuments(countryCode || 'IN'), [countryCode, countryConfig])
+  const DEFAULT_FOLDERS = useMemo(() => {
+    const folders = getCountryDefaultFolders(countryCode || 'IN')
+    console.log('[DataRoom] Country:', countryCode, 'Default folders:', folders)
+    return folders
+  }, [countryCode, countryConfig])
+  
+  const DEFAULT_DOCUMENTS = useMemo(() => {
+    const docs = getCountryDefaultDocuments(countryCode || 'IN')
+    console.log('[DataRoom] Country:', countryCode, 'Default documents:', docs)
+    return docs
+  }, [countryCode, countryConfig])
 
   // Merge database templates with defaults to ensure all folders are present
-  const documentFolders = documentTemplates.length > 0 
-    ? Array.from(new Set([
-        ...DEFAULT_FOLDERS, // Always include default folders
-        ...documentTemplates.map(t => t.folder_name)
-      ]))
-    : DEFAULT_FOLDERS
+  // Prioritize country-aware DEFAULT_FOLDERS, filter out country-inappropriate folders
+  const documentFolders = useMemo(() => {
+    const countryFolders = new Set(DEFAULT_FOLDERS)
+    
+    console.log('[DataRoom] Computing documentFolders for country:', countryCode)
+    console.log('[DataRoom] DEFAULT_FOLDERS:', DEFAULT_FOLDERS)
+    console.log('[DataRoom] documentTemplates count:', documentTemplates.length)
+    
+    // Only add database template folders if they're appropriate for the country
+    if (documentTemplates.length > 0) {
+      documentTemplates.forEach(t => {
+        const folderName = t.folder_name
+        const folderLower = folderName.toLowerCase()
+        
+        // Skip if already in country-specific folders
+        if (countryFolders.has(folderName)) {
+          console.log('[DataRoom] Skipping', folderName, '- already in DEFAULT_FOLDERS')
+          return
+        }
+        
+        // Filter out India-specific folders for non-India countries
+        if (countryCode !== 'IN') {
+          // Don't add India-specific folder names
+          if (folderLower.includes('gst') || 
+              folderLower.includes('mca') || 
+              folderLower.includes('roc') || 
+              folderLower.includes('income tax') ||
+              folderLower.includes('taxation & gst') ||
+              folderLower.includes('regulatory & mca')) {
+            console.log('[DataRoom] Filtering out India-specific folder:', folderName, 'for country:', countryCode)
+            return // Skip India-specific folders
+          }
+        }
+        
+        // Add the folder if it passed the filter
+        console.log('[DataRoom] Adding folder from database:', folderName)
+        countryFolders.add(folderName)
+      })
+    }
+    
+    const finalFolders = Array.from(countryFolders)
+    console.log('[DataRoom] Final documentFolders:', finalFolders)
+    return finalFolders
+  }, [DEFAULT_FOLDERS, documentTemplates, countryCode])
 
   // Merge database templates with defaults
   const predefinedDocuments = documentTemplates.length > 0
