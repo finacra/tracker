@@ -243,7 +243,7 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
         <div className="flex-1 text-left min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1.5">
             <div className="text-gray-500 text-xs sm:text-sm font-light">
-              {currentCompany ? `${currentCompany.type.toLowerCase()} – ${currentCompany.year}` : 'No company selected'}
+            {currentCompany ? `${currentCompany.type.toLowerCase()} – ${currentCompany.year}` : 'No company selected'}
             </div>
             {currentCompany && (() => {
               const status = getSubscriptionStatus(currentCompany.id)
@@ -326,7 +326,7 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1.5">
                       <div className="text-gray-500 text-xs sm:text-sm font-light">
-                        {company.type.toLowerCase()} – {company.year}
+                      {company.type.toLowerCase()} – {company.year}
                       </div>
                       {(() => {
                         const status = getSubscriptionStatus(company.id)

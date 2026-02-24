@@ -20,6 +20,7 @@ import ToastContainer from '@/components/Toast'
 import { getCurrentFinancialYear, parseFinancialYear, getFinancialYearMonths, isInFinancialYear as isInFinancialYearUtil } from '@/lib/utils/financial-year'
 import { formatCurrency } from '@/lib/utils/currency'
 import { useCompanyCountry } from '@/hooks/useCompanyCountry'
+import { useComplianceCategories } from '@/hooks/useComplianceCategories'
 
 interface Company {
   id: string
@@ -541,6 +542,7 @@ function DataRoomPageInner() {
   const [noticeResponse, setNoticeResponse] = useState('')
   const [isSubmittingResponse, setIsSubmittingResponse] = useState(false)
   const [isAddNoticeModalOpen, setIsAddNoticeModalOpen] = useState(false)
+  const [complianceDetailsModal, setComplianceDetailsModal] = useState<any>(null)
   const [newNoticeForm, setNewNoticeForm] = useState({
     type: 'Income Tax',
     subType: '',
@@ -575,123 +577,308 @@ function DataRoomPageInner() {
   const [previewFileUrl, setPreviewFileUrl] = useState<string | null>(null)
   const [requirementUploadHistory, setRequirementUploadHistory] = useState<any[]>([])
 
-  // Demo Notices Data - Now stateful so we can add to it
-  const [demoNotices, setDemoNotices] = useState([
-    {
-      id: 'NOT-2026-001',
-      type: 'Income Tax',
-      subType: 'Scrutiny Notice',
-      section: 'Section 143(2)',
-      subject: 'Selection for Scrutiny Assessment - AY 2024-25',
-      issuedBy: 'Income Tax Department',
-      issuedDate: '2026-01-15',
-      dueDate: '2026-02-15',
-      status: 'pending',
-      priority: 'high',
-      description: 'Your return for Assessment Year 2024-25 has been selected for scrutiny assessment. You are required to furnish the details/documents as specified.',
-      documents: ['ITR Filed', 'Form 26AS', 'Bank Statements'],
-      timeline: [
-        { date: '2026-01-15', action: 'Notice Received', by: 'System' },
-        { date: '2026-01-16', action: 'Assigned to CA', by: 'Admin' }
-      ]
-    },
-    {
-      id: 'NOT-2026-002',
-      type: 'GST',
-      subType: 'Show Cause Notice',
-      section: 'Section 73',
-      subject: 'Mismatch in GSTR-1 and GSTR-3B for FY 2024-25',
-      issuedBy: 'GST Department',
-      issuedDate: '2026-01-10',
-      dueDate: '2026-01-25',
-      status: 'responded',
-      priority: 'high',
-      description: 'Discrepancy noticed between outward supplies declared in GSTR-1 and tax paid in GSTR-3B. Please provide clarification with supporting documents.',
-      documents: ['GSTR-1 Returns', 'GSTR-3B Returns', 'Reconciliation Statement'],
-      timeline: [
-        { date: '2026-01-10', action: 'Notice Received', by: 'System' },
-        { date: '2026-01-12', action: 'Response Drafted', by: 'Accounts Team' },
-        { date: '2026-01-14', action: 'Response Submitted', by: 'CA' }
-      ]
-    },
-    {
-      id: 'NOT-2026-003',
-      type: 'MCA/RoC',
-      subType: 'Compliance Notice',
-      section: 'Section 92',
-      subject: 'Non-filing of Annual Return (MGT-7)',
-      issuedBy: 'Registrar of Companies',
-      issuedDate: '2026-01-05',
-      dueDate: '2026-01-20',
-      status: 'resolved',
-      priority: 'medium',
-      description: 'It has been observed that the company has not filed the Annual Return in Form MGT-7 for the financial year 2024-25.',
-      documents: ['MGT-7 Filed', 'Board Resolution'],
-      timeline: [
-        { date: '2026-01-05', action: 'Notice Received', by: 'System' },
-        { date: '2026-01-08', action: 'MGT-7 Filed', by: 'CS' },
-        { date: '2026-01-10', action: 'Compliance Completed', by: 'System' }
-      ]
-    },
-    {
-      id: 'NOT-2025-004',
-      type: 'Labour Law',
-      subType: 'Inspection Notice',
-      section: 'EPF Act',
-      subject: 'EPF Compliance Inspection Scheduled',
-      issuedBy: 'EPFO',
-      issuedDate: '2025-12-20',
-      dueDate: '2026-01-10',
-      status: 'resolved',
-      priority: 'medium',
-      description: 'An inspection under the EPF & MP Act, 1952 has been scheduled for your establishment. Please keep all relevant records ready.',
-      documents: ['EPF Returns', 'Wage Register', 'Attendance Records'],
-      timeline: [
-        { date: '2025-12-20', action: 'Notice Received', by: 'System' },
-        { date: '2025-12-25', action: 'Documents Prepared', by: 'HR' },
-        { date: '2026-01-10', action: 'Inspection Completed', by: 'EPFO Officer' },
-        { date: '2026-01-12', action: 'No Discrepancy Found', by: 'System' }
-      ]
-    },
-    {
-      id: 'NOT-2025-005',
-      type: 'Income Tax',
-      subType: 'Demand Notice',
-      section: 'Section 156',
-      subject: 'Outstanding Tax Demand - AY 2023-24',
-      issuedBy: 'Income Tax Department',
-      issuedDate: '2025-12-01',
-      dueDate: '2025-12-30',
-      status: 'pending',
-      priority: 'critical',
-      description: 'An outstanding tax demand of ₹2,45,000 is pending against your PAN for Assessment Year 2023-24. Please pay the amount or file rectification.',
-      documents: ['Demand Notice', 'Computation Sheet'],
-      timeline: [
-        { date: '2025-12-01', action: 'Notice Received', by: 'System' },
-        { date: '2025-12-05', action: 'Under Review by CA', by: 'CA' }
-      ]
-    },
-    {
-      id: 'NOT-2025-006',
-      type: 'GST',
-      subType: 'Registration Notice',
-      section: 'Section 29',
-      subject: 'Show Cause for GST Registration Cancellation',
-      issuedBy: 'GST Department',
-      issuedDate: '2025-11-15',
-      dueDate: '2025-11-30',
-      status: 'resolved',
-      priority: 'critical',
-      description: 'Non-filing of returns for consecutive 6 months. Show cause why GST registration should not be cancelled.',
-      documents: ['All GSTR-3B Filed', 'Reply to SCN'],
-      timeline: [
-        { date: '2025-11-15', action: 'Notice Received', by: 'System' },
-        { date: '2025-11-18', action: 'Filed Pending Returns', by: 'Accounts' },
-        { date: '2025-11-20', action: 'Reply Submitted', by: 'CA' },
-        { date: '2025-11-28', action: 'Registration Restored', by: 'GST Dept' }
-      ]
-    }
-  ])
+  // Demo Notices Data - Country-aware: Only show India-specific demo notices for Indian companies
+  // For other countries, start with empty array (notices should come from database)
+  const [demoNotices, setDemoNotices] = useState<any[]>([])
+
+  // Get country configuration for current company (must be before useEffect that uses it)
+  const { countryCode, countryConfig } = useCompanyCountry(currentCompany)
+  
+  // Fetch compliance categories from database
+  const { categories: complianceCategories } = useComplianceCategories(countryCode || 'IN')
+
+  // Update demo notices when company changes (show for all companies for demo)
+  useEffect(() => {
+    // Show demo notices for all companies (for prototype/demo purposes)
+    // Always show demo notices for demo/prototype
+    setDemoNotices([
+        {
+          id: 'NOT-2026-001',
+          type: 'Income Tax',
+          subType: 'Scrutiny Notice',
+          section: 'Section 143(2)',
+          subject: 'Selection for Scrutiny Assessment - AY 2024-25',
+          issuedBy: 'Income Tax Department',
+          issuedDate: '2026-01-15',
+          dueDate: '2026-02-15',
+          status: 'pending',
+          priority: 'high',
+          description: 'Your return for Assessment Year 2024-25 has been selected for scrutiny assessment. You are required to furnish the details/documents as specified.',
+          documents: ['ITR Filed', 'Form 26AS', 'Bank Statements'],
+          timeline: [
+            { date: '2026-01-15', action: 'Notice Received', by: 'System' },
+            { date: '2026-01-16', action: 'Assigned to CA', by: 'Admin' }
+          ]
+        },
+        {
+          id: 'NOT-2026-002',
+          type: 'GST',
+          subType: 'Show Cause Notice',
+          section: 'Section 73',
+          subject: 'Mismatch in GSTR-1 and GSTR-3B for FY 2024-25',
+          issuedBy: 'GST Department',
+          issuedDate: '2026-01-10',
+          dueDate: '2026-01-25',
+          status: 'responded',
+          priority: 'high',
+          description: 'Discrepancy noticed between outward supplies declared in GSTR-1 and tax paid in GSTR-3B. Please provide clarification with supporting documents.',
+          documents: ['GSTR-1 Returns', 'GSTR-3B Returns', 'Reconciliation Statement'],
+          timeline: [
+            { date: '2026-01-10', action: 'Notice Received', by: 'System' },
+            { date: '2026-01-12', action: 'Response Drafted', by: 'Accounts Team' },
+            { date: '2026-01-14', action: 'Response Submitted', by: 'CA' }
+          ]
+        },
+        {
+          id: 'NOT-2026-003',
+          type: 'RoC',
+          subType: 'Compliance Notice',
+          section: 'Section 92',
+          subject: 'Non-filing of Annual Return (MGT-7)',
+          issuedBy: 'Registrar of Companies',
+          issuedDate: '2026-01-05',
+          dueDate: '2026-01-20',
+          status: 'resolved',
+          priority: 'medium',
+          description: 'It has been observed that the company has not filed the Annual Return in Form MGT-7 for the financial year 2024-25.',
+          documents: ['MGT-7 Filed', 'Board Resolution'],
+          timeline: [
+            { date: '2026-01-05', action: 'Notice Received', by: 'System' },
+            { date: '2026-01-08', action: 'MGT-7 Filed', by: 'CS' },
+            { date: '2026-01-10', action: 'Compliance Completed', by: 'System' }
+          ]
+        },
+        {
+          id: 'NOT-2025-004',
+          type: 'Payroll',
+          subType: 'Inspection Notice',
+          section: 'EPF Act',
+          subject: 'EPF Compliance Inspection Scheduled',
+          issuedBy: 'EPFO',
+          issuedDate: '2025-12-20',
+          dueDate: '2026-01-10',
+          status: 'resolved',
+          priority: 'medium',
+          description: 'An inspection under the EPF & MP Act, 1952 has been scheduled for your establishment. Please keep all relevant records ready.',
+          documents: ['EPF Returns', 'Wage Register', 'Attendance Records'],
+          timeline: [
+            { date: '2025-12-20', action: 'Notice Received', by: 'System' },
+            { date: '2025-12-25', action: 'Documents Prepared', by: 'HR' },
+            { date: '2026-01-10', action: 'Inspection Completed', by: 'EPFO Officer' },
+            { date: '2026-01-12', action: 'No Discrepancy Found', by: 'System' }
+          ]
+        },
+        {
+          id: 'NOT-2025-005',
+          type: 'Income Tax',
+          subType: 'Demand Notice',
+          section: 'Section 156',
+          subject: 'Outstanding Tax Demand - AY 2023-24',
+          issuedBy: 'Income Tax Department',
+          issuedDate: '2025-12-01',
+          dueDate: '2025-12-30',
+          status: 'pending',
+          priority: 'high',
+          description: `An outstanding tax demand of ${formatCurrency(245000, countryCode)} is pending against your PAN for Assessment Year 2023-24. Please pay the amount or file rectification.`,
+          documents: ['Demand Notice', 'Computation Sheet'],
+          timeline: [
+            { date: '2025-12-01', action: 'Notice Received', by: 'System' },
+            { date: '2025-12-05', action: 'Under Review by CA', by: 'CA' }
+          ]
+        },
+        {
+          id: 'NOT-2025-006',
+          type: 'GST',
+          subType: 'Registration Notice',
+          section: 'Section 29',
+          subject: 'Show Cause for GST Registration Cancellation',
+          issuedBy: 'GST Department',
+          issuedDate: '2025-11-15',
+          dueDate: '2025-11-30',
+          status: 'resolved',
+          priority: 'high',
+          description: 'Non-filing of returns for consecutive 6 months. Show cause why GST registration should not be cancelled.',
+          documents: ['All GSTR-3B Filed', 'Reply to SCN'],
+          timeline: [
+            { date: '2025-11-15', action: 'Notice Received', by: 'System' },
+            { date: '2025-11-18', action: 'Filed Pending Returns', by: 'Accounts' },
+            { date: '2025-11-20', action: 'Reply Submitted', by: 'CA' },
+            { date: '2025-11-28', action: 'Registration Restored', by: 'GST Dept' }
+          ]
+        },
+        {
+          id: 'NOT-2026-007',
+          type: 'GST',
+          subType: 'DRC-01',
+          section: 'Section 73/74',
+          subject: 'Demand for Unpaid Tax - GSTR-3B for Oct 2025',
+          issuedBy: 'GST Department',
+          issuedDate: '2026-01-20',
+          dueDate: '2026-02-05',
+          status: 'pending',
+          priority: 'high',
+          description: 'Demand notice for unpaid/short-paid tax or wrong ITC claim for the month of October 2025. Amount due: ' + formatCurrency(125000, countryCode),
+          documents: ['GSTR-3B Oct 2025', 'Payment Challan', 'ITC Documents'],
+          timeline: [
+            { date: '2026-01-20', action: 'Notice Received', by: 'System' },
+            { date: '2026-01-21', action: 'Under Review', by: 'Accounts Team' }
+          ]
+        },
+        {
+          id: 'NOT-2026-008',
+          type: 'Income Tax',
+          subType: 'ASMT-10',
+          section: 'Section 65',
+          subject: 'Scrutiny Notice for AY 2023-24',
+          issuedBy: 'Income Tax Department',
+          issuedDate: '2026-01-18',
+          dueDate: '2026-02-18',
+          status: 'pending',
+          priority: 'medium',
+          description: 'Notice for scrutiny of returns filed for Assessment Year 2023-24. Please provide supporting documents and clarifications.',
+          documents: ['ITR-3 AY 2023-24', 'Audited Financials', 'Tax Audit Report'],
+          timeline: [
+            { date: '2026-01-18', action: 'Notice Received', by: 'System' },
+            { date: '2026-01-19', action: 'Assigned to CA', by: 'Admin' }
+          ]
+        },
+        {
+          id: 'NOT-2026-009',
+          type: 'RoC',
+          subType: 'DIR-3 KYC',
+          section: 'Section 152',
+          subject: 'Non-compliance with Director KYC Requirements',
+          issuedBy: 'Registrar of Companies',
+          issuedDate: '2026-01-12',
+          dueDate: '2026-01-27',
+          status: 'responded',
+          priority: 'medium',
+          description: 'Directors of the company have not completed their KYC requirements as per Section 152 of Companies Act, 2013.',
+          documents: ['DIR-3 KYC Forms', 'Director PAN Cards', 'Address Proofs'],
+          timeline: [
+            { date: '2026-01-12', action: 'Notice Received', by: 'System' },
+            { date: '2026-01-15', action: 'KYC Forms Collected', by: 'CS' },
+            { date: '2026-01-18', action: 'DIR-3 Filed', by: 'CS' },
+            { date: '2026-01-20', action: 'Response Submitted', by: 'System' }
+          ]
+        },
+        {
+          id: 'NOT-2026-010',
+          type: 'GST',
+          subType: 'ASMT-13',
+          section: 'Section 66',
+          subject: 'Best Judgment Assessment - GSTR-3B',
+          issuedBy: 'GST Department',
+          issuedDate: '2026-01-08',
+          dueDate: '2026-01-23',
+          status: 'responded',
+          priority: 'high',
+          description: 'Best judgment assessment order passed due to non-filing of GSTR-3B for the period July-September 2025.',
+          documents: ['GSTR-3B Returns', 'Payment Proof', 'Rectification Request'],
+          timeline: [
+            { date: '2026-01-08', action: 'Notice Received', by: 'System' },
+            { date: '2026-01-10', action: 'Returns Filed', by: 'Accounts' },
+            { date: '2026-01-12', action: 'Rectification Filed', by: 'CA' },
+            { date: '2026-01-15', action: 'Response Submitted', by: 'CA' }
+          ]
+        },
+        {
+          id: 'NOT-2025-011',
+          type: 'Payroll',
+          subType: 'ESIC Notice',
+          section: 'ESIC Act',
+          subject: 'Non-payment of ESIC Contributions',
+          issuedBy: 'ESIC',
+          issuedDate: '2025-11-25',
+          dueDate: '2025-12-10',
+          status: 'resolved',
+          priority: 'medium',
+          description: 'Outstanding ESIC contributions for the months of August-October 2025. Please clear the dues immediately.',
+          documents: ['ESIC Returns', 'Payment Challans', 'Employee Details'],
+          timeline: [
+            { date: '2025-11-25', action: 'Notice Received', by: 'System' },
+            { date: '2025-11-28', action: 'Payment Made', by: 'Accounts' },
+            { date: '2025-12-05', action: 'Compliance Verified', by: 'ESIC' },
+            { date: '2025-12-08', action: 'Case Closed', by: 'System' }
+          ]
+        },
+        {
+          id: 'NOT-2026-012',
+          type: 'Income Tax',
+          subType: 'Section 142(1)',
+          section: 'Section 142(1)',
+          subject: 'Notice for Production of Documents - AY 2024-25',
+          issuedBy: 'Income Tax Department',
+          issuedDate: '2026-01-22',
+          dueDate: '2026-02-07',
+          status: 'pending',
+          priority: 'medium',
+          description: 'You are required to produce or cause to be produced such accounts or documents as specified in the notice for the purpose of assessment.',
+          documents: ['Books of Accounts', 'Bank Statements', 'Audit Reports'],
+          timeline: [
+            { date: '2026-01-22', action: 'Notice Received', by: 'System' },
+            { date: '2026-01-23', action: 'Documents Being Prepared', by: 'CA' }
+          ]
+        },
+        {
+          id: 'NOT-2026-013',
+          type: 'GST',
+          subType: 'DRC-07',
+          section: 'Section 73/74',
+          subject: 'Summary of Order - Demand Notice',
+          issuedBy: 'GST Department',
+          issuedDate: '2026-01-14',
+          dueDate: '2026-01-29',
+          status: 'pending',
+          priority: 'high',
+          description: 'Summary of order demanding payment of GST dues amounting to ' + formatCurrency(87500, countryCode) + ' for the period April-June 2025.',
+          documents: ['Order Copy', 'Payment Challan', 'Appeal Documents'],
+          timeline: [
+            { date: '2026-01-14', action: 'Notice Received', by: 'System' },
+            { date: '2026-01-16', action: 'Legal Opinion Sought', by: 'Admin' }
+          ]
+        },
+        {
+          id: 'NOT-2026-014',
+          type: 'RoC',
+          subType: 'AOC-4',
+          section: 'Section 137',
+          subject: 'Non-filing of Annual Financial Statements',
+          issuedBy: 'Registrar of Companies',
+          issuedDate: '2026-01-10',
+          dueDate: '2026-01-25',
+          status: 'responded',
+          priority: 'medium',
+          description: 'The company has not filed its Annual Financial Statements in Form AOC-4 for the financial year ended 31st March 2025.',
+          documents: ['AOC-4 Filed', 'Audited Financials', 'Board Resolution'],
+          timeline: [
+            { date: '2026-01-10', action: 'Notice Received', by: 'System' },
+            { date: '2026-01-12', action: 'AOC-4 Filed', by: 'CS' },
+            { date: '2026-01-15', action: 'Response Submitted', by: 'System' }
+          ]
+        },
+        {
+          id: 'NOT-2025-015',
+          type: 'Income Tax',
+          subType: 'Section 148',
+          section: 'Section 148',
+          subject: 'Reopening of Assessment - AY 2022-23',
+          issuedBy: 'Income Tax Department',
+          issuedDate: '2025-10-15',
+          dueDate: '2025-11-15',
+          status: 'resolved',
+          priority: 'high',
+          description: 'Assessment for AY 2022-23 is being reopened as per Section 148 of Income Tax Act, 1961. Please file your return if not filed or provide additional information.',
+          documents: ['ITR Filed', 'Supporting Documents', 'Clarifications'],
+          timeline: [
+            { date: '2025-10-15', action: 'Notice Received', by: 'System' },
+            { date: '2025-10-20', action: 'ITR Filed', by: 'CA' },
+            { date: '2025-10-25', action: 'Assessment Completed', by: 'IT Dept' },
+            { date: '2025-11-10', action: 'Case Closed', by: 'System' }
+          ]
+        }
+      ])
+  }, [currentCompany?.id, countryCode])
 
   const filteredNotices = demoNotices.filter(notice => {
     const matchesStatus = noticesFilter === 'all' || notice.status === noticesFilter
@@ -703,10 +890,12 @@ function DataRoomPageInner() {
   const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false)
   const [isAdvancedOptionsOpen, setIsAdvancedOptionsOpen] = useState(false)
   const [isFolderDropdownOpen, setIsFolderDropdownOpen] = useState(false)
+  const [showComplianceContext, setShowComplianceContext] = useState(true)
   const [bulkUploadFiles, setBulkUploadFiles] = useState<File[]>([])
   const [bulkUploadProgress, setBulkUploadProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 })
   const [previewDocument, setPreviewDocument] = useState<any | null>(null)
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
+  const [previewModalTab, setPreviewModalTab] = useState<'preview' | 'compliance'>('preview')
   const [isStorageBreakdownOpen, setIsStorageBreakdownOpen] = useState(false)
   const [expiringSoonFilter, setExpiringSoonFilter] = useState<'all' | 'expiring' | 'expired'>('all')
   const [selectedVersions, setSelectedVersions] = useState<Record<string, number>>({})
@@ -727,9 +916,6 @@ function DataRoomPageInner() {
     subject: 'Document Sharing - Compliance Vault',
     content: 'Please find the attached documents from our Compliance Vault.',
   })
-
-  // Get country configuration for current company (must be before financialYears)
-  const { countryCode, countryConfig } = useCompanyCountry(currentCompany)
 
   // Generate financial years from 2019 to current year (country-aware)
   const currentYear = new Date().getFullYear()
@@ -1470,8 +1656,13 @@ function DataRoomPageInner() {
           console.error('Failed to fetch requirements:', result.error)
           setRegulatoryRequirements([])
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching requirements:', error)
+        // Handle network errors gracefully
+        if (error?.message?.includes('fetch failed') || error?.name === 'TypeError' || error?.message?.includes('Failed to fetch')) {
+          console.warn('Network error while fetching requirements - this may be a temporary connectivity issue')
+          // Continue with empty array - user can retry by refreshing or the app will retry on company change
+        }
         setRegulatoryRequirements([])
       } finally {
         setIsLoadingRequirements(false)
@@ -1618,20 +1809,23 @@ function DataRoomPageInner() {
     }
 
     // Extract daily rate from penalty string (e.g., "₹100/day", "100/day")
+    // Use country-specific currency symbol
+    const currencySymbol = countryConfig.currency.symbol
+    const currencySymbolEscaped = currencySymbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     let dailyRateMatch = penalty.match(/(\d+)\/day\s*\([^)]*NIL[^)]*\)/i)
     if (!dailyRateMatch) {
-      dailyRateMatch = penalty.match(/(?:₹)?[\d,]+(?:\.[\d]+)?\/day/i)
+      dailyRateMatch = penalty.match(new RegExp(`(?:${currencySymbolEscaped})?[\\d,]+(?:\\.[\\d]+)?\\/day`, 'i'))
     }
     if (dailyRateMatch) {
-      const rateStr = dailyRateMatch[1] || dailyRateMatch[0].replace(/₹/gi, '').replace(/\/day/gi, '').replace(/,/g, '')
+      const rateStr = dailyRateMatch[1] || dailyRateMatch[0].replace(new RegExp(currencySymbolEscaped, 'gi'), '').replace(/\/day/gi, '').replace(/,/g, '')
       const dailyRate = parseFloat(rateStr.replace(/,/g, ''))
       if (!isNaN(dailyRate) && dailyRate > 0) {
         let calculatedPenalty = dailyRate * daysDelayed
         
         // Check for maximum limit
-        const maxMatch = penalty.match(/max\s*(?:₹)?[\d,]+(?:\.[\d]+)?/i)
+        const maxMatch = penalty.match(new RegExp(`max\\s*(?:${currencySymbolEscaped})?[\\d,]+(?:\\.[\\d]+)?`, 'i'))
         if (maxMatch) {
-          const maxStr = maxMatch[0].replace(/max\s*(?:₹)?/gi, '').replace(/,/g, '')
+          const maxStr = maxMatch[0].replace(new RegExp(`max\\s*(?:${currencySymbolEscaped})?`, 'gi'), '').replace(/,/g, '')
           const maxAmount = parseFloat(maxStr)
           if (!isNaN(maxAmount) && maxAmount > 0) {
             calculatedPenalty = Math.min(calculatedPenalty, maxAmount)
@@ -1672,7 +1866,7 @@ function DataRoomPageInner() {
     // Check for explicit fixed penalty amounts
     const fixedKeywords = /(?:fixed|one-time|one time|flat|lump)/i
     if (fixedKeywords.test(penalty)) {
-      let fixedMatch = penalty.match(/₹[\d,]+(?:\.[\d]+)?/i)
+      let fixedMatch = penalty.match(new RegExp(`${currencySymbolEscaped}[\\d,]+(?:\\.[\\d]+)?`, 'i'))
       if (!fixedMatch) {
         const plainNumberMatch = penalty.match(/[\d,]+(?:\.[\d]+)?/i)
         if (plainNumberMatch) {
@@ -1683,6 +1877,12 @@ function DataRoomPageInner() {
           }
         }
       } else {
+        // Extract amount from fixed match and format with country currency
+        const amountStr = fixedMatch[0].replace(new RegExp(currencySymbolEscaped, 'gi'), '').replace(/,/g, '')
+        const amount = parseFloat(amountStr)
+        if (!isNaN(amount) && amount > 0) {
+          return formatCurrency(amount, countryCode)
+        }
         return fixedMatch[0]
       }
     }
@@ -1904,7 +2104,213 @@ function DataRoomPageInner() {
     }
   }
 
-  // Helper function to map document name to folder based on category
+  // Helper function to detect notice type from document name (for metadata/priority flagging)
+  const detectNoticeType = (documentName: string): {
+    type?: string
+    formCode?: string
+    section?: string
+    priority?: 'low' | 'medium' | 'high'
+    description?: string
+  } | null => {
+    if (!countryConfig?.regulatory?.noticeTypes) return null
+
+    const docLower = documentName.toLowerCase()
+    const noticeTypes = countryConfig.regulatory.noticeTypes
+
+    // Check for exact form code matches first (e.g., DRC-01, ASMT-10)
+    for (const [key, notice] of Object.entries(noticeTypes)) {
+      const formCodeLower = notice.formCode.toLowerCase()
+      if (docLower.includes(formCodeLower) || docLower.includes(key.toLowerCase())) {
+        return {
+          type: notice.type,
+          formCode: notice.formCode,
+          section: notice.section,
+          priority: notice.priority,
+          description: notice.description
+        }
+      }
+    }
+
+    // Check for section-based notices (e.g., Section 142, Section 143)
+    for (const [key, notice] of Object.entries(noticeTypes)) {
+      if (notice.section) {
+        const sectionLower = notice.section.toLowerCase()
+        if (docLower.includes(sectionLower)) {
+          return {
+            type: notice.type,
+            formCode: notice.formCode,
+            section: notice.section,
+            priority: notice.priority,
+            description: notice.description
+          }
+        }
+      }
+    }
+
+    return null
+  }
+
+  // Helper to get form frequency for a requirement
+  const getFormFrequency = (requirement: string): string | null => {
+    if (!countryConfig?.regulatory?.formFrequencies) return null
+    
+    const reqLower = requirement.toLowerCase()
+    
+    // Try to match requirement to form name
+    for (const [formName, frequency] of Object.entries(countryConfig.regulatory.formFrequencies)) {
+      if (reqLower.includes(formName.toLowerCase())) {
+        return frequency
+      }
+    }
+    return null
+  }
+
+  // Helper to find relevant legal sections for a requirement
+  const getRelevantLegalSections = (requirement: string, category: string): Array<{
+    act: string
+    section: string
+    description: string
+    relevance: string
+  }> => {
+    if (!countryConfig?.regulatory?.legalSections) return []
+    
+    const reqLower = requirement.toLowerCase()
+    const relevantSections: Array<{
+      act: string
+      section: string
+      description: string
+      relevance: string
+    }> = []
+    
+    // Match based on requirement text and category
+    Object.values(countryConfig.regulatory.legalSections).forEach(section => {
+      const sectionLower = section.section.toLowerCase()
+      const actLower = section.act.toLowerCase()
+      
+      if (reqLower.includes(sectionLower) || 
+          reqLower.includes(actLower) ||
+          (category === 'GST' && actLower.includes('gst')) ||
+          (category === 'Income Tax' && actLower.includes('income tax')) ||
+          (category === 'RoC' && actLower.includes('companies act'))) {
+        relevantSections.push(section)
+      }
+    })
+    
+    return relevantSections
+  }
+
+  // Helper to get authority for category
+  const getAuthorityForCategory = (category: string): string | null => {
+    if (!countryConfig?.regulatory?.authorities) return null
+    
+    const categoryMap: Record<string, keyof typeof countryConfig.regulatory.authorities> = {
+      'GST': 'indirectTax',
+      'Income Tax': 'tax',
+      'RoC': 'corporate',
+      'Payroll': 'labor',
+      'Labour Law': 'labor',
+      'Renewals': 'registration'
+    }
+    
+    const authorityKey = categoryMap[category]
+    return authorityKey ? countryConfig.regulatory.authorities[authorityKey] || null : null
+  }
+
+  // Helper to map folder names to compliance categories
+  const getCategoryFromFolder = (folderName: string): string | null => {
+    const folderMap: Record<string, string> = {
+      'GST Returns': 'GST',
+      'Income Tax Returns': 'Income Tax',
+      'ROC Filings': 'RoC',
+      'Labour Law Compliance': 'Payroll',
+      'Renewals': 'Renewals',
+      'Other Compliance Documents': 'Other',
+      'Professional Tax': 'Prof. Tax',
+      'Constitutional Documents': 'Other',
+      'Financials and licenses': 'Other',
+      'Taxation & GST Compliance': 'GST',
+      'Regulatory & MCA Filings': 'RoC'
+    }
+    return folderMap[folderName] || null
+  }
+
+  // Get relevant forms for folder
+  const getRelevantFormsForFolder = (folderName: string): string[] => {
+    const category = getCategoryFromFolder(folderName)
+    if (!category || !countryConfig?.regulatory?.commonForms) return []
+    
+    const categoryLower = category.toLowerCase()
+    const forms = countryConfig.regulatory.commonForms.filter(form => {
+      const formLower = form.toLowerCase()
+      
+      if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
+      if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
+      if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
+      if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
+      return false
+    })
+    
+    return forms
+  }
+
+  // Get authority for folder
+  const getAuthorityForFolder = (folderName: string): string | null => {
+    const category = getCategoryFromFolder(folderName)
+    return category ? getAuthorityForCategory(category) : null
+  }
+
+  // Suggest folders based on document name
+  const suggestFoldersForDocument = (documentName: string): string[] => {
+    const docLower = documentName.toLowerCase()
+    const suggestions: string[] = []
+    
+    // GST patterns
+    if (docLower.includes('gstr') || docLower.includes('gst') || docLower.includes('cmp-') || docLower.includes('itc-') || docLower.includes('iff')) {
+      suggestions.push('GST Returns')
+    }
+    
+    // Income Tax patterns
+    if (docLower.includes('itr') || docLower.includes('form 24') || docLower.includes('form 26') || docLower.includes('form 27') || docLower.includes('tds') || docLower.includes('tcs')) {
+      suggestions.push('Income Tax Returns')
+    }
+    
+    // ROC patterns
+    if (docLower.includes('mgt') || docLower.includes('aoc') || docLower.includes('roc') || docLower.includes('dir-') || docLower.includes('pas-') || docLower.includes('ben-') || docLower.includes('inc-') || docLower.includes('adt-') || docLower.includes('cra-') || docLower.includes('llp form')) {
+      suggestions.push('ROC Filings')
+    }
+    
+    // Labour patterns
+    if (docLower.includes('epf') || docLower.includes('esi') || docLower.includes('ecr') || docLower.includes('form 5a') || docLower.includes('form 2') || docLower.includes('form 10') || docLower.includes('form 19')) {
+      suggestions.push('Labour Law Compliance')
+    }
+    
+    return suggestions
+  }
+
+  // Get folder description with authority and form count
+  const getFolderDescription = (folderName: string): { authority: string | null, formCount: number } => {
+    const authority = getAuthorityForFolder(folderName)
+    const forms = getRelevantFormsForFolder(folderName)
+    return {
+      authority,
+      formCount: forms.length
+    }
+  }
+
+  // Get legal sections for document
+  const getLegalSectionsForDocument = (documentName: string, folderName: string): Array<{
+    act: string
+    section: string
+    description: string
+    relevance: string
+  }> => {
+    const category = getCategoryFromFolder(folderName)
+    if (!category) return []
+    
+    return getRelevantLegalSections(documentName, category)
+  }
+
+  // Helper function to map document name to folder based on category (country-aware)
   const getFolderForDocument = (documentName: string, category: string): string => {
     // Check if document template exists
     const template = documentTemplates.find(t => 
@@ -1913,36 +2319,131 @@ function DataRoomPageInner() {
     )
     if (template) return template.folder_name
 
-    // Map by category and document name patterns
-    const categoryMap: Record<string, string> = {
-      'GST': 'GST Returns',
-      'Income Tax': 'Income Tax Returns',
-      'RoC': 'ROC Filings',
-      'Labour Law': 'Labour Law Compliance',
-      'LLP Act': 'ROC Filings',
-      'Prof. Tax': 'Professional Tax'
-    }
+    const docLower = documentName.toLowerCase()
 
-    // Check for specific document patterns
-    if (documentName.toLowerCase().includes('gstr') || documentName.toLowerCase().includes('gst')) {
-      return 'GST Returns'
-    }
-    if (documentName.toLowerCase().includes('form 24q') || documentName.toLowerCase().includes('form 26q') || 
-        documentName.toLowerCase().includes('tds') || documentName.toLowerCase().includes('itr')) {
-      return 'Income Tax Returns'
-    }
-    if (documentName.toLowerCase().includes('pf') || documentName.toLowerCase().includes('esi') || 
-        documentName.toLowerCase().includes('epf') || documentName.toLowerCase().includes('labour')) {
-      return 'Labour Law Compliance'
-    }
-    if (documentName.toLowerCase().includes('mgt') || documentName.toLowerCase().includes('aoc') || 
-        documentName.toLowerCase().includes('roc') || documentName.toLowerCase().includes('form 11') || 
-        documentName.toLowerCase().includes('form 8')) {
-      return 'ROC Filings'
-    }
+    // Use country config patterns if available, with fallback to hardcoded patterns
+    const patterns = countryConfig?.regulatory?.documentPatterns
 
-    // Default to category-based folder
-    return categoryMap[category] || 'Compliance Documents'
+    // Country-specific document pattern matching
+    if (countryCode === 'IN') {
+      // India-specific patterns
+      const categoryMap: Record<string, string> = {
+        'GST': 'GST Returns',
+        'Income Tax': 'Income Tax Returns',
+        'RoC': 'ROC Filings',
+        'Labour Law': 'Labour Law Compliance',
+        'LLP Act': 'ROC Filings',
+        'Prof. Tax': 'Professional Tax',
+        'Payroll': 'Labour Law Compliance',
+        'Others': 'Other Compliance Documents',
+        'Renewals': 'Renewals'
+      }
+
+      // Enhanced pattern matching using country config (with fallback)
+      if (patterns) {
+        // Check tax patterns (GST, Income Tax, TDS, ITR, notices) - all map to Income Tax or GST
+        if (patterns.tax && patterns.tax.some(pattern => docLower.includes(pattern.toLowerCase()))) {
+          // GST patterns
+          if (patterns.tax.some(p => ['gstr', 'gst', 'cmp-', 'itc-', 'iff'].some(gst => p.toLowerCase().includes(gst)) && docLower.includes(p.toLowerCase()))) {
+            return 'GST Returns'
+          }
+          // Income Tax patterns (TDS, ITR, notices)
+          if (patterns.tax.some(p => ['itr', 'form 24q', 'form 26q', 'form 27q', 'form 27eq', 'tds', 'tcs', 'drc-', 'asmt-', 'section 142', 'section 143', 'section 156'].some(it => p.toLowerCase().includes(it)) && docLower.includes(p.toLowerCase()))) {
+            return 'Income Tax Returns'
+          }
+          // Default tax pattern match
+          return 'Income Tax Returns'
+        }
+
+        // Check corporate patterns (MCA/RoC) - map to RoC
+        if (patterns.corporate && patterns.corporate.some(pattern => docLower.includes(pattern.toLowerCase()))) {
+          return 'ROC Filings'
+        }
+
+        // Check labor patterns (EPFO/ESIC) - map to Payroll category
+        if (patterns.labor && patterns.labor.some(pattern => docLower.includes(pattern.toLowerCase()))) {
+          return 'Labour Law Compliance'
+        }
+
+        // Check notice patterns - map to Others/Renewals
+        if (patterns.notices && patterns.notices.some(pattern => docLower.includes(pattern.toLowerCase()))) {
+          // Registration-related notices go to Renewals, others to Other Compliance Documents
+          if (docLower.includes('reg-17') || docLower.includes('reg-19')) {
+            return 'Renewals'
+          }
+          return 'Other Compliance Documents'
+        }
+      }
+
+      // Fallback to hardcoded patterns for backward compatibility
+      if (docLower.includes('gstr') || docLower.includes('gst')) {
+        return 'GST Returns'
+      }
+      if (docLower.includes('form 24q') || docLower.includes('form 26q') || 
+          docLower.includes('form 27q') || docLower.includes('form 27eq') ||
+          docLower.includes('tds') || docLower.includes('tcs') || docLower.includes('itr') ||
+          docLower.includes('drc-') || docLower.includes('asmt-') ||
+          docLower.includes('section 142') || docLower.includes('section 143') || docLower.includes('section 156')) {
+        return 'Income Tax Returns'
+      }
+      if (docLower.includes('pf') || docLower.includes('esi') || 
+          docLower.includes('epf') || docLower.includes('epfo') || docLower.includes('labour') ||
+          docLower.includes('ecr') || docLower.includes('form 5a') || docLower.includes('form 2') ||
+          docLower.includes('form 10c') || docLower.includes('form 10d') || docLower.includes('form 19')) {
+        return 'Labour Law Compliance'
+      }
+      if (docLower.includes('mgt') || docLower.includes('aoc') || 
+          docLower.includes('roc') || docLower.includes('form 11') || docLower.includes('form 8') ||
+          docLower.includes('dir-') || docLower.includes('pas-') || docLower.includes('ben-') ||
+          docLower.includes('inc-22a') || docLower.includes('adt-01') || docLower.includes('cra-2') ||
+          docLower.includes('llp form')) {
+        return 'ROC Filings'
+      }
+      if (docLower.includes('reg-17') || docLower.includes('reg-19') || docLower.includes('cmp-05')) {
+        return 'Renewals'
+      }
+
+      // Default to category-based folder for India
+      return categoryMap[category] || 'Compliance Documents'
+    } else {
+      // For other countries, use generic category-based mapping
+      // Map compliance categories to folder names
+      const genericCategoryMap: Record<string, string> = {
+        'VAT': 'VAT Returns',
+        'Corporate Tax': 'Corporate Tax Returns',
+        'Income Tax': 'Income Tax Returns',
+        'Payroll': 'Payroll Compliance',
+        'Trade License Renewal': 'License Renewals',
+        'Commercial Registration Renewal': 'License Renewals',
+        'Federal Tax': 'Federal Tax Returns',
+        'State Tax': 'State Tax Returns',
+        'Business License': 'License Renewals',
+        'Others': 'Other Compliance Documents'
+      }
+
+      // Try to match category first
+      if (genericCategoryMap[category]) {
+        return genericCategoryMap[category]
+      }
+
+      // Fallback: check for common patterns across countries
+      const docLower = documentName.toLowerCase()
+      if (docLower.includes('vat') || docLower.includes('value added tax')) {
+        return 'VAT Returns'
+      }
+      if (docLower.includes('tax return') || docLower.includes('tax filing')) {
+        return 'Tax Returns'
+      }
+      if (docLower.includes('license') || docLower.includes('registration')) {
+        return 'License Renewals'
+      }
+      if (docLower.includes('payroll') || docLower.includes('salary')) {
+        return 'Payroll Compliance'
+      }
+
+      // Default fallback
+      return 'Compliance Documents'
+    }
   }
 
   // Calculate period metadata for document upload
@@ -2513,30 +3014,33 @@ function DataRoomPageInner() {
             </svg>
             <span className="text-sm sm:text-base">Notices <span className="text-gray-500 text-xs">(Soon)</span></span>
           </button>
-          <button
-            onClick={() => setActiveTab('gst')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
-              activeTab === 'gst'
-                ? 'border-white/40 bg-white/10 text-white'
-                : 'border-white/20 bg-black text-white hover:text-white hover:border-white/40'
-            }`}
-          >
-            <svg
-              width="16"
-              height="16"
-              className="sm:w-[18px] sm:h-[18px]"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {/* GST Tab - Only show for India */}
+          {countryCode === 'IN' && (
+            <button
+              onClick={() => setActiveTab('gst')}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+                activeTab === 'gst'
+                  ? 'border-white/40 bg-white/10 text-white'
+                  : 'border-white/20 bg-black text-white hover:text-white hover:border-white/40'
+              }`}
             >
-              <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
-              <line x1="1" y1="10" x2="23" y2="10" />
-            </svg>
-            <span className="text-sm sm:text-base">GST <span className="text-gray-500 text-xs">(Soon)</span></span>
-          </button>
+              <svg
+                width="16"
+                height="16"
+                className="sm:w-[18px] sm:h-[18px]"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+                <line x1="1" y1="10" x2="23" y2="10" />
+              </svg>
+              <span className="text-sm sm:text-base">GST <span className="text-gray-500 text-xs">(Soon)</span></span>
+            </button>
+          )}
         </div>
 
         {/* Content based on active tab */}
@@ -2883,7 +3387,7 @@ function DataRoomPageInner() {
             if (/^\d+$/.test(penalty)) {
               const dailyRate = parseInt(penalty, 10)
               if (!isNaN(dailyRate) && dailyRate > 0) {
-                return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+                return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
               }
             }
 
@@ -2898,7 +3402,7 @@ function DataRoomPageInner() {
                 if (!isNaN(maxCap) && maxCap > 0) {
                   calculated = Math.min(calculated, maxCap)
                 }
-                return `₹${Math.round(calculated).toLocaleString('en-IN')}`
+                return formatCurrency(Math.round(calculated), countryCode)
               }
             }
 
@@ -2922,11 +3426,14 @@ function DataRoomPageInner() {
             // Interest-based penalties (cannot calculate without principal)
             if (/Interest\s*@?\s*[\d.]+%/i.test(penalty)) {
               // Check if there's also a Late fee component we can calculate
-              const lateFeeMatch = penalty.match(/Late\s*fee\s*(?:Rs\.?\s*|₹\s*)([\d,]+)(?:\s*(?:per\s*day|\/day))?/i)
+              const currencySymbol = countryConfig.currency.symbol
+              const currencySymbolEscaped = currencySymbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+              const lateFeePattern = new RegExp(`Late\\s*fee\\s*(?:Rs\\.?\\s*|${currencySymbolEscaped}\\s*)([\\d,]+)(?:\\s*(?:per\\s*day|\\/day))?`, 'i')
+              const lateFeeMatch = penalty.match(lateFeePattern)
               if (lateFeeMatch) {
                 const dailyRate = parseFloat(lateFeeMatch[1].replace(/,/g, ''))
                 if (!isNaN(dailyRate) && dailyRate > 0) {
-                  return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')} (late fee only)`
+                  return `${formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)} (late fee only)`
                 }
               }
               return 'Interest-based (needs tax amount)'
@@ -2947,7 +3454,10 @@ function DataRoomPageInner() {
             // Extract daily rate from text - regex should match even with extra text after "per day"
             // This handles: "Rs. 200 per day u/s 234E", "Rs. 50 per day (Rs. 20 for NIL)", etc.
             // The regex will match "Rs. 200 per day" even if followed by "u/s 234E" or other text
-            const dailyMatch = penalty.match(/Rs\.?\s*([\d,]+)\s*per\s*day/i)
+            // Use country-specific currency symbol
+            const currencySymbol = countryConfig.currency.symbol
+            const currencySymbolEscaped = currencySymbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            const dailyMatch = penalty.match(new RegExp(`(?:Rs\\.?\\s*|${currencySymbolEscaped}\\s*)([\\d,]+)\\s*per\\s*day`, 'i'))
             if (dailyMatch) {
               const dailyRate = parseFloat(dailyMatch[1].replace(/,/g, ''))
               if (!isNaN(dailyRate) && dailyRate > 0) {
@@ -2955,7 +3465,7 @@ function DataRoomPageInner() {
                 if (maxCap !== null && maxCap > 0) {
                   calculated = Math.min(calculated, maxCap)
                   }
-                return `₹${Math.round(calculated).toLocaleString('en-IN')}`
+                return formatCurrency(Math.round(calculated), countryCode)
               }
             }
 
@@ -2968,15 +3478,16 @@ function DataRoomPageInner() {
                 if (maxCap !== null && maxCap > 0) {
                   calculated = Math.min(calculated, maxCap)
                 }
-                return `₹${Math.round(calculated).toLocaleString('en-IN')}`
+                return formatCurrency(Math.round(calculated), countryCode)
               }
             }
 
             // Try alternate formats - handle "50/day", "200/day", etc.
-            const altMatch = penalty.match(/Rs\.?\s*([\d,]+)\s*\/\s*day/i) || 
-                            penalty.match(/₹\s*([\d,]+)\s*(?:per\s*day|\/day)/i) ||
+            // Use country-specific currency symbol
+            const altMatch = penalty.match(new RegExp(`(?:Rs\\.?\\s*|${currencySymbolEscaped}\\s*)([\\d,]+)\\s*\\/\\s*day`, 'i')) || 
+                            penalty.match(new RegExp(`${currencySymbolEscaped}\\s*([\\d,]+)\\s*(?:per\\s*day|\\/day)`, 'i')) ||
                             penalty.match(/(\d+)\s*per\s*day/i) ||
-                            // Handle "50/day" format (without Rs.)
+                            // Handle "50/day" format (without currency symbol)
                             penalty.match(/^(\d+)\/day/i) ||
                             penalty.match(/(\d+)\/day/i)
             if (altMatch) {
@@ -2986,7 +3497,7 @@ function DataRoomPageInner() {
                 if (maxCap !== null && maxCap > 0) {
                   calculated = Math.min(calculated, maxCap)
                 }
-                return `₹${Math.round(calculated).toLocaleString('en-IN')}`
+                return formatCurrency(Math.round(calculated), countryCode)
               }
             }
 
@@ -2995,7 +3506,7 @@ function DataRoomPageInner() {
             if (dailyWithRangeMatch) {
               const dailyRate = parseFloat(dailyWithRangeMatch[1].replace(/,/g, ''))
               if (!isNaN(dailyRate) && dailyRate > 0) {
-                return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+                return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
               }
             }
             
@@ -3004,7 +3515,7 @@ function DataRoomPageInner() {
             if (interestPlusDailyMatch) {
               const dailyRate = parseFloat(interestPlusDailyMatch[1].replace(/,/g, ''))
               if (!isNaN(dailyRate) && dailyRate > 0) {
-                return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+                return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
               }
             }
 
@@ -3022,31 +3533,31 @@ function DataRoomPageInner() {
             }
 
             // Handle "Rs. 1 Lakh on Company + Rs. 5000 per day on officers" → extract officers penalty
-            const officersMatch = penalty.match(/Rs\.?\s*([\d,]+)\s*per\s*day\s*on\s*officers/i)
+            const officersMatch = penalty.match(new RegExp(`(?:Rs\\.?\\s*|${currencySymbolEscaped}\\s*)([\\d,]+)\\s*per\\s*day\\s*on\\s*officers`, 'i'))
             if (officersMatch) {
               const dailyRate = parseFloat(officersMatch[1].replace(/,/g, ''))
               if (!isNaN(dailyRate) && dailyRate > 0) {
-                return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+                return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
               }
             }
 
             // Handle Late fee patterns
-            const lateFeeMatch = penalty.match(/Late\s*fee\s*(?:Rs\.?\s*|₹\s*)([\d,]+)/i)
+            const lateFeeMatch = penalty.match(new RegExp(`Late\\s*fee\\s*(?:Rs\\.?\\s*|${currencySymbolEscaped}\\s*)([\\d,]+)`, 'i'))
             if (lateFeeMatch) {
               const dailyRate = parseFloat(lateFeeMatch[1].replace(/,/g, ''))
               if (!isNaN(dailyRate) && dailyRate > 0) {
-                return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+                return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
               }
             }
 
             // Check for fixed penalty amounts
             const fixedKeywords = /(?:fixed|one-time|one time|flat|lump)/i
             if (fixedKeywords.test(penalty)) {
-              const fixedMatch = penalty.match(/(?:Rs\.?\s*|₹\s*)([\d,]+)/i)
+              const fixedMatch = penalty.match(new RegExp(`(?:Rs\\.?\\s*|${currencySymbolEscaped}\\s*)([\\d,]+)`, 'i'))
               if (fixedMatch) {
                 const amount = parseFloat(fixedMatch[1].replace(/,/g, ''))
                 if (!isNaN(amount) && amount > 0) {
-                  return `₹${Math.round(amount).toLocaleString('en-IN')}`
+                  return formatCurrency(Math.round(amount), countryCode)
                 }
               }
             }
@@ -3056,7 +3567,7 @@ function DataRoomPageInner() {
             if (plainNumberMatch) {
               const amount = parseFloat(plainNumberMatch[0].replace(/,/g, ''))
               if (!isNaN(amount) && amount > 0) {
-                return `₹${Math.round(amount * daysDelayed).toLocaleString('en-IN')}`
+                return formatCurrency(Math.round(amount * daysDelayed), countryCode)
               }
             }
 
@@ -3071,12 +3582,16 @@ function DataRoomPageInner() {
           // Calculate total penalties
           const calculateTotalPenalty = (): number => {
             let total = 0
+            const currencySymbol = countryConfig.currency.symbol
+            const currencySymbolEscaped = currencySymbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
             displayRequirements.forEach(req => {
               const delay = calculateDelayMemoized(req.dueDate, req.status)
               if (delay !== null && delay > 0 && req.penalty) {
                 const penaltyStr = calculatePenaltyMemoized(req.penalty, delay, req.penalty_base_amount)
                 if (penaltyStr !== '-' && !penaltyStr.includes('Cannot calculate')) {
-                  const amount = parseFloat(penaltyStr.replace(/₹/g, '').replace(/,/g, ''))
+                  // Remove currency symbol and commas, then parse
+                  const cleaned = penaltyStr.replace(new RegExp(currencySymbolEscaped, 'g'), '').replace(/,/g, '').replace(/[^\d.-]/g, '')
+                  const amount = parseFloat(cleaned)
                   if (!isNaN(amount)) {
                     total += amount
                   }
@@ -4000,7 +4515,7 @@ function DataRoomPageInner() {
               doc.setTextColor(255, 0, 0)
               doc.setFontSize(16)
               doc.setFont('helvetica', 'bold')
-              const penaltyText = `₹${totalPenalty.toLocaleString('en-IN')}`
+              const penaltyText = formatCurrency(totalPenalty, countryCode)
               doc.text(penaltyText, margin, yPos, { maxWidth: contentWidth })
             }
 
@@ -4311,7 +4826,7 @@ function DataRoomPageInner() {
                     </div>
                   </div>
                   <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">
-                    {totalPenalty > 0 ? `₹${totalPenalty.toLocaleString('en-IN')}` : '₹0'}
+                    {totalPenalty > 0 ? formatCurrency(totalPenalty, countryCode) : formatCurrency(0, countryCode)}
                   </div>
                   <p className="text-xs sm:text-sm text-gray-400">Accumulated penalties</p>
                 </div>
@@ -4588,17 +5103,16 @@ function DataRoomPageInner() {
                   <option value="responded">Responded</option>
                   <option value="resolved">Resolved</option>
                 </select>
-                {/* Type Filter */}
+                {/* Type Filter - Country-aware */}
                 <select
                   value={noticesTypeFilter}
                   onChange={(e) => setNoticesTypeFilter(e.target.value)}
                   className="px-4 py-2 bg-black border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:border-white/40"
                 >
                   <option value="all">All Types</option>
-                  <option value="Income Tax">Income Tax</option>
-                  <option value="GST">GST</option>
-                  <option value="MCA/RoC">MCA/RoC</option>
-                  <option value="Labour Law">Labour Law</option>
+                  {complianceCategories.map((category) => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
                 </select>
                 <button 
                   onClick={() => setIsAddNoticeModalOpen(true)}
@@ -4719,7 +5233,12 @@ function DataRoomPageInner() {
 
               {/* Notice Detail */}
               <div className="lg:col-span-2">
-                {selectedNotice ? (
+                {selectedNotice ? (() => {
+                  // Detect notice type metadata
+                  const noticeMetadata = detectNoticeType(selectedNotice.subject || selectedNotice.id || selectedNotice.subType || '')
+                  const authority = getAuthorityForCategory(selectedNotice.type || '')
+                  
+                  return (
                   <div className="bg-black border border-white/10 rounded-2xl overflow-hidden">
                     {/* Detail Header */}
                     <div className="bg-black p-6 border-b border-white/10">
@@ -4756,11 +5275,46 @@ function DataRoomPageInner() {
                           {selectedNotice.status.charAt(0).toUpperCase() + selectedNotice.status.slice(1)}
                         </span>
                       </div>
+                      
+                      {/* Notice Metadata Badges */}
+                      {noticeMetadata && (
+                        <div className="flex flex-wrap items-center gap-2 mb-3">
+                          <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-medium">
+                            {noticeMetadata.type}
+                          </span>
+                          {noticeMetadata.priority && (
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              noticeMetadata.priority === 'high' ? 'bg-red-500/20 text-red-400' :
+                              noticeMetadata.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                              'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {noticeMetadata.priority.toUpperCase()} Priority
+                            </span>
+                          )}
+                          {noticeMetadata.formCode && (
+                            <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs font-medium">
+                              {noticeMetadata.formCode}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      
                       <h2 className="text-white text-xl mb-2">{selectedNotice.subject}</h2>
                       <div className="flex flex-wrap items-center gap-4 text-sm">
-                        <span className="text-gray-400">
-                          <span className="text-gray-500">Section:</span> {selectedNotice.section}
-                        </span>
+                        {noticeMetadata?.section ? (
+                          <span className="text-gray-400">
+                            <span className="text-gray-500">Legal Section:</span> <span className="text-white">{noticeMetadata.section}</span>
+                          </span>
+                        ) : selectedNotice.section ? (
+                          <span className="text-gray-400">
+                            <span className="text-gray-500">Section:</span> {selectedNotice.section}
+                          </span>
+                        ) : null}
+                        {authority && (
+                          <span className="text-gray-400">
+                            <span className="text-gray-500">Authority:</span> <span className="text-white">{authority}</span>
+                          </span>
+                        )}
                         <span className="text-gray-400">
                           <span className="text-gray-500">Issued:</span> {new Date(selectedNotice.issuedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </span>
@@ -4772,6 +5326,16 @@ function DataRoomPageInner() {
 
                     {/* Detail Body */}
                     <div className="p-6 space-y-6">
+                      {/* Notice Type Description */}
+                      {noticeMetadata?.description && (
+                        <div>
+                          <h4 className="text-gray-400 text-sm font-medium mb-2">Notice Type Information</h4>
+                          <p className="text-white text-sm leading-relaxed bg-blue-500/10 border border-blue-500/20 p-4 rounded-lg">
+                            {noticeMetadata.description}
+                          </p>
+                        </div>
+                      )}
+                      
                       {/* Description */}
                       <div>
                         <h4 className="text-gray-400 text-sm font-medium mb-2">Notice Description</h4>
@@ -4899,7 +5463,8 @@ function DataRoomPageInner() {
                       )}
                     </div>
                   </div>
-                ) : (
+                  )
+                })() : (
                   <div className="bg-black border border-white/10 rounded-2xl h-full flex flex-col items-center justify-center py-20">
                     <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mb-6">
                       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="1.5">
@@ -5328,7 +5893,186 @@ function DataRoomPageInner() {
           </div>
         )}
 
-        {activeTab === 'gst' && (
+        {/* Compliance Details Modal */}
+        {complianceDetailsModal && (() => {
+          const req = complianceDetailsModal
+          const formFreq = getFormFrequency(req.requirement)
+          const legalSections = getRelevantLegalSections(req.requirement, req.category)
+          const authority = getAuthorityForCategory(req.category)
+          
+          // Get all relevant forms for this category
+          const categoryForms = countryConfig?.regulatory?.commonForms?.filter(form => {
+            const formLower = form.toLowerCase()
+            const categoryLower = req.category.toLowerCase()
+            
+            if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
+            if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
+            if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
+            if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
+            return false
+          }) || []
+          
+          const formFrequency = countryConfig?.regulatory?.formFrequencies
+          
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <div className="bg-black border border-white/10 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+                {/* Modal Header */}
+                <div className="sticky top-0 bg-black border-b border-white/10 p-6 flex items-center justify-between z-10">
+                  <div>
+                    <h2 className="text-2xl font-light text-white mb-1">Compliance Details</h2>
+                    <p className="text-gray-400 text-sm">{req.requirement}</p>
+                  </div>
+                  <button
+                    onClick={() => setComplianceDetailsModal(null)}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-800 transition-colors"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Modal Body */}
+                <div className="p-6 space-y-6">
+                  {/* Basic Information */}
+                  <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
+                    <h3 className="text-white font-medium mb-3">Basic Information</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-start justify-between">
+                        <span className="text-gray-400">Category:</span>
+                        <span className="text-white font-medium">{req.category}</span>
+                      </div>
+                      {req.description && (
+                        <div className="flex items-start justify-between">
+                          <span className="text-gray-400">Description:</span>
+                          <span className="text-white text-right max-w-[70%]">{req.description}</span>
+                        </div>
+                      )}
+                      <div className="flex items-start justify-between">
+                        <span className="text-gray-400">Due Date:</span>
+                        <span className="text-white">{(req as any).due_date || (req as any).dueDate}</span>
+                      </div>
+                      <div className="flex items-start justify-between">
+                        <span className="text-gray-400">Status:</span>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          req.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                          req.status === 'overdue' ? 'bg-red-500/20 text-red-400' :
+                          req.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                          'bg-gray-500/20 text-gray-400'
+                        }`}>
+                          {req.status.toUpperCase()}
+                        </span>
+                      </div>
+                      {formFreq && (
+                        <div className="flex items-start justify-between">
+                          <span className="text-gray-400">Filing Frequency:</span>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            formFreq === 'monthly' ? 'bg-blue-500/20 text-blue-400' :
+                            formFreq === 'quarterly' ? 'bg-purple-500/20 text-purple-400' :
+                            formFreq === 'annual' ? 'bg-green-500/20 text-green-400' :
+                            'bg-gray-500/20 text-gray-400'
+                          }`}>
+                            {formFreq.toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Regulatory Authority */}
+                  {authority && (
+                    <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
+                      <h3 className="text-white font-medium mb-3">Regulatory Authority</h3>
+                      <p className="text-gray-300 text-sm">{authority}</p>
+                    </div>
+                  )}
+
+                  {/* Legal Sections */}
+                  {legalSections.length > 0 && (
+                    <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
+                      <h3 className="text-white font-medium mb-3">Legal References</h3>
+                      <div className="space-y-3">
+                        {legalSections.map((section, idx) => (
+                          <div key={idx} className="border-l-2 border-blue-500/50 pl-3">
+                            <div className="text-white font-medium text-sm">
+                              {section.act} - {section.section}
+                            </div>
+                            <div className="text-gray-400 text-xs mt-1">{section.description}</div>
+                            {section.relevance && (
+                              <div className="text-gray-500 text-xs mt-1 italic">Relevance: {section.relevance}</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Relevant Forms */}
+                  {categoryForms.length > 0 && (
+                    <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
+                      <h3 className="text-white font-medium mb-3">Relevant Forms</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {categoryForms.map((form) => (
+                          <div key={form} className="flex items-center justify-between p-2 bg-gray-800 rounded border border-gray-700">
+                            <span className="text-white text-sm">{form}</span>
+                            {formFrequency?.[form] && (
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                                formFrequency[form] === 'monthly' ? 'bg-blue-500/20 text-blue-400' :
+                                formFrequency[form] === 'quarterly' ? 'bg-purple-500/20 text-purple-400' :
+                                formFrequency[form] === 'annual' ? 'bg-green-500/20 text-green-400' :
+                                'bg-gray-500/20 text-gray-400'
+                              }`}>
+                                {formFrequency[form].toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Penalty Information */}
+                  {req.penalty && (
+                    <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
+                      <h3 className="text-white font-medium mb-3">Penalty Information</h3>
+                      <p className="text-gray-300 text-sm">{req.penalty}</p>
+                      {(() => {
+                        const dueDateStr = req.due_date || (req as any).dueDate || ''
+                        const daysDelayed = calculateDelayMemoized(dueDateStr, req.status)
+                        const calculatedPenalty = calculatePenaltyMemoized(req.penalty || '', daysDelayed || 0, req.penalty_base_amount || null)
+                        if (calculatedPenalty !== '-' && !calculatedPenalty.includes('Cannot calculate')) {
+                          return (
+                            <div className="mt-2 pt-2 border-t border-gray-700">
+                              <div className="flex items-center justify-between">
+                                <span className="text-gray-400 text-sm">Calculated Penalty:</span>
+                                <span className="text-red-400 font-semibold">{calculatedPenalty}</span>
+                              </div>
+                            </div>
+                          )
+                        }
+                        return null
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Modal Footer */}
+                <div className="sticky bottom-0 bg-black border-t border-white/10 p-6 flex items-center justify-end">
+                  <button
+                    onClick={() => setComplianceDetailsModal(null)}
+                    className="px-6 py-2.5 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+
+        {activeTab === 'gst' && countryCode === 'IN' && (
           <div className="space-y-6">
             {/* GST Integration Flow */}
             {gstStep === 'connect' && (
@@ -6620,7 +7364,7 @@ function DataRoomPageInner() {
                   // Get all unique categories from ALL requirements (before filtering) - dynamic, not hardcoded
                   const allCategories = Array.from(new Set((displayRequirements || []).map(req => req.category).filter(Boolean)))
                   // Use country-specific categories as preferred order, fallback to dynamic categories
-                  const preferredOrder = countryConfig.compliance.defaultCategories || ['Income Tax', 'GST', 'Payroll', 'RoC', 'Renewals', 'Prof.Tax', 'Other', 'Others']
+                  const preferredOrder = complianceCategories.length > 0 ? complianceCategories : ['Income Tax', 'GST', 'Payroll', 'RoC', 'Renewals', 'Prof.Tax', 'Other', 'Others']
                   const categoryOrder = [
                     ...preferredOrder.filter(cat => allCategories.includes(cat)),
                     ...allCategories.filter(cat => !preferredOrder.includes(cat) && cat).sort((a, b) => {
@@ -6691,7 +7435,7 @@ function DataRoomPageInner() {
                     if (/^\d+$/.test(penalty)) {
                       const dailyRate = parseInt(penalty, 10)
                       if (!isNaN(dailyRate) && dailyRate > 0) {
-                        return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+                        return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
                       }
                     }
 
@@ -6706,9 +7450,9 @@ function DataRoomPageInner() {
                         const isCapped = !isNaN(maxCap) && maxCap > 0 && calculated > maxCap
                         if (isCapped) {
                           calculated = maxCap
-                          return `₹${Math.round(calculated).toLocaleString('en-IN')} (capped at ₹${maxCap.toLocaleString('en-IN')})`
+                          return `${formatCurrency(Math.round(calculated), countryCode)} (capped at ${formatCurrency(maxCap, countryCode)})`
                         }
-                        return `₹${Math.round(calculated).toLocaleString('en-IN')}`
+                        return formatCurrency(Math.round(calculated), countryCode)
                       }
                     }
 
@@ -6718,26 +7462,29 @@ function DataRoomPageInner() {
 
                     // Extract daily rate from penalty string (e.g., "₹100/day", "100/day")
                     // Handle "50/day (NIL: 20/day)" - extract first number
+                    // Use country-specific currency symbol
+                    const currencySymbol = countryConfig.currency.symbol
+                    const currencySymbolEscaped = currencySymbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
                     let dailyRateMatch = penalty.match(/(\d+)\/day\s*\([^)]*NIL[^)]*\)/i)
                     if (!dailyRateMatch) {
-                      dailyRateMatch = penalty.match(/(?:₹)?[\d,]+(?:\.[\d]+)?\/day/i)
+                      dailyRateMatch = penalty.match(new RegExp(`(?:${currencySymbolEscaped})?[\\d,]+(?:\\.[\\d]+)?\\/day`, 'i'))
                     }
                     if (dailyRateMatch) {
-                      const rateStr = dailyRateMatch[1] || dailyRateMatch[0].replace(/₹/gi, '').replace(/\/day/gi, '').replace(/,/g, '')
+                      const rateStr = dailyRateMatch[1] || dailyRateMatch[0].replace(new RegExp(currencySymbolEscaped, 'gi'), '').replace(/\/day/gi, '').replace(/,/g, '')
                       const dailyRate = parseFloat(rateStr.replace(/,/g, ''))
                       if (!isNaN(dailyRate) && dailyRate > 0) {
                         let calculatedPenalty = dailyRate * daysDelayed
                         
                         // Check for maximum limit
-                        const maxMatch = penalty.match(/max\s*(?:₹)?[\d,]+(?:\.[\d]+)?/i)
+                        const maxMatch = penalty.match(new RegExp(`max\\s*(?:${currencySymbolEscaped})?[\\d,]+(?:\\.[\\d]+)?`, 'i'))
                         if (maxMatch) {
-                          const maxStr = maxMatch[0].replace(/max\s*(?:₹)?/gi, '').replace(/,/g, '')
+                          const maxStr = maxMatch[0].replace(new RegExp(`max\\s*(?:${currencySymbolEscaped})?`, 'gi'), '').replace(/,/g, '')
                           const maxAmount = parseFloat(maxStr)
                           if (!isNaN(maxAmount) && maxAmount > 0) {
                             const isCapped = calculatedPenalty > maxAmount
                             calculatedPenalty = Math.min(calculatedPenalty, maxAmount)
                             if (isCapped) {
-                              return `₹${calculatedPenalty.toLocaleString('en-IN')} (capped at ₹${maxAmount.toLocaleString('en-IN')})`
+                              return `${formatCurrency(calculatedPenalty, countryCode)} (capped at ${formatCurrency(maxAmount, countryCode)})`
                             }
                           }
                         }
@@ -6751,16 +7498,16 @@ function DataRoomPageInner() {
                     if (dailyWithRangeMatch) {
                       const dailyRate = parseFloat(dailyWithRangeMatch[1].replace(/,/g, ''))
                       if (!isNaN(dailyRate) && dailyRate > 0) {
-                        return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+                        return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
                       }
                     }
-                    
+
                     // Handle "2%/month + 5/day" - extract daily rate after the +
                     const interestPlusDailyMatch = penalty.match(/[\d.]+%[^+]*\+\s*(\d+)\/day/i)
                     if (interestPlusDailyMatch) {
                       const dailyRate = parseFloat(interestPlusDailyMatch[1].replace(/,/g, ''))
                       if (!isNaN(dailyRate) && dailyRate > 0) {
-                        return `₹${Math.round(dailyRate * daysDelayed).toLocaleString('en-IN')}`
+                        return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
                       }
                     }
                     
@@ -7140,6 +7887,9 @@ function DataRoomPageInner() {
                                 const daysDelayed = calculateDelay(req.dueDate, req.status)
                                 const calculatedPenalty = calculatePenalty(req.penalty, daysDelayed)
                                 const complianceType = req.compliance_type
+                                const formFreq = getFormFrequency(req.requirement)
+                                const legalSections = getRelevantLegalSections(req.requirement, req.category)
+                                const authority = getAuthorityForCategory(req.category)
                                 
                                 return (
                                   <div key={req.id} className="bg-black border border-white/10 rounded-lg p-3 space-y-2">
@@ -7179,9 +7929,34 @@ function DataRoomPageInner() {
                                         </svg>
                                       )}
                                       <div className="min-w-0 flex-1">
-                                        <div className="text-white font-medium text-sm break-words">{req.requirement}</div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <div className="text-white font-medium text-sm break-words">{req.requirement}</div>
+                                          {formFreq && (
+                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                              formFreq === 'monthly' ? 'bg-blue-500/20 text-blue-400' :
+                                              formFreq === 'quarterly' ? 'bg-purple-500/20 text-purple-400' :
+                                              formFreq === 'annual' ? 'bg-green-500/20 text-green-400' :
+                                              'bg-gray-500/20 text-gray-400'
+                                            }`}>
+                                              {formFreq.toUpperCase()}
+                                            </span>
+                                          )}
+                                        </div>
                                         {req.description && (
                                           <div className="text-gray-400 text-xs break-words mt-1">{req.description}</div>
+                                        )}
+                                        {(formFreq || authority || legalSections.length > 0) && (
+                                          <button
+                                            onClick={() => setComplianceDetailsModal(req)}
+                                            className="mt-2 text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1 transition-colors"
+                                          >
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                              <circle cx="12" cy="12" r="10" />
+                                              <line x1="12" y1="16" x2="12" y2="12" />
+                                              <line x1="12" y1="8" x2="12.01" y2="8" />
+                                            </svg>
+                                            View Details
+                                          </button>
                                         )}
                                       </div>
                                     </div>
@@ -7488,7 +8263,12 @@ function DataRoomPageInner() {
                               </tr>
                             )}
                             {/* Category Items */}
-                            {group.items.map((req, itemIndex) => (
+                            {group.items.map((req, itemIndex) => {
+                              const formFreq = getFormFrequency(req.requirement)
+                              const legalSections = getRelevantLegalSections(req.requirement, req.category)
+                              const authority = getAuthorityForCategory(req.category)
+                              
+                              return (
                               <tr key={req.id} className="hover:bg-black/50 transition-colors border-t border-white/10">
                                 {canEdit && (
                                   <td className="px-4 py-4">
@@ -7538,8 +8318,33 @@ function DataRoomPageInner() {
                                       </svg>
                                     )}
                                       <div className="min-w-0 flex-1">
-                                        <div className="text-white font-medium text-base break-words">{req.requirement}</div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <div className="text-white font-medium text-base break-words">{req.requirement}</div>
+                                          {formFreq && (
+                                            <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                                              formFreq === 'monthly' ? 'bg-blue-500/20 text-blue-400' :
+                                              formFreq === 'quarterly' ? 'bg-purple-500/20 text-purple-400' :
+                                              formFreq === 'annual' ? 'bg-green-500/20 text-green-400' :
+                                              'bg-gray-500/20 text-gray-400'
+                                            }`}>
+                                              {formFreq.toUpperCase()}
+                                            </span>
+                                          )}
+                                        </div>
                                         <div className="text-gray-400 text-sm break-words">{req.description}</div>
+                                        {(formFreq || authority || legalSections.length > 0) && (
+                                          <button
+                                            onClick={() => setComplianceDetailsModal(req)}
+                                            className="mt-2 text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1 transition-colors"
+                                          >
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                              <circle cx="12" cy="12" r="10" />
+                                              <line x1="12" y1="16" x2="12" y2="12" />
+                                              <line x1="12" y1="8" x2="12.01" y2="8" />
+                                            </svg>
+                                            View Details
+                                          </button>
+                                        )}
                                     </div>
                                   </div>
                                 </td>
@@ -7872,7 +8677,8 @@ function DataRoomPageInner() {
                                     </td>
                                   )}
                               </tr>
-                            ))}
+                              )
+                            })}
                           </React.Fragment>
                         ))}
                       </tbody>
@@ -7935,13 +8741,13 @@ function DataRoomPageInner() {
                       >
                         <option value="">Select Category</option>
                         {/* Country-specific categories */}
-                        {countryConfig.compliance.defaultCategories.map((cat) => (
+                        {complianceCategories.map((cat) => (
                           <option key={cat} value={cat}>{cat}</option>
                         ))}
                         {/* Dynamic categories from existing requirements (if not in default list) */}
                         {(() => {
                           const allCategories = Array.from(new Set((regulatoryRequirements || []).map(req => req.category).filter(Boolean)))
-                          const defaultCats = new Set(countryConfig.compliance.defaultCategories)
+                          const defaultCats = new Set(complianceCategories)
                           const additionalCats = allCategories.filter(cat => cat && !defaultCats.has(cat)).sort()
                           return additionalCats.length > 0 ? (
                             <>
@@ -9212,38 +10018,162 @@ function DataRoomPageInner() {
                                 onClick={() => setIsFolderDropdownOpen(false)}
                               />
                               <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-gray-800 rounded-lg shadow-2xl z-20 max-h-64 overflow-y-auto">
-                                {documentFolders.map((folder) => (
-                                  <button
-                                    key={folder}
-                                    onClick={() => {
-                                      setUploadFormData((prev) => ({ ...prev, folder, documentName: '' }))
-                                      setIsFolderDropdownOpen(false)
-                                    }}
-                                    className="w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-gray-800 transition-colors text-white text-sm sm:text-base"
-                                  >
-                                    {folder}
-                                  </button>
-                                ))}
+                                {(() => {
+                                  const suggestions = uploadFormData.documentName 
+                                    ? suggestFoldersForDocument(uploadFormData.documentName)
+                                    : []
+                                  
+                                  return documentFolders.map((folder) => {
+                                    const isRecommended = suggestions.includes(folder)
+                                    const { authority, formCount } = getFolderDescription(folder)
+                                  
+                                    return (
+                                      <button
+                                        key={folder}
+                                        onClick={() => {
+                                          setUploadFormData((prev) => ({ ...prev, folder, documentName: prev.documentName }))
+                                          setIsFolderDropdownOpen(false)
+                                        }}
+                                        className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-gray-800 transition-colors text-white text-sm sm:text-base ${
+                                          isRecommended ? 'bg-blue-500/10 border-l-2 border-blue-500' : ''
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                                            {isRecommended && (
+                                              <span className="text-[10px] sm:text-xs text-blue-400 font-medium flex-shrink-0">Recommended</span>
+                                            )}
+                                            <span className="truncate">{folder}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2 text-[10px] sm:text-xs text-gray-400 flex-shrink-0 ml-2">
+                                            {formCount > 0 && <span>{formCount} forms</span>}
+                                            {authority && (
+                                              <span className="text-gray-500 hidden sm:inline">
+                                                • {authority.split('(')[0].trim()}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </button>
+                                    )
+                                  })
+                                })()}
                               </div>
                             </>
                           )}
                         </div>
                       </div>
 
+                      {/* Compliance Context Panel */}
+                      {uploadFormData.folder && (() => {
+                        const relevantForms = getRelevantFormsForFolder(uploadFormData.folder)
+                        const authority = getAuthorityForFolder(uploadFormData.folder)
+                        const formFrequency = countryConfig?.regulatory?.formFrequencies
+                        
+                        if (relevantForms.length === 0 && !authority) return null
+                        
+                        return (
+                          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 sm:p-4">
+                            <div className="flex items-center justify-between mb-2 sm:mb-3">
+                              <h4 className="text-xs sm:text-sm font-medium text-white">Compliance Information</h4>
+                              <button
+                                onClick={() => setShowComplianceContext(!showComplianceContext)}
+                                className="text-gray-400 hover:text-white transition-colors"
+                                type="button"
+                              >
+                                <svg
+                                  width="14"
+                                  height="14"
+                                  className={`transition-transform ${showComplianceContext ? '' : '-rotate-90'}`}
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                                  <polyline points="6 9 12 15 18 9" />
+                                </svg>
+                              </button>
+                            </div>
+                            
+                            {showComplianceContext && (
+                              <div className="space-y-2 sm:space-y-3">
+                                {authority && (
+                                  <div>
+                                    <span className="text-[10px] sm:text-xs text-gray-400">Authority:</span>
+                                    <span className="text-[10px] sm:text-xs text-white ml-2">{authority}</span>
+                                  </div>
+                                )}
+                                
+                                {relevantForms.length > 0 && (
+                                  <div>
+                                    <span className="text-[10px] sm:text-xs text-gray-400 mb-1.5 sm:mb-2 block">Relevant Forms:</span>
+                                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                                      {relevantForms.map((form) => (
+                                        <button
+                                          key={form}
+                                          type="button"
+                                          onClick={() => {
+                                            setUploadFormData(prev => ({ ...prev, documentName: form }))
+                                          }}
+                                          className="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded text-[10px] sm:text-xs text-white flex items-center gap-1 transition-colors"
+                                        >
+                                          {form}
+                                          {formFrequency?.[form] && (
+                                            <span className={`text-[8px] ${
+                                              formFrequency[form] === 'monthly' ? 'text-blue-400' :
+                                              formFrequency[form] === 'quarterly' ? 'text-purple-400' :
+                                              formFrequency[form] === 'annual' ? 'text-green-400' :
+                                              'text-gray-400'
+                                            }`}>
+                                              ({formFrequency[form][0].toUpperCase()})
+                                            </span>
+                                          )}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
+
                       {/* Document Name */}
                       <div>
                         <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                           Document Name <span className="text-red-500">*</span>
                         </label>
-                        <input
-                          type="text"
-                          value={uploadFormData.documentName}
-                          onChange={(e) =>
-                            setUploadFormData((prev) => ({ ...prev, documentName: e.target.value }))
-                          }
-                          placeholder="Enter document name"
-                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
-                        />
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={uploadFormData.documentName}
+                            onChange={(e) => {
+                              setUploadFormData((prev) => ({ ...prev, documentName: e.target.value }))
+                            }}
+                            placeholder="Enter document name"
+                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                          />
+                          {/* Folder Suggestion Badge */}
+                          {uploadFormData.documentName && !uploadFormData.folder && (() => {
+                            const suggestions = suggestFoldersForDocument(uploadFormData.documentName)
+                            if (suggestions.length > 0) {
+                              return (
+                                <div className="absolute top-full left-0 right-0 mt-1 bg-blue-500/10 border border-blue-500/20 rounded p-2 text-[10px] sm:text-xs text-blue-400 z-10">
+                                  Suggested folder: <span className="font-medium">{suggestions[0]}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setUploadFormData(prev => ({ ...prev, folder: suggestions[0] }))}
+                                    className="ml-2 text-blue-300 hover:text-blue-200 underline"
+                                  >
+                                    Use this folder
+                                  </button>
+                                </div>
+                              )
+                            }
+                            return null
+                          })()}
+                        </div>
                       </div>
 
                       {/* Advanced Options Collapsible */}
@@ -10378,6 +11308,52 @@ function DataRoomPageInner() {
                     <label className="block text-xs font-medium text-gray-400 mb-1">Category</label>
                     <div className="text-gray-300 text-sm">{documentUploadModal.category}</div>
                   </div>
+                  {(() => {
+                    // Get relevant forms for this category
+                    const categoryForms = countryConfig?.regulatory?.commonForms?.filter(form => {
+                      const formLower = form.toLowerCase()
+                      const categoryLower = documentUploadModal.category.toLowerCase()
+                      
+                      if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
+                      if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
+                      if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
+                      if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
+                      return false
+                    }) || []
+                    
+                    const formFrequency = countryConfig?.regulatory?.formFrequencies
+                    
+                    if (categoryForms.length > 0) {
+                      return (
+                        <div className="mt-3 pt-3 border-t border-gray-700">
+                          <label className="block text-xs font-medium text-gray-400 mb-2">Relevant Forms for {documentUploadModal.category}</label>
+                          <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                            {categoryForms.slice(0, 10).map((form) => (
+                              <div key={form} className="px-2 py-1 bg-gray-800 rounded text-xs">
+                                <div className="text-white">{form}</div>
+                                {formFrequency?.[form] && (
+                                  <div className={`text-[10px] mt-0.5 ${
+                                    formFrequency[form] === 'monthly' ? 'text-blue-400' :
+                                    formFrequency[form] === 'quarterly' ? 'text-purple-400' :
+                                    formFrequency[form] === 'annual' ? 'text-green-400' :
+                                    'text-gray-400'
+                                  }`}>
+                                    {formFrequency[form].toUpperCase()}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                            {categoryForms.length > 10 && (
+                              <div className="px-2 py-1 bg-gray-800 rounded text-xs text-gray-400">
+                                +{categoryForms.length - 10} more
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    }
+                    return null
+                  })()}
                 </div>
               </div>
 
@@ -10864,6 +11840,7 @@ function DataRoomPageInner() {
                     onClick={() => {
                       setIsPreviewModalOpen(false)
                       setPreviewDocument(null)
+                      setPreviewModalTab('preview')
                     }}
                     className="text-gray-400 hover:text-white transition-colors p-1"
                   >
@@ -10875,14 +11852,133 @@ function DataRoomPageInner() {
                 </div>
               </div>
 
-              {/* Preview Content */}
-              <div className="flex-1 overflow-auto p-4 sm:p-6">
-                {previewDocument.previewUrl && (
-                  <iframe
-                    src={previewDocument.previewUrl}
-                    className="w-full h-full min-h-[500px] border border-gray-800 rounded-lg"
-                    title="Document Preview"
-                  />
+              {/* Tab Navigation */}
+              <div className="border-b border-gray-800 flex">
+                <button
+                  onClick={() => setPreviewModalTab('preview')}
+                  className={`px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${
+                    previewModalTab === 'preview'
+                      ? 'text-white border-b-2 border-white'
+                      : 'text-gray-400 hover:text-gray-300'
+                  }`}
+                >
+                  Preview
+                </button>
+                <button
+                  onClick={() => setPreviewModalTab('compliance')}
+                  className={`px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${
+                    previewModalTab === 'compliance'
+                      ? 'text-white border-b-2 border-white'
+                      : 'text-gray-400 hover:text-gray-300'
+                  }`}
+                >
+                  Compliance Info
+                </button>
+              </div>
+
+              {/* Tab Content */}
+              <div className="flex-1 overflow-auto">
+                {previewModalTab === 'preview' ? (
+                  <div className="p-4 sm:p-6">
+                    {previewDocument.previewUrl && (
+                      <iframe
+                        src={previewDocument.previewUrl}
+                        className="w-full h-full min-h-[500px] border border-gray-800 rounded-lg"
+                        title="Document Preview"
+                      />
+                    )}
+                  </div>
+                ) : (
+                  (() => {
+                    const requirement = (previewDocument as any).requirement_id 
+                      ? (regulatoryRequirements || []).find((r: any) => r.id === (previewDocument as any).requirement_id)
+                      : null
+                    
+                    const folderName = previewDocument.folder_name
+                    const documentName = previewDocument.document_type
+                    const legalSections = getLegalSectionsForDocument(documentName, folderName)
+                    const authority = getAuthorityForFolder(folderName)
+                    
+                    return (
+                      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+                        {/* Related Requirement */}
+                        {requirement && (
+                          <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
+                            <h4 className="text-white font-medium mb-3">Related Compliance Requirement</h4>
+                            <div className="space-y-2">
+                              <div className="text-white text-sm sm:text-base">{requirement.requirement}</div>
+                              {requirement.description && (
+                                <div className="text-gray-400 text-xs sm:text-sm">{requirement.description}</div>
+                              )}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                  requirement.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                                  requirement.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                                  requirement.status === 'overdue' ? 'bg-red-500/20 text-red-400' :
+                                  'bg-gray-500/20 text-gray-400'
+                                }`}>
+                                  {requirement.status.toUpperCase()}
+                                </span>
+                                {requirement.due_date && (
+                                  <span className="text-gray-400 text-xs">
+                                    Due: {requirement.due_date}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setIsPreviewModalOpen(false)
+                                  setPreviewDocument(null)
+                                  setPreviewModalTab('preview')
+                                  setActiveTab('tracker')
+                                  // Scroll to requirement in tracker could be added here
+                                }}
+                                className="text-blue-400 hover:text-blue-300 text-xs sm:text-sm flex items-center gap-1 transition-colors"
+                              >
+                                View in Tracker
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polyline points="9 18 15 12 9 6" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Legal Sections */}
+                        {legalSections.length > 0 && (
+                          <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
+                            <h4 className="text-white font-medium mb-3">Legal References</h4>
+                            <div className="space-y-3">
+                              {legalSections.map((section, idx) => (
+                                <div key={idx} className="border-l-2 border-blue-500/50 pl-3">
+                                  <div className="text-white text-sm font-medium">{section.act} - {section.section}</div>
+                                  <div className="text-gray-400 text-xs sm:text-sm mt-1">{section.description}</div>
+                                  {section.relevance && (
+                                    <div className="text-gray-500 text-xs mt-1 italic">Relevance: {section.relevance}</div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Authority */}
+                        {authority && (
+                          <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
+                            <h4 className="text-white font-medium mb-2">Regulatory Authority</h4>
+                            <p className="text-gray-300 text-sm">{authority}</p>
+                          </div>
+                        )}
+                        
+                        {/* Show message if no compliance info */}
+                        {!requirement && legalSections.length === 0 && !authority && (
+                          <div className="text-center py-8">
+                            <p className="text-gray-400 text-sm">No compliance information available for this document.</p>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()
                 )}
               </div>
             </div>

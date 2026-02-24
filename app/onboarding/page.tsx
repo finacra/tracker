@@ -615,8 +615,8 @@ export default function OnboardingPage() {
       if (countryCode === 'IN') {
         // PAN validation for India
         if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber.trim().toUpperCase())) {
-          newErrors.panNumber = 'Invalid PAN format (e.g., ABCDE1234F)'
-        }
+      newErrors.panNumber = 'Invalid PAN format (e.g., ABCDE1234F)'
+    }
       }
       // For other countries, tax ID format validation can be added if needed
     }
@@ -831,28 +831,28 @@ export default function OnboardingPage() {
                       className="flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                     />
                     {countryConfig.onboarding.verificationServices?.registration && (
-                      <button
-                        type="button"
-                        onClick={handleCINVerification}
-                        disabled={isVerifyingCIN || !formData.cinNumber.trim()}
-                        className="px-4 sm:px-6 py-2 sm:py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap font-light"
-                      >
-                        {isVerifyingCIN ? (
-                          <>
-                            <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            Verifying...
-                          </>
-                        ) : (
-                          <>
-                            <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                              <polyline points="22 4 12 14.01 9 11.01" />
-                            </svg>
+                    <button
+                      type="button"
+                      onClick={handleCINVerification}
+                      disabled={isVerifyingCIN || !formData.cinNumber.trim()}
+                      className="px-4 sm:px-6 py-2 sm:py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap font-light"
+                    >
+                      {isVerifyingCIN ? (
+                        <>
+                          <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Verifying...
+                        </>
+                      ) : (
+                        <>
+                          <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                            <polyline points="22 4 12 14.01 9 11.01" />
+                          </svg>
                             <span className="hidden sm:inline">Verify {countryConfig.labels.registrationId}</span>
-                            <span className="sm:hidden">Verify</span>
-                          </>
-                        )}
-                      </button>
+                          <span className="sm:hidden">Verify</span>
+                        </>
+                      )}
+                    </button>
                     )}
                   </div>
                   {errors.cinNumber && (
@@ -1059,7 +1059,7 @@ export default function OnboardingPage() {
                       dateInputRef.current.click();
                       // Try showPicker if available
                       if (typeof dateInputRef.current.showPicker === 'function') {
-                        try {
+                      try {
                           dateInputRef.current.showPicker();
                         } catch (err) {
                           // Fallback to native click if showPicker fails
@@ -1069,12 +1069,12 @@ export default function OnboardingPage() {
                   }}
                   className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors cursor-pointer pr-10 font-light"
                 />
-                <input
-                  type="date"
+              <input
+                type="date"
                   ref={dateInputRef}
                   id="dateOfIncorporation-hidden"
-                  name="dateOfIncorporation"
-                  value={formData.dateOfIncorporation}
+                name="dateOfIncorporation"
+                value={formData.dateOfIncorporation}
                   onChange={(e) => {
                     handleInputChange(e);
                   }}

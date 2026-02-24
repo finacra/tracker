@@ -110,10 +110,10 @@ export function useCompanyAccess(companyId: string | null): CompanyAccessResult 
         // Fallback: Query all superadmin roles and check if any have company_id = null
         if (!isSuperadmin) {
           const { data: superadminRoles, error: rolesError } = await supabase
-            .from('user_roles')
+          .from('user_roles')
             .select('role, company_id')
-            .eq('user_id', user.id)
-            .eq('role', 'superadmin')
+          .eq('user_id', user.id)
+          .eq('role', 'superadmin')
 
           if (!rolesError && superadminRoles) {
             isSuperadmin = superadminRoles.some(role => role.company_id === null)
@@ -531,10 +531,10 @@ export function useAnyCompanyAccess(): {
         // Fallback: Query all superadmin roles and check if any have company_id = null
         if (!isSuperadmin) {
           const { data: superadminRoles, error: rolesError } = await supabase
-            .from('user_roles')
+          .from('user_roles')
             .select('role, company_id')
-            .eq('user_id', user.id)
-            .eq('role', 'superadmin')
+          .eq('user_id', user.id)
+          .eq('role', 'superadmin')
 
           if (!rolesError && superadminRoles) {
             isSuperadmin = superadminRoles.some(role => role.company_id === null)

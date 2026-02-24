@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/utils/supabase/client'
 import { getRegulatoryRequirements, getCompanyUserRoles, getUserRole, getComplianceTemplates, createComplianceTemplate, updateComplianceTemplate, deleteComplianceTemplate, getTemplateDetails, applyAllTemplates, type ComplianceTemplate } from '@/app/data-room/actions'
 import { useUserRole } from '@/hooks/useUserRole'
+import { useComplianceCategories } from '@/hooks/useComplianceCategories'
 import UsersManagement from '@/components/admin/UsersManagement'
 import AllUsersManagement from '@/components/admin/AllUsersManagement'
 import TransactionHistory from '@/components/admin/TransactionHistory'
@@ -79,6 +80,10 @@ export default function AdminPage() {
   const [isDeletingTemplates, setIsDeletingTemplates] = useState(false)
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<ComplianceTemplate | null>(null)
+  
+  // Fetch compliance categories from database
+  const { categories: complianceCategories, isLoading: categoriesLoading } = useComplianceCategories('IN')
+  
   const [templateForm, setTemplateForm] = useState({
     category: '',
     requirement: '',
@@ -1723,14 +1728,12 @@ export default function AdminPage() {
                     value={templateForm.category}
                     onChange={(e) => setTemplateForm(prev => ({ ...prev, category: e.target.value }))}
                     className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    disabled={categoriesLoading}
                   >
                     <option value="">Select Category</option>
-                    <option value="Income Tax">Income Tax</option>
-                    <option value="GST">GST</option>
-                    <option value="Payroll">Payroll</option>
-                    <option value="RoC">RoC</option>
-                    <option value="Renewals">Renewals</option>
-                    <option value="Others">Others</option>
+                    {complianceCategories.map((category) => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
                   </select>
                 </div>
 
