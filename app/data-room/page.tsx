@@ -49,8 +49,8 @@ interface EntityDetails {
   companyName: string
   type: string
   regDate: string
-  pan: string
-  cin: string
+  taxId: string // Country-specific: PAN (India), VAT (GCC), EIN (USA)
+  registrationId: string // Country-specific: CIN (India), Trade License (UAE), Commercial Registration (GCC), EIN (USA)
   address: string
   phoneNumber: string
   industryCategory: string
@@ -482,8 +482,8 @@ function DataRoomPageInner() {
             companyName: company.name,
             type: company.type.toUpperCase(),
             regDate: formattedDate,
-            pan: company.pan || 'Not Provided',
-            cin: company.cin,
+            taxId: company.pan || company.tax_id || 'Not Provided', // Support both pan and tax_id fields
+            registrationId: company.cin || company.registration_id || 'Not Provided', // Support both cin and registration_id fields
             address: company.address,
             phoneNumber: company.phone_number || 'Not Provided',
             industryCategory: Array.isArray(company.industry_categories) 
@@ -494,10 +494,10 @@ function DataRoomPageInner() {
               firstName: d.first_name,
               lastName: d.last_name || '',
               middleName: d.middle_name || '',
-              din: d.din,
+              din: d.din || d.director_id, // Support both din and director_id
               designation: d.designation,
               dob: d.dob,
-              pan: d.pan,
+              pan: d.pan || d.tax_id, // Support both pan and tax_id
               email: d.email,
               mobile: d.mobile,
               verified: d.is_verified
@@ -952,35 +952,85 @@ function DataRoomPageInner() {
 
   const [isUploading, setIsUploading] = useState(false)
 
-  // Fallback defaults in case the database templates are empty
-  const DEFAULT_FOLDERS = [
-    'Constitutional Documents',
-    'Financials and licenses',
-    'Taxation & GST Compliance',
-    'Regulatory & MCA Filings',
-  ]
-
-  const DEFAULT_DOCUMENTS: Record<string, string[]> = {
-    'Constitutional Documents': [
-      'Certificate of Incorporation',
-    'MOA (Memorandum of Association)',
-    'AOA (Articles of Association)',
-      'Rental Deed',
-      'DIN Certificate',
-    ],
-    'Financials and licenses': [
-      'PAN',
-      'TAN',
-    ],
-    'Taxation & GST Compliance': [
-    'GST Returns',
-    'Income Tax Returns',
-    ],
-    'Regulatory & MCA Filings': [
-    'Annual Returns',
-    'Board Minutes',
-  ]
+  // Country-aware default folders and documents
+  const getCountryDefaultFolders = (countryCode: string): string[] => {
+    const config = countryConfig
+    if (!config) return ['Constitutional Documents', 'Financials and licenses', 'Taxation & GST Compliance', 'Regulatory & MCA Filings']
+    
+    // Base folders that apply to all countries
+    const baseFolders = ['Constitutional Documents', 'Financials and licenses']
+    
+    // Country-specific compliance folders based on compliance categories
+    const complianceFolders: string[] = []
+    
+    if (countryCode === 'IN') {
+      // India-specific folders
+      complianceFolders.push('Taxation & GST Compliance', 'Regulatory & MCA Filings')
+    } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode)) {
+      // GCC countries
+      complianceFolders.push('VAT & Tax Compliance', 'Corporate & Regulatory Filings')
+    } else if (countryCode === 'US') {
+      // USA
+      complianceFolders.push('Federal Tax Returns', 'State Tax Returns', 'Business License & Registration')
+    } else {
+      // Fallback
+      complianceFolders.push('Tax Compliance', 'Regulatory Filings')
+    }
+    
+    return [...baseFolders, ...complianceFolders]
   }
+
+  const getCountryDefaultDocuments = (countryCode: string): Record<string, string[]> => {
+    const config = countryConfig
+    if (!config) {
+      return {
+        'Constitutional Documents': ['Certificate of Incorporation', 'MOA (Memorandum of Association)', 'AOA (Articles of Association)', 'Rental Deed', 'DIN Certificate'],
+        'Financials and licenses': ['PAN', 'TAN'],
+        'Taxation & GST Compliance': ['GST Returns', 'Income Tax Returns'],
+        'Regulatory & MCA Filings': ['Annual Returns', 'Board Minutes']
+      }
+    }
+    
+    // Use country config's document types and compliance categories
+    const constitutionalDocs = config.onboarding.documentTypes.filter(doc => 
+      doc.includes('Certificate') || doc.includes('Memorandum') || doc.includes('Articles') || doc.includes('Association')
+    )
+    
+    const financialDocs = config.onboarding.documentTypes.filter(doc => 
+      doc === config.labels.taxId || doc.includes('TAN') || doc.includes('Tax') || doc.includes('License')
+    )
+    
+    const complianceDocs: Record<string, string[]> = {}
+    
+    if (countryCode === 'IN') {
+      // India-specific documents
+      complianceDocs['Taxation & GST Compliance'] = ['GST Returns', 'Income Tax Returns']
+      complianceDocs['Regulatory & MCA Filings'] = ['Annual Returns', 'Board Minutes', 'ROC Filings']
+    } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode)) {
+      // GCC countries
+      complianceDocs['VAT & Tax Compliance'] = ['VAT Returns', 'Corporate Tax Returns']
+      complianceDocs['Corporate & Regulatory Filings'] = ['Commercial Registration', 'Trade License Renewal', 'Annual Returns']
+    } else if (countryCode === 'US') {
+      // USA
+      complianceDocs['Federal Tax Returns'] = ['Federal Income Tax Return', 'EIN Certificate']
+      complianceDocs['State Tax Returns'] = ['State Income Tax Return', 'Sales Tax Return']
+      complianceDocs['Business License & Registration'] = ['Business License', 'State Registration', 'Annual Report']
+    } else {
+      // Fallback
+      complianceDocs['Tax Compliance'] = ['Tax Returns']
+      complianceDocs['Regulatory Filings'] = ['Annual Returns']
+    }
+    
+    return {
+      'Constitutional Documents': constitutionalDocs.length > 0 ? constitutionalDocs : ['Certificate of Incorporation', 'Memorandum of Association'],
+      'Financials and licenses': financialDocs.length > 0 ? financialDocs : [config.labels.taxId],
+      ...complianceDocs
+    }
+  }
+
+  // Get country-specific defaults
+  const DEFAULT_FOLDERS = useMemo(() => getCountryDefaultFolders(countryCode || 'IN'), [countryCode, countryConfig])
+  const DEFAULT_DOCUMENTS = useMemo(() => getCountryDefaultDocuments(countryCode || 'IN'), [countryCode, countryConfig])
 
   // Merge database templates with defaults to ensure all folders are present
   const documentFolders = documentTemplates.length > 0 
@@ -1001,8 +1051,10 @@ function DataRoomPageInner() {
           const docName = template.document_name
           const folderName = template.folder_name
           
-          // PAN and TAN should always be in "Financials and licenses"
-          if (docName === 'PAN' || docName === 'TAN') {
+          // Country-specific tax ID documents should be in "Financials and licenses"
+          const taxIdLabel = countryConfig?.labels.taxId || 'PAN'
+          if (docName === taxIdLabel || docName === 'PAN' || docName === 'TAN' || 
+              (countryCode !== 'IN' && (docName.includes('Tax') || docName.includes('VAT') || docName.includes('Registration')))) {
             // Remove from any other folder
             Object.keys(merged).forEach(folder => {
               if (folder !== 'Financials and licenses') {
@@ -1027,10 +1079,11 @@ function DataRoomPageInner() {
           }
         })
         
-        // Ensure PAN and TAN are removed from Constitutional Documents
+        // Ensure tax ID documents are removed from Constitutional Documents
+        const taxIdLabel = countryConfig?.labels.taxId || 'PAN'
         if (merged['Constitutional Documents']) {
           merged['Constitutional Documents'] = merged['Constitutional Documents'].filter(
-            (d: string) => d !== 'PAN' && d !== 'TAN'
+            (d: string) => d !== taxIdLabel && d !== 'PAN' && d !== 'TAN'
           )
         }
         
@@ -2216,25 +2269,52 @@ function DataRoomPageInner() {
     return authorityKey ? countryConfig.regulatory.authorities[authorityKey] || null : null
   }
 
-  // Helper to map folder names to compliance categories
+  // Helper to map folder names to compliance categories (country-aware)
   const getCategoryFromFolder = (folderName: string): string | null => {
-    const folderMap: Record<string, string> = {
-      'GST Returns': 'GST',
-      'Income Tax Returns': 'Income Tax',
-      'ROC Filings': 'RoC',
-      'Labour Law Compliance': 'Payroll',
-      'Renewals': 'Renewals',
-      'Other Compliance Documents': 'Other',
-      'Professional Tax': 'Prof. Tax',
-      'Constitutional Documents': 'Other',
-      'Financials and licenses': 'Other',
-      'Taxation & GST Compliance': 'GST',
-      'Regulatory & MCA Filings': 'RoC'
+    if (!countryConfig) return null
+    
+    // Country-specific folder mappings
+    if (countryCode === 'IN') {
+      const folderMap: Record<string, string> = {
+        'GST Returns': 'GST',
+        'Income Tax Returns': 'Income Tax',
+        'ROC Filings': 'RoC',
+        'Labour Law Compliance': 'Payroll',
+        'Renewals': 'Renewals',
+        'Other Compliance Documents': 'Other',
+        'Professional Tax': 'Prof. Tax',
+        'Constitutional Documents': 'Other',
+        'Financials and licenses': 'Other',
+        'Taxation & GST Compliance': 'GST',
+        'Regulatory & MCA Filings': 'RoC'
+      }
+      return folderMap[folderName] || null
+    } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
+      // GCC countries
+      const folderMap: Record<string, string> = {
+        'VAT & Tax Compliance': 'VAT',
+        'Corporate & Regulatory Filings': 'Corporate Tax',
+        'Constitutional Documents': 'Other',
+        'Financials and licenses': 'Other'
+      }
+      return folderMap[folderName] || null
+    } else if (countryCode === 'US') {
+      // USA
+      const folderMap: Record<string, string> = {
+        'Federal Tax Returns': 'Federal Tax',
+        'State Tax Returns': 'State Tax',
+        'Business License & Registration': 'Business License',
+        'Constitutional Documents': 'Other',
+        'Financials and licenses': 'Other'
+      }
+      return folderMap[folderName] || null
     }
-    return folderMap[folderName] || null
+    
+    // Fallback
+    return null
   }
 
-  // Get relevant forms for folder
+  // Get relevant forms for folder (country-aware)
   const getRelevantFormsForFolder = (folderName: string): string[] => {
     const category = getCategoryFromFolder(folderName)
     if (!category || !countryConfig?.regulatory?.commonForms) return []
@@ -2243,10 +2323,24 @@ function DataRoomPageInner() {
     const forms = countryConfig.regulatory.commonForms.filter(form => {
       const formLower = form.toLowerCase()
       
-      if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
-      if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
-      if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
-      if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
+      // India-specific patterns
+      if (countryCode === 'IN') {
+        if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
+        if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
+        if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
+        if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
+      }
+      // GCC countries
+      else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
+        if ((categoryLower === 'vat' || categoryLower === 'tax') && (formLower.includes('vat') || formLower.includes('tax return') || formLower.includes('corporate tax'))) return true
+        if (categoryLower === 'corporate' && (formLower.includes('trade license') || formLower.includes('commercial registration') || formLower.includes('cr'))) return true
+      }
+      // USA
+      else if (countryCode === 'US') {
+        if ((categoryLower === 'federal tax' || categoryLower === 'state tax') && (formLower.includes('tax') || formLower.includes('return') || formLower.includes('ein'))) return true
+        if (categoryLower === 'business license' && (formLower.includes('license') || formLower.includes('registration') || formLower.includes('report'))) return true
+      }
+      
       return false
     })
     
@@ -2259,29 +2353,44 @@ function DataRoomPageInner() {
     return category ? getAuthorityForCategory(category) : null
   }
 
-  // Suggest folders based on document name
+  // Suggest folders based on document name (country-aware)
   const suggestFoldersForDocument = (documentName: string): string[] => {
     const docLower = documentName.toLowerCase()
     const suggestions: string[] = []
     
-    // GST patterns
-    if (docLower.includes('gstr') || docLower.includes('gst') || docLower.includes('cmp-') || docLower.includes('itc-') || docLower.includes('iff')) {
-      suggestions.push('GST Returns')
-    }
-    
-    // Income Tax patterns
-    if (docLower.includes('itr') || docLower.includes('form 24') || docLower.includes('form 26') || docLower.includes('form 27') || docLower.includes('tds') || docLower.includes('tcs')) {
-      suggestions.push('Income Tax Returns')
-    }
-    
-    // ROC patterns
-    if (docLower.includes('mgt') || docLower.includes('aoc') || docLower.includes('roc') || docLower.includes('dir-') || docLower.includes('pas-') || docLower.includes('ben-') || docLower.includes('inc-') || docLower.includes('adt-') || docLower.includes('cra-') || docLower.includes('llp form')) {
-      suggestions.push('ROC Filings')
-    }
-    
-    // Labour patterns
-    if (docLower.includes('epf') || docLower.includes('esi') || docLower.includes('ecr') || docLower.includes('form 5a') || docLower.includes('form 2') || docLower.includes('form 10') || docLower.includes('form 19')) {
-      suggestions.push('Labour Law Compliance')
+    if (countryCode === 'IN') {
+      // India-specific patterns
+      if (docLower.includes('gstr') || docLower.includes('gst') || docLower.includes('cmp-') || docLower.includes('itc-') || docLower.includes('iff')) {
+        suggestions.push('Taxation & GST Compliance')
+      }
+      if (docLower.includes('itr') || docLower.includes('form 24') || docLower.includes('form 26') || docLower.includes('form 27') || docLower.includes('tds') || docLower.includes('tcs')) {
+        suggestions.push('Taxation & GST Compliance')
+      }
+      if (docLower.includes('mgt') || docLower.includes('aoc') || docLower.includes('roc') || docLower.includes('dir-') || docLower.includes('pas-') || docLower.includes('ben-') || docLower.includes('inc-') || docLower.includes('adt-') || docLower.includes('cra-') || docLower.includes('llp form')) {
+        suggestions.push('Regulatory & MCA Filings')
+      }
+      if (docLower.includes('epf') || docLower.includes('esi') || docLower.includes('ecr') || docLower.includes('form 5a') || docLower.includes('form 2') || docLower.includes('form 10') || docLower.includes('form 19')) {
+        suggestions.push('Labour Law Compliance')
+      }
+    } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
+      // GCC countries
+      if (docLower.includes('vat') || docLower.includes('tax return') || docLower.includes('corporate tax') || docLower.includes('zakat')) {
+        suggestions.push('VAT & Tax Compliance')
+      }
+      if (docLower.includes('trade license') || docLower.includes('commercial registration') || docLower.includes('cr') || docLower.includes('ded') || docLower.includes('moci')) {
+        suggestions.push('Corporate & Regulatory Filings')
+      }
+    } else if (countryCode === 'US') {
+      // USA
+      if (docLower.includes('federal') || docLower.includes('irs') || docLower.includes('form 1120') || docLower.includes('form 1065')) {
+        suggestions.push('Federal Tax Returns')
+      }
+      if (docLower.includes('state') || docLower.includes('sales tax')) {
+        suggestions.push('State Tax Returns')
+      }
+      if (docLower.includes('license') || docLower.includes('registration') || docLower.includes('ein') || docLower.includes('annual report')) {
+        suggestions.push('Business License & Registration')
+      }
     }
     
     return suggestions
@@ -3121,13 +3230,13 @@ function DataRoomPageInner() {
                 {/* Tax ID (country-specific label) */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
                   <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">{countryConfig.labels.taxId}</label>
-                  <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.pan}</div>
+                  <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.taxId}</div>
                 </div>
 
                 {/* Registration ID (country-specific label) */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
                   <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">{countryConfig.labels.registrationId}</label>
-                  <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.cin}</div>
+                  <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.registrationId}</div>
                 </div>
 
                 {/* Address */}
@@ -5532,11 +5641,18 @@ function DataRoomPageInner() {
                       onChange={(e) => setNewNoticeForm({ ...newNoticeForm, type: e.target.value })}
                       className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                     >
-                      <option value="Income Tax">Income Tax</option>
-                      <option value="GST">GST</option>
-                      <option value="MCA/RoC">MCA/RoC</option>
-                      <option value="Labour Law">Labour Law</option>
-                      <option value="Other">Other</option>
+                      {/* Country-aware notice types based on compliance categories */}
+                      {countryConfig?.compliance?.defaultCategories?.map(category => (
+                        <option key={category} value={category}>{category}</option>
+                      )) || (
+                        <>
+                          <option value="Income Tax">Income Tax</option>
+                          <option value="GST">GST</option>
+                          <option value="MCA/RoC">MCA/RoC</option>
+                          <option value="Labour Law">Labour Law</option>
+                          <option value="Other">Other</option>
+                        </>
+                      )}
                     </select>
                   </div>
 
@@ -5900,15 +6016,27 @@ function DataRoomPageInner() {
           const legalSections = getRelevantLegalSections(req.requirement, req.category)
           const authority = getAuthorityForCategory(req.category)
           
-          // Get all relevant forms for this category
+          // Get all relevant forms for this category (country-aware)
           const categoryForms = countryConfig?.regulatory?.commonForms?.filter(form => {
             const formLower = form.toLowerCase()
             const categoryLower = req.category.toLowerCase()
             
-            if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
-            if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
-            if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
-            if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
+            if (countryCode === 'IN') {
+              // India-specific patterns
+              if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
+              if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
+              if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
+              if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
+            } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
+              // GCC countries
+              if ((categoryLower === 'vat' || categoryLower === 'tax') && (formLower.includes('vat') || formLower.includes('tax return') || formLower.includes('corporate tax') || formLower.includes('zakat'))) return true
+              if (categoryLower === 'corporate' && (formLower.includes('trade license') || formLower.includes('commercial registration') || formLower.includes('cr'))) return true
+            } else if (countryCode === 'US') {
+              // USA
+              if ((categoryLower === 'federal tax' || categoryLower === 'state tax') && (formLower.includes('tax') || formLower.includes('return') || formLower.includes('ein'))) return true
+              if (categoryLower === 'business license' && (formLower.includes('license') || formLower.includes('registration') || formLower.includes('report'))) return true
+            }
+            
             return false
           }) || []
           
@@ -11309,15 +11437,27 @@ function DataRoomPageInner() {
                     <div className="text-gray-300 text-sm">{documentUploadModal.category}</div>
                   </div>
                   {(() => {
-                    // Get relevant forms for this category
+                    // Get relevant forms for this category (country-aware)
                     const categoryForms = countryConfig?.regulatory?.commonForms?.filter(form => {
                       const formLower = form.toLowerCase()
                       const categoryLower = documentUploadModal.category.toLowerCase()
                       
-                      if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
-                      if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
-                      if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
-                      if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
+                      if (countryCode === 'IN') {
+                        // India-specific patterns
+                        if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
+                        if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
+                        if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
+                        if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
+                      } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
+                        // GCC countries
+                        if ((categoryLower === 'vat' || categoryLower === 'tax') && (formLower.includes('vat') || formLower.includes('tax return') || formLower.includes('corporate tax') || formLower.includes('zakat'))) return true
+                        if (categoryLower === 'corporate' && (formLower.includes('trade license') || formLower.includes('commercial registration') || formLower.includes('cr'))) return true
+                      } else if (countryCode === 'US') {
+                        // USA
+                        if ((categoryLower === 'federal tax' || categoryLower === 'state tax') && (formLower.includes('tax') || formLower.includes('return') || formLower.includes('ein'))) return true
+                        if (categoryLower === 'business license' && (formLower.includes('license') || formLower.includes('registration') || formLower.includes('report'))) return true
+                      }
+                      
                       return false
                     }) || []
                     
