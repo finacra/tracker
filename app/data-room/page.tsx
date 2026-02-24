@@ -142,43 +142,6 @@ function DataRoomPageInner() {
   // Check if user has access to ANY company (for initial page load check)
   const { hasAnyAccess, accessibleCompanyIds, isLoading: anyAccessLoading } = useAnyCompanyAccess()
 
-  // Fetch document templates when country code changes
-  useEffect(() => {
-    if (!countryCode) return
-    
-    async function fetchTemplates() {
-      try {
-        // Try to get country-specific templates from document_templates_internal
-        const supabase = createClient()
-        const { data, error } = await supabase
-          .from('document_templates_internal')
-          .select('*')
-          .eq('country_code', countryCode) // Filter by country
-          .order('folder_name', { ascending: true })
-        
-        if (error) {
-          // If country_code column doesn't exist or error, try without filter
-          console.warn('Error fetching country-specific templates, trying without filter:', error)
-          const { data: fallbackData } = await supabase
-            .from('document_templates_internal')
-            .select('*')
-            .order('folder_name', { ascending: true })
-          setDocumentTemplates(fallbackData || [])
-        } else {
-          setDocumentTemplates(data || [])
-        }
-      } catch (error) {
-        console.error('Error fetching templates:', error)
-        // Fallback to original method
-        const result = await getDocumentTemplates()
-        if (result.success) {
-          setDocumentTemplates(result.templates || [])
-        }
-      }
-    }
-    
-    fetchTemplates()
-  }, [countryCode, supabase])
 
   // Fetch all companies for the selector (owned + invited)
   useEffect(() => {
