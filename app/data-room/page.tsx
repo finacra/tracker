@@ -9075,10 +9075,13 @@ function DataRoomPageInner() {
                         value={requirementForm.penalty}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, penalty: e.target.value }))}
                         className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
-                        placeholder="e.g., Late fee ₹200/day or Interest @ 1%/month"
+                        placeholder={`e.g., Late fee ${countryConfig.currency.symbol}200/day or Interest @ 1%/month`}
                       />
                       <p className="text-xs text-gray-400 mt-1">
-                        For interest-based penalties, include the rate (e.g., "Interest @ 1%/month" or "u/s 234B & 234C")
+                        {countryCode === 'IN' 
+                          ? 'For interest-based penalties, include the rate (e.g., "Interest @ 1%/month" or "u/s 234B & 234C")'
+                          : `For interest-based penalties, include the rate (e.g., "Interest @ 1%/month"). Use ${countryConfig.currency.symbol} for amounts.`
+                        }
                       </p>
                     </div>
 

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import CircuitBackground from '@/components/CircuitBackground'
 import Header from '@/components/Header'
 import { useAuth } from '@/hooks/useAuth'
@@ -9,6 +9,9 @@ import { createClient } from '@/utils/supabase/client'
 import { updateCompany, getCompanyDirectors } from '@/app/onboarding/actions'
 import { verifyDIN, type DINDirectorData } from '@/lib/api/cin-din'
 import { trackCompanyEdit } from '@/lib/tracking/kpi-tracker'
+import { useCompanyCountry } from '@/hooks/useCompanyCountry'
+import { useCountryValidator } from '@/hooks/useCountryValidator'
+import { ManualVerificationNotice } from '@/components/ManualVerificationNotice'
 
 const INDUSTRY_CATEGORIES = [
   'Startups & MSMEs',
@@ -36,20 +39,26 @@ interface Director {
   source: 'cin' | 'din' | 'manual'
 }
 
-export default function ManageCompanyPage() {
+function ManageCompanyPageInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
   const supabase = createClient()
 
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [companyId, setCompanyId] = useState<string | null>(null)
+  const [currentCompany, setCurrentCompany] = useState<{ id: string; name: string; type: string; year: string; country_code?: string } | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [directors, setDirectors] = useState<Director[]>([])
   const [newDirectorDIN, setNewDirectorDIN] = useState('')
   const [showAddDirector, setShowAddDirector] = useState(false)
   const [isVerifyingDIN, setIsVerifyingDIN] = useState<string | null>(null)
   const [exDirectors, setExDirectors] = useState<string>('')
+  
+  // Get country configuration
+  const { countryCode, countryConfig } = useCompanyCountry(currentCompany)
+  const countryValidator = useCountryValidator(countryCode)
 
   const [formData, setFormData] = useState({
     companyName: '',
@@ -82,22 +91,36 @@ export default function ManageCompanyPage() {
 
   const fetchCompanyData = async () => {
     try {
-      const { data, error } = await supabase
+      // Get company_id from URL params if available, otherwise fetch first company
+      const companyIdParam = searchParams?.get('company_id') || searchParams?.get('company')
+      
+      let query = supabase
         .from('companies')
         .select('*')
         .eq('user_id', user?.id)
-        .limit(1)
-        .single()
+      
+      if (companyIdParam) {
+        query = query.eq('id', companyIdParam)
+      }
+      
+      const { data, error } = await query.limit(1).single()
 
       if (error) throw error
 
       if (data) {
         setCompanyId(data.id)
+        setCurrentCompany({ 
+          id: data.id, 
+          name: data.name || '',
+          type: data.type || '',
+          year: new Date(data.incorporation_date).getFullYear().toString(),
+          country_code: data.country_code || 'IN' 
+        })
         setFormData({
           companyName: data.name || '',
           companyType: data.type || '',
-          panNumber: data.pan || '',
-          cinNumber: data.cin || '',
+          panNumber: data.pan || data.tax_id || '',
+          cinNumber: data.cin || data.registration_id || '',
           industry: data.industry || '',
           address: data.address || '',
           city: data.city || '',
@@ -177,6 +200,11 @@ export default function ManageCompanyPage() {
   }
 
   const handleDINVerification = async (directorId: string, din: string) => {
+    // Only allow DIN verification for India
+    if (countryCode !== 'IN') {
+      return
+    }
+    
     if (!din.trim()) return
 
     setIsVerifyingDIN(directorId)
@@ -229,8 +257,13 @@ export default function ManageCompanyPage() {
   }
 
   const handleAddDirectorByDIN = async () => {
+    // Only allow DIN verification for India
+    if (countryCode !== 'IN') {
+      return
+    }
+    
     if (!newDirectorDIN.trim()) {
-      setErrors((prev) => ({ ...prev, newDirectorDIN: 'Please enter DIN number' }))
+      setErrors((prev) => ({ ...prev, newDirectorDIN: `Please enter ${countryConfig.labels.directorId} number` }))
       return
     }
 
@@ -362,7 +395,9 @@ export default function ManageCompanyPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">CIN Number (ReadOnly)</label>
+                <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">
+                  {countryConfig.labels.registrationId} (ReadOnly)
+                </label>
                 <input
                   type="text"
                   value={formData.cinNumber}
@@ -374,7 +409,9 @@ export default function ManageCompanyPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">PAN Number</label>
+                <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">
+                  {countryConfig.labels.taxId}
+                </label>
                 <input
                   type="text"
                   name="panNumber"
@@ -429,7 +466,9 @@ export default function ManageCompanyPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">PIN Code</label>
+                <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">
+                  {countryConfig.labels.postalCode}
+                </label>
                 <input
                   type="text"
                   name="pinCode"
@@ -474,12 +513,12 @@ export default function ManageCompanyPage() {
                     <line x1="12" y1="5" x2="12" y2="19" />
                     <line x1="5" y1="12" x2="19" y2="12" />
                   </svg>
-                  Add Director by DIN
+                  Add Director by {countryConfig.labels.directorId}
                 </button>
               </div>
 
-              {/* Add Director by DIN */}
-              {showAddDirector && (
+              {/* Add Director by DIN - Only show for India */}
+              {showAddDirector && countryCode === 'IN' && (
                 <div className="mb-4 p-4 bg-gray-900 border border-gray-700 rounded-lg">
                   <div className="flex gap-2">
                     <input
@@ -489,7 +528,7 @@ export default function ManageCompanyPage() {
                         setNewDirectorDIN(e.target.value)
                         setErrors((prev) => ({ ...prev, newDirectorDIN: '' }))
                       }}
-                      placeholder="Enter DIN number"
+                      placeholder={`Enter ${countryConfig.labels.directorId} number`}
                       className="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
                     />
                     <button
@@ -547,7 +586,7 @@ export default function ManageCompanyPage() {
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-400 font-light">
                             {director.din && (
-                              <div><span className="text-gray-500">DIN:</span> {director.din}</div>
+                              <div><span className="text-gray-500">{countryConfig.labels.directorId}:</span> {director.din}</div>
                             )}
                             {director.designation && (
                               <div><span className="text-gray-500">Designation:</span> {director.designation}</div>
@@ -556,7 +595,7 @@ export default function ManageCompanyPage() {
                               <div><span className="text-gray-500">DOB:</span> {formatDateForDisplay(director.dob)}</div>
                             )}
                             {director.pan && (
-                              <div><span className="text-gray-500">PAN:</span> {director.pan}</div>
+                              <div><span className="text-gray-500">{countryConfig.labels.taxId}:</span> {director.pan}</div>
                             )}
                             {director.email && (
                               <div><span className="text-gray-500">Email:</span> {director.email}</div>
@@ -567,7 +606,7 @@ export default function ManageCompanyPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          {!director.verified && director.din && (
+                          {!director.verified && director.din && countryCode === 'IN' && (
                             <button
                               type="button"
                               onClick={() => handleDINVerification(director.id, director.din)}
@@ -579,7 +618,7 @@ export default function ManageCompanyPage() {
                                   <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
                                   Verifying...
                                 </span>
-                              ) : 'Verify DIN'}
+                              ) : `Verify ${countryConfig.labels.directorId}`}
                             </button>
                           )}
                           <button
@@ -602,7 +641,11 @@ export default function ManageCompanyPage() {
               ) : (
                 <div className="p-6 bg-gray-900/50 border border-gray-800 rounded-lg text-center text-gray-400">
                   <p className="text-sm font-light">No directors added yet.</p>
-                  <p className="text-xs mt-1 font-light">Add directors manually using DIN verification.</p>
+                  {countryCode === 'IN' ? (
+                    <p className="text-xs mt-1 font-light">Add directors manually using {countryConfig.labels.directorId} verification.</p>
+                  ) : (
+                    <p className="text-xs mt-1 font-light">Add directors manually.</p>
+                  )}
                 </div>
               )}
             </div>
@@ -652,5 +695,20 @@ export default function ManageCompanyPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function ManageCompanyPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+        <div className="text-white text-lg text-center font-light">
+          <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          Loading...
+        </div>
+      </div>
+    }>
+      <ManageCompanyPageInner />
+    </Suspense>
   )
 }
