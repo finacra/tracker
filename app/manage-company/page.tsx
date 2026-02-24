@@ -94,20 +94,60 @@ function ManageCompanyPageInner() {
       // Get company_id from URL params if available, otherwise fetch first company
       const companyIdParam = searchParams?.get('company_id') || searchParams?.get('company')
       
-      let query = supabase
-        .from('companies')
-        .select('*')
-        .eq('user_id', user?.id)
+      let companyData: any = null
       
-      if (companyIdParam) {
-        query = query.eq('id', companyIdParam)
+      if (!companyIdParam) {
+        // If no company_id in URL, fetch first company owned by user
+        const { data, error } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('user_id', user?.id)
+          .limit(1)
+          .single()
+        
+        if (error) throw error
+        companyData = data
+      } else {
+        // If company_id is provided, check if user has access (owner or via user_roles)
+        // First check if user owns the company
+        const { data: ownedCompany, error: ownedError } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('id', companyIdParam)
+          .eq('user_id', user?.id)
+          .single()
+        
+        if (!ownedError && ownedCompany) {
+          // User owns the company
+          companyData = ownedCompany
+        } else {
+          // Check if user has access via user_roles
+          const { data: userRole, error: roleError } = await supabase
+            .from('user_roles')
+            .select('company_id')
+            .eq('user_id', user?.id)
+            .eq('company_id', companyIdParam)
+            .single()
+          
+          if (roleError || !userRole) {
+            // User doesn't have access, redirect back
+            router.push('/data-room')
+            return
+          }
+          
+          // User has access via role, fetch company details
+          const { data, error } = await supabase
+            .from('companies')
+            .select('*')
+            .eq('id', companyIdParam)
+            .single()
+
+          if (error) throw error
+          companyData = data
+        }
       }
-      
-      const { data, error } = await query.limit(1).single()
 
-      if (error) throw error
-
-      if (data) {
+      if (companyData) {
         setCompanyId(data.id)
         setCurrentCompany({ 
           id: data.id, 

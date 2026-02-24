@@ -3270,7 +3270,7 @@ function DataRoomPageInner() {
                 </div>
                 <div className="sm:ml-auto w-full sm:w-auto">
                   <button
-                    onClick={() => router.push('/manage-company')}
+                    onClick={() => router.push(`/manage-company?company_id=${currentCompany?.id || ''}`)}
                     className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-white/10 border border-white/40 text-white rounded-lg hover:bg-white/20 transition-colors text-xs sm:text-sm flex items-center justify-center gap-2"
                   >
                     <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
