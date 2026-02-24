@@ -93,10 +93,30 @@ export interface PenaltyResult {
 // ============================================
 
 /**
- * Format amount in Indian Rupees
+ * Format amount in Indian Rupees (legacy function - maintained for backward compatibility)
+ * @deprecated Use formatCurrency with countryCode parameter instead
  */
 export function formatINR(amount: number): string {
-  return `₹${Math.round(amount).toLocaleString('en-IN')}`;
+  return formatCurrency(amount, 'IN')
+}
+
+/**
+ * Format currency amount with country-specific symbol and locale
+ * Backward compatible: defaults to INR if countryCode not provided
+ */
+export function formatCurrency(
+  amount: number,
+  countryCode: string = 'IN'
+): string {
+  // Import dynamically to avoid circular dependencies
+  try {
+    const { CountryFactory } = require('../countries/factory')
+    const formatter = CountryFactory.getPenaltyFormatter(countryCode)
+    return formatter.format(amount)
+  } catch {
+    // Fallback to INR if country module not available
+    return `₹${Math.round(amount).toLocaleString('en-IN')}`
+  }
 }
 
 /**
@@ -130,7 +150,8 @@ function calculateDailyPenalty(
   config: DailyPenaltyConfig,
   daysDelayed: number,
   financials: CompanyFinancials | null,
-  isNilReturn: boolean = false
+  isNilReturn: boolean = false,
+  countryCode: string = 'IN'
 ): PenaltyResult {
   const rate = isNilReturn && config.nil_rate ? config.nil_rate : config.rate;
   let amount = rate * daysDelayed;
@@ -158,8 +179,8 @@ function calculateDailyPenalty(
   return {
     success: true,
     amount,
-    display: formatINR(amount),
-    breakdown: [`${formatINR(rate)}/day × ${daysDelayed} days = ${formatINR(amount)}`]
+    display: formatCurrency(amount, countryCode),
+    breakdown: [`${formatCurrency(rate, countryCode)}/day × ${daysDelayed} days = ${formatCurrency(amount, countryCode)}`]
   };
 }
 
@@ -168,7 +189,8 @@ function calculateDailyPenalty(
  */
 function calculateFlatPenalty(
   config: FlatPenaltyConfig,
-  financials: CompanyFinancials | null
+  financials: CompanyFinancials | null,
+  countryCode: string = 'IN'
 ): PenaltyResult {
   let amount = config.amount;
   
@@ -184,8 +206,8 @@ function calculateFlatPenalty(
   return {
     success: true,
     amount,
-    display: formatINR(amount),
-    breakdown: [`Fixed penalty: ${formatINR(amount)}`]
+    display: formatCurrency(amount, countryCode),
+    breakdown: [`Fixed penalty: ${formatCurrency(amount, countryCode)}`]
   };
 }
 
@@ -196,7 +218,8 @@ function calculateInterestPenalty(
   config: InterestPenaltyConfig,
   daysDelayed: number,
   financials: CompanyFinancials | null,
-  baseAmountOverride?: number
+  baseAmountOverride?: number,
+  countryCode: string = 'IN'
 ): PenaltyResult {
   const baseAmount = baseAmountOverride ?? getBaseAmount(config.base, financials);
   
@@ -234,10 +257,10 @@ function calculateInterestPenalty(
   return {
     success: true,
     amount,
-    display: formatINR(amount),
+    display: formatCurrency(amount, countryCode),
     breakdown: [
-      `${config.rate}% p.${config.period[0]}. on ${formatINR(baseAmount)}`,
-      `= ${formatINR(amount)} for ${periods.toFixed(2)} ${periodLabel}`
+      `${config.rate}% p.${config.period[0]}. on ${formatCurrency(baseAmount, countryCode)}`,
+      `= ${formatCurrency(amount, countryCode)} for ${periods.toFixed(2)} ${periodLabel}`
     ]
   };
 }
@@ -248,7 +271,8 @@ function calculateInterestPenalty(
 function calculatePercentagePenalty(
   config: PercentagePenaltyConfig,
   financials: CompanyFinancials | null,
-  baseAmountOverride?: number
+  baseAmountOverride?: number,
+  countryCode: string = 'IN'
 ): PenaltyResult {
   const baseAmount = baseAmountOverride ?? getBaseAmount(config.base, financials);
   
@@ -272,20 +296,20 @@ function calculatePercentagePenalty(
   return {
     success: true,
     amount,
-    display: formatINR(amount),
-    breakdown: [`${rate}% of ${formatINR(baseAmount)} = ${formatINR(amount)}`]
+    display: formatCurrency(amount, countryCode),
+    breakdown: [`${rate}% of ${formatCurrency(baseAmount, countryCode)} = ${formatCurrency(amount, countryCode)}`]
   };
 }
 
 /**
  * Calculate range penalty (uses minimum)
  */
-function calculateRangePenalty(config: RangePenaltyConfig): PenaltyResult {
+function calculateRangePenalty(config: RangePenaltyConfig, countryCode: string = 'IN'): PenaltyResult {
   return {
     success: true,
     amount: config.min,
-    display: `${formatINR(config.min)} - ${formatINR(config.max)}`,
-    breakdown: [`Range: ${formatINR(config.min)} to ${formatINR(config.max)}`],
+    display: `${formatCurrency(config.min, countryCode)} - ${formatCurrency(config.max, countryCode)}`,
+    breakdown: [`Range: ${formatCurrency(config.min, countryCode)} to ${formatCurrency(config.max, countryCode)}`],
     warning: 'Showing minimum amount from range'
   };
 }
@@ -296,7 +320,8 @@ function calculateRangePenalty(config: RangePenaltyConfig): PenaltyResult {
 function calculatePerInvoicePenalty(
   config: PerInvoicePenaltyConfig,
   financials: CompanyFinancials | null,
-  invoiceCount: number = 1
+  invoiceCount: number = 1,
+  countryCode: string = 'IN'
 ): PenaltyResult {
   const baseAmount = getBaseAmount(config.base, financials);
   
@@ -314,8 +339,8 @@ function calculatePerInvoicePenalty(
   return {
     success: true,
     amount,
-    display: formatINR(amount),
-    breakdown: [`${config.rate}% of ${config.base} per invoice (min ${formatINR(config.min_per_invoice)})`]
+    display: formatCurrency(amount, countryCode),
+    breakdown: [`${config.rate}% of ${config.base} per invoice (min ${formatCurrency(config.min_per_invoice, countryCode)})`]
   };
 }
 
@@ -326,14 +351,15 @@ function calculateCompositePenalty(
   config: CompositePenaltyConfig,
   daysDelayed: number,
   financials: CompanyFinancials | null,
-  baseAmountOverride?: number
+  baseAmountOverride?: number,
+  countryCode: string = 'IN'
 ): PenaltyResult {
   let totalAmount = 0;
   const breakdown: string[] = [];
   const neededAmounts: string[] = [];
   
   for (const part of config.parts) {
-    const result = computePenalty(part, daysDelayed, financials, baseAmountOverride);
+    const result = computePenalty(part, daysDelayed, financials, baseAmountOverride, { countryCode });
     
     if (result.needs_amount) {
       neededAmounts.push(result.needs_amount);
@@ -363,7 +389,7 @@ function calculateCompositePenalty(
   return {
     success: true,
     amount: totalAmount,
-    display: formatINR(totalAmount),
+    display: formatCurrency(totalAmount, countryCode),
     breakdown
   };
 }
@@ -374,13 +400,14 @@ function calculateCompositePenalty(
 
 /**
  * Compute penalty based on config, days delayed, and available financials
+ * @param countryCode - Optional country code for currency formatting (defaults to 'IN' for backward compatibility)
  */
 export function computePenalty(
   config: PenaltyConfig | null | undefined,
   daysDelayed: number,
   financials: CompanyFinancials | null = null,
   baseAmountOverride?: number,
-  options: { isNilReturn?: boolean; invoiceCount?: number } = {}
+  options: { isNilReturn?: boolean; invoiceCount?: number; countryCode?: string } = {}
 ): PenaltyResult {
   // No config or no delay
   if (!config) {
@@ -398,27 +425,29 @@ export function computePenalty(
     };
   }
   
+  const countryCode = options.countryCode || 'IN' // Default to 'IN' for backward compatibility
+
   switch (config.type) {
     case 'daily':
-      return calculateDailyPenalty(config, daysDelayed, financials, options.isNilReturn);
+      return calculateDailyPenalty(config, daysDelayed, financials, options.isNilReturn, countryCode);
     
     case 'flat':
-      return calculateFlatPenalty(config, financials);
+      return calculateFlatPenalty(config, financials, countryCode);
     
     case 'interest':
-      return calculateInterestPenalty(config, daysDelayed, financials, baseAmountOverride);
+      return calculateInterestPenalty(config, daysDelayed, financials, baseAmountOverride, countryCode);
     
     case 'percentage':
-      return calculatePercentagePenalty(config, financials, baseAmountOverride);
+      return calculatePercentagePenalty(config, financials, baseAmountOverride, countryCode);
     
     case 'range':
-      return calculateRangePenalty(config);
+      return calculateRangePenalty(config, countryCode);
     
     case 'per_invoice':
-      return calculatePerInvoicePenalty(config, financials, options.invoiceCount ?? 1);
+      return calculatePerInvoicePenalty(config, financials, options.invoiceCount ?? 1, countryCode);
     
     case 'composite':
-      return calculateCompositePenalty(config, daysDelayed, financials, baseAmountOverride);
+      return calculateCompositePenalty(config, daysDelayed, financials, baseAmountOverride, countryCode);
     
     default:
       return {
@@ -447,39 +476,40 @@ export function parsePenaltyConfig(configInput: unknown): PenaltyConfig | null {
 
 /**
  * Generate a human-readable summary of the penalty config
+ * @param countryCode - Optional country code for currency formatting (defaults to 'IN')
  */
-export function getPenaltySummary(config: PenaltyConfig | null): string {
+export function getPenaltySummary(config: PenaltyConfig | null, countryCode: string = 'IN'): string {
   if (!config) return '-';
   
   switch (config.type) {
     case 'daily': {
-      let summary = `${formatINR(config.rate)}/day`;
+      let summary = `${formatCurrency(config.rate, countryCode)}/day`;
       if (config.nil_rate) {
-        summary += ` (NIL: ${formatINR(config.nil_rate)}/day)`;
+        summary += ` (NIL: ${formatCurrency(config.nil_rate, countryCode)}/day)`;
       }
       if (config.cap) {
-        summary += ` (max ${formatINR(config.cap)})`;
+        summary += ` (max ${formatCurrency(config.cap, countryCode)})`;
       }
       return summary;
     }
     
     case 'flat':
-      return formatINR(config.amount);
+      return formatCurrency(config.amount, countryCode);
     
     case 'interest':
       return `${config.rate}% p.${config.period[0]}.`;
     
     case 'percentage':
-      return `${config.rate}% of ${config.base}${config.cap ? ` (max ${formatINR(config.cap)})` : ''}`;
+      return `${config.rate}% of ${config.base}${config.cap ? ` (max ${formatCurrency(config.cap, countryCode)})` : ''}`;
     
     case 'range':
-      return `${formatINR(config.min)} - ${formatINR(config.max)}`;
+      return `${formatCurrency(config.min, countryCode)} - ${formatCurrency(config.max, countryCode)}`;
     
     case 'per_invoice':
-      return `${config.rate}% per invoice (min ${formatINR(config.min_per_invoice)})`;
+      return `${config.rate}% per invoice (min ${formatCurrency(config.min_per_invoice, countryCode)})`;
     
     case 'composite':
-      return config.parts.map(getPenaltySummary).join(' + ');
+      return config.parts.map(part => getPenaltySummary(part, countryCode)).join(' + ');
     
     default:
       return 'Complex penalty';
@@ -493,10 +523,12 @@ export function getPenaltySummary(config: PenaltyConfig | null): string {
 /**
  * Fallback: Calculate penalty from legacy text format
  * Used when penalty_config is not available
+ * @param countryCode - Optional country code for currency formatting (defaults to 'IN' for backward compatibility)
  */
 export function calculatePenaltyFromText(
   penaltyStr: string | null,
-  daysDelayed: number
+  daysDelayed: number,
+  countryCode: string = 'IN'
 ): PenaltyResult {
   if (!penaltyStr || daysDelayed <= 0) {
     return { success: true, amount: 0, display: '-' };
@@ -514,7 +546,7 @@ export function calculatePenaltyFromText(
     const dailyRate = parseInt(penalty, 10);
     if (!isNaN(dailyRate) && dailyRate > 0) {
       const amount = dailyRate * daysDelayed;
-      return { success: true, amount, display: formatINR(amount) };
+      return { success: true, amount, display: formatCurrency(amount, countryCode) };
     }
   }
 
@@ -601,7 +633,7 @@ export function calculatePenaltyFromText(
       return { 
         success: true, 
         amount: minAmount, 
-        display: formatINR(minAmount),
+        display: formatCurrency(minAmount, countryCode),
         warning: 'Showing minimum from range'
       };
     }

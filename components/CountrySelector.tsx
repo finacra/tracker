@@ -1,6 +1,8 @@
 'use client'
 
-import { getCountriesByRegion, getDefaultCountryConfig, type CountryConfig } from '@/lib/config/countries'
+import { CountryRegistry, type CountryConfig } from '@/lib/countries'
+// Backward compatibility: also import from old location
+import { getCountriesByRegion as getCountriesByRegionOld } from '@/lib/config/countries'
 
 interface CountrySelectorProps {
   value: string
@@ -9,9 +11,16 @@ interface CountrySelectorProps {
 }
 
 export default function CountrySelector({ value, onChange, className = '' }: CountrySelectorProps) {
-  const apacCountries = getCountriesByRegion('APAC')
-  const gccCountries = getCountriesByRegion('GCC')
-  const naCountries = getCountriesByRegion('NA')
+  // Use new CountryRegistry, fallback to old system for backward compatibility
+  const apacCountries = CountryRegistry.getByRegion('APAC').length > 0 
+    ? CountryRegistry.getByRegion('APAC')
+    : getCountriesByRegionOld('APAC')
+  const gccCountries = CountryRegistry.getByRegion('GCC').length > 0
+    ? CountryRegistry.getByRegion('GCC')
+    : getCountriesByRegionOld('GCC')
+  const naCountries = CountryRegistry.getByRegion('NA').length > 0
+    ? CountryRegistry.getByRegion('NA')
+    : getCountriesByRegionOld('NA')
 
   return (
     <div className={className}>

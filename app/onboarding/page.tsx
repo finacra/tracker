@@ -14,7 +14,10 @@ import { createClient } from '@/utils/supabase/client'
 import { completeOnboarding } from './actions'
 import { INDUSTRIES } from '@/lib/compliance/csv-template'
 import { useCountryConfig } from '@/hooks/useCountryConfig'
+import { useCountryAPISupport } from '@/hooks/useCountryValidator'
+import { useCountryValidator } from '@/hooks/useCountryValidator'
 import CountrySelector from '@/components/CountrySelector'
+import { ManualVerificationNotice } from '@/components/ManualVerificationNotice'
 
 interface Director {
   id: string
@@ -53,6 +56,8 @@ export default function OnboardingPage() {
 
   const [countryCode, setCountryCode] = useState<string>('IN')
   const { config: countryConfig } = useCountryConfig(countryCode)
+  const hasAPISupport = useCountryAPISupport(countryCode)
+  const countryValidator = useCountryValidator(countryCode)
   const dateInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
@@ -333,6 +338,30 @@ export default function OnboardingPage() {
       return
     }
 
+    // Only allow DIN verification for India (has API support)
+    if (countryCode !== 'IN' || !hasAPISupport) {
+      // For non-India countries, just validate format
+      if (countryValidator?.validateDirectorId) {
+        const validation = countryValidator.validateDirectorId(din)
+        if (!validation.isValid) {
+          setErrors((prev) => ({
+            ...prev,
+            [`director_${directorId}`]: validation.error || 'Invalid director ID format',
+          }))
+          return
+        }
+      }
+      // Format is valid, but no API verification available
+      setDirectors((prev) =>
+        prev.map((dir) =>
+          dir.id === directorId
+            ? { ...dir, verified: false, source: 'manual' as const }
+            : dir
+        )
+      )
+      return
+    }
+
     setIsVerifyingDIN(directorId)
     setErrors((prev) => ({ ...prev, [`director_${directorId}`]: '' }))
 
@@ -383,13 +412,41 @@ export default function OnboardingPage() {
   }
 
   const handleAddDirectorByDIN = async () => {
-    // Only allow DIN verification for India
-    if (countryCode !== 'IN') {
+    if (!newDirectorDIN.trim()) {
+      const dinLabel = countryConfig.labels.directorId || 'Director ID'
+      setErrors((prev) => ({ ...prev, newDirectorDIN: `Please enter ${dinLabel}` }))
       return
     }
-    
-    if (!newDirectorDIN.trim()) {
-      setErrors((prev) => ({ ...prev, newDirectorDIN: 'Please enter DIN number' }))
+
+    // Validate format using country validator
+    if (countryValidator?.validateDirectorId) {
+      const validation = countryValidator.validateDirectorId(newDirectorDIN)
+      if (!validation.isValid) {
+        setErrors((prev) => ({ 
+          ...prev, 
+          newDirectorDIN: validation.error || 'Invalid director ID format' 
+        }))
+        return
+      }
+    }
+
+    // Only allow API verification for India
+    if (countryCode !== 'IN' || !hasAPISupport) {
+      // For non-India countries, add director with manual verification
+      const newDirector: Director = {
+        id: `manual-${Date.now()}`,
+        firstName: '',
+        lastName: '',
+        middleName: '',
+        din: newDirectorDIN.trim(),
+        designation: '',
+        dob: '',
+        verified: false,
+        source: 'manual',
+      }
+      setDirectors((prev) => [...prev, newDirector])
+      setNewDirectorDIN('')
+      setShowAddDirector(false)
       return
     }
 
@@ -610,20 +667,22 @@ export default function OnboardingPage() {
     if (!formData.companyType) {
       newErrors.companyType = 'Please select a company type'
     }
-    // Tax ID validation - country-specific
-    if (formData.panNumber.trim()) {
-      if (countryCode === 'IN') {
-        // PAN validation for India
-        if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber.trim().toUpperCase())) {
-      newErrors.panNumber = 'Invalid PAN format (e.g., ABCDE1234F)'
-    }
+    // Tax ID validation - country-specific using validators
+    if (formData.panNumber.trim() && countryValidator) {
+      const taxValidation = countryValidator.validateTaxId(formData.panNumber)
+      if (!taxValidation.isValid) {
+        newErrors.panNumber = taxValidation.error || 'Invalid tax ID format'
       }
-      // For other countries, tax ID format validation can be added if needed
     }
     
-    // Registration ID is required for all countries (field name is cinNumber but label is country-specific)
+    // Registration ID validation - country-specific using validators
     if (!formData.cinNumber.trim()) {
       newErrors.cinNumber = `${countryConfig.labels.registrationId} is required`
+    } else if (countryValidator) {
+      const regValidation = countryValidator.validateRegistrationId(formData.cinNumber)
+      if (!regValidation.isValid) {
+        newErrors.cinNumber = regValidation.error || `Invalid ${countryConfig.labels.registrationId} format`
+      }
     }
     if (formData.industries.length === 0) {
       newErrors.industries = 'Please select at least one industry'
@@ -640,6 +699,11 @@ export default function OnboardingPage() {
     }
     if (!formData.pinCode.trim()) {
       newErrors.pinCode = `${countryConfig.labels.postalCode} is required`
+    } else if (countryValidator?.validatePostalCode) {
+      const postalValidation = countryValidator.validatePostalCode(formData.pinCode)
+      if (!postalValidation.isValid) {
+        newErrors.pinCode = postalValidation.error || `Invalid ${countryConfig.labels.postalCode} format`
+      }
     }
     // Phone number is now optional
     if (formData.phoneNumber.trim() && !/^[0-9+\s-]{10,15}$/.test(formData.phoneNumber.trim())) {
@@ -830,7 +894,7 @@ export default function OnboardingPage() {
                       placeholder={`Enter ${countryConfig.labels.registrationId}`}
                       className="flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                     />
-                    {countryConfig.onboarding.verificationServices?.registration && (
+                    {hasAPISupport && (
                     <button
                       type="button"
                       onClick={handleCINVerification}
@@ -857,6 +921,14 @@ export default function OnboardingPage() {
                   </div>
                   {errors.cinNumber && (
                     <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.cinNumber}</p>
+                  )}
+                  {/* Manual Verification Notice for non-India countries */}
+                  {!hasAPISupport && formData.cinNumber.trim() && (
+                    <ManualVerificationNotice
+                      countryCode={countryCode}
+                      fieldType="registration"
+                      value={formData.cinNumber}
+                    />
                   )}
                 </div>
 
@@ -1295,9 +1367,12 @@ export default function OnboardingPage() {
                 </button>
               </div>
 
-              {/* Add Director by DIN (only for India) */}
-              {showAddDirector && countryConfig.onboarding.verificationServices?.director && (
+              {/* Add Director by DIN/Director ID */}
+              {showAddDirector && countryConfig.labels.directorId && (
                 <div className="mb-4 p-3 sm:p-4 bg-gray-900 border border-gray-700 rounded-lg">
+                  <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
+                    {countryConfig.labels.directorId}
+                  </label>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       type="text"
@@ -1306,7 +1381,7 @@ export default function OnboardingPage() {
                         setNewDirectorDIN(e.target.value)
                         setErrors((prev) => ({ ...prev, newDirectorDIN: '' }))
                       }}
-                      placeholder="Enter DIN number"
+                      placeholder={`Enter ${countryConfig.labels.directorId}`}
                       className="flex-1 px-3 sm:px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                     />
                     <button
@@ -1315,7 +1390,7 @@ export default function OnboardingPage() {
                       disabled={!newDirectorDIN.trim()}
                       className="px-3 sm:px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-light"
                     >
-                      Verify & Add
+                      {hasAPISupport ? 'Verify & Add' : 'Add'}
                     </button>
                     <button
                       type="button"
@@ -1330,6 +1405,14 @@ export default function OnboardingPage() {
                   </div>
                   {errors.newDirectorDIN && (
                     <p className="mt-2 text-xs sm:text-sm text-red-400">{errors.newDirectorDIN}</p>
+                  )}
+                  {/* Manual Verification Notice for non-India countries */}
+                  {!hasAPISupport && newDirectorDIN.trim() && (
+                    <ManualVerificationNotice
+                      countryCode={countryCode}
+                      fieldType="director"
+                      value={newDirectorDIN}
+                    />
                   )}
                 </div>
               )}
@@ -1401,7 +1484,7 @@ export default function OnboardingPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 sm:ml-4 flex-shrink-0">
-                          {director.source === 'cin' && !director.verified && director.din && (
+                          {director.source === 'cin' && !director.verified && director.din && hasAPISupport && (
                             <button
                               type="button"
                               onClick={() => handleDINVerification(director.id, director.din)}
