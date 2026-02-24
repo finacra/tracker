@@ -2,7 +2,8 @@
  * Saudi Arabia Validator
  */
 
-import { GCCBaseValidator, ValidationResult } from './gcc-base'
+import { GCCBaseValidator } from './gcc-base'
+import type { ValidationResult } from './base'
 import type { CountryConfig } from '../index'
 
 export class SaudiValidator extends GCCBaseValidator {

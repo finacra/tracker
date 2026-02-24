@@ -5,10 +5,10 @@
 
 import { CountryRegistry } from './index'
 import type { CountryConfig } from './index'
-import { BaseValidator } from './validators/base'
+import type { BaseValidator, ValidationResult } from './validators/base'
 
 // Re-export validator interfaces
-export { BaseValidator, ValidationResult } from './validators/base'
+export type { BaseValidator, ValidationResult } from './validators/base'
 
 export interface CountryAPIClient {
   verifyRegistrationId(id: string): Promise<VerificationResult>

@@ -89,14 +89,14 @@ export class ComplianceTemplateLoader {
   ): Promise<ComplianceTemplate | null> {
     const supabase = await createClient()
     
+    // Build query with country_code filter before .single()
     let query = supabase
       .from('compliance_templates')
       .select('*')
       .eq('id', templateId)
       .eq('is_active', true)
-      .single()
     
-    // Filter by country_code if column exists
+    // Filter by country_code if column exists (before .single())
     try {
       query = query.eq('country_code', countryCode)
     } catch (error) {
@@ -104,7 +104,7 @@ export class ComplianceTemplateLoader {
       console.warn('country_code column not found, returning template without country filter')
     }
     
-    const { data, error } = await query
+    const { data, error } = await query.single()
     
     if (error) {
       if (error.code === 'PGRST116') {
@@ -137,12 +137,7 @@ export class ComplianceTemplateLoader {
       .eq('is_active', true)
     
     // Filter by country_code if column exists
-    try {
-      query = query.eq('country_code', countryCode)
-    } catch (error) {
-      // Column might not exist yet
-      console.warn('country_code column not found')
-    }
+    query = query.eq('country_code', countryCode)
     
     const { data, error } = await query.order('display_order', { ascending: true })
     
@@ -174,13 +169,8 @@ export class ComplianceTemplateLoader {
       query = query.eq('is_active', true)
     }
     
-    // Filter by country_code if column exists
-    try {
-      query = query.eq('country_code', countryCode)
-    } catch (error) {
-      // Column might not exist yet
-      console.warn('country_code column not found')
-    }
+    // Filter by country_code
+    query = query.eq('country_code', countryCode)
     
     const { data, error } = await query.order('display_order', { ascending: true })
     

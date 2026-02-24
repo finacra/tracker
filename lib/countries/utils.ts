@@ -111,6 +111,15 @@ export function formatCurrencyForCountry(
       locale = 'en-IN'
   }
   
+  if (!country) {
+    // Fallback to INR if country not found
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(amount)
+  }
+  
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: country.currency.code,
@@ -126,5 +135,8 @@ export function getFieldLabel(
   fieldType: 'registrationId' | 'taxId' | 'directorId' | 'postalCode' | 'state'
 ): string {
   const country = CountryRegistry.get(countryCode) || CountryRegistry.get('IN')
+  if (!country) {
+    return fieldType
+  }
   return country.labels[fieldType] || fieldType
 }
