@@ -675,14 +675,9 @@ export default function OnboardingPage() {
       }
     }
     
-    // Registration ID validation - country-specific using validators
+    // Registration ID validation - only check if required, no format validation
     if (!formData.cinNumber.trim()) {
       newErrors.cinNumber = `${countryConfig.labels.registrationId} is required`
-    } else if (countryValidator) {
-      const regValidation = countryValidator.validateRegistrationId(formData.cinNumber)
-      if (!regValidation.isValid) {
-        newErrors.cinNumber = regValidation.error || `Invalid ${countryConfig.labels.registrationId} format`
-      }
     }
     if (formData.industries.length === 0) {
       newErrors.industries = 'Please select at least one industry'
@@ -969,10 +964,7 @@ export default function OnboardingPage() {
                 name="companyType"
                 value={formData.companyType}
                 onChange={handleInputChange}
-                disabled={isCINVerified}
-                className={`w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none font-light ${
-                  isCINVerified ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
-                }`}
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none font-light cursor-pointer"
               >
                 <option value="">Select company type</option>
                 {countryConfig.onboarding.entityTypes.map((entityType) => (
