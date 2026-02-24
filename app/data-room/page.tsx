@@ -584,6 +584,44 @@ function DataRoomPageInner() {
   // Fetch compliance categories from database
   const { categories: complianceCategories } = useComplianceCategories(countryCode || 'IN')
 
+  // Fetch document templates when country code changes (must be after countryCode is defined)
+  useEffect(() => {
+    if (!countryCode) return
+    
+    async function fetchTemplates() {
+      try {
+        // Try to get country-specific templates from document_templates_internal
+        const clientSupabase = createClient()
+        const { data, error } = await clientSupabase
+          .from('document_templates_internal')
+          .select('*')
+          .eq('country_code', countryCode) // Filter by country
+          .order('folder_name', { ascending: true })
+        
+        if (error) {
+          // If country_code column doesn't exist or error, try without filter
+          console.warn('Error fetching country-specific templates, trying without filter:', error)
+          const { data: fallbackData } = await clientSupabase
+            .from('document_templates_internal')
+            .select('*')
+            .order('folder_name', { ascending: true })
+          setDocumentTemplates(fallbackData || [])
+        } else {
+          setDocumentTemplates(data || [])
+        }
+      } catch (error) {
+        console.error('Error fetching templates:', error)
+        // Fallback to original method
+        const result = await getDocumentTemplates()
+        if (result.success) {
+          setDocumentTemplates(result.templates || [])
+        }
+      }
+    }
+    
+    fetchTemplates()
+  }, [countryCode])
+
   // Update demo notices when company changes (show for all companies for demo)
   useEffect(() => {
     // Show demo notices for all companies (for prototype/demo purposes)
