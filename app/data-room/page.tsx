@@ -2357,20 +2357,20 @@ function DataRoomPageInner() {
     
     // Country-specific folder mappings
     if (countryCode === 'IN') {
-      const folderMap: Record<string, string> = {
-        'GST Returns': 'GST',
-        'Income Tax Returns': 'Income Tax',
-        'ROC Filings': 'RoC',
-        'Labour Law Compliance': 'Payroll',
-        'Renewals': 'Renewals',
-        'Other Compliance Documents': 'Other',
-        'Professional Tax': 'Prof. Tax',
-        'Constitutional Documents': 'Other',
-        'Financials and licenses': 'Other',
-        'Taxation & GST Compliance': 'GST',
-        'Regulatory & MCA Filings': 'RoC'
-      }
-      return folderMap[folderName] || null
+    const folderMap: Record<string, string> = {
+      'GST Returns': 'GST',
+      'Income Tax Returns': 'Income Tax',
+      'ROC Filings': 'RoC',
+      'Labour Law Compliance': 'Payroll',
+      'Renewals': 'Renewals',
+      'Other Compliance Documents': 'Other',
+      'Professional Tax': 'Prof. Tax',
+      'Constitutional Documents': 'Other',
+      'Financials and licenses': 'Other',
+      'Taxation & GST Compliance': 'GST',
+      'Regulatory & MCA Filings': 'RoC'
+    }
+    return folderMap[folderName] || null
     } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
       // GCC countries
       const folderMap: Record<string, string> = {
@@ -2407,10 +2407,10 @@ function DataRoomPageInner() {
       
       // India-specific patterns
       if (countryCode === 'IN') {
-        if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
-        if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
-        if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
-        if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
+      if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
+      if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
+      if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
+      if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
       }
       // GCC countries
       else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
@@ -2442,17 +2442,17 @@ function DataRoomPageInner() {
     
     if (countryCode === 'IN') {
       // India-specific patterns
-      if (docLower.includes('gstr') || docLower.includes('gst') || docLower.includes('cmp-') || docLower.includes('itc-') || docLower.includes('iff')) {
+    if (docLower.includes('gstr') || docLower.includes('gst') || docLower.includes('cmp-') || docLower.includes('itc-') || docLower.includes('iff')) {
         suggestions.push('Taxation & GST Compliance')
-      }
-      if (docLower.includes('itr') || docLower.includes('form 24') || docLower.includes('form 26') || docLower.includes('form 27') || docLower.includes('tds') || docLower.includes('tcs')) {
+    }
+    if (docLower.includes('itr') || docLower.includes('form 24') || docLower.includes('form 26') || docLower.includes('form 27') || docLower.includes('tds') || docLower.includes('tcs')) {
         suggestions.push('Taxation & GST Compliance')
-      }
-      if (docLower.includes('mgt') || docLower.includes('aoc') || docLower.includes('roc') || docLower.includes('dir-') || docLower.includes('pas-') || docLower.includes('ben-') || docLower.includes('inc-') || docLower.includes('adt-') || docLower.includes('cra-') || docLower.includes('llp form')) {
+    }
+    if (docLower.includes('mgt') || docLower.includes('aoc') || docLower.includes('roc') || docLower.includes('dir-') || docLower.includes('pas-') || docLower.includes('ben-') || docLower.includes('inc-') || docLower.includes('adt-') || docLower.includes('cra-') || docLower.includes('llp form')) {
         suggestions.push('Regulatory & MCA Filings')
-      }
-      if (docLower.includes('epf') || docLower.includes('esi') || docLower.includes('ecr') || docLower.includes('form 5a') || docLower.includes('form 2') || docLower.includes('form 10') || docLower.includes('form 19')) {
-        suggestions.push('Labour Law Compliance')
+    }
+    if (docLower.includes('epf') || docLower.includes('esi') || docLower.includes('ecr') || docLower.includes('form 5a') || docLower.includes('form 2') || docLower.includes('form 10') || docLower.includes('form 19')) {
+      suggestions.push('Labour Law Compliance')
       }
     } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
       // GCC countries
@@ -5728,11 +5728,11 @@ function DataRoomPageInner() {
                         <option key={category} value={category}>{category}</option>
                       )) || (
                         <>
-                          <option value="Income Tax">Income Tax</option>
-                          <option value="GST">GST</option>
-                          <option value="MCA/RoC">MCA/RoC</option>
-                          <option value="Labour Law">Labour Law</option>
-                          <option value="Other">Other</option>
+                      <option value="Income Tax">Income Tax</option>
+                      <option value="GST">GST</option>
+                      <option value="MCA/RoC">MCA/RoC</option>
+                      <option value="Labour Law">Labour Law</option>
+                      <option value="Other">Other</option>
                         </>
                       )}
                     </select>
@@ -6105,10 +6105,10 @@ function DataRoomPageInner() {
             
             if (countryCode === 'IN') {
               // India-specific patterns
-              if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
-              if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
-              if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
-              if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
+            if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
+            if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
+            if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
+            if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
             } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
               // GCC countries
               if ((categoryLower === 'vat' || categoryLower === 'tax') && (formLower.includes('vat') || formLower.includes('tax return') || formLower.includes('corporate tax') || formLower.includes('zakat'))) return true
@@ -8984,7 +8984,15 @@ function DataRoomPageInner() {
                         value={requirementForm.requirement}
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, requirement: e.target.value }))}
                         className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
-                        placeholder="e.g., TDS Payment - Monthly"
+                        placeholder={
+                          countryCode === 'IN' 
+                            ? 'e.g., TDS Payment - Monthly'
+                            : countryCode === 'US'
+                            ? 'e.g., Federal Tax Return - Quarterly'
+                            : ['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')
+                            ? 'e.g., VAT Return - Monthly'
+                            : 'e.g., Tax Return - Monthly'
+                        }
                       />
                     </div>
 
@@ -9058,11 +9066,14 @@ function DataRoomPageInner() {
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, due_date: e.target.value }))}
                         className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                       />
-                      {requirementForm.compliance_type !== 'one-time' && (
-                        <p className="text-xs text-gray-400 mt-1">
-                          For {requirementForm.compliance_type} compliances, this is the base due date. The system will generate requirements for all applicable periods.
-                        </p>
-                      )}
+                      <p className="text-xs text-gray-400 mt-1">
+                        Date format: {countryConfig.dateFormat}
+                        {requirementForm.compliance_type !== 'one-time' && (
+                          <span className="block mt-1">
+                            For {requirementForm.compliance_type} compliances, this is the base due date. The system will generate requirements for all applicable periods.
+                          </span>
+                        )}
+                      </p>
                     </div>
 
                     {/* Penalty */}
@@ -11529,10 +11540,10 @@ function DataRoomPageInner() {
                       
                       if (countryCode === 'IN') {
                         // India-specific patterns
-                        if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
-                        if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
-                        if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
-                        if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
+                      if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
+                      if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
+                      if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
+                      if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
                       } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
                         // GCC countries
                         if ((categoryLower === 'vat' || categoryLower === 'tax') && (formLower.includes('vat') || formLower.includes('tax return') || formLower.includes('corporate tax') || formLower.includes('zakat'))) return true

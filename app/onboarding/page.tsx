@@ -417,7 +417,7 @@ export default function OnboardingPage() {
       setErrors((prev) => ({ ...prev, newDirectorDIN: `Please enter ${dinLabel}` }))
       return
     }
-
+    
     // Validate format using country validator
     if (countryValidator?.validateDirectorId) {
       const validation = countryValidator.validateDirectorId(newDirectorDIN)

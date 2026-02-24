@@ -98,14 +98,14 @@ function ManageCompanyPageInner() {
       
       if (!companyIdParam) {
         // If no company_id in URL, fetch first company owned by user
-        const { data, error } = await supabase
-          .from('companies')
-          .select('*')
-          .eq('user_id', user?.id)
-          .limit(1)
-          .single()
-        
-        if (error) throw error
+      const { data, error } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('user_id', user?.id)
+        .limit(1)
+        .single()
+
+      if (error) throw error
         companyData = data
       } else {
         // If company_id is provided, check if user has access (owner or via user_roles)

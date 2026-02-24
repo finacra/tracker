@@ -245,11 +245,11 @@ export function formatPriceWithCurrency(
     }).format(price)
   } catch {
     // Fallback to INR if country module not available
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(price)
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(price)
   }
 }
 
