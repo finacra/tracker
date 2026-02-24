@@ -7,6 +7,8 @@ const nextConfig = {
       bodySizeLimit: '2mb',
     },
   },
+  // Transpile packages that need to be processed
+  transpilePackages: ['@react-email/render', 'prettier'],
   // Configure headers
   async headers() {
     return [

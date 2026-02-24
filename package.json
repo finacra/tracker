@@ -17,16 +17,17 @@
     "@tavily/core": "^0.3.0",
     "handsontable": "^16.2.0",
     "jspdf": "^4.0.0",
+    "katex": "^0.16.11",
     "langchain": "^1.2.13",
     "next": "^16.1.4",
     "openai": "^6.16.0",
     "pdf-parse": "^1.1.1",
+    "prettier": "^3.8.1",
     "qrcode": "^1.5.4",
     "razorpay": "^2.9.2",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-katex": "^3.0.1",
-    "katex": "^0.16.11",
     "resend": "^6.9.1"
   },
   "devDependencies": {
