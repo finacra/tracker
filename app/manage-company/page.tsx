@@ -148,39 +148,39 @@ function ManageCompanyPageInner() {
       }
 
       if (companyData) {
-        setCompanyId(data.id)
+        setCompanyId(companyData.id)
         setCurrentCompany({ 
-          id: data.id, 
-          name: data.name || '',
-          type: data.type || '',
-          year: new Date(data.incorporation_date).getFullYear().toString(),
-          country_code: data.country_code || 'IN' 
+          id: companyData.id, 
+          name: companyData.name || '',
+          type: companyData.type || '',
+          year: new Date(companyData.incorporation_date).getFullYear().toString(),
+          country_code: companyData.country_code || 'IN' 
         })
         setFormData({
-          companyName: data.name || '',
-          companyType: data.type || '',
-          panNumber: data.pan || data.tax_id || '',
-          cinNumber: data.cin || data.registration_id || '',
-          industry: data.industry || '',
-          address: data.address || '',
-          city: data.city || '',
-          state: data.state || '',
-          pinCode: data.pin_code || '',
-          phoneNumber: data.phone_number || '',
-          email: data.email || '',
-          landline: data.landline || '',
-          other: data.other_info || '',
-          industryCategories: data.industry_categories || [],
-          otherIndustryCategory: data.other_industry_category || '',
+          companyName: companyData.name || '',
+          companyType: companyData.type || '',
+          panNumber: companyData.pan || companyData.tax_id || '',
+          cinNumber: companyData.cin || companyData.registration_id || '',
+          industry: companyData.industry || '',
+          address: companyData.address || '',
+          city: companyData.city || '',
+          state: companyData.state || '',
+          pinCode: companyData.pin_code || '',
+          phoneNumber: companyData.phone_number || '',
+          email: companyData.email || '',
+          landline: companyData.landline || '',
+          other: companyData.other_info || '',
+          industryCategories: companyData.industry_categories || [],
+          otherIndustryCategory: companyData.other_industry_category || '',
         })
         
         // Set ex-directors if available
-        if (data.ex_directors && Array.isArray(data.ex_directors) && data.ex_directors.length > 0) {
-          setExDirectors(data.ex_directors.join(', '))
+        if (companyData.ex_directors && Array.isArray(companyData.ex_directors) && companyData.ex_directors.length > 0) {
+          setExDirectors(companyData.ex_directors.join(', '))
         }
 
         // Fetch directors
-        const directorsResult = await getCompanyDirectors(data.id)
+        const directorsResult = await getCompanyDirectors(companyData.id)
         if (directorsResult.success) {
           setDirectors(directorsResult.directors)
         }
