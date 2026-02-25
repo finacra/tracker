@@ -55,7 +55,7 @@ function ManageCompanyPageInner() {
   const [showAddDirector, setShowAddDirector] = useState(false)
   const [isVerifyingDIN, setIsVerifyingDIN] = useState<string | null>(null)
   const [exDirectors, setExDirectors] = useState<string>('')
-  
+
   // Get country configuration
   const { countryCode, countryConfig } = useCompanyCountry(currentCompany)
   const countryValidator = useCountryValidator(countryCode)
@@ -93,19 +93,19 @@ function ManageCompanyPageInner() {
     try {
       // Get company_id from URL params if available, otherwise fetch first company
       const companyIdParam = searchParams?.get('company_id') || searchParams?.get('company')
-      
+
       let companyData: any = null
-      
+
       if (!companyIdParam) {
         // If no company_id in URL, fetch first company owned by user
-      const { data, error } = await supabase
-        .from('companies')
-        .select('*')
-        .eq('user_id', user?.id)
-        .limit(1)
-        .single()
+        const { data, error } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('user_id', user?.id)
+          .limit(1)
+          .single()
 
-      if (error) throw error
+        if (error) throw error
         companyData = data
       } else {
         // If company_id is provided, check if user has access (owner or via user_roles)
@@ -116,7 +116,7 @@ function ManageCompanyPageInner() {
           .eq('id', companyIdParam)
           .eq('user_id', user?.id)
           .single()
-        
+
         if (!ownedError && ownedCompany) {
           // User owns the company
           companyData = ownedCompany
@@ -128,13 +128,13 @@ function ManageCompanyPageInner() {
             .eq('user_id', user?.id)
             .eq('company_id', companyIdParam)
             .single()
-          
+
           if (roleError || !userRole) {
             // User doesn't have access, redirect back
             router.push('/data-room')
             return
           }
-          
+
           // User has access via role, fetch company details
           const { data, error } = await supabase
             .from('companies')
@@ -149,18 +149,18 @@ function ManageCompanyPageInner() {
 
       if (companyData) {
         setCompanyId(companyData.id)
-        setCurrentCompany({ 
-          id: companyData.id, 
+        setCurrentCompany({
+          id: companyData.id,
           name: companyData.name || '',
           type: companyData.type || '',
           year: new Date(companyData.incorporation_date).getFullYear().toString(),
-          country_code: companyData.country_code || 'IN' 
+          country_code: companyData.country_code || 'IN'
         })
         setFormData({
           companyName: companyData.name || '',
           companyType: companyData.type || '',
-          panNumber: companyData.pan || companyData.tax_id || '',
-          cinNumber: companyData.cin || companyData.registration_id || '',
+          panNumber: companyData.tax_id || '',
+          cinNumber: companyData.registration_id || '',
           industry: companyData.industry || '',
           address: companyData.address || '',
           city: companyData.city || '',
@@ -173,7 +173,7 @@ function ManageCompanyPageInner() {
           industryCategories: companyData.industry_categories || [],
           otherIndustryCategory: companyData.other_industry_category || '',
         })
-        
+
         // Set ex-directors if available
         if (companyData.ex_directors && Array.isArray(companyData.ex_directors) && companyData.ex_directors.length > 0) {
           setExDirectors(companyData.ex_directors.join(', '))
@@ -208,11 +208,11 @@ function ManageCompanyPageInner() {
       const categories = isCurrentlySelected
         ? prev.industryCategories.filter((c) => c !== category)
         : [...prev.industryCategories, category]
-      
+
       const otherIndustryCategory = category === 'Other' && isCurrentlySelected
         ? ''
         : prev.otherIndustryCategory
-      
+
       return { ...prev, industryCategories: categories, otherIndustryCategory }
     })
   }
@@ -244,14 +244,14 @@ function ManageCompanyPageInner() {
     if (countryCode !== 'IN') {
       return
     }
-    
+
     if (!din.trim()) return
 
     setIsVerifyingDIN(directorId)
     setErrors((prev) => ({ ...prev, [`director_${directorId}`]: '' }))
 
     const result = await verifyDIN(din.trim())
-    
+
     if (!result.success) {
       setErrors((prev) => ({
         ...prev,
@@ -278,17 +278,17 @@ function ManageCompanyPageInner() {
       prev.map((dir) =>
         dir.id === directorId
           ? {
-              ...dir,
-              firstName: dinData.firstName || dir.firstName,
-              lastName: dinData.lastName || dir.lastName,
-              middleName: dinData.middleName || dir.middleName,
-              dob: formatDate(dinData.dob) || dir.dob,
-              pan: dinData.pan || dir.pan,
-              email: dinData.emailAddress || dir.email,
-              mobile: dinData.mobileNumber || dir.mobile,
-              verified: true,
-              source: dir.source === 'cin' ? 'cin' : 'din',
-            }
+            ...dir,
+            firstName: dinData.firstName || dir.firstName,
+            lastName: dinData.lastName || dir.lastName,
+            middleName: dinData.middleName || dir.middleName,
+            dob: formatDate(dinData.dob) || dir.dob,
+            pan: dinData.pan || dir.pan,
+            email: dinData.emailAddress || dir.email,
+            mobile: dinData.mobileNumber || dir.mobile,
+            verified: true,
+            source: dir.source === 'cin' ? 'cin' : 'din',
+          }
           : dir
       )
     )
@@ -301,7 +301,7 @@ function ManageCompanyPageInner() {
     if (countryCode !== 'IN') {
       return
     }
-    
+
     if (!newDirectorDIN.trim()) {
       setErrors((prev) => ({ ...prev, newDirectorDIN: `Please enter ${countryConfig.labels.directorId} number` }))
       return
@@ -314,7 +314,7 @@ function ManageCompanyPageInner() {
     setErrors((prev) => ({ ...prev, newDirectorDIN: '' }))
 
     const result = await verifyDIN(din)
-    
+
     if (!result.success) {
       setErrors((prev) => ({
         ...prev,
@@ -602,11 +602,10 @@ function ManageCompanyPageInner() {
                   {directors.map((director) => (
                     <div
                       key={director.id}
-                      className={`p-4 bg-gray-900/50 border rounded-lg ${
-                        director.verified
+                      className={`p-4 bg-gray-900/50 border rounded-lg ${director.verified
                           ? 'border-green-500/30 bg-green-500/5'
                           : 'border-gray-800'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <div className="flex-1 min-w-0">

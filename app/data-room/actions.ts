@@ -82,16 +82,16 @@ export async function getUserRole(companyId: string | null): Promise<{ success: 
     if (companyId !== null && !validateCompanyId(companyId)) {
       return { success: false, role: null, error: 'Invalid company ID format' }
     }
-    
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, role: null, error: 'Not authenticated' }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     // First check if user is superadmin (platform-level, company_id IS NULL)
     // Query all superadmin roles for this user and check if any have NULL company_id
     const { data: superadminRoles } = await adminSupabase
@@ -167,23 +167,23 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
 }> {
   const startTime = Date.now()
   console.log('[getRegulatoryRequirements] START - companyId:', companyId)
-  
+
   try {
     // SECURITY: Validate companyId if provided
     if (companyId !== null && !validateCompanyId(companyId)) {
       return { success: false, error: 'Invalid company ID format' }
     }
-    
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     console.log('[getRegulatoryRequirements] Auth check:', Date.now() - startTime, 'ms')
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     // Check if user is superadmin (platform-level, company_id = NULL)
     // Fetch all superadmin roles and check if any have NULL company_id
     const { data: superadminRoles } = await adminSupabase
@@ -191,7 +191,7 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
       .select('role, company_id')
       .eq('user_id', user.id)
       .eq('role', 'superadmin')
-    
+
     console.log('[getRegulatoryRequirements] Superadmin check:', Date.now() - startTime, 'ms')
 
     const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
@@ -252,7 +252,7 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
         required_documents_type: typeof data[0].required_documents,
         required_documents_length: Array.isArray(data[0].required_documents) ? data[0].required_documents.length : 'not array'
       })
-      
+
       // Check all requirements for required_documents
       const withDocs = data.filter((r: any) => r.required_documents && Array.isArray(r.required_documents) && r.required_documents.length > 0)
       const withoutDocs = data.filter((r: any) => !r.required_documents || !Array.isArray(r.required_documents) || r.required_documents.length === 0)
@@ -275,8 +275,8 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
     // Normalize required_documents to always be an array
     const normalizedData = (data || []).map((req: any) => ({
       ...req,
-      required_documents: Array.isArray(req.required_documents) 
-        ? req.required_documents 
+      required_documents: Array.isArray(req.required_documents)
+        ? req.required_documents
         : (req.required_documents ? [req.required_documents] : [])
     }))
 
@@ -311,13 +311,13 @@ export async function updateRequirement(
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     // Check if user is superadmin (platform-level, company_id = NULL)
     // Fetch all superadmin roles and check if any have NULL company_id
     const { data: superadminRoles } = await adminSupabase
@@ -423,10 +423,10 @@ function calculatePeriodKey(complianceType: string | null, date: string | Date, 
   switch (complianceType) {
     case 'monthly':
       return `${year}-${month.toString().padStart(2, '0')}`
-    
+
     case 'quarterly': {
       let quarter: number
-      
+
       if (yearType === 'FY') {
         // Financial Year (India): Q1=Apr-Jun, Q2=Jul-Sep, Q3=Oct-Dec, Q4=Jan-Mar
         if (month >= 4 && month <= 6) quarter = 1
@@ -440,11 +440,11 @@ function calculatePeriodKey(complianceType: string | null, date: string | Date, 
         else if (month <= 9) quarter = 3
         else quarter = 4
       }
-      
+
       // Use consistent format: Q{quarter}-{year}
       return `Q${quarter}-${year}`
     }
-    
+
     case 'annual': {
       if (yearType === 'FY') {
         // Financial Year: April to March
@@ -455,7 +455,7 @@ function calculatePeriodKey(complianceType: string | null, date: string | Date, 
         return `FY-${year}`
       }
     }
-    
+
     default:
       // one-time: use the date itself
       return d.toISOString().split('T')[0]
@@ -479,16 +479,16 @@ export async function updateRequirementStatus(
     if (companyId !== null && !validateCompanyId(companyId)) {
       return { success: false, error: 'Invalid company ID format' }
     }
-    
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     // Check if user is superadmin (platform-level, company_id = NULL)
     const { data: superadminRoles } = await adminSupabase
       .from('user_roles')
@@ -523,7 +523,7 @@ export async function updateRequirementStatus(
 
     const reqCompanyId = companyId || requirement.company_id
     const currentStatus = requirement.status
-    
+
     // Validate status transition
     // Define valid transitions
     const validTransitions: Record<string, string[]> = {
@@ -533,18 +533,18 @@ export async function updateRequirementStatus(
       'overdue': ['pending', 'completed'], // Can't go back to not_started or upcoming
       'completed': ['pending'] // Can revert to pending if documents are removed, but not to other statuses
     }
-    
+
     // Check if transition is valid
     if (currentStatus !== newStatus) {
       const allowedTransitions = validTransitions[currentStatus] || []
       if (!allowedTransitions.includes(newStatus)) {
-        return { 
-          success: false, 
-          error: `Invalid status transition: Cannot change from "${currentStatus}" to "${newStatus}". Valid transitions: ${allowedTransitions.join(', ')}` 
+        return {
+          success: false,
+          error: `Invalid status transition: Cannot change from "${currentStatus}" to "${newStatus}". Valid transitions: ${allowedTransitions.join(', ')}`
         }
       }
     }
-    
+
     // Get year_type from requirement or fetch from company
     let yearType: 'FY' | 'CY' = (requirement as any).year_type || 'FY'
     if (!(requirement as any).year_type) {
@@ -556,7 +556,7 @@ export async function updateRequirementStatus(
         .single()
       yearType = (company as any)?.year_type || 'FY'
     }
-    
+
     let actualStatus = newStatus
     let statusReason: string | null = null
     let missingDocs: string[] = []
@@ -564,20 +564,20 @@ export async function updateRequirementStatus(
 
     // If marking as completed, validate required documents
     if (newStatus === 'completed') {
-      const requiredDocs = Array.isArray(requirement.required_documents) 
-        ? requirement.required_documents 
+      const requiredDocs = Array.isArray(requirement.required_documents)
+        ? requirement.required_documents
         : (requirement.required_documents ? [requirement.required_documents] : [])
-      
+
       if (requiredDocs.length > 0) {
         // Calculate period key for document matching (using year_type)
         const periodKey = calculatePeriodKey(requirement.compliance_type, requirement.due_date, yearType)
-        
+
         // Fetch all documents for this company (we'll do matching in code for better flexibility)
         const { data: uploadedDocs, error: docsError } = await adminSupabase
           .from('company_documents_internal')
           .select('document_type, period_key')
           .eq('company_id', reqCompanyId)
-        
+
         if (docsError) {
           console.error('Error checking documents:', docsError)
         }
@@ -593,34 +593,34 @@ export async function updateRequirementStatus(
         // Check which documents are missing
         // Match by normalized document type and period key (if period_key exists on doc)
         const uploadedDocsNormalized = new Map<string, boolean>()
-        
-        ;(uploadedDocs || []).forEach(doc => {
-          const normalizedDocType = normalizeDocName(doc.document_type || '')
-          
-          // If document has period_key, it must match. If no period_key, it's a one-time doc that matches any period
-          const periodMatches = !doc.period_key || doc.period_key === periodKey
-          
-          if (periodMatches && normalizedDocType) {
-            uploadedDocsNormalized.set(normalizedDocType, true)
-          }
-        })
+
+          ; (uploadedDocs || []).forEach(doc => {
+            const normalizedDocType = normalizeDocName(doc.document_type || '')
+
+            // If document has period_key, it must match. If no period_key, it's a one-time doc that matches any period
+            const periodMatches = !doc.period_key || doc.period_key === periodKey
+
+            if (periodMatches && normalizedDocType) {
+              uploadedDocsNormalized.set(normalizedDocType, true)
+            }
+          })
 
         // Check each required document with fuzzy matching
         missingDocs = requiredDocs.filter((requiredDocType: string) => {
           const normalizedRequired = normalizeDocName(requiredDocType)
-          
+
           // Exact match
           if (uploadedDocsNormalized.has(normalizedRequired)) {
             return false
           }
-          
+
           // Fuzzy match: check if any uploaded doc contains the required doc name or vice versa
           for (const [uploadedDoc, _] of uploadedDocsNormalized.entries()) {
             if (uploadedDoc.includes(normalizedRequired) || normalizedRequired.includes(uploadedDoc)) {
               return false // Found a match
             }
           }
-          
+
           return true // Document is missing
         })
 
@@ -732,8 +732,8 @@ export async function updateRequirementStatus(
       }
     }
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       actualStatus,
       missingDocs: missingDocs.length > 0 ? missingDocs : undefined
     }
@@ -897,13 +897,13 @@ export async function createRequirement(
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     // Check if user is superadmin (platform-level, company_id = NULL)
     // Fetch all superadmin roles and check if any have NULL company_id
     const { data: superadminRoles } = await adminSupabase
@@ -996,13 +996,13 @@ export async function deleteRequirement(
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     // Check if user is superadmin (platform-level, company_id = NULL)
     // Fetch all superadmin roles and check if any have NULL company_id
     const { data: superadminRoles } = await adminSupabase
@@ -1063,16 +1063,16 @@ export async function getCompanyUserRoles(companyId: string | null = null): Prom
     if (companyId !== null && !validateCompanyId(companyId)) {
       return { success: false, error: 'Invalid company ID format' }
     }
-    
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     // Check if user is superadmin (platform-level, company_id = NULL)
     // Fetch all superadmin roles and check if any have NULL company_id
     const { data: superadminRoles } = await adminSupabase
@@ -1182,13 +1182,13 @@ export async function addTeamMember(
   role: 'viewer' | 'editor' | 'admin'
 ): Promise<{ success: boolean; error?: string }> {
   console.log('[addTeamMember] START - Company:', companyId, 'Email:', userEmail, 'Role:', role)
-  
+
   try {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+
     console.log('[addTeamMember] Auth check - User:', user?.id, 'Error:', authError)
-    
+
     if (!user) {
       console.error('[addTeamMember] FAILED - Not authenticated')
       return { success: false, error: 'Not authenticated' }
@@ -1198,18 +1198,18 @@ export async function addTeamMember(
     console.log('[addTeamMember] Checking permissions for company:', companyId)
     const canManage = await canUserManage(companyId)
     console.log('[addTeamMember] Can manage result:', canManage)
-    
+
     if (!canManage) {
       console.error('[addTeamMember] FAILED - No permission to add team members')
       return { success: false, error: 'You do not have permission to add team members' }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     // Find user by email
     console.log('[addTeamMember] Searching for user with email:', userEmail)
     const { data: users, error: listError } = await adminSupabase.auth.admin.listUsers()
-    
+
     if (listError) {
       console.error('[addTeamMember] FAILED - Error listing users:', listError)
       return { success: false, error: `Failed to check users: ${listError.message}` }
@@ -1250,7 +1250,7 @@ export async function addTeamMember(
         details: insertError.details,
         hint: insertError.hint
       })
-      
+
       if (insertError.code === '23505') { // Unique constraint violation
         // Check if the entry actually exists and is accessible
         console.log('[addTeamMember] Unique constraint violation - checking if entry exists...')
@@ -1260,14 +1260,14 @@ export async function addTeamMember(
           .eq('user_id', existingUser.id)
           .eq('company_id', companyId)
           .single()
-        
+
         console.log('[addTeamMember] Existing role check - Data:', existingRole, 'Error:', checkError)
-        
+
         if (existingRole) {
           console.log('[addTeamMember] Entry exists but user cannot see company - RLS policy issue!')
-          return { 
-            success: false, 
-            error: 'User role exists but may not be accessible. This could be an RLS policy issue. Please check database permissions.' 
+          return {
+            success: false,
+            error: 'User role exists but may not be accessible. This could be an RLS policy issue. Please check database permissions.'
           }
         } else {
           return { success: false, error: 'This user is already a member of this company' }
@@ -1526,7 +1526,7 @@ export async function removeTeamMember(
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
@@ -1577,7 +1577,7 @@ export async function updateTeamMemberRole(
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
@@ -1619,21 +1619,21 @@ export async function generateRecurringCompliances(
     if (companyId !== null && !validateCompanyId(companyId)) {
       return { success: false, error: 'Invalid company ID format' }
     }
-    
+
     // SECURITY: Validate monthsAhead to prevent injection
     if (typeof monthsAhead !== 'number' || monthsAhead < 1 || monthsAhead > 60) {
       return { success: false, error: 'Invalid months ahead value' }
     }
-    
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     // Check if user is superadmin (platform-level, company_id = NULL)
     const { data: superadminRoles } = await adminSupabase
       .from('user_roles')
@@ -1696,13 +1696,13 @@ export async function getComplianceTemplates(): Promise<{ success: boolean; temp
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     // Check if user is superadmin
     const { data: superadminRoles } = await adminSupabase
       .from('user_roles')
@@ -1732,37 +1732,37 @@ export async function getComplianceTemplates(): Promise<{ success: boolean; temp
     const batchSize = 10
     const templatesArray = templates || []
     const templatesWithCounts: ComplianceTemplate[] = []
-    
+
     for (let i = 0; i < templatesArray.length; i += batchSize) {
       const batch = templatesArray.slice(i, i + batchSize)
       const batchResults = await Promise.all(
         batch.map(async (template) => {
-        try {
-          const { data: matchingCompanies, error: matchError } = await adminSupabase.rpc('match_companies_to_template', {
-            p_template_id: template.id
-          })
-          
-          if (matchError) {
-            console.error(`[getComplianceTemplates] Error matching template ${template.id}:`, matchError)
+          try {
+            const { data: matchingCompanies, error: matchError } = await adminSupabase.rpc('match_companies_to_template', {
+              p_template_id: template.id
+            })
+
+            if (matchError) {
+              console.error(`[getComplianceTemplates] Error matching template ${template.id}:`, matchError)
               return {
                 ...template,
                 matching_companies_count: 0
               }
+            }
+
+            return {
+              ...template,
+              matching_companies_count: matchingCompanies?.length || 0
+            }
+          } catch (error: any) {
+            console.error(`[getComplianceTemplates] Error processing template ${template.id}:`, error)
+            return {
+              ...template,
+              matching_companies_count: 0
+            }
           }
-          
-          return {
-            ...template,
-            matching_companies_count: matchingCompanies?.length || 0
-          }
-        } catch (error: any) {
-          console.error(`[getComplianceTemplates] Error processing template ${template.id}:`, error)
-          return {
-            ...template,
-            matching_companies_count: 0
-          }
-        }
-      })
-    )
+        })
+      )
       templatesWithCounts.push(...batchResults)
     }
 
@@ -1797,13 +1797,13 @@ export async function createComplianceTemplate(
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     // Check if user is superadmin
     const { data: superadminRoles } = await adminSupabase
       .from('user_roles')
@@ -1872,8 +1872,8 @@ export async function createComplianceTemplate(
         penalty: template.penalty || null,
         is_critical: template.is_critical || false,
         financial_year: template.financial_year || null,
-        due_date_offset: template.compliance_type === 'quarterly' && template.due_month && template.due_day 
-          ? (template.due_month - 1) * 30 + template.due_day 
+        due_date_offset: template.compliance_type === 'quarterly' && template.due_month && template.due_day
+          ? (template.due_month - 1) * 30 + template.due_day
           : (template.due_date_offset || null),
         due_month: template.compliance_type === 'quarterly' ? template.due_month : (template.due_month || null),
         due_day: template.compliance_type === 'quarterly' ? template.due_day : (template.due_day || null),
@@ -1896,18 +1896,18 @@ export async function createComplianceTemplate(
 
     // Auto-apply template to matching companies
     console.log('[createComplianceTemplate] Applying template to companies...')
-    
+
     // First, check which companies match
     const { data: matchingCompanies, error: matchError } = await adminSupabase.rpc('match_companies_to_template', {
       p_template_id: newTemplate.id
     })
-    
+
     if (matchError) {
       console.error('[createComplianceTemplate] Error checking matching companies:', matchError)
     } else {
       console.log('[createComplianceTemplate] Matching companies:', matchingCompanies?.length || 0, matchingCompanies)
     }
-    
+
     const { data: appliedCount, error: applyError } = await adminSupabase.rpc('apply_template_to_companies', {
       p_template_id: newTemplate.id
     })
@@ -1952,13 +1952,13 @@ export async function updateComplianceTemplate(
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     // Check if user is superadmin
     const { data: superadminRoles } = await adminSupabase
       .from('user_roles')
@@ -2006,7 +2006,7 @@ export async function updateComplianceTemplate(
       updateData.due_date = template.due_date && template.due_date.trim() !== '' ? template.due_date : null
     }
     if (template.is_active !== undefined) updateData.is_active = template.is_active
-    
+
     // New V2 fields
     if ((template as any).required_documents !== undefined) {
       updateData.required_documents = Array.isArray((template as any).required_documents)
@@ -2039,7 +2039,7 @@ export async function updateComplianceTemplate(
       .from('regulatory_requirements')
       .delete()
       .eq('template_id', templateId)
-    
+
     if (deleteError) {
       console.error('[updateComplianceTemplate] Error deleting existing requirements:', deleteError)
       // Continue anyway - might be no requirements to delete
@@ -2049,18 +2049,18 @@ export async function updateComplianceTemplate(
 
     // Re-apply template to matching companies
     console.log('[updateComplianceTemplate] Checking matching companies...')
-    
+
     // First, check which companies match
     const { data: matchingCompanies, error: matchError } = await adminSupabase.rpc('match_companies_to_template', {
       p_template_id: templateId
     })
-    
+
     if (matchError) {
       console.error('[updateComplianceTemplate] Error checking matching companies:', matchError)
     } else {
       console.log('[updateComplianceTemplate] Matching companies:', matchingCompanies?.length || 0, matchingCompanies)
     }
-    
+
     const { data: appliedCount, error: applyError } = await adminSupabase.rpc('apply_template_to_companies', {
       p_template_id: templateId
     })
@@ -2069,7 +2069,7 @@ export async function updateComplianceTemplate(
       console.error('[updateComplianceTemplate] Error re-applying template:', applyError)
       return { success: false, applied_count: 0, error: `Failed to re-apply template: ${applyError.message}. Please check the SQL function and try again.` }
     }
-    
+
     console.log('[updateComplianceTemplate] Template applied successfully. Created/updated', appliedCount || 0, 'requirements')
 
     return { success: true, applied_count: appliedCount || 0 }
@@ -2089,13 +2089,13 @@ export async function deleteComplianceTemplate(
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     // Check if user is superadmin
     const { data: superadminRoles } = await adminSupabase
       .from('user_roles')
@@ -2153,13 +2153,13 @@ export async function getTemplateDetails(templateId: string): Promise<{ success:
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     // Check if user is superadmin
     const { data: superadminRoles } = await adminSupabase
       .from('user_roles')
@@ -2196,7 +2196,7 @@ export async function getTemplateDetails(templateId: string): Promise<{ success:
     // Get company details
     const companyIds = matchingCompanyIds?.map((c: any) => c.company_id) || []
     let matchingCompanies: any[] = []
-    
+
     if (companyIds.length > 0) {
       const { data: companies, error: companiesError } = await adminSupabase
         .from('companies')
@@ -2227,13 +2227,13 @@ export async function applyAllTemplates(): Promise<{ success: boolean; applied_c
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, applied_count: 0, template_count: 0, error: 'Not authenticated' }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     // Check if user is superadmin
     const { data: superadminRoles } = await adminSupabase
       .from('user_roles')
@@ -2332,13 +2332,13 @@ export async function getNotifications(
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     let query = adminSupabase
       .from('company_notifications')
       .select('*')
@@ -2367,8 +2367,8 @@ export async function getNotifications(
       .eq('user_id', user.id)
       .eq('is_read', false)
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       notifications: data || [],
       unreadCount: count || 0
     }
@@ -2387,7 +2387,7 @@ export async function markNotificationsRead(
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
@@ -2397,9 +2397,9 @@ export async function markNotificationsRead(
 
     const { error } = await adminSupabase
       .from('company_notifications')
-      .update({ 
-        is_read: true, 
-        read_at: new Date().toISOString() 
+      .update({
+        is_read: true,
+        read_at: new Date().toISOString()
       })
       .eq('user_id', user.id)
       .in('id', ids)
@@ -2423,7 +2423,7 @@ export async function markAllNotificationsRead(): Promise<{ success: boolean; er
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
@@ -2432,9 +2432,9 @@ export async function markAllNotificationsRead(): Promise<{ success: boolean; er
 
     const { error } = await adminSupabase
       .from('company_notifications')
-      .update({ 
-        is_read: true, 
-        read_at: new Date().toISOString() 
+      .update({
+        is_read: true,
+        read_at: new Date().toISOString()
       })
       .eq('user_id', user.id)
       .eq('is_read', false)
@@ -2461,8 +2461,7 @@ export interface CompanyFinancials {
   financial_year: string
   turnover: number | null
   tax_due: number | null
-  pf_contribution: number | null
-  esi_contribution: number | null
+  local_contributions: Record<string, number> | null
   created_at: string
   updated_at: string
 }
@@ -2477,13 +2476,13 @@ export async function getCompanyFinancials(
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     let query = adminSupabase
       .from('company_financials')
       .select('*')
@@ -2517,14 +2516,13 @@ export async function upsertCompanyFinancials(
   data: {
     turnover?: number | null
     tax_due?: number | null
-    pf_contribution?: number | null
-    esi_contribution?: number | null
+    local_contributions?: Record<string, number> | null
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
@@ -2544,8 +2542,7 @@ export async function upsertCompanyFinancials(
         financial_year: financialYear,
         turnover: data.turnover ?? null,
         tax_due: data.tax_due ?? null,
-        pf_contribution: data.pf_contribution ?? null,
-        esi_contribution: data.esi_contribution ?? null,
+        local_contributions: data.local_contributions ?? null,
         updated_by: user.id,
         updated_at: new Date().toISOString()
       }, {
@@ -2575,13 +2572,13 @@ export async function updateRequirementBaseAmount(
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     // Check if user is superadmin
     const { data: superadminRoles } = await adminSupabase
       .from('user_roles')
@@ -2659,13 +2656,13 @@ export async function bulkCreateComplianceTemplates(
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return { success: false, created: 0, errors: ['Not authenticated'] }
     }
 
     const adminSupabase = createAdminClient()
-    
+
     // Check if user is superadmin
     const { data: superadminRoles } = await adminSupabase
       .from('user_roles')
@@ -2686,11 +2683,11 @@ export async function bulkCreateComplianceTemplates(
     const batchSize = 50
     for (let i = 0; i < templates.length; i += batchSize) {
       const batch = templates.slice(i, i + batchSize)
-      
+
       // Prepare batch for insertion
       const insertData = batch.map((template, batchIndex) => {
         const rowNum = i + batchIndex + 1
-        
+
         // Validate required fields
         if (!template.category || !template.requirement || !template.compliance_type) {
           errors.push(`Row ${rowNum}: Missing required fields (category, requirement, or compliance_type)`)
@@ -2715,23 +2712,23 @@ export async function bulkCreateComplianceTemplates(
           const dateRegex = /^\d{4}-\d{2}-\d{2}$/
           if (!dateRegex.test(template.due_date)) {
             errors.push(`Row ${rowNum}: Due date must be in YYYY-MM-DD format`)
-          return null
-        }
+            return null
+          }
         }
         if (template.compliance_type === 'monthly' && template.due_date_offset !== null && template.due_date_offset !== undefined) {
           if (template.due_date_offset < 1 || template.due_date_offset > 28) {
             errors.push(`Row ${rowNum}: Due date offset must be 1-28 for monthly`)
-          return null
-        }
+            return null
+          }
         }
         if (template.compliance_type === 'quarterly') {
           if (template.due_month !== null && template.due_month !== undefined && (template.due_month < 1 || template.due_month > 12)) {
             errors.push(`Row ${rowNum}: Due month must be 1-12`)
-          return null
-        }
+            return null
+          }
           if (template.due_day !== null && template.due_day !== undefined && (template.due_day < 1 || template.due_day > 31)) {
             errors.push(`Row ${rowNum}: Due day must be 1-31`)
-          return null
+            return null
           }
         }
         if (template.compliance_type === 'annual') {
@@ -2757,8 +2754,8 @@ export async function bulkCreateComplianceTemplates(
           penalty_config: template.penalty_config,
           is_critical: template.is_critical,
           is_active: template.is_active,
-          due_date_offset: template.compliance_type === 'quarterly' && template.due_month && template.due_day 
-            ? (template.due_month - 1) * 30 + template.due_day 
+          due_date_offset: template.compliance_type === 'quarterly' && template.due_month && template.due_day
+            ? (template.due_month - 1) * 30 + template.due_day
             : template.due_date_offset,
           due_month: template.compliance_type === 'quarterly' ? template.due_month : template.due_month,
           due_day: template.compliance_type === 'quarterly' ? template.due_day : template.due_day,
@@ -2807,11 +2804,11 @@ export async function bulkCreateComplianceTemplates(
     }
 
     console.log(`[bulkCreateComplianceTemplates] Created ${createdCount} templates with ${errors.length} errors`)
-    
-    return { 
-      success: errors.length === 0, 
-      created: createdCount, 
-      errors 
+
+    return {
+      success: errors.length === 0,
+      created: createdCount,
+      errors
     }
   } catch (error: any) {
     console.error('Error in bulkCreateComplianceTemplates:', error)
@@ -2838,11 +2835,11 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
     documentCount: params.documentIds.length,
     recipientCount: params.recipients.length,
   })
-  
+
   try {
     const supabase = await createClient()
     const adminSupabase = createAdminClient()
-    
+
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       console.error('[sendDocumentsEmail] Auth error:', authError)
@@ -2900,7 +2897,7 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
     const results = await Promise.allSettled(
       params.recipients.map(async (recipientEmail) => {
         console.log('[sendDocumentsEmail] Sending to:', recipientEmail.trim())
-        
+
         const emailHtml = documentShareEmail({
           companyName: params.companyName,
           senderName,
@@ -2915,7 +2912,7 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
           html: emailHtml,
           replyTo: senderEmail,
         })
-        
+
         console.log('[sendDocumentsEmail] Email result for', recipientEmail.trim(), ':', result)
         return result
       })
@@ -2924,7 +2921,7 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
     // Count successes and failures
     const succeeded = results.filter(r => r.status === 'fulfilled').length
     const failed = results.filter(r => r.status === 'rejected').length
-    
+
     console.log('[sendDocumentsEmail] Results - Succeeded:', succeeded, 'Failed:', failed)
 
     if (failed > 0 && succeeded === 0) {
@@ -2936,11 +2933,11 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
       return { success: false, error: `Failed to send emails: ${errors.join(', ')}` }
     }
 
-    return { 
-      success: true, 
-      sent: succeeded, 
+    return {
+      success: true,
+      sent: succeeded,
       failed,
-      message: failed > 0 
+      message: failed > 0
         ? `Sent to ${succeeded} recipients. ${failed} failed.`
         : `Documents sent to ${succeeded} recipient${succeeded !== 1 ? 's' : ''}.`
     }

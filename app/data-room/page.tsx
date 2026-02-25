@@ -61,7 +61,7 @@ interface EntityDetails {
 function generateICSFile(requirements: RegulatoryRequirement[]): string {
   const now = new Date()
   const timestamp = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
-  
+
   let icsContent = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -69,14 +69,14 @@ function generateICSFile(requirements: RegulatoryRequirement[]): string {
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH'
   ].join('\r\n') + '\r\n'
-  
+
   requirements.forEach((req, index) => {
     if (!req.due_date) return
-    
+
     const dueDate = new Date(req.due_date)
     const dateStr = dueDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
     const uid = `compliance-${req.id}-${index}@finacra.com`
-    
+
     // Escape text for ICS format
     const escapeText = (text: string | null | undefined) => {
       if (!text) return ''
@@ -85,12 +85,12 @@ function generateICSFile(requirements: RegulatoryRequirement[]): string {
         .replace(/,/g, '\\,')
         .replace(/\n/g, '\\n')
     }
-    
+
     const summary = escapeText(req.requirement || '')
     const description = escapeText(
       `${req.category || ''}${req.description ? ': ' + req.description : ''}${req.penalty ? ' | Penalty: ' + req.penalty : ''}`
     )
-    
+
     icsContent += [
       'BEGIN:VEVENT',
       `UID:${uid}`,
@@ -104,9 +104,9 @@ function generateICSFile(requirements: RegulatoryRequirement[]): string {
       'END:VEVENT'
     ].join('\r\n') + '\r\n'
   })
-  
+
   icsContent += 'END:VCALENDAR\r\n'
-  
+
   return icsContent
 }
 
@@ -120,7 +120,7 @@ function DataRoomPageInner() {
   const initialCompanyId = useMemo(() => {
     return searchParams.get('company_id') || searchParams.get('company') || null
   }, [searchParams])
-  
+
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null)
   const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -135,10 +135,10 @@ function DataRoomPageInner() {
 
   // Get user role for current company
   const { role, canEdit, canManage, loading: roleLoading } = useUserRole(currentCompany?.id || null)
-  
+
   // Check subscription/trial access for current company
   const { hasAccess, accessType, isLoading: accessLoading, trialDaysRemaining, isOwner, ownerSubscriptionExpired } = useCompanyAccess(currentCompany?.id || null)
-  
+
   // Check if user has access to ANY company (for initial page load check)
   const { hasAnyAccess, accessibleCompanyIds, isLoading: anyAccessLoading } = useAnyCompanyAccess()
 
@@ -146,29 +146,29 @@ function DataRoomPageInner() {
   // Fetch all companies for the selector (owned + invited)
   useEffect(() => {
     console.log('[fetchCompanies] useEffect triggered - authLoading:', authLoading, 'user:', user?.id, 'email:', user?.email)
-    
+
     // Wait for auth to finish loading
     if (authLoading) {
       console.log('[fetchCompanies] Auth still loading, waiting...')
       return
     }
-    
+
     // If no user after loading, return early
     if (!user) {
       console.log('[fetchCompanies] No user after auth loaded, returning early')
       return
     }
-    
+
     async function fetchCompanies() {
       if (!user) {
         console.log('[fetchCompanies] No user available')
         return
       }
-      
+
       console.log('[fetchCompanies] Function called - user:', user.id, 'email:', user.email)
 
       console.log('[fetchCompanies] Starting fetch for user:', user.id)
-      
+
       try {
         // Fetch companies owned by user
         const { data: ownedCompanies, error: ownedError } = await supabase
@@ -181,9 +181,9 @@ function DataRoomPageInner() {
         // Fetch companies user has access to via user_roles
         // Try RPC first, then fallback to direct query
         let invitedCompanyIds: string[] = []
-        
+
         console.log('[fetchCompanies] Starting to fetch invited companies for user:', user.id)
-        
+
         // First try: Direct query (most reliable - uses "Users can view their own roles" policy)
         console.log('[fetchCompanies] Attempting direct query...')
         const { data: directRoles, error: directError } = await supabase
@@ -191,7 +191,7 @@ function DataRoomPageInner() {
           .select('company_id')
           .eq('user_id', user.id)
           .not('company_id', 'is', null)
-        
+
         if (directError) {
           console.error('[fetchCompanies] Direct query failed:', directError)
           // Fallback: Try RPC function
@@ -199,12 +199,12 @@ function DataRoomPageInner() {
           try {
             const { data: userRoles, error: rolesError } = await supabase
               .rpc('get_user_company_ids', { p_user_id: user.id })
-            
+
             if (rolesError) {
               console.error('[fetchCompanies] RPC also failed:', rolesError)
             } else {
               console.log('[fetchCompanies] RPC succeeded, found', userRoles?.length || 0, 'company IDs')
-              invitedCompanyIds = userRoles 
+              invitedCompanyIds = userRoles
                 ? [...new Set((userRoles as Array<{ company_id: string | null }>).map((ur) => ur.company_id).filter((id: string | null): id is string => id !== null))]
                 : []
             }
@@ -214,7 +214,7 @@ function DataRoomPageInner() {
         } else {
           console.log('[fetchCompanies] Direct query succeeded! Found', directRoles?.length || 0, 'roles')
           console.log('[fetchCompanies] Role data:', JSON.stringify(directRoles, null, 2))
-          invitedCompanyIds = directRoles 
+          invitedCompanyIds = directRoles
             ? [...new Set(directRoles.map((ur: { company_id: string | null }) => ur.company_id).filter((id: string | null): id is string => id !== null))]
             : []
           console.log('[fetchCompanies] Extracted company IDs:', invitedCompanyIds)
@@ -225,14 +225,14 @@ function DataRoomPageInner() {
         if (invitedCompanyIds.length > 0) {
           console.log('[fetchCompanies] Fetching company details for', invitedCompanyIds.length, 'companies')
           console.log('[fetchCompanies] Company IDs to fetch:', JSON.stringify(invitedCompanyIds))
-          
+
           const { data: invitedData, error: invitedError } = await supabase
             .from('companies')
             .select('id, name, type, incorporation_date, country_code, region')
             .in('id', invitedCompanyIds)
 
           console.log('[fetchCompanies] Company details query result - Data:', invitedData, 'Error:', invitedError)
-          
+
           if (invitedError) {
             console.error('[fetchCompanies] ERROR fetching company details:', invitedError)
             console.error('[fetchCompanies] Error code:', invitedError.code, 'Message:', invitedError.message)
@@ -256,7 +256,7 @@ function DataRoomPageInner() {
 
         // Combine and deduplicate companies
         const companyMap = new Map<string, Company>()
-        
+
         // Add owned companies
         if (ownedCompanies) {
           ownedCompanies.forEach(c => {
@@ -290,7 +290,7 @@ function DataRoomPageInner() {
 
         console.log('[fetchCompanies] Total companies found:', allCompanies.length)
         console.log('[fetchCompanies] Companies:', allCompanies.map(c => ({ id: c.id, name: c.name })))
-        
+
         if (allCompanies.length > 0) {
           const preferred = initialCompanyId
             ? allCompanies.find(c => c.id === initialCompanyId)
@@ -331,17 +331,17 @@ function DataRoomPageInner() {
   useEffect(() => {
     // Wait for all loading states to complete
     if (anyAccessLoading || authLoading || isLoading) return
-    
+
     // If no user, redirect to login
     if (!user) {
       router.push('/login')
       return
     }
-    
+
     // If user has no companies at all, redirect to onboarding or subscribe
     if (companies.length === 0 && !isLoading) {
       console.log('[Access Check] User has no companies, checking subscription status')
-      
+
       // Check if user has active subscription or trial
       supabase.rpc('check_user_subscription', { target_user_id: user.id })
         .single()
@@ -352,7 +352,7 @@ function DataRoomPageInner() {
               is_trial: boolean
               trial_days_remaining: number
             }
-            
+
             // If user has active subscription or trial, redirect to onboarding to create company
             if (subInfo.has_subscription || (subInfo.is_trial && subInfo.trial_days_remaining > 0)) {
               console.log('[Access Check] User has subscription/trial but no companies, redirecting to onboarding')
@@ -370,7 +370,7 @@ function DataRoomPageInner() {
         })
       return
     }
-    
+
     // If user has companies but no access to any of them, redirect
     if (companies.length > 0 && !hasAnyAccess && !anyAccessLoading) {
       console.log('[Access Check] User has companies but no access to any, redirecting to subscribe')
@@ -383,24 +383,24 @@ function DataRoomPageInner() {
   useEffect(() => {
     // Wait for all loading states to complete
     if (accessLoading || authLoading) return
-    
+
     // If no company selected, don't check access yet
     if (!currentCompany) return
-    
+
     // If user is owner but no subscription/trial (or company subscription revoked/expired)
     if (isOwner && !hasAccess) {
       console.log('[Access Check] Owner has no subscription or company subscription expired, redirecting to subscription-required page')
       router.push(`/subscription-required?company_id=${currentCompany.id}`)
       return
     }
-    
+
     // If user is invited but owner's subscription expired
     if (!isOwner && ownerSubscriptionExpired) {
       console.log('[Access Check] Owner subscription expired, redirecting to contact owner page')
       router.push(`/owner-subscription-expired?company_id=${currentCompany.id}`)
       return
     }
-    
+
     // If user is not owner and doesn't have access for other reasons
     if (!hasAccess && !isOwner) {
       console.log('[Access Check] No access to this company')
@@ -435,7 +435,7 @@ function DataRoomPageInner() {
       setIsLoading(true)
       const startTime = performance.now()
       console.log('[fetchDetails] Starting fetch for company:', currentCompany.id)
-      
+
       try {
         // Fetch company details, directors, and documents IN PARALLEL
         const [companyResult, directorsResult] = await Promise.all([
@@ -457,7 +457,7 @@ function DataRoomPageInner() {
           const companyCountryCode = company.country_code || 'IN'
           const { getCountryConfig } = await import('@/lib/config/countries')
           const countryConfig = getCountryConfig(companyCountryCode)
-          
+
           // Format date based on country config
           const incorporationDate = new Date(company.incorporation_date)
           let formattedDate = ''
@@ -474,27 +474,27 @@ function DataRoomPageInner() {
               year: 'numeric'
             })
           }
-          
+
           const mappedDetails: EntityDetails = {
             companyName: company.name,
             type: company.type.toUpperCase(),
             regDate: formattedDate,
-            taxId: company.pan || company.tax_id || 'Not Provided', // Support both pan and tax_id fields
-            registrationId: company.cin || company.registration_id || 'Not Provided', // Support both cin and registration_id fields
+            taxId: company.tax_id || 'Not Provided', // Generic tax identifier
+            registrationId: company.registration_id || 'Not Provided', // Generic registration identifier
             address: company.address,
             phoneNumber: company.phone_number || 'Not Provided',
-            industryCategory: Array.isArray(company.industry_categories) 
-              ? company.industry_categories.join(', ') 
+            industryCategory: Array.isArray(company.industry_categories)
+              ? company.industry_categories.join(', ')
               : company.industry,
             directors: (directors || []).map(d => ({
               id: d.id,
               firstName: d.first_name,
               lastName: d.last_name || '',
               middleName: d.middle_name || '',
-              din: d.din || d.director_id, // Support both din and director_id
+              din: d.director_id,
               designation: d.designation,
               dob: d.dob,
-              pan: d.pan || d.tax_id, // Support both pan and tax_id
+              pan: d.tax_id,
               email: d.email,
               mobile: d.mobile,
               verified: d.is_verified
@@ -505,7 +505,7 @@ function DataRoomPageInner() {
 
         // Fetch vault documents in background (don't block UI)
         fetchVaultDocuments()
-        
+
         console.log('[fetchDetails] Total time:', Math.round(performance.now() - startTime), 'ms')
       } catch (err) {
         console.error('Error fetching entity details:', err)
@@ -520,7 +520,7 @@ function DataRoomPageInner() {
   const [selectedDirectorId, setSelectedDirectorId] = useState<string | null>(null)
 
   const [activeTab, setActiveTab] = useState('overview')
-  
+
   // GST Integration States
   const [gstStep, setGstStep] = useState<'connect' | 'otp' | 'dashboard'>('connect')
   const [gstCredentials, setGstCredentials] = useState({ gstin: '', gstUsername: '' })
@@ -554,7 +554,7 @@ function DataRoomPageInner() {
   })
   const [newDocument, setNewDocument] = useState('')
   const [isSubmittingNotice, setIsSubmittingNotice] = useState(false)
-  
+
   // Document upload from tracker
   const [documentUploadModal, setDocumentUploadModal] = useState<{
     isOpen: boolean
@@ -580,14 +580,14 @@ function DataRoomPageInner() {
 
   // Get country configuration for current company (must be before useEffect that uses it)
   const { countryCode, countryConfig } = useCompanyCountry(currentCompany)
-  
+
   // Fetch compliance categories from database
   const { categories: complianceCategories } = useComplianceCategories(countryCode || 'IN')
 
   // Fetch document templates when country code changes (must be after countryCode is defined)
   useEffect(() => {
     if (!countryCode) return
-    
+
     async function fetchTemplates() {
       try {
         // Try to get country-specific templates from document_templates_internal
@@ -597,7 +597,7 @@ function DataRoomPageInner() {
           .select('*')
           .eq('country_code', countryCode) // Filter by country
           .order('folder_name', { ascending: true })
-        
+
         if (error) {
           // If country_code column doesn't exist or error, try without filter
           console.warn('Error fetching country-specific templates, trying without filter:', error)
@@ -618,7 +618,7 @@ function DataRoomPageInner() {
         }
       }
     }
-    
+
     fetchTemplates()
   }, [countryCode])
 
@@ -627,292 +627,292 @@ function DataRoomPageInner() {
     // Show demo notices for all companies (for prototype/demo purposes)
     // Always show demo notices for demo/prototype
     setDemoNotices([
-        {
-          id: 'NOT-2026-001',
-          type: 'Income Tax',
-          subType: 'Scrutiny Notice',
-          section: 'Section 143(2)',
-          subject: 'Selection for Scrutiny Assessment - AY 2024-25',
-          issuedBy: 'Income Tax Department',
-          issuedDate: '2026-01-15',
-          dueDate: '2026-02-15',
-          status: 'pending',
-          priority: 'high',
-          description: 'Your return for Assessment Year 2024-25 has been selected for scrutiny assessment. You are required to furnish the details/documents as specified.',
-          documents: ['ITR Filed', 'Form 26AS', 'Bank Statements'],
-          timeline: [
-            { date: '2026-01-15', action: 'Notice Received', by: 'System' },
-            { date: '2026-01-16', action: 'Assigned to CA', by: 'Admin' }
-          ]
-        },
-        {
-          id: 'NOT-2026-002',
-          type: 'GST',
-          subType: 'Show Cause Notice',
-          section: 'Section 73',
-          subject: 'Mismatch in GSTR-1 and GSTR-3B for FY 2024-25',
-          issuedBy: 'GST Department',
-          issuedDate: '2026-01-10',
-          dueDate: '2026-01-25',
-          status: 'responded',
-          priority: 'high',
-          description: 'Discrepancy noticed between outward supplies declared in GSTR-1 and tax paid in GSTR-3B. Please provide clarification with supporting documents.',
-          documents: ['GSTR-1 Returns', 'GSTR-3B Returns', 'Reconciliation Statement'],
-          timeline: [
-            { date: '2026-01-10', action: 'Notice Received', by: 'System' },
-            { date: '2026-01-12', action: 'Response Drafted', by: 'Accounts Team' },
-            { date: '2026-01-14', action: 'Response Submitted', by: 'CA' }
-          ]
-        },
-        {
-          id: 'NOT-2026-003',
-          type: 'RoC',
-          subType: 'Compliance Notice',
-          section: 'Section 92',
-          subject: 'Non-filing of Annual Return (MGT-7)',
-          issuedBy: 'Registrar of Companies',
-          issuedDate: '2026-01-05',
-          dueDate: '2026-01-20',
-          status: 'resolved',
-          priority: 'medium',
-          description: 'It has been observed that the company has not filed the Annual Return in Form MGT-7 for the financial year 2024-25.',
-          documents: ['MGT-7 Filed', 'Board Resolution'],
-          timeline: [
-            { date: '2026-01-05', action: 'Notice Received', by: 'System' },
-            { date: '2026-01-08', action: 'MGT-7 Filed', by: 'CS' },
-            { date: '2026-01-10', action: 'Compliance Completed', by: 'System' }
-          ]
-        },
-        {
-          id: 'NOT-2025-004',
-          type: 'Payroll',
-          subType: 'Inspection Notice',
-          section: 'EPF Act',
-          subject: 'EPF Compliance Inspection Scheduled',
-          issuedBy: 'EPFO',
-          issuedDate: '2025-12-20',
-          dueDate: '2026-01-10',
-          status: 'resolved',
-          priority: 'medium',
-          description: 'An inspection under the EPF & MP Act, 1952 has been scheduled for your establishment. Please keep all relevant records ready.',
-          documents: ['EPF Returns', 'Wage Register', 'Attendance Records'],
-          timeline: [
-            { date: '2025-12-20', action: 'Notice Received', by: 'System' },
-            { date: '2025-12-25', action: 'Documents Prepared', by: 'HR' },
-            { date: '2026-01-10', action: 'Inspection Completed', by: 'EPFO Officer' },
-            { date: '2026-01-12', action: 'No Discrepancy Found', by: 'System' }
-          ]
-        },
-        {
-          id: 'NOT-2025-005',
-          type: 'Income Tax',
-          subType: 'Demand Notice',
-          section: 'Section 156',
-          subject: 'Outstanding Tax Demand - AY 2023-24',
-          issuedBy: 'Income Tax Department',
-          issuedDate: '2025-12-01',
-          dueDate: '2025-12-30',
-          status: 'pending',
-          priority: 'high',
-          description: `An outstanding tax demand of ${formatCurrency(245000, countryCode)} is pending against your PAN for Assessment Year 2023-24. Please pay the amount or file rectification.`,
-          documents: ['Demand Notice', 'Computation Sheet'],
-          timeline: [
-            { date: '2025-12-01', action: 'Notice Received', by: 'System' },
-            { date: '2025-12-05', action: 'Under Review by CA', by: 'CA' }
-          ]
-        },
-        {
-          id: 'NOT-2025-006',
-          type: 'GST',
-          subType: 'Registration Notice',
-          section: 'Section 29',
-          subject: 'Show Cause for GST Registration Cancellation',
-          issuedBy: 'GST Department',
-          issuedDate: '2025-11-15',
-          dueDate: '2025-11-30',
-          status: 'resolved',
-          priority: 'high',
-          description: 'Non-filing of returns for consecutive 6 months. Show cause why GST registration should not be cancelled.',
-          documents: ['All GSTR-3B Filed', 'Reply to SCN'],
-          timeline: [
-            { date: '2025-11-15', action: 'Notice Received', by: 'System' },
-            { date: '2025-11-18', action: 'Filed Pending Returns', by: 'Accounts' },
-            { date: '2025-11-20', action: 'Reply Submitted', by: 'CA' },
-            { date: '2025-11-28', action: 'Registration Restored', by: 'GST Dept' }
-          ]
-        },
-        {
-          id: 'NOT-2026-007',
-          type: 'GST',
-          subType: 'DRC-01',
-          section: 'Section 73/74',
-          subject: 'Demand for Unpaid Tax - GSTR-3B for Oct 2025',
-          issuedBy: 'GST Department',
-          issuedDate: '2026-01-20',
-          dueDate: '2026-02-05',
-          status: 'pending',
-          priority: 'high',
-          description: 'Demand notice for unpaid/short-paid tax or wrong ITC claim for the month of October 2025. Amount due: ' + formatCurrency(125000, countryCode),
-          documents: ['GSTR-3B Oct 2025', 'Payment Challan', 'ITC Documents'],
-          timeline: [
-            { date: '2026-01-20', action: 'Notice Received', by: 'System' },
-            { date: '2026-01-21', action: 'Under Review', by: 'Accounts Team' }
-          ]
-        },
-        {
-          id: 'NOT-2026-008',
-          type: 'Income Tax',
-          subType: 'ASMT-10',
-          section: 'Section 65',
-          subject: 'Scrutiny Notice for AY 2023-24',
-          issuedBy: 'Income Tax Department',
-          issuedDate: '2026-01-18',
-          dueDate: '2026-02-18',
-          status: 'pending',
-          priority: 'medium',
-          description: 'Notice for scrutiny of returns filed for Assessment Year 2023-24. Please provide supporting documents and clarifications.',
-          documents: ['ITR-3 AY 2023-24', 'Audited Financials', 'Tax Audit Report'],
-          timeline: [
-            { date: '2026-01-18', action: 'Notice Received', by: 'System' },
-            { date: '2026-01-19', action: 'Assigned to CA', by: 'Admin' }
-          ]
-        },
-        {
-          id: 'NOT-2026-009',
-          type: 'RoC',
-          subType: 'DIR-3 KYC',
-          section: 'Section 152',
-          subject: 'Non-compliance with Director KYC Requirements',
-          issuedBy: 'Registrar of Companies',
-          issuedDate: '2026-01-12',
-          dueDate: '2026-01-27',
-          status: 'responded',
-          priority: 'medium',
-          description: 'Directors of the company have not completed their KYC requirements as per Section 152 of Companies Act, 2013.',
-          documents: ['DIR-3 KYC Forms', 'Director PAN Cards', 'Address Proofs'],
-          timeline: [
-            { date: '2026-01-12', action: 'Notice Received', by: 'System' },
-            { date: '2026-01-15', action: 'KYC Forms Collected', by: 'CS' },
-            { date: '2026-01-18', action: 'DIR-3 Filed', by: 'CS' },
-            { date: '2026-01-20', action: 'Response Submitted', by: 'System' }
-          ]
-        },
-        {
-          id: 'NOT-2026-010',
-          type: 'GST',
-          subType: 'ASMT-13',
-          section: 'Section 66',
-          subject: 'Best Judgment Assessment - GSTR-3B',
-          issuedBy: 'GST Department',
-          issuedDate: '2026-01-08',
-          dueDate: '2026-01-23',
-          status: 'responded',
-          priority: 'high',
-          description: 'Best judgment assessment order passed due to non-filing of GSTR-3B for the period July-September 2025.',
-          documents: ['GSTR-3B Returns', 'Payment Proof', 'Rectification Request'],
-          timeline: [
-            { date: '2026-01-08', action: 'Notice Received', by: 'System' },
-            { date: '2026-01-10', action: 'Returns Filed', by: 'Accounts' },
-            { date: '2026-01-12', action: 'Rectification Filed', by: 'CA' },
-            { date: '2026-01-15', action: 'Response Submitted', by: 'CA' }
-          ]
-        },
-        {
-          id: 'NOT-2025-011',
-          type: 'Payroll',
-          subType: 'ESIC Notice',
-          section: 'ESIC Act',
-          subject: 'Non-payment of ESIC Contributions',
-          issuedBy: 'ESIC',
-          issuedDate: '2025-11-25',
-          dueDate: '2025-12-10',
-          status: 'resolved',
-          priority: 'medium',
-          description: 'Outstanding ESIC contributions for the months of August-October 2025. Please clear the dues immediately.',
-          documents: ['ESIC Returns', 'Payment Challans', 'Employee Details'],
-          timeline: [
-            { date: '2025-11-25', action: 'Notice Received', by: 'System' },
-            { date: '2025-11-28', action: 'Payment Made', by: 'Accounts' },
-            { date: '2025-12-05', action: 'Compliance Verified', by: 'ESIC' },
-            { date: '2025-12-08', action: 'Case Closed', by: 'System' }
-          ]
-        },
-        {
-          id: 'NOT-2026-012',
-          type: 'Income Tax',
-          subType: 'Section 142(1)',
-          section: 'Section 142(1)',
-          subject: 'Notice for Production of Documents - AY 2024-25',
-          issuedBy: 'Income Tax Department',
-          issuedDate: '2026-01-22',
-          dueDate: '2026-02-07',
-          status: 'pending',
-          priority: 'medium',
-          description: 'You are required to produce or cause to be produced such accounts or documents as specified in the notice for the purpose of assessment.',
-          documents: ['Books of Accounts', 'Bank Statements', 'Audit Reports'],
-          timeline: [
-            { date: '2026-01-22', action: 'Notice Received', by: 'System' },
-            { date: '2026-01-23', action: 'Documents Being Prepared', by: 'CA' }
-          ]
-        },
-        {
-          id: 'NOT-2026-013',
-          type: 'GST',
-          subType: 'DRC-07',
-          section: 'Section 73/74',
-          subject: 'Summary of Order - Demand Notice',
-          issuedBy: 'GST Department',
-          issuedDate: '2026-01-14',
-          dueDate: '2026-01-29',
-          status: 'pending',
-          priority: 'high',
-          description: 'Summary of order demanding payment of GST dues amounting to ' + formatCurrency(87500, countryCode) + ' for the period April-June 2025.',
-          documents: ['Order Copy', 'Payment Challan', 'Appeal Documents'],
-          timeline: [
-            { date: '2026-01-14', action: 'Notice Received', by: 'System' },
-            { date: '2026-01-16', action: 'Legal Opinion Sought', by: 'Admin' }
-          ]
-        },
-        {
-          id: 'NOT-2026-014',
-          type: 'RoC',
-          subType: 'AOC-4',
-          section: 'Section 137',
-          subject: 'Non-filing of Annual Financial Statements',
-          issuedBy: 'Registrar of Companies',
-          issuedDate: '2026-01-10',
-          dueDate: '2026-01-25',
-          status: 'responded',
-          priority: 'medium',
-          description: 'The company has not filed its Annual Financial Statements in Form AOC-4 for the financial year ended 31st March 2025.',
-          documents: ['AOC-4 Filed', 'Audited Financials', 'Board Resolution'],
-          timeline: [
-            { date: '2026-01-10', action: 'Notice Received', by: 'System' },
-            { date: '2026-01-12', action: 'AOC-4 Filed', by: 'CS' },
-            { date: '2026-01-15', action: 'Response Submitted', by: 'System' }
-          ]
-        },
-        {
-          id: 'NOT-2025-015',
-          type: 'Income Tax',
-          subType: 'Section 148',
-          section: 'Section 148',
-          subject: 'Reopening of Assessment - AY 2022-23',
-          issuedBy: 'Income Tax Department',
-          issuedDate: '2025-10-15',
-          dueDate: '2025-11-15',
-          status: 'resolved',
-          priority: 'high',
-          description: 'Assessment for AY 2022-23 is being reopened as per Section 148 of Income Tax Act, 1961. Please file your return if not filed or provide additional information.',
-          documents: ['ITR Filed', 'Supporting Documents', 'Clarifications'],
-          timeline: [
-            { date: '2025-10-15', action: 'Notice Received', by: 'System' },
-            { date: '2025-10-20', action: 'ITR Filed', by: 'CA' },
-            { date: '2025-10-25', action: 'Assessment Completed', by: 'IT Dept' },
-            { date: '2025-11-10', action: 'Case Closed', by: 'System' }
-          ]
-        }
-      ])
+      {
+        id: 'NOT-2026-001',
+        type: 'Income Tax',
+        subType: 'Scrutiny Notice',
+        section: 'Section 143(2)',
+        subject: 'Selection for Scrutiny Assessment - AY 2024-25',
+        issuedBy: 'Income Tax Department',
+        issuedDate: '2026-01-15',
+        dueDate: '2026-02-15',
+        status: 'pending',
+        priority: 'high',
+        description: 'Your return for Assessment Year 2024-25 has been selected for scrutiny assessment. You are required to furnish the details/documents as specified.',
+        documents: ['ITR Filed', 'Form 26AS', 'Bank Statements'],
+        timeline: [
+          { date: '2026-01-15', action: 'Notice Received', by: 'System' },
+          { date: '2026-01-16', action: 'Assigned to CA', by: 'Admin' }
+        ]
+      },
+      {
+        id: 'NOT-2026-002',
+        type: 'GST',
+        subType: 'Show Cause Notice',
+        section: 'Section 73',
+        subject: 'Mismatch in GSTR-1 and GSTR-3B for FY 2024-25',
+        issuedBy: 'GST Department',
+        issuedDate: '2026-01-10',
+        dueDate: '2026-01-25',
+        status: 'responded',
+        priority: 'high',
+        description: 'Discrepancy noticed between outward supplies declared in GSTR-1 and tax paid in GSTR-3B. Please provide clarification with supporting documents.',
+        documents: ['GSTR-1 Returns', 'GSTR-3B Returns', 'Reconciliation Statement'],
+        timeline: [
+          { date: '2026-01-10', action: 'Notice Received', by: 'System' },
+          { date: '2026-01-12', action: 'Response Drafted', by: 'Accounts Team' },
+          { date: '2026-01-14', action: 'Response Submitted', by: 'CA' }
+        ]
+      },
+      {
+        id: 'NOT-2026-003',
+        type: 'RoC',
+        subType: 'Compliance Notice',
+        section: 'Section 92',
+        subject: 'Non-filing of Annual Return (MGT-7)',
+        issuedBy: 'Registrar of Companies',
+        issuedDate: '2026-01-05',
+        dueDate: '2026-01-20',
+        status: 'resolved',
+        priority: 'medium',
+        description: 'It has been observed that the company has not filed the Annual Return in Form MGT-7 for the financial year 2024-25.',
+        documents: ['MGT-7 Filed', 'Board Resolution'],
+        timeline: [
+          { date: '2026-01-05', action: 'Notice Received', by: 'System' },
+          { date: '2026-01-08', action: 'MGT-7 Filed', by: 'CS' },
+          { date: '2026-01-10', action: 'Compliance Completed', by: 'System' }
+        ]
+      },
+      {
+        id: 'NOT-2025-004',
+        type: 'Payroll',
+        subType: 'Inspection Notice',
+        section: 'EPF Act',
+        subject: 'EPF Compliance Inspection Scheduled',
+        issuedBy: 'EPFO',
+        issuedDate: '2025-12-20',
+        dueDate: '2026-01-10',
+        status: 'resolved',
+        priority: 'medium',
+        description: 'An inspection under the EPF & MP Act, 1952 has been scheduled for your establishment. Please keep all relevant records ready.',
+        documents: ['EPF Returns', 'Wage Register', 'Attendance Records'],
+        timeline: [
+          { date: '2025-12-20', action: 'Notice Received', by: 'System' },
+          { date: '2025-12-25', action: 'Documents Prepared', by: 'HR' },
+          { date: '2026-01-10', action: 'Inspection Completed', by: 'EPFO Officer' },
+          { date: '2026-01-12', action: 'No Discrepancy Found', by: 'System' }
+        ]
+      },
+      {
+        id: 'NOT-2025-005',
+        type: 'Income Tax',
+        subType: 'Demand Notice',
+        section: 'Section 156',
+        subject: 'Outstanding Tax Demand - AY 2023-24',
+        issuedBy: 'Income Tax Department',
+        issuedDate: '2025-12-01',
+        dueDate: '2025-12-30',
+        status: 'pending',
+        priority: 'high',
+        description: `An outstanding tax demand of ${formatCurrency(245000, countryCode)} is pending against your PAN for Assessment Year 2023-24. Please pay the amount or file rectification.`,
+        documents: ['Demand Notice', 'Computation Sheet'],
+        timeline: [
+          { date: '2025-12-01', action: 'Notice Received', by: 'System' },
+          { date: '2025-12-05', action: 'Under Review by CA', by: 'CA' }
+        ]
+      },
+      {
+        id: 'NOT-2025-006',
+        type: 'GST',
+        subType: 'Registration Notice',
+        section: 'Section 29',
+        subject: 'Show Cause for GST Registration Cancellation',
+        issuedBy: 'GST Department',
+        issuedDate: '2025-11-15',
+        dueDate: '2025-11-30',
+        status: 'resolved',
+        priority: 'high',
+        description: 'Non-filing of returns for consecutive 6 months. Show cause why GST registration should not be cancelled.',
+        documents: ['All GSTR-3B Filed', 'Reply to SCN'],
+        timeline: [
+          { date: '2025-11-15', action: 'Notice Received', by: 'System' },
+          { date: '2025-11-18', action: 'Filed Pending Returns', by: 'Accounts' },
+          { date: '2025-11-20', action: 'Reply Submitted', by: 'CA' },
+          { date: '2025-11-28', action: 'Registration Restored', by: 'GST Dept' }
+        ]
+      },
+      {
+        id: 'NOT-2026-007',
+        type: 'GST',
+        subType: 'DRC-01',
+        section: 'Section 73/74',
+        subject: 'Demand for Unpaid Tax - GSTR-3B for Oct 2025',
+        issuedBy: 'GST Department',
+        issuedDate: '2026-01-20',
+        dueDate: '2026-02-05',
+        status: 'pending',
+        priority: 'high',
+        description: 'Demand notice for unpaid/short-paid tax or wrong ITC claim for the month of October 2025. Amount due: ' + formatCurrency(125000, countryCode),
+        documents: ['GSTR-3B Oct 2025', 'Payment Challan', 'ITC Documents'],
+        timeline: [
+          { date: '2026-01-20', action: 'Notice Received', by: 'System' },
+          { date: '2026-01-21', action: 'Under Review', by: 'Accounts Team' }
+        ]
+      },
+      {
+        id: 'NOT-2026-008',
+        type: 'Income Tax',
+        subType: 'ASMT-10',
+        section: 'Section 65',
+        subject: 'Scrutiny Notice for AY 2023-24',
+        issuedBy: 'Income Tax Department',
+        issuedDate: '2026-01-18',
+        dueDate: '2026-02-18',
+        status: 'pending',
+        priority: 'medium',
+        description: 'Notice for scrutiny of returns filed for Assessment Year 2023-24. Please provide supporting documents and clarifications.',
+        documents: ['ITR-3 AY 2023-24', 'Audited Financials', 'Tax Audit Report'],
+        timeline: [
+          { date: '2026-01-18', action: 'Notice Received', by: 'System' },
+          { date: '2026-01-19', action: 'Assigned to CA', by: 'Admin' }
+        ]
+      },
+      {
+        id: 'NOT-2026-009',
+        type: 'RoC',
+        subType: 'DIR-3 KYC',
+        section: 'Section 152',
+        subject: 'Non-compliance with Director KYC Requirements',
+        issuedBy: 'Registrar of Companies',
+        issuedDate: '2026-01-12',
+        dueDate: '2026-01-27',
+        status: 'responded',
+        priority: 'medium',
+        description: 'Directors of the company have not completed their KYC requirements as per Section 152 of Companies Act, 2013.',
+        documents: ['DIR-3 KYC Forms', 'Director PAN Cards', 'Address Proofs'],
+        timeline: [
+          { date: '2026-01-12', action: 'Notice Received', by: 'System' },
+          { date: '2026-01-15', action: 'KYC Forms Collected', by: 'CS' },
+          { date: '2026-01-18', action: 'DIR-3 Filed', by: 'CS' },
+          { date: '2026-01-20', action: 'Response Submitted', by: 'System' }
+        ]
+      },
+      {
+        id: 'NOT-2026-010',
+        type: 'GST',
+        subType: 'ASMT-13',
+        section: 'Section 66',
+        subject: 'Best Judgment Assessment - GSTR-3B',
+        issuedBy: 'GST Department',
+        issuedDate: '2026-01-08',
+        dueDate: '2026-01-23',
+        status: 'responded',
+        priority: 'high',
+        description: 'Best judgment assessment order passed due to non-filing of GSTR-3B for the period July-September 2025.',
+        documents: ['GSTR-3B Returns', 'Payment Proof', 'Rectification Request'],
+        timeline: [
+          { date: '2026-01-08', action: 'Notice Received', by: 'System' },
+          { date: '2026-01-10', action: 'Returns Filed', by: 'Accounts' },
+          { date: '2026-01-12', action: 'Rectification Filed', by: 'CA' },
+          { date: '2026-01-15', action: 'Response Submitted', by: 'CA' }
+        ]
+      },
+      {
+        id: 'NOT-2025-011',
+        type: 'Payroll',
+        subType: 'ESIC Notice',
+        section: 'ESIC Act',
+        subject: 'Non-payment of ESIC Contributions',
+        issuedBy: 'ESIC',
+        issuedDate: '2025-11-25',
+        dueDate: '2025-12-10',
+        status: 'resolved',
+        priority: 'medium',
+        description: 'Outstanding ESIC contributions for the months of August-October 2025. Please clear the dues immediately.',
+        documents: ['ESIC Returns', 'Payment Challans', 'Employee Details'],
+        timeline: [
+          { date: '2025-11-25', action: 'Notice Received', by: 'System' },
+          { date: '2025-11-28', action: 'Payment Made', by: 'Accounts' },
+          { date: '2025-12-05', action: 'Compliance Verified', by: 'ESIC' },
+          { date: '2025-12-08', action: 'Case Closed', by: 'System' }
+        ]
+      },
+      {
+        id: 'NOT-2026-012',
+        type: 'Income Tax',
+        subType: 'Section 142(1)',
+        section: 'Section 142(1)',
+        subject: 'Notice for Production of Documents - AY 2024-25',
+        issuedBy: 'Income Tax Department',
+        issuedDate: '2026-01-22',
+        dueDate: '2026-02-07',
+        status: 'pending',
+        priority: 'medium',
+        description: 'You are required to produce or cause to be produced such accounts or documents as specified in the notice for the purpose of assessment.',
+        documents: ['Books of Accounts', 'Bank Statements', 'Audit Reports'],
+        timeline: [
+          { date: '2026-01-22', action: 'Notice Received', by: 'System' },
+          { date: '2026-01-23', action: 'Documents Being Prepared', by: 'CA' }
+        ]
+      },
+      {
+        id: 'NOT-2026-013',
+        type: 'GST',
+        subType: 'DRC-07',
+        section: 'Section 73/74',
+        subject: 'Summary of Order - Demand Notice',
+        issuedBy: 'GST Department',
+        issuedDate: '2026-01-14',
+        dueDate: '2026-01-29',
+        status: 'pending',
+        priority: 'high',
+        description: 'Summary of order demanding payment of GST dues amounting to ' + formatCurrency(87500, countryCode) + ' for the period April-June 2025.',
+        documents: ['Order Copy', 'Payment Challan', 'Appeal Documents'],
+        timeline: [
+          { date: '2026-01-14', action: 'Notice Received', by: 'System' },
+          { date: '2026-01-16', action: 'Legal Opinion Sought', by: 'Admin' }
+        ]
+      },
+      {
+        id: 'NOT-2026-014',
+        type: 'RoC',
+        subType: 'AOC-4',
+        section: 'Section 137',
+        subject: 'Non-filing of Annual Financial Statements',
+        issuedBy: 'Registrar of Companies',
+        issuedDate: '2026-01-10',
+        dueDate: '2026-01-25',
+        status: 'responded',
+        priority: 'medium',
+        description: 'The company has not filed its Annual Financial Statements in Form AOC-4 for the financial year ended 31st March 2025.',
+        documents: ['AOC-4 Filed', 'Audited Financials', 'Board Resolution'],
+        timeline: [
+          { date: '2026-01-10', action: 'Notice Received', by: 'System' },
+          { date: '2026-01-12', action: 'AOC-4 Filed', by: 'CS' },
+          { date: '2026-01-15', action: 'Response Submitted', by: 'System' }
+        ]
+      },
+      {
+        id: 'NOT-2025-015',
+        type: 'Income Tax',
+        subType: 'Section 148',
+        section: 'Section 148',
+        subject: 'Reopening of Assessment - AY 2022-23',
+        issuedBy: 'Income Tax Department',
+        issuedDate: '2025-10-15',
+        dueDate: '2025-11-15',
+        status: 'resolved',
+        priority: 'high',
+        description: 'Assessment for AY 2022-23 is being reopened as per Section 148 of Income Tax Act, 1961. Please file your return if not filed or provide additional information.',
+        documents: ['ITR Filed', 'Supporting Documents', 'Clarifications'],
+        timeline: [
+          { date: '2025-10-15', action: 'Notice Received', by: 'System' },
+          { date: '2025-10-20', action: 'ITR Filed', by: 'CA' },
+          { date: '2025-10-25', action: 'Assessment Completed', by: 'IT Dept' },
+          { date: '2025-11-10', action: 'Case Closed', by: 'System' }
+        ]
+      }
+    ])
   }, [currentCompany?.id, countryCode])
 
   const filteredNotices = demoNotices.filter(notice => {
@@ -991,13 +991,13 @@ function DataRoomPageInner() {
   const getCountryDefaultFolders = (countryCode: string): string[] => {
     const config = countryConfig
     if (!config) return ['Constitutional Documents', 'Financials and licenses', 'Taxation & GST Compliance', 'Regulatory & MCA Filings']
-    
+
     // Base folders that apply to all countries
     const baseFolders = ['Constitutional Documents', 'Financials and licenses']
-    
+
     // Country-specific compliance folders based on compliance categories
     const complianceFolders: string[] = []
-    
+
     if (countryCode === 'IN') {
       // India-specific folders
       complianceFolders.push('Taxation & GST Compliance', 'Regulatory & MCA Filings')
@@ -1011,7 +1011,7 @@ function DataRoomPageInner() {
       // Fallback
       complianceFolders.push('Tax Compliance', 'Regulatory Filings')
     }
-    
+
     return [...baseFolders, ...complianceFolders]
   }
 
@@ -1025,18 +1025,18 @@ function DataRoomPageInner() {
         'Regulatory & MCA Filings': ['Annual Returns', 'Board Minutes']
       }
     }
-    
+
     // Use country config's document types and compliance categories
-    const constitutionalDocs = config.onboarding.documentTypes.filter(doc => 
+    const constitutionalDocs = config.onboarding.documentTypes.filter(doc =>
       doc.includes('Certificate') || doc.includes('Memorandum') || doc.includes('Articles') || doc.includes('Association')
     )
-    
-    const financialDocs = config.onboarding.documentTypes.filter(doc => 
+
+    const financialDocs = config.onboarding.documentTypes.filter(doc =>
       doc === config.labels.taxId || doc.includes('TAN') || doc.includes('Tax') || doc.includes('License')
     )
-    
+
     const complianceDocs: Record<string, string[]> = {}
-    
+
     if (countryCode === 'IN') {
       // India-specific documents
       complianceDocs['Taxation & GST Compliance'] = ['GST Returns', 'Income Tax Returns']
@@ -1055,7 +1055,7 @@ function DataRoomPageInner() {
       complianceDocs['Tax Compliance'] = ['Tax Returns']
       complianceDocs['Regulatory Filings'] = ['Annual Returns']
     }
-    
+
     return {
       'Constitutional Documents': constitutionalDocs.length > 0 ? constitutionalDocs : ['Certificate of Incorporation', 'Memorandum of Association'],
       'Financials and licenses': financialDocs.length > 0 ? financialDocs : [config.labels.taxId],
@@ -1069,7 +1069,7 @@ function DataRoomPageInner() {
     console.log('[DataRoom] Country:', countryCode, 'Default folders:', folders)
     return folders
   }, [countryCode, countryConfig])
-  
+
   const DEFAULT_DOCUMENTS = useMemo(() => {
     const docs = getCountryDefaultDocuments(countryCode || 'IN')
     console.log('[DataRoom] Country:', countryCode, 'Default documents:', docs)
@@ -1080,43 +1080,43 @@ function DataRoomPageInner() {
   // Prioritize country-aware DEFAULT_FOLDERS, filter out country-inappropriate folders
   const documentFolders = useMemo(() => {
     const countryFolders = new Set(DEFAULT_FOLDERS)
-    
+
     console.log('[DataRoom] Computing documentFolders for country:', countryCode)
     console.log('[DataRoom] DEFAULT_FOLDERS:', DEFAULT_FOLDERS)
     console.log('[DataRoom] documentTemplates count:', documentTemplates.length)
-    
+
     // Only add database template folders if they're appropriate for the country
     if (documentTemplates.length > 0) {
       documentTemplates.forEach(t => {
         const folderName = t.folder_name
         const folderLower = folderName.toLowerCase()
-        
+
         // Skip if already in country-specific folders
         if (countryFolders.has(folderName)) {
           console.log('[DataRoom] Skipping', folderName, '- already in DEFAULT_FOLDERS')
           return
         }
-        
+
         // Filter out India-specific folders for non-India countries
         if (countryCode !== 'IN') {
           // Don't add India-specific folder names
-          if (folderLower.includes('gst') || 
-              folderLower.includes('mca') || 
-              folderLower.includes('roc') || 
-              folderLower.includes('income tax') ||
-              folderLower.includes('taxation & gst') ||
-              folderLower.includes('regulatory & mca')) {
+          if (folderLower.includes('gst') ||
+            folderLower.includes('mca') ||
+            folderLower.includes('roc') ||
+            folderLower.includes('income tax') ||
+            folderLower.includes('taxation & gst') ||
+            folderLower.includes('regulatory & mca')) {
             console.log('[DataRoom] Filtering out India-specific folder:', folderName, 'for country:', countryCode)
             return // Skip India-specific folders
           }
         }
-        
+
         // Add the folder if it passed the filter
         console.log('[DataRoom] Adding folder from database:', folderName)
         countryFolders.add(folderName)
       })
     }
-    
+
     const finalFolders = Array.from(countryFolders)
     console.log('[DataRoom] Final documentFolders:', finalFolders)
     return finalFolders
@@ -1125,52 +1125,52 @@ function DataRoomPageInner() {
   // Merge database templates with defaults
   const predefinedDocuments = documentTemplates.length > 0
     ? (() => {
-        // Start with defaults (ensures PAN and TAN are in Financials and licenses)
-        const merged = { ...DEFAULT_DOCUMENTS }
-        
-        // Add/override with database templates, but move PAN and TAN to correct folder
-        documentTemplates.forEach(template => {
-          const docName = template.document_name
-          const folderName = template.folder_name
-          
-          // Country-specific tax ID documents should be in "Financials and licenses"
-          const taxIdLabel = countryConfig?.labels.taxId || 'PAN'
-          if (docName === taxIdLabel || docName === 'PAN' || docName === 'TAN' || 
-              (countryCode !== 'IN' && (docName.includes('Tax') || docName.includes('VAT') || docName.includes('Registration')))) {
-            // Remove from any other folder
-            Object.keys(merged).forEach(folder => {
-              if (folder !== 'Financials and licenses') {
-                merged[folder] = merged[folder].filter((d: string) => d !== docName)
-              }
-            })
-            // Add to Financials and licenses
-            if (!merged['Financials and licenses']) {
-              merged['Financials and licenses'] = []
-            }
-            if (!merged['Financials and licenses'].includes(docName)) {
-              merged['Financials and licenses'].push(docName)
-            }
-          } else {
-            // For other documents, add to their specified folder
-            if (!merged[folderName]) {
-              merged[folderName] = []
-            }
-            if (!merged[folderName].includes(docName)) {
-              merged[folderName].push(docName)
-            }
-          }
-        })
-        
-        // Ensure tax ID documents are removed from Constitutional Documents
+      // Start with defaults (ensures PAN and TAN are in Financials and licenses)
+      const merged = { ...DEFAULT_DOCUMENTS }
+
+      // Add/override with database templates, but move PAN and TAN to correct folder
+      documentTemplates.forEach(template => {
+        const docName = template.document_name
+        const folderName = template.folder_name
+
+        // Country-specific tax ID documents should be in "Financials and licenses"
         const taxIdLabel = countryConfig?.labels.taxId || 'PAN'
-        if (merged['Constitutional Documents']) {
-          merged['Constitutional Documents'] = merged['Constitutional Documents'].filter(
-            (d: string) => d !== taxIdLabel && d !== 'PAN' && d !== 'TAN'
-          )
+        if (docName === taxIdLabel || docName === 'PAN' || docName === 'TAN' ||
+          (countryCode !== 'IN' && (docName.includes('Tax') || docName.includes('VAT') || docName.includes('Registration')))) {
+          // Remove from any other folder
+          Object.keys(merged).forEach(folder => {
+            if (folder !== 'Financials and licenses') {
+              merged[folder] = merged[folder].filter((d: string) => d !== docName)
+            }
+          })
+          // Add to Financials and licenses
+          if (!merged['Financials and licenses']) {
+            merged['Financials and licenses'] = []
+          }
+          if (!merged['Financials and licenses'].includes(docName)) {
+            merged['Financials and licenses'].push(docName)
+          }
+        } else {
+          // For other documents, add to their specified folder
+          if (!merged[folderName]) {
+            merged[folderName] = []
+          }
+          if (!merged[folderName].includes(docName)) {
+            merged[folderName].push(docName)
+          }
         }
-        
-        return merged
-      })()
+      })
+
+      // Ensure tax ID documents are removed from Constitutional Documents
+      const taxIdLabel = countryConfig?.labels.taxId || 'PAN'
+      if (merged['Constitutional Documents']) {
+        merged['Constitutional Documents'] = merged['Constitutional Documents'].filter(
+          (d: string) => d !== taxIdLabel && d !== 'PAN' && d !== 'TAN'
+        )
+      }
+
+      return merged
+    })()
     : DEFAULT_DOCUMENTS
 
   const handleView = async (filePath: string) => {
@@ -1247,7 +1247,7 @@ function DataRoomPageInner() {
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
-        
+
         // Track vault file export
         if (user?.id && currentCompany?.id) {
           trackVaultFileExport(user.id, currentCompany.id, 1)
@@ -1284,7 +1284,7 @@ function DataRoomPageInner() {
     const date = new Date(dateStr)
     const month = date.getMonth() // 0-11
     const year = date.getFullYear()
-    
+
     // In India, FY starts in April (month 3)
     if (month >= 3) {
       return `FY ${year}-${(year + 1).toString().slice(-2)}`
@@ -1296,12 +1296,12 @@ function DataRoomPageInner() {
   // Helper function to format period information for display
   const formatPeriodInfo = (doc: any): string | null => {
     if (!doc.period_key && !doc.period_financial_year) return null
-    
+
     if (doc.period_type === 'monthly' && doc.period_key) {
       // Format: "2025-03" -> "March 2025"
       const [year, month] = doc.period_key.split('-')
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                         'July', 'August', 'September', 'October', 'November', 'December']
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December']
       const monthName = monthNames[parseInt(month) - 1]
       return `${monthName} ${year}`
     } else if (doc.period_type === 'quarterly' && doc.period_key) {
@@ -1313,7 +1313,7 @@ function DataRoomPageInner() {
     } else if (doc.period_financial_year) {
       return doc.period_financial_year
     }
-    
+
     return null
   }
 
@@ -1453,11 +1453,11 @@ function DataRoomPageInner() {
     const folderName = (doc.folder_name || '').toLowerCase()
     const periodInfo = formatPeriodInfo(doc)?.toLowerCase() || ''
     const expiryDate = doc.expiry_date ? formatDateForDisplay(doc.expiry_date).toLowerCase() : ''
-    
-    return docType.includes(lowerQuery) || 
-           folderName.includes(lowerQuery) || 
-           periodInfo.includes(lowerQuery) ||
-           expiryDate.includes(lowerQuery)
+
+    return docType.includes(lowerQuery) ||
+      folderName.includes(lowerQuery) ||
+      periodInfo.includes(lowerQuery) ||
+      expiryDate.includes(lowerQuery)
   }
 
   // Helper function to get document status (valid, expiring, expired)
@@ -1467,7 +1467,7 @@ function DataRoomPageInner() {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-    
+
     if (daysUntilExpiry < 0) return 'expired'
     if (daysUntilExpiry <= 30) return 'expiring'
     return 'valid'
@@ -1545,18 +1545,18 @@ function DataRoomPageInner() {
     .filter(doc => {
       // If no FY selected, show all documents
       if (!selectedFY) return true
-      
+
       // Prefer period_financial_year if available (for tracker-uploaded docs)
       if (doc.period_financial_year) {
         return doc.period_financial_year === selectedFY
       }
-      
+
       // Fallback to registration_date for older documents
       if (doc.registration_date) {
-      const docFY = getFinancialYear(doc.registration_date)
-      return docFY === selectedFY
+        const docFY = getFinancialYear(doc.registration_date)
+        return docFY === selectedFY
       }
-      
+
       // If no period or registration date, don't show when FY is selected
       return false
     })
@@ -1767,11 +1767,11 @@ function DataRoomPageInner() {
       setIsLoadingRequirements(true)
       const startTime = performance.now()
       console.log('[fetchRequirements] Starting fetch for company:', currentCompany.id)
-      
+
       try {
         const result = await getRegulatoryRequirements(currentCompany.id)
         console.log('[fetchRequirements] Completed in', Math.round(performance.now() - startTime), 'ms')
-        
+
         if (result.success && result.requirements) {
           console.log('[fetchRequirements] Setting requirements, count:', result.requirements.length)
           // Log sample requirement with required_documents
@@ -1904,7 +1904,7 @@ function DataRoomPageInner() {
 
   // Memoized penalty calculation function
   const calculatePenaltyMemoized = useCallback((
-    penaltyStr: string | null, 
+    penaltyStr: string | null,
     daysDelayed: number | null,
     penaltyBaseAmount?: number | null  // Base amount for interest calculations
   ): string => {
@@ -1933,7 +1933,7 @@ function DataRoomPageInner() {
       const [dailyRateStr, maxCapStr] = penalty.split('|')
       const dailyRate = parseInt(dailyRateStr, 10)
       const maxCap = parseInt(maxCapStr, 10)
-      
+
       if (!isNaN(dailyRate) && dailyRate > 0) {
         let calculated = dailyRate * daysDelayed
         if (!isNaN(maxCap) && maxCap > 0) {
@@ -1956,7 +1956,7 @@ function DataRoomPageInner() {
       const dailyRate = parseFloat(rateStr.replace(/,/g, ''))
       if (!isNaN(dailyRate) && dailyRate > 0) {
         let calculatedPenalty = dailyRate * daysDelayed
-        
+
         // Check for maximum limit
         const maxMatch = penalty.match(new RegExp(`max\\s*(?:${currencySymbolEscaped})?[\\d,]+(?:\\.[\\d]+)?`, 'i'))
         if (maxMatch) {
@@ -1966,7 +1966,7 @@ function DataRoomPageInner() {
             calculatedPenalty = Math.min(calculatedPenalty, maxAmount)
           }
         }
-        
+
         return formatCurrency(calculatedPenalty, countryCode)
       }
     }
@@ -1979,7 +1979,7 @@ function DataRoomPageInner() {
         return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
       }
     }
-    
+
     // Handle "2%/month + 5/day" - extract daily rate after the +
     const interestPlusDailyMatch = penalty.match(/[\d.]+%[^+]*\+\s*(\d+)\/day/i)
     if (interestPlusDailyMatch) {
@@ -1988,7 +1988,7 @@ function DataRoomPageInner() {
         return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
       }
     }
-    
+
     // Handle range formats like "25000-300000" - extract minimum
     const rangeMatch = penalty.match(/(\d+)\s*-\s*(\d+)/)
     if (rangeMatch && !penalty.includes('%') && !penalty.includes('/day')) {
@@ -2040,15 +2040,15 @@ function DataRoomPageInner() {
         // Extract interest rate from penalty string
         // Common formats: "1%/month", "12%/year", "1.5%/month", "Interest @ 1%/month", "u/s 234B & 234C"
         const interestRateMatch = penalty.match(/([\d.]+)\s*%\s*(?:\/|\s*)(month|year|annum|annually|per month|per year)/i)
-        
+
         if (interestRateMatch) {
           const rate = parseFloat(interestRateMatch[1])
           const period = interestRateMatch[2].toLowerCase()
-          
+
           if (!isNaN(rate) && rate > 0 && daysDelayed) {
             // Calculate interest based on period
             let interest = 0
-            
+
             if (period.includes('month')) {
               // Monthly interest: (principal * rate/100) * (days/30)
               const months = daysDelayed / 30
@@ -2058,13 +2058,13 @@ function DataRoomPageInner() {
               const years = daysDelayed / 365
               interest = (penaltyBaseAmount * rate / 100) * years
             }
-            
+
             if (interest > 0) {
               return `${formatCurrency(Math.round(interest), countryCode)} (Interest @ ${rate}%/${period.includes('month') ? 'month' : 'year'} on ${formatCurrency(penaltyBaseAmount, countryCode)})`
             }
           }
         }
-        
+
         // Special handling for Income Tax sections 234B & 234C (default 1% per month)
         if (penalty.includes('234B') || penalty.includes('234C') || penalty.includes('u/s 234') || penalty.includes('section 234')) {
           if (daysDelayed) {
@@ -2074,7 +2074,7 @@ function DataRoomPageInner() {
             return `${formatCurrency(Math.round(interest), countryCode)} (Interest @ 1%/month u/s 234B/234C on ${formatCurrency(penaltyBaseAmount, countryCode)})`
           }
         }
-        
+
         // If rate format not found but base amount exists, try to extract any percentage
         const anyPercentMatch = penalty.match(/([\d.]+)\s*%/i)
         if (anyPercentMatch && daysDelayed) {
@@ -2087,7 +2087,7 @@ function DataRoomPageInner() {
           }
         }
       }
-      
+
       // If base amount not available, return helpful error message
       return 'Cannot calculate - Please provide principal amount (Base Amount) for interest calculation'
     }
@@ -2109,7 +2109,7 @@ function DataRoomPageInner() {
   const calculateDelayMemoized = useCallback((dueDateStr: string, status: string): number | null => {
     // For not_started, pending, or overdue status, calculate delay if date has passed
     if (status === 'completed' || status === 'upcoming') return null
-    
+
     try {
       const months: { [key: string]: number } = {
         'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
@@ -2138,7 +2138,7 @@ function DataRoomPageInner() {
   // Refresh requirements
   const refreshRequirements = async () => {
     if (!currentCompany) return
-    
+
     setIsLoadingRequirements(true)
     try {
       const result = await getRegulatoryRequirements(currentCompany.id)
@@ -2222,9 +2222,9 @@ function DataRoomPageInner() {
         }
 
         // Update local state
-        setRegulatoryRequirements(prev => 
-          prev.map(req => 
-            req.id === requirementId 
+        setRegulatoryRequirements(prev =>
+          prev.map(req =>
+            req.id === requirementId
               ? { ...req, status: newStatus }
               : req
           )
@@ -2288,9 +2288,9 @@ function DataRoomPageInner() {
   // Helper to get form frequency for a requirement
   const getFormFrequency = (requirement: string): string | null => {
     if (!countryConfig?.regulatory?.formFrequencies) return null
-    
+
     const reqLower = requirement.toLowerCase()
-    
+
     // Try to match requirement to form name
     for (const [formName, frequency] of Object.entries(countryConfig.regulatory.formFrequencies)) {
       if (reqLower.includes(formName.toLowerCase())) {
@@ -2308,7 +2308,7 @@ function DataRoomPageInner() {
     relevance: string
   }> => {
     if (!countryConfig?.regulatory?.legalSections) return []
-    
+
     const reqLower = requirement.toLowerCase()
     const relevantSections: Array<{
       act: string
@@ -2316,28 +2316,28 @@ function DataRoomPageInner() {
       description: string
       relevance: string
     }> = []
-    
+
     // Match based on requirement text and category
     Object.values(countryConfig.regulatory.legalSections).forEach(section => {
       const sectionLower = section.section.toLowerCase()
       const actLower = section.act.toLowerCase()
-      
-      if (reqLower.includes(sectionLower) || 
-          reqLower.includes(actLower) ||
-          (category === 'GST' && actLower.includes('gst')) ||
-          (category === 'Income Tax' && actLower.includes('income tax')) ||
-          (category === 'RoC' && actLower.includes('companies act'))) {
+
+      if (reqLower.includes(sectionLower) ||
+        reqLower.includes(actLower) ||
+        (category === 'GST' && actLower.includes('gst')) ||
+        (category === 'Income Tax' && actLower.includes('income tax')) ||
+        (category === 'RoC' && actLower.includes('companies act'))) {
         relevantSections.push(section)
       }
     })
-    
+
     return relevantSections
   }
 
   // Helper to get authority for category
   const getAuthorityForCategory = (category: string): string | null => {
     if (!countryConfig?.regulatory?.authorities) return null
-    
+
     const categoryMap: Record<string, keyof typeof countryConfig.regulatory.authorities> = {
       'GST': 'indirectTax',
       'Income Tax': 'tax',
@@ -2346,7 +2346,7 @@ function DataRoomPageInner() {
       'Labour Law': 'labor',
       'Renewals': 'registration'
     }
-    
+
     const authorityKey = categoryMap[category]
     return authorityKey ? countryConfig.regulatory.authorities[authorityKey] || null : null
   }
@@ -2354,23 +2354,23 @@ function DataRoomPageInner() {
   // Helper to map folder names to compliance categories (country-aware)
   const getCategoryFromFolder = (folderName: string): string | null => {
     if (!countryConfig) return null
-    
+
     // Country-specific folder mappings
     if (countryCode === 'IN') {
-    const folderMap: Record<string, string> = {
-      'GST Returns': 'GST',
-      'Income Tax Returns': 'Income Tax',
-      'ROC Filings': 'RoC',
-      'Labour Law Compliance': 'Payroll',
-      'Renewals': 'Renewals',
-      'Other Compliance Documents': 'Other',
-      'Professional Tax': 'Prof. Tax',
-      'Constitutional Documents': 'Other',
-      'Financials and licenses': 'Other',
-      'Taxation & GST Compliance': 'GST',
-      'Regulatory & MCA Filings': 'RoC'
-    }
-    return folderMap[folderName] || null
+      const folderMap: Record<string, string> = {
+        'GST Returns': 'GST',
+        'Income Tax Returns': 'Income Tax',
+        'ROC Filings': 'RoC',
+        'Labour Law Compliance': 'Payroll',
+        'Renewals': 'Renewals',
+        'Other Compliance Documents': 'Other',
+        'Professional Tax': 'Prof. Tax',
+        'Constitutional Documents': 'Other',
+        'Financials and licenses': 'Other',
+        'Taxation & GST Compliance': 'GST',
+        'Regulatory & MCA Filings': 'RoC'
+      }
+      return folderMap[folderName] || null
     } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
       // GCC countries
       const folderMap: Record<string, string> = {
@@ -2391,7 +2391,7 @@ function DataRoomPageInner() {
       }
       return folderMap[folderName] || null
     }
-    
+
     // Fallback
     return null
   }
@@ -2400,17 +2400,17 @@ function DataRoomPageInner() {
   const getRelevantFormsForFolder = (folderName: string): string[] => {
     const category = getCategoryFromFolder(folderName)
     if (!category || !countryConfig?.regulatory?.commonForms) return []
-    
+
     const categoryLower = category.toLowerCase()
     const forms = countryConfig.regulatory.commonForms.filter(form => {
       const formLower = form.toLowerCase()
-      
+
       // India-specific patterns
       if (countryCode === 'IN') {
-      if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
-      if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
-      if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
-      if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
+        if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
+        if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
+        if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
+        if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
       }
       // GCC countries
       else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
@@ -2422,10 +2422,10 @@ function DataRoomPageInner() {
         if ((categoryLower === 'federal tax' || categoryLower === 'state tax') && (formLower.includes('tax') || formLower.includes('return') || formLower.includes('ein'))) return true
         if (categoryLower === 'business license' && (formLower.includes('license') || formLower.includes('registration') || formLower.includes('report'))) return true
       }
-      
+
       return false
     })
-    
+
     return forms
   }
 
@@ -2439,20 +2439,20 @@ function DataRoomPageInner() {
   const suggestFoldersForDocument = (documentName: string): string[] => {
     const docLower = documentName.toLowerCase()
     const suggestions: string[] = []
-    
+
     if (countryCode === 'IN') {
       // India-specific patterns
-    if (docLower.includes('gstr') || docLower.includes('gst') || docLower.includes('cmp-') || docLower.includes('itc-') || docLower.includes('iff')) {
+      if (docLower.includes('gstr') || docLower.includes('gst') || docLower.includes('cmp-') || docLower.includes('itc-') || docLower.includes('iff')) {
         suggestions.push('Taxation & GST Compliance')
-    }
-    if (docLower.includes('itr') || docLower.includes('form 24') || docLower.includes('form 26') || docLower.includes('form 27') || docLower.includes('tds') || docLower.includes('tcs')) {
+      }
+      if (docLower.includes('itr') || docLower.includes('form 24') || docLower.includes('form 26') || docLower.includes('form 27') || docLower.includes('tds') || docLower.includes('tcs')) {
         suggestions.push('Taxation & GST Compliance')
-    }
-    if (docLower.includes('mgt') || docLower.includes('aoc') || docLower.includes('roc') || docLower.includes('dir-') || docLower.includes('pas-') || docLower.includes('ben-') || docLower.includes('inc-') || docLower.includes('adt-') || docLower.includes('cra-') || docLower.includes('llp form')) {
+      }
+      if (docLower.includes('mgt') || docLower.includes('aoc') || docLower.includes('roc') || docLower.includes('dir-') || docLower.includes('pas-') || docLower.includes('ben-') || docLower.includes('inc-') || docLower.includes('adt-') || docLower.includes('cra-') || docLower.includes('llp form')) {
         suggestions.push('Regulatory & MCA Filings')
-    }
-    if (docLower.includes('epf') || docLower.includes('esi') || docLower.includes('ecr') || docLower.includes('form 5a') || docLower.includes('form 2') || docLower.includes('form 10') || docLower.includes('form 19')) {
-      suggestions.push('Labour Law Compliance')
+      }
+      if (docLower.includes('epf') || docLower.includes('esi') || docLower.includes('ecr') || docLower.includes('form 5a') || docLower.includes('form 2') || docLower.includes('form 10') || docLower.includes('form 19')) {
+        suggestions.push('Labour Law Compliance')
       }
     } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
       // GCC countries
@@ -2474,7 +2474,7 @@ function DataRoomPageInner() {
         suggestions.push('Business License & Registration')
       }
     }
-    
+
     return suggestions
   }
 
@@ -2497,14 +2497,14 @@ function DataRoomPageInner() {
   }> => {
     const category = getCategoryFromFolder(folderName)
     if (!category) return []
-    
+
     return getRelevantLegalSections(documentName, category)
   }
 
   // Helper function to map document name to folder based on category (country-aware)
   const getFolderForDocument = (documentName: string, category: string): string => {
     // Check if document template exists
-    const template = documentTemplates.find(t => 
+    const template = documentTemplates.find(t =>
       t.document_name.toLowerCase() === documentName.toLowerCase() ||
       documentName.toLowerCase().includes(t.document_name.toLowerCase())
     )
@@ -2570,24 +2570,24 @@ function DataRoomPageInner() {
       if (docLower.includes('gstr') || docLower.includes('gst')) {
         return 'GST Returns'
       }
-      if (docLower.includes('form 24q') || docLower.includes('form 26q') || 
-          docLower.includes('form 27q') || docLower.includes('form 27eq') ||
-          docLower.includes('tds') || docLower.includes('tcs') || docLower.includes('itr') ||
-          docLower.includes('drc-') || docLower.includes('asmt-') ||
-          docLower.includes('section 142') || docLower.includes('section 143') || docLower.includes('section 156')) {
+      if (docLower.includes('form 24q') || docLower.includes('form 26q') ||
+        docLower.includes('form 27q') || docLower.includes('form 27eq') ||
+        docLower.includes('tds') || docLower.includes('tcs') || docLower.includes('itr') ||
+        docLower.includes('drc-') || docLower.includes('asmt-') ||
+        docLower.includes('section 142') || docLower.includes('section 143') || docLower.includes('section 156')) {
         return 'Income Tax Returns'
       }
-      if (docLower.includes('pf') || docLower.includes('esi') || 
-          docLower.includes('epf') || docLower.includes('epfo') || docLower.includes('labour') ||
-          docLower.includes('ecr') || docLower.includes('form 5a') || docLower.includes('form 2') ||
-          docLower.includes('form 10c') || docLower.includes('form 10d') || docLower.includes('form 19')) {
+      if (docLower.includes('pf') || docLower.includes('esi') ||
+        docLower.includes('epf') || docLower.includes('epfo') || docLower.includes('labour') ||
+        docLower.includes('ecr') || docLower.includes('form 5a') || docLower.includes('form 2') ||
+        docLower.includes('form 10c') || docLower.includes('form 10d') || docLower.includes('form 19')) {
         return 'Labour Law Compliance'
       }
-      if (docLower.includes('mgt') || docLower.includes('aoc') || 
-          docLower.includes('roc') || docLower.includes('form 11') || docLower.includes('form 8') ||
-          docLower.includes('dir-') || docLower.includes('pas-') || docLower.includes('ben-') ||
-          docLower.includes('inc-22a') || docLower.includes('adt-01') || docLower.includes('cra-2') ||
-          docLower.includes('llp form')) {
+      if (docLower.includes('mgt') || docLower.includes('aoc') ||
+        docLower.includes('roc') || docLower.includes('form 11') || docLower.includes('form 8') ||
+        docLower.includes('dir-') || docLower.includes('pas-') || docLower.includes('ben-') ||
+        docLower.includes('inc-22a') || docLower.includes('adt-01') || docLower.includes('cra-2') ||
+        docLower.includes('llp form')) {
         return 'ROC Filings'
       }
       if (docLower.includes('reg-17') || docLower.includes('reg-19') || docLower.includes('cmp-05')) {
@@ -2706,10 +2706,10 @@ function DataRoomPageInner() {
     setUploadingDocument(true)
     setUploadProgress(0)
     setUploadStage('Uploading file...')
-    
+
     try {
       const supabase = createClient()
-      
+
       // Upload file to storage
       const fileExt = uploadFile.name.split('.').pop()
       const fileName = `${documentUploadModal.requirementId}-${documentUploadModal.documentName}-${Date.now()}.${fileExt}`
@@ -2749,10 +2749,10 @@ function DataRoomPageInner() {
           // - 'annual': recurs annually (use 'annually')
           // - 'monthly': recurs monthly (use 'monthly')
           // - 'quarterly': recurs quarterly (use 'quarterly')
-          frequency: documentUploadModal.complianceType === 'one-time' ? 'one-time' : 
-                     documentUploadModal.complianceType === 'annual' ? 'annually' :
-                     documentUploadModal.complianceType === 'monthly' ? 'monthly' :
-                     documentUploadModal.complianceType === 'quarterly' ? 'quarterly' : 'one-time',
+          frequency: documentUploadModal.complianceType === 'one-time' ? 'one-time' :
+            documentUploadModal.complianceType === 'annual' ? 'annually' :
+              documentUploadModal.complianceType === 'monthly' ? 'monthly' :
+                documentUploadModal.complianceType === 'quarterly' ? 'quarterly' : 'one-time',
           filePath,
           fileName: uploadFile.name,
           periodType: periodMeta.periodType,
@@ -2797,7 +2797,7 @@ function DataRoomPageInner() {
       const requirementDocs = (uploadedDocs.documents || []).filter((doc: any) => {
         // Must match period
         if (doc.period_key !== periodMeta.periodKey) return false
-        
+
         // Check for document match with improved logic
         const docTypeNormalized = normalizeDocName(doc.document_type || '')
         return allDocs.some(reqDoc => {
@@ -2867,10 +2867,10 @@ function DataRoomPageInner() {
       }
 
       // Show success message with more detail
-      const successMessage = allRequiredUploaded 
+      const successMessage = allRequiredUploaded
         ? `✅ Document uploaded successfully! All required documents are now uploaded. Requirement status updated to "Completed".`
         : `✅ Document uploaded successfully! ${allDocs.length - requirementDocs.length - 1} document(s) remaining. Requirement status updated to "Pending".`
-      
+
       showToast(successMessage, 'success')
 
       // Keep modal open briefly to show success, then close
@@ -2903,7 +2903,7 @@ function DataRoomPageInner() {
         const result = await getCompanyDocuments(currentCompany.id)
         if (result.success && result.documents) {
           // Filter documents for this requirement
-          const history = result.documents.filter((doc: any) => 
+          const history = result.documents.filter((doc: any) =>
             doc.requirement_id === documentUploadModal.requirementId
           ).sort((a: any, b: any) => {
             const dateA = new Date(a.created_at || 0).getTime()
@@ -3080,11 +3080,10 @@ function DataRoomPageInner() {
         <div className="flex items-center gap-2 mb-4 sm:mb-8 overflow-x-auto pb-2 -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
-              activeTab === 'overview'
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'overview'
                 ? 'border-white/40 bg-white/10 text-white'
                 : 'border-white/20 bg-black text-white hover:text-white hover:border-white/40'
-            }`}
+              }`}
           >
             <svg
               width="16"
@@ -3106,11 +3105,10 @@ function DataRoomPageInner() {
           </button>
           <button
             onClick={() => setActiveTab('tracker')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
-              activeTab === 'tracker'
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'tracker'
                 ? 'border-white/40 bg-white/10 text-white'
                 : 'border-white/20 bg-black text-white hover:text-white hover:border-white/40'
-            }`}
+              }`}
           >
             <svg
               width="16"
@@ -3129,11 +3127,10 @@ function DataRoomPageInner() {
           </button>
           <button
             onClick={() => setActiveTab('documents')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
-              activeTab === 'documents'
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'documents'
                 ? 'border-white/40 bg-white/10 text-white'
                 : 'border-white/20 bg-black text-white hover:text-white hover:border-white/40'
-            }`}
+              }`}
           >
             <svg
               width="16"
@@ -3156,11 +3153,10 @@ function DataRoomPageInner() {
           </button>
           <button
             onClick={() => setActiveTab('reports')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
-              activeTab === 'reports'
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'reports'
                 ? 'border-white/40 bg-white/10 text-white'
                 : 'border-white/20 bg-black text-white hover:text-white hover:border-white/40'
-            }`}
+              }`}
           >
             <svg
               width="16"
@@ -3183,11 +3179,10 @@ function DataRoomPageInner() {
           </button>
           <button
             onClick={() => setActiveTab('notices')}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
-              activeTab === 'notices'
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'notices'
                 ? 'border-white/40 bg-white/10 text-white'
                 : 'border-white/20 bg-black text-white hover:text-white hover:border-white/40'
-            }`}
+              }`}
           >
             <svg
               width="16"
@@ -3209,11 +3204,10 @@ function DataRoomPageInner() {
           {countryCode === 'IN' && (
             <button
               onClick={() => setActiveTab('gst')}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
-                activeTab === 'gst'
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'gst'
                   ? 'border-white/40 bg-white/10 text-white'
                   : 'border-white/20 bg-black text-white hover:text-white hover:border-white/40'
-              }`}
+                }`}
             >
               <svg
                 width="16"
@@ -3246,26 +3240,26 @@ function DataRoomPageInner() {
                       width="16"
                       height="16"
                       className="sm:w-5 sm:h-5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
-                      stroke="white"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M14 2V8H20"
-                      stroke="white"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
+                        stroke="white"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M14 2V8H20"
+                        stroke="white"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
                   <h2 className="text-xl sm:text-2xl font-light text-white">Entity Details</h2>
                 </div>
                 <div className="sm:ml-auto w-full sm:w-auto">
@@ -3288,60 +3282,60 @@ function DataRoomPageInner() {
                   <p className="text-gray-400 text-sm sm:text-base">Loading company details...</p>
                 </div>
               ) : entityDetails ? (
-              <div className="space-y-3 sm:space-y-4">
-                {/* Company Name */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Company Name</label>
-                  <div className="text-white text-base sm:text-lg font-medium break-words">{entityDetails.companyName}</div>
-                </div>
+                <div className="space-y-3 sm:space-y-4">
+                  {/* Company Name */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                    <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Company Name</label>
+                    <div className="text-white text-base sm:text-lg font-medium break-words">{entityDetails.companyName}</div>
+                  </div>
 
-                {/* Type */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Type</label>
-                  <span className="inline-block bg-white text-black px-3 py-1 rounded-full text-xs sm:text-sm font-medium w-fit">
-                    {entityDetails.type}
-                  </span>
-                </div>
+                  {/* Type */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                    <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Type</label>
+                    <span className="inline-block bg-white text-black px-3 py-1 rounded-full text-xs sm:text-sm font-medium w-fit">
+                      {entityDetails.type}
+                    </span>
+                  </div>
 
-                {/* Reg Date */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Reg Date</label>
-                  <div className="text-white text-base sm:text-lg font-medium">{entityDetails.regDate}</div>
-                </div>
+                  {/* Reg Date */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                    <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Reg Date</label>
+                    <div className="text-white text-base sm:text-lg font-medium">{entityDetails.regDate}</div>
+                  </div>
 
-                {/* Tax ID (country-specific label) */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">{countryConfig.labels.taxId}</label>
-                  <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.taxId}</div>
-                </div>
+                  {/* Tax ID (country-specific label) */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                    <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">{countryConfig.labels.taxId}</label>
+                    <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.taxId}</div>
+                  </div>
 
-                {/* Registration ID (country-specific label) */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">{countryConfig.labels.registrationId}</label>
-                  <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.registrationId}</div>
-                </div>
+                  {/* Registration ID (country-specific label) */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                    <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">{countryConfig.labels.registrationId}</label>
+                    <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.registrationId}</div>
+                  </div>
 
-                {/* Address */}
-                <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-0.5">Address</label>
-                  <div className="text-white text-base sm:text-lg font-medium break-words flex-1">{entityDetails.address}</div>
-                </div>
+                  {/* Address */}
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
+                    <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-0.5">Address</label>
+                    <div className="text-white text-base sm:text-lg font-medium break-words flex-1">{entityDetails.address}</div>
+                  </div>
 
-                {/* Phone Number */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Phone Number</label>
-                  <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.phoneNumber}</div>
-                </div>
+                  {/* Phone Number */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                    <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Phone Number</label>
+                    <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.phoneNumber}</div>
+                  </div>
 
-                {/* Industry Category */}
-                <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-0.5">Industry Category</label>
-                  <div className="text-white text-base sm:text-lg font-medium break-words flex-1">{entityDetails.industryCategory}</div>
-                </div>
+                  {/* Industry Category */}
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
+                    <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-0.5">Industry Category</label>
+                    <div className="text-white text-base sm:text-lg font-medium break-words flex-1">{entityDetails.industryCategory}</div>
+                  </div>
 
-                {/* Directors */}
-                <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
-                  <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-1">Directors</label>
+                  {/* Directors */}
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
+                    <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-1">Directors</label>
                     <div className="flex-1 space-y-3 sm:space-y-4">
                       {/* Directors Dropdown */}
                       <div>
@@ -3357,19 +3351,18 @@ function DataRoomPageInner() {
                             </option>
                           ))}
                         </select>
-                  </div>
+                      </div>
 
                       {/* Director Profile */}
                       {selectedDirectorId && (() => {
                         const director = entityDetails.directors.find(d => d.id === selectedDirectorId)
                         if (!director) return null
-                        
+
                         return (
-                          <div className={`p-4 sm:p-6 bg-black border rounded-lg ${
-                            director.verified
+                          <div className={`p-4 sm:p-6 bg-black border rounded-lg ${director.verified
                               ? 'border-green-500/50 bg-green-500/5'
                               : 'border-white/10'
-                          }`}>
+                            }`}>
                             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-4">
                               <div className="flex-1">
                                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
@@ -3377,7 +3370,7 @@ function DataRoomPageInner() {
                                     <span className="text-white font-semibold text-base sm:text-lg">
                                       {director.firstName?.[0] || ''}{director.lastName?.[0] || ''}
                                     </span>
-                </div>
+                                  </div>
                                   <div className="flex-1 min-w-0">
                                     <h3 className="text-white font-semibold text-base sm:text-lg break-words">
                                       {director.firstName} {director.middleName} {director.lastName}
@@ -3385,7 +3378,7 @@ function DataRoomPageInner() {
                                     {director.designation && (
                                       <p className="text-gray-400 text-xs sm:text-sm break-words">{director.designation}</p>
                                     )}
-              </div>
+                                  </div>
                                   <div className="sm:ml-auto flex items-center gap-2 flex-shrink-0">
                                     {director.verified && (
                                       <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded flex items-center gap-1">
@@ -3533,7 +3526,7 @@ function DataRoomPageInner() {
             'quarterly': { total: 0, completed: 0, overdue: 0, pending: 0, notStarted: 0 },
             'annual': { total: 0, completed: 0, overdue: 0, pending: 0, notStarted: 0 }
           }
-          
+
           displayRequirements.forEach(req => {
             const type = (req.compliance_type || 'one-time') as 'one-time' | 'monthly' | 'quarterly' | 'annual'
             if (complianceTypeBreakdown[type]) {
@@ -3554,7 +3547,7 @@ function DataRoomPageInner() {
           const calculatePenalty = (penaltyStr: string | null, daysDelayed: number | null, penaltyBaseAmount?: number | null): string => {
             return calculatePenaltyMemoized(penaltyStr, daysDelayed, penaltyBaseAmount)
           }
-          
+
           // Legacy calculatePenalty function kept for reference but replaced above
           const _calculatePenaltyLegacyDashboard = (penaltyStr: string | null, daysDelayed: number | null): string => {
             if (daysDelayed === null || daysDelayed <= 0 || !penaltyStr || penaltyStr.trim() === '') {
@@ -3587,7 +3580,7 @@ function DataRoomPageInner() {
               const [dailyRateStr, maxCapStr] = penalty.split('|')
               const dailyRate = parseInt(dailyRateStr, 10)
               const maxCap = parseInt(maxCapStr, 10)
-              
+
               if (!isNaN(dailyRate) && dailyRate > 0) {
                 let calculated = dailyRate * daysDelayed
                 if (!isNaN(maxCap) && maxCap > 0) {
@@ -3633,7 +3626,7 @@ function DataRoomPageInner() {
             // Extract max cap if present (check BEFORE extracting daily rate)
             let maxCap: number | null = null
             const maxMatch = penalty.match(/(?:up\s*to\s*)?max\.?\s*Rs\.?\s*([\d,]+)/i)
-                if (maxMatch) {
+            if (maxMatch) {
               maxCap = parseFloat(maxMatch[1].replace(/,/g, ''))
             }
             // Also check for Lakh format: "Rs. 5 Lakh max"
@@ -3655,7 +3648,7 @@ function DataRoomPageInner() {
                 let calculated = dailyRate * daysDelayed
                 if (maxCap !== null && maxCap > 0) {
                   calculated = Math.min(calculated, maxCap)
-                  }
+                }
                 return formatCurrency(Math.round(calculated), countryCode)
               }
             }
@@ -3675,12 +3668,12 @@ function DataRoomPageInner() {
 
             // Try alternate formats - handle "50/day", "200/day", etc.
             // Use country-specific currency symbol
-            const altMatch = penalty.match(new RegExp(`(?:Rs\\.?\\s*|${currencySymbolEscaped}\\s*)([\\d,]+)\\s*\\/\\s*day`, 'i')) || 
-                            penalty.match(new RegExp(`${currencySymbolEscaped}\\s*([\\d,]+)\\s*(?:per\\s*day|\\/day)`, 'i')) ||
-                            penalty.match(/(\d+)\s*per\s*day/i) ||
-                            // Handle "50/day" format (without currency symbol)
-                            penalty.match(/^(\d+)\/day/i) ||
-                            penalty.match(/(\d+)\/day/i)
+            const altMatch = penalty.match(new RegExp(`(?:Rs\\.?\\s*|${currencySymbolEscaped}\\s*)([\\d,]+)\\s*\\/\\s*day`, 'i')) ||
+              penalty.match(new RegExp(`${currencySymbolEscaped}\\s*([\\d,]+)\\s*(?:per\\s*day|\\/day)`, 'i')) ||
+              penalty.match(/(\d+)\s*per\s*day/i) ||
+              // Handle "50/day" format (without currency symbol)
+              penalty.match(/^(\d+)\/day/i) ||
+              penalty.match(/(\d+)\/day/i)
             if (altMatch) {
               const dailyRate = parseFloat(altMatch[1].replace(/,/g, ''))
               if (!isNaN(dailyRate) && dailyRate > 0) {
@@ -3700,7 +3693,7 @@ function DataRoomPageInner() {
                 return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
               }
             }
-            
+
             // Handle "2%/month + 5/day" - extract daily rate after the +
             const interestPlusDailyMatch = penalty.match(/[\d.]+%[^+]*\+\s*(\d+)\/day/i)
             if (interestPlusDailyMatch) {
@@ -3909,49 +3902,49 @@ function DataRoomPageInner() {
             const nonCompliantRequirements: RegulatoryRequirement[] = Array.from(nonCompliantGroups.values()).map(group => {
               const req = group.representative
               return {
-              id: req.id,
+                id: req.id,
                 template_id: req.template_id ?? null,
-              company_id: currentCompany?.id || '',
-              category: req.category,
-              requirement: req.requirement,
-              description: null,
-              status: req.status as 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed',
-              due_date: req.dueDate,
-              penalty: req.penalty || null,
+                company_id: currentCompany?.id || '',
+                category: req.category,
+                requirement: req.requirement,
+                description: null,
+                status: req.status as 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed',
+                due_date: req.dueDate,
+                penalty: req.penalty || null,
                 penalty_config: null,
                 penalty_base_amount: null,
-              is_critical: req.isCritical || false,
-              financial_year: req.financial_year || null,
+                is_critical: req.isCritical || false,
+                financial_year: req.financial_year || null,
                 compliance_type: req.compliance_type || null,
                 filed_on: null,
                 filed_by: null,
                 status_reason: null,
                 required_documents: [],
                 possible_legal_action: null,
-              created_at: '',
-              updated_at: '',
-              created_by: null,
-              updated_by: null
+                created_at: '',
+                updated_at: '',
+                created_by: null,
+                updated_by: null
               }
             })
 
             // Enrich non-compliant items
             let enrichedData: EnrichedComplianceData[] = []
             if (nonCompliantRequirements.length > 0) {
-              setPdfGenerationProgress({ 
-                current: 0, 
-                total: nonCompliantRequirements.length, 
-                step: 'Enriching compliance data...' 
+              setPdfGenerationProgress({
+                current: 0,
+                total: nonCompliantRequirements.length,
+                step: 'Enriching compliance data...'
               })
-              
+
               // Call server action for enrichment (Tavily requires server-side execution)
               enrichedData = await enrichComplianceRequirements(nonCompliantRequirements)
-              
+
               // Update progress after enrichment completes
-              setPdfGenerationProgress({ 
-                current: nonCompliantRequirements.length, 
-                total: nonCompliantRequirements.length, 
-                step: 'Enrichment complete' 
+              setPdfGenerationProgress({
+                current: nonCompliantRequirements.length,
+                total: nonCompliantRequirements.length,
+                step: 'Enrichment complete'
               })
             }
 
@@ -3994,7 +3987,7 @@ function DataRoomPageInner() {
               const words = text.split(' ')
               const lines: string[] = []
               let currentLine = ''
-              
+
               words.forEach(word => {
                 const testLine = currentLine ? `${currentLine} ${word}` : word
                 const textWidth = doc.getTextWidth(testLine)
@@ -4081,10 +4074,10 @@ function DataRoomPageInner() {
             doc.text(`Scope: Overdue & pending (past due) compliances for the selected company.`, margin, footerBlockY + 20, { maxWidth: contentWidth })
             doc.text('Confidential — for internal use only.', margin, footerBlockY + 32, { maxWidth: contentWidth })
             doc.text(`Generated: ${coverDate}`, margin, footerBlockY + 44, { maxWidth: contentWidth })
-              
+
             // Page break to main content
-              doc.addPage()
-              yPos = margin
+            doc.addPage()
+            yPos = margin
 
             // Header
             doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
@@ -4095,9 +4088,9 @@ function DataRoomPageInner() {
             doc.text('Compliance Report', margin, 30, { maxWidth: contentWidth })
             doc.setFontSize(9)
             doc.setFont('helvetica', 'normal')
-            const generatedText = `Generated: ${new Date().toLocaleDateString('en-IN', { 
-              year: 'numeric', 
-              month: 'long', 
+            const generatedText = `Generated: ${new Date().toLocaleDateString('en-IN', {
+              year: 'numeric',
+              month: 'long',
               day: 'numeric',
               hour: '2-digit',
               minute: '2-digit'
@@ -4142,17 +4135,17 @@ function DataRoomPageInner() {
               const col = index % metricsPerRow
               const xPos = margin + (col * metricWidth) + (col * 20)
               const currentY = startY + (row * 25)
-              
+
               if (row > 0 && col === 0) {
                 checkNewPage(30)
               }
-              
+
               // Value (large number)
               doc.setFont('helvetica', 'bold')
               doc.setFontSize(20)
               doc.setTextColor(0, 0, 0)
               doc.text(metric.value, xPos, currentY, { maxWidth: metricWidth - 10 })
-              
+
               // Label (small text below)
               doc.setFont('helvetica', 'normal')
               doc.setFontSize(9)
@@ -4199,10 +4192,10 @@ function DataRoomPageInner() {
                 doc.addPage()
                 yPos = margin
               }
-              
+
               const percentage = totalCompliances > 0 ? (count / totalCompliances) * 100 : 0
               const statusLabel = status === 'notStarted' ? 'Not Started' : status.charAt(0).toUpperCase() + status.slice(1)
-              
+
               doc.text(`${statusLabel}:`, margin, yPos, { maxWidth: 60 })
               doc.setFont('helvetica', 'bold')
               doc.text(count.toString(), margin + 45, yPos, { maxWidth: 20 })
@@ -4210,7 +4203,7 @@ function DataRoomPageInner() {
               doc.setTextColor(textGray[0], textGray[1], textGray[2])
               doc.text(`(${Math.round(percentage)}%)`, margin + 60, yPos, { maxWidth: 30 })
               doc.setTextColor(0, 0, 0)
-              
+
               // Progress bar - ensure it fits within page
               const barStartX = margin + 95
               const barWidth = Math.min(80, pageWidth - barStartX - margin)
@@ -4219,7 +4212,7 @@ function DataRoomPageInner() {
               doc.rect(barStartX, yPos - 3, barWidth, barHeight, 'S')
               doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
               doc.rect(barStartX, yPos - 3, Math.min((barWidth * percentage) / 100, barWidth), barHeight, 'F')
-              
+
               yPos += lineHeight + 2
             })
 
@@ -4246,20 +4239,20 @@ function DataRoomPageInner() {
             sortedCategories.forEach(([category, count]) => {
               checkNewPage(10)
               const percentage = totalCompliances > 0 ? (count / totalCompliances) * 100 : 0
-              
+
               const categoryLines = splitText(category, 60, 10)
               categoryLines.forEach((line, idx) => {
                 doc.text(line, margin, yPos + (idx * 5), { maxWidth: 60 })
               })
               const textY = yPos + (categoryLines.length - 1) * 5
-              
+
               doc.setFont('helvetica', 'bold')
               doc.text(count.toString(), pageWidth - margin - 35, textY, { align: 'right', maxWidth: 20 })
               doc.setFont('helvetica', 'normal')
               doc.setTextColor(textGray[0], textGray[1], textGray[2])
               doc.text(`(${Math.round(percentage)}%)`, pageWidth - margin - 10, textY, { align: 'right', maxWidth: 25 })
               doc.setTextColor(0, 0, 0)
-              
+
               // Progress bar - ensure it fits
               const barStartX = margin + 65
               const barWidth = Math.min(70, pageWidth - barStartX - margin - 40)
@@ -4268,7 +4261,7 @@ function DataRoomPageInner() {
               doc.rect(barStartX, textY - 3, barWidth, barHeight, 'S')
               doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
               doc.rect(barStartX, textY - 3, Math.min((barWidth * percentage) / 100, barWidth), barHeight, 'F')
-              
+
               yPos += (categoryLines.length * lineHeight) + 2
             })
 
@@ -4295,7 +4288,7 @@ function DataRoomPageInner() {
                   doc.addPage()
                   yPos = margin
                 }
-                
+
                 // Compliance type labels: one-time (no recurring), annual (recurs annually)
                 const typeLabels: Record<string, string> = {
                   'one-time': 'One-time (No Recurring)',
@@ -4304,7 +4297,7 @@ function DataRoomPageInner() {
                   'quarterly': 'Quarterly (Recurring)'
                 }
                 const completionRate = data.total > 0 ? (data.completed / data.total) * 100 : 0
-                
+
                 doc.setFont('helvetica', 'bold')
                 doc.setFontSize(11)
                 doc.text(typeLabels[type] || type, margin, yPos)
@@ -4318,7 +4311,7 @@ function DataRoomPageInner() {
                 doc.setTextColor(textGray[0], textGray[1], textGray[2])
                 doc.text(`Completion: ${Math.round(completionRate)}%`, margin + 80, yPos + 18)
                 doc.setTextColor(0, 0, 0)
-                
+
                 yPos += 28
               })
 
@@ -4395,9 +4388,9 @@ function DataRoomPageInner() {
                 if (penalty.startsWith("'")) {
                   penalty = penalty.substring(1)
                 }
-                
+
                 const itemStartY = yPos
-                
+
                 // Item number and requirement name
                 doc.setFont('helvetica', 'bold')
                 doc.setFontSize(10)
@@ -4408,7 +4401,7 @@ function DataRoomPageInner() {
                   doc.text(line, margin, itemStartY + (idx * 5), { maxWidth: contentWidth * 0.55 })
                 })
                 const reqEndY = itemStartY + (reqLines.length - 1) * 5
-                
+
                 // Category and Due Date on separate lines
                 doc.setFont('helvetica', 'normal')
                 doc.setFontSize(8)
@@ -4417,11 +4410,11 @@ function DataRoomPageInner() {
                 doc.text(`Category: ${req.category}`, margin + 5, detailY, { maxWidth: contentWidth * 0.55 })
                 detailY += 5
                 doc.text(`Due Date: ${req.dueDate}`, margin + 5, detailY, { maxWidth: contentWidth * 0.55 })
-                
+
                 // Right column: Days Delayed and Penalty
                 const rightX = margin + contentWidth * 0.6
                 let rightY = reqEndY + 6
-                
+
                 if (delay !== null && delay > 0) {
                   doc.setTextColor(255, 0, 0)
                   doc.setFont('helvetica', 'bold')
@@ -4430,7 +4423,7 @@ function DataRoomPageInner() {
                   doc.setFont('helvetica', 'normal')
                   rightY += 5
                 }
-                
+
                 if (penalty !== '-' && !penalty.includes('Cannot calculate')) {
                   doc.setTextColor(255, 0, 0)
                   doc.setFont('helvetica', 'bold')
@@ -4443,17 +4436,17 @@ function DataRoomPageInner() {
                   doc.setFont('helvetica', 'normal')
                   rightY += (penaltyLines.length - 1) * 5
                 }
-                
+
                 // Calculate the maximum height used for this item
                 const leftHeight = detailY - itemStartY + 5
                 const rightHeight = rightY - reqEndY
                 const itemHeight = Math.max(leftHeight, rightHeight) + 5
-                
+
                 // Add a subtle line separator
                 doc.setDrawColor(lightGray[0], lightGray[1], lightGray[2])
                 doc.setLineWidth(0.5)
                 doc.line(margin, yPos + itemHeight, pageWidth - margin, yPos + itemHeight)
-                
+
                 yPos += itemHeight + 3
               })
 
@@ -4501,7 +4494,7 @@ function DataRoomPageInner() {
               doc.setTextColor(255, 255, 255)
               doc.setFontSize(7)
               doc.setFont('helvetica', 'bold')
-              
+
               let headerX = margin + 2
               doc.text('Requirement', headerX, yPos + 4.5, { maxWidth: colWidths.requirement - 4 })
               headerX += colWidths.requirement
@@ -4535,7 +4528,7 @@ function DataRoomPageInner() {
                   penaltyLines.length * 4,
                   financialLines.length * 4
                 ) + 4
-                
+
                 // Check if row fits on current page
                 checkNewPage(estimatedRowHeight)
 
@@ -4597,7 +4590,7 @@ function DataRoomPageInner() {
                 doc.line(margin, yPos + maxHeight + 2, pageWidth - margin, yPos + maxHeight + 2)
 
                 yPos += maxHeight + 4
-                
+
                 // Final safety check - ensure we haven't exceeded footer area
                 if (yPos > maxContentY) {
                   doc.addPage()
@@ -4625,7 +4618,7 @@ function DataRoomPageInner() {
                 const repLines = splitText(enriched.businessImpact.reputation, contentWidth - 10, 8)
                 const opsLines = splitText(enriched.businessImpact.operations, contentWidth - 10, 8)
                 const estimatedHeight = 6 + 5 + repLines.length * 4 + 3 + 5 + opsLines.length * 4 + 5
-                
+
                 // Check if content fits on current page
                 if (yPos + estimatedHeight > maxContentY) {
                   doc.addPage()
@@ -4682,7 +4675,7 @@ function DataRoomPageInner() {
                 yPos += opsLines.length * 4 + 5
 
                 doc.setTextColor(0, 0, 0)
-                
+
                 // Final safety check
                 if (yPos > maxContentY) {
                   doc.addPage()
@@ -4783,14 +4776,14 @@ function DataRoomPageInner() {
             // Save PDF
             const fileName = `compliance-report-${currentCompany?.name || 'company'}-${new Date().toISOString().split('T')[0]}.pdf`
             doc.save(fileName)
-            
+
             // Track report download
             if (user?.id && currentCompany?.id) {
               await trackReportDownload(user.id, currentCompany.id, 'compliance_pdf').catch(err => {
                 console.error('Failed to track report download:', err)
               })
             }
-            
+
             setIsGeneratingEnhancedPDF(false)
             setPdfGenerationProgress({ current: 0, total: 0, step: '' })
           }
@@ -4798,7 +4791,7 @@ function DataRoomPageInner() {
           return (
             <div className="space-y-4 sm:space-y-6">
               {/* Header */}
-                  <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-3 sm:mb-4">
                   <h2 className="text-xl sm:text-2xl font-light text-white">Compliance Reports</h2>
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
@@ -4819,11 +4812,11 @@ function DataRoomPageInner() {
                       ) : (
                         <>
                           <svg width="14" height="14" className="sm:w-4 sm:h-4 hidden sm:inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                  <line x1="16" y1="13" x2="8" y2="13" />
-                  <line x1="16" y1="17" x2="8" y2="17" />
-                </svg>
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <line x1="16" y1="13" x2="8" y2="13" />
+                            <line x1="16" y1="17" x2="8" y2="17" />
+                          </svg>
                           <span className="hidden sm:inline">Export PDF Report</span>
                           <span className="sm:hidden">Export PDF</span>
                         </>
@@ -4857,7 +4850,7 @@ function DataRoomPageInner() {
                         <span className="sm:hidden">Overdue CSV</span>
                       </button>
                     )}
-              </div>
+                  </div>
                   {isGeneratingEnhancedPDF && (
                     <div className="mt-4 p-4 bg-white/5 border border-white/40/30 rounded-lg">
                       <div className="flex items-center gap-3">
@@ -4876,9 +4869,9 @@ function DataRoomPageInner() {
                       </div>
                       <div className="mt-2 text-xs text-gray-400">
                         This may take a few moments as we research legal sections and analyze business impact...
-            </div>
-          </div>
-        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <p className="text-gray-400 text-sm sm:text-base">Comprehensive compliance analytics and insights</p>
               </div>
@@ -4886,7 +4879,7 @@ function DataRoomPageInner() {
               {/* Statistics Overview */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {/* Total Compliances */}
-                  <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <h3 className="text-base sm:text-lg font-medium text-gray-300">Total Compliances</h3>
                     <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -4901,7 +4894,7 @@ function DataRoomPageInner() {
                 </div>
 
                 {/* Completed */}
-                  <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <h3 className="text-base sm:text-lg font-medium text-gray-300">Completed</h3>
                     <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -4917,7 +4910,7 @@ function DataRoomPageInner() {
                 </div>
 
                 {/* Overdue */}
-                  <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <h3 className="text-base sm:text-lg font-medium text-gray-300">Overdue</h3>
                     <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -4935,7 +4928,7 @@ function DataRoomPageInner() {
                 </div>
 
                 {/* Pending */}
-                  <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <h3 className="text-base sm:text-lg font-medium text-gray-300">Pending</h3>
                     <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -4951,7 +4944,7 @@ function DataRoomPageInner() {
                 </div>
 
                 {/* Not Started */}
-                  <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <h3 className="text-base sm:text-lg font-medium text-gray-300">Not Started</h3>
                     <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -4966,46 +4959,46 @@ function DataRoomPageInner() {
                   <p className="text-xs sm:text-sm text-gray-400">Awaiting action</p>
                 </div>
 
-              {/* Compliance Score */}
-                  <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
-                  <h3 className="text-base sm:text-lg font-medium text-gray-300">Compliance Score</h3>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setIsComplianceScoreModalOpen(true)}
-                      className="text-gray-400 hover:text-white transition-colors"
-                      title="Learn more about compliance score"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="16" x2="12" y2="12" />
-                        <line x1="12" y1="8" x2="12.01" y2="8" />
-                      </svg>
-                    </button>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg width="20" height="20" className="sm:w-6 sm:h-6 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                        <path d="M2 17l10 5 10-5" />
-                        <path d="M2 12l10 5 10-5" />
-                      </svg>
+                {/* Compliance Score */}
+                <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <h3 className="text-base sm:text-lg font-medium text-gray-300">Compliance Score</h3>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setIsComplianceScoreModalOpen(true)}
+                        className="text-gray-400 hover:text-white transition-colors"
+                        title="Learn more about compliance score"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="12" y1="16" x2="12" y2="12" />
+                          <line x1="12" y1="8" x2="12.01" y2="8" />
+                        </svg>
+                      </button>
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <svg width="20" height="20" className="sm:w-6 sm:h-6 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                          <path d="M2 17l10 5 10-5" />
+                          <path d="M2 12l10 5 10-5" />
+                        </svg>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-baseline gap-2 mb-1">
-                  <div className="text-2xl sm:text-3xl font-light text-white">
-                    {totalCompliances === 0 ? '—' : `${complianceScore}`}
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <div className="text-2xl sm:text-3xl font-light text-white">
+                      {totalCompliances === 0 ? '—' : `${complianceScore}`}
+                    </div>
+                    {totalCompliances > 0 && (
+                      <div className="text-xs sm:text-sm text-gray-400">/ 100</div>
+                    )}
                   </div>
-                  {totalCompliances > 0 && (
-                    <div className="text-xs sm:text-sm text-gray-400">/ 100</div>
-                  )}
+                  <p className="text-xs sm:text-sm text-gray-400">
+                    Overall compliance health based on completion and overdue items
+                  </p>
                 </div>
-                <p className="text-xs sm:text-sm text-gray-400">
-                  Overall compliance health based on completion and overdue items
-                </p>
-              </div>
 
-              {/* Total Penalty */}
-                  <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                {/* Total Penalty */}
+                <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <h3 className="text-base sm:text-lg font-medium text-gray-300">Total Penalty</h3>
                     <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -5024,7 +5017,7 @@ function DataRoomPageInner() {
               </div>
 
               {/* Status Breakdown Chart */}
-                  <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                 <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Status Breakdown</h3>
                 <div className="space-y-3 sm:space-y-4">
                   {Object.entries(statusBreakdown).map(([status, count]) => {
@@ -5038,7 +5031,7 @@ function DataRoomPageInner() {
                     }
                     const colors = statusColors[status] || statusColors.notStarted
                     const statusLabel = status === 'notStarted' ? 'Not Started' : status.charAt(0).toUpperCase() + status.slice(1)
-                    
+
                     return (
                       <div key={status}>
                         <div className="flex items-center justify-between mb-1.5 sm:mb-2">
@@ -5058,7 +5051,7 @@ function DataRoomPageInner() {
               </div>
 
               {/* Category Breakdown */}
-                  <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                 <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Category Breakdown</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   {Object.entries(categoryBreakdown)
@@ -5085,7 +5078,7 @@ function DataRoomPageInner() {
               </div>
 
               {/* Compliance Type Breakdown */}
-                  <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+              <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                 <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Compliance Type Breakdown</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                   {Object.entries(complianceTypeBreakdown)
@@ -5106,7 +5099,7 @@ function DataRoomPageInner() {
                       }
                       const colors = typeColors[type] || typeColors['one-time']
                       const completionRate = data.total > 0 ? (data.completed / data.total) * 100 : 0
-                      
+
                       return (
                         <div key={type} className={`border ${colors.border} rounded-lg p-3 sm:p-4 ${colors.bg}`}>
                           <div className="flex items-center justify-between mb-2 sm:mb-3">
@@ -5151,7 +5144,7 @@ function DataRoomPageInner() {
 
               {/* Financial Year Breakdown */}
               {Object.keys(fyBreakdown).length > 0 && (
-                  <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Financial Year Breakdown</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     {Object.entries(fyBreakdown)
@@ -5176,7 +5169,7 @@ function DataRoomPageInner() {
 
               {/* Overdue Compliances Detail */}
               {overdueCompliances.length > 0 && (
-                  <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
                     <h3 className="text-lg sm:text-xl font-light text-white">Overdue Compliances</h3>
                     <span className="px-2 sm:px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-xs sm:text-sm font-medium w-fit">
@@ -5305,13 +5298,13 @@ function DataRoomPageInner() {
                     <option key={category} value={category}>{category}</option>
                   ))}
                 </select>
-                <button 
+                <button
                   onClick={() => setIsAddNoticeModalOpen(true)}
                   className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 5v14M5 12h14" />
-                </svg>
+                  </svg>
                   Add Notice
                 </button>
               </div>
@@ -5327,7 +5320,7 @@ function DataRoomPageInner() {
                       <line x1="12" y1="8" x2="12" y2="12" />
                       <line x1="12" y1="16" x2="12.01" y2="16" />
                     </svg>
-          </div>
+                  </div>
                   <div>
                     <p className="text-2xl font-light text-white">{demoNotices.filter(n => n.status === 'pending').length}</p>
                     <p className="text-gray-400 text-xs">Pending Response</p>
@@ -5387,29 +5380,26 @@ function DataRoomPageInner() {
                   <div
                     key={notice.id}
                     onClick={() => setSelectedNotice(notice)}
-                    className={`bg-black border rounded-xl p-4 cursor-pointer transition-all hover:border-white/40/50 ${
-                      selectedNotice?.id === notice.id ? 'border-white/40' : 'border-white/10'
-                    }`}
+                    className={`bg-black border rounded-xl p-4 cursor-pointer transition-all hover:border-white/40/50 ${selectedNotice?.id === notice.id ? 'border-white/40' : 'border-white/10'
+                      }`}
                   >
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          notice.type === 'Income Tax' ? 'bg-blue-500/20 text-blue-400' :
-                          notice.type === 'GST' ? 'bg-green-500/20 text-green-400' :
-                          notice.type === 'MCA/RoC' ? 'bg-purple-500/20 text-purple-400' :
-                          'bg-gray-500/20 text-white'
-                        }`}>
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${notice.type === 'Income Tax' ? 'bg-blue-500/20 text-blue-400' :
+                            notice.type === 'GST' ? 'bg-green-500/20 text-green-400' :
+                              notice.type === 'MCA/RoC' ? 'bg-purple-500/20 text-purple-400' :
+                                'bg-gray-500/20 text-white'
+                          }`}>
                           {notice.type}
                         </span>
                         {notice.priority === 'critical' && (
                           <span className="px-2 py-0.5 bg-red-500/20 text-red-400 rounded text-xs">Critical</span>
                         )}
                       </div>
-                      <span className={`px-2 py-0.5 rounded text-xs ${
-                        notice.status === 'pending' ? 'bg-red-500/20 text-red-400' :
-                        notice.status === 'responded' ? 'bg-yellow-500/20 text-yellow-400' :
-                        'bg-green-500/20 text-green-400'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded text-xs ${notice.status === 'pending' ? 'bg-red-500/20 text-red-400' :
+                          notice.status === 'responded' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-green-500/20 text-green-400'
+                        }`}>
                         {notice.status.charAt(0).toUpperCase() + notice.status.slice(1)}
                       </span>
                     </div>
@@ -5428,232 +5418,229 @@ function DataRoomPageInner() {
                   // Detect notice type metadata
                   const noticeMetadata = detectNoticeType(selectedNotice.subject || selectedNotice.id || selectedNotice.subType || '')
                   const authority = getAuthorityForCategory(selectedNotice.type || '')
-                  
-                  return (
-                  <div className="bg-black border border-white/10 rounded-2xl overflow-hidden">
-                    {/* Detail Header */}
-                    <div className="bg-black p-6 border-b border-white/10">
-                      <div className="flex items-start justify-between gap-4 mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                            selectedNotice.type === 'Income Tax' ? 'bg-blue-500/20' :
-                            selectedNotice.type === 'GST' ? 'bg-green-500/20' :
-                            selectedNotice.type === 'MCA/RoC' ? 'bg-purple-500/20' :
-                            'bg-gray-500/20'
-                          }`}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={
-                              selectedNotice.type === 'Income Tax' ? '#3B82F6' :
-                              selectedNotice.type === 'GST' ? '#22C55E' :
-                              selectedNotice.type === 'MCA/RoC' ? '#A855F7' :
-                              '#9CA3AF'
-                            } strokeWidth="2">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                              <polyline points="14 2 14 8 20 8" />
-                              <line x1="16" y1="13" x2="8" y2="13" />
-                              <line x1="16" y1="17" x2="8" y2="17" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-gray-400 text-sm">{selectedNotice.id}</p>
-                            <h3 className="text-white text-lg font-medium">{selectedNotice.subType}</h3>
-                          </div>
-                        </div>
-                        <span className={`px-3 py-1 rounded-lg text-sm font-medium ${
-                          selectedNotice.status === 'pending' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                          selectedNotice.status === 'responded' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
-                          'bg-green-500/20 text-green-400 border border-green-500/30'
-                        }`}>
-                          {selectedNotice.status.charAt(0).toUpperCase() + selectedNotice.status.slice(1)}
-                        </span>
-                      </div>
-                      
-                      {/* Notice Metadata Badges */}
-                      {noticeMetadata && (
-                        <div className="flex flex-wrap items-center gap-2 mb-3">
-                          <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-medium">
-                            {noticeMetadata.type}
-                          </span>
-                          {noticeMetadata.priority && (
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${
-                              noticeMetadata.priority === 'high' ? 'bg-red-500/20 text-red-400' :
-                              noticeMetadata.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
-                              'bg-gray-500/20 text-gray-400'
-                            }`}>
-                              {noticeMetadata.priority.toUpperCase()} Priority
-                            </span>
-                          )}
-                          {noticeMetadata.formCode && (
-                            <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs font-medium">
-                              {noticeMetadata.formCode}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      
-                      <h2 className="text-white text-xl mb-2">{selectedNotice.subject}</h2>
-                      <div className="flex flex-wrap items-center gap-4 text-sm">
-                        {noticeMetadata?.section ? (
-                          <span className="text-gray-400">
-                            <span className="text-gray-500">Legal Section:</span> <span className="text-white">{noticeMetadata.section}</span>
-                          </span>
-                        ) : selectedNotice.section ? (
-                          <span className="text-gray-400">
-                            <span className="text-gray-500">Section:</span> {selectedNotice.section}
-                          </span>
-                        ) : null}
-                        {authority && (
-                          <span className="text-gray-400">
-                            <span className="text-gray-500">Authority:</span> <span className="text-white">{authority}</span>
-                          </span>
-                        )}
-                        <span className="text-gray-400">
-                          <span className="text-gray-500">Issued:</span> {new Date(selectedNotice.issuedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
-                        </span>
-                        <span className={`${new Date(selectedNotice.dueDate) < new Date() && selectedNotice.status === 'pending' ? 'text-red-400' : 'text-gray-400'}`}>
-                          <span className="text-gray-500">Due:</span> {new Date(selectedNotice.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
-                        </span>
-                      </div>
-                    </div>
 
-                    {/* Detail Body */}
-                    <div className="p-6 space-y-6">
-                      {/* Notice Type Description */}
-                      {noticeMetadata?.description && (
+                  return (
+                    <div className="bg-black border border-white/10 rounded-2xl overflow-hidden">
+                      {/* Detail Header */}
+                      <div className="bg-black p-6 border-b border-white/10">
+                        <div className="flex items-start justify-between gap-4 mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${selectedNotice.type === 'Income Tax' ? 'bg-blue-500/20' :
+                                selectedNotice.type === 'GST' ? 'bg-green-500/20' :
+                                  selectedNotice.type === 'MCA/RoC' ? 'bg-purple-500/20' :
+                                    'bg-gray-500/20'
+                              }`}>
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={
+                                selectedNotice.type === 'Income Tax' ? '#3B82F6' :
+                                  selectedNotice.type === 'GST' ? '#22C55E' :
+                                    selectedNotice.type === 'MCA/RoC' ? '#A855F7' :
+                                      '#9CA3AF'
+                              } strokeWidth="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                                <line x1="16" y1="13" x2="8" y2="13" />
+                                <line x1="16" y1="17" x2="8" y2="17" />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="text-gray-400 text-sm">{selectedNotice.id}</p>
+                              <h3 className="text-white text-lg font-medium">{selectedNotice.subType}</h3>
+                            </div>
+                          </div>
+                          <span className={`px-3 py-1 rounded-lg text-sm font-medium ${selectedNotice.status === 'pending' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                              selectedNotice.status === 'responded' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                                'bg-green-500/20 text-green-400 border border-green-500/30'
+                            }`}>
+                            {selectedNotice.status.charAt(0).toUpperCase() + selectedNotice.status.slice(1)}
+                          </span>
+                        </div>
+
+                        {/* Notice Metadata Badges */}
+                        {noticeMetadata && (
+                          <div className="flex flex-wrap items-center gap-2 mb-3">
+                            <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-medium">
+                              {noticeMetadata.type}
+                            </span>
+                            {noticeMetadata.priority && (
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${noticeMetadata.priority === 'high' ? 'bg-red-500/20 text-red-400' :
+                                  noticeMetadata.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                                    'bg-gray-500/20 text-gray-400'
+                                }`}>
+                                {noticeMetadata.priority.toUpperCase()} Priority
+                              </span>
+                            )}
+                            {noticeMetadata.formCode && (
+                              <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs font-medium">
+                                {noticeMetadata.formCode}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        <h2 className="text-white text-xl mb-2">{selectedNotice.subject}</h2>
+                        <div className="flex flex-wrap items-center gap-4 text-sm">
+                          {noticeMetadata?.section ? (
+                            <span className="text-gray-400">
+                              <span className="text-gray-500">Legal Section:</span> <span className="text-white">{noticeMetadata.section}</span>
+                            </span>
+                          ) : selectedNotice.section ? (
+                            <span className="text-gray-400">
+                              <span className="text-gray-500">Section:</span> {selectedNotice.section}
+                            </span>
+                          ) : null}
+                          {authority && (
+                            <span className="text-gray-400">
+                              <span className="text-gray-500">Authority:</span> <span className="text-white">{authority}</span>
+                            </span>
+                          )}
+                          <span className="text-gray-400">
+                            <span className="text-gray-500">Issued:</span> {new Date(selectedNotice.issuedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          </span>
+                          <span className={`${new Date(selectedNotice.dueDate) < new Date() && selectedNotice.status === 'pending' ? 'text-red-400' : 'text-gray-400'}`}>
+                            <span className="text-gray-500">Due:</span> {new Date(selectedNotice.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Detail Body */}
+                      <div className="p-6 space-y-6">
+                        {/* Notice Type Description */}
+                        {noticeMetadata?.description && (
+                          <div>
+                            <h4 className="text-gray-400 text-sm font-medium mb-2">Notice Type Information</h4>
+                            <p className="text-white text-sm leading-relaxed bg-blue-500/10 border border-blue-500/20 p-4 rounded-lg">
+                              {noticeMetadata.description}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Description */}
                         <div>
-                          <h4 className="text-gray-400 text-sm font-medium mb-2">Notice Type Information</h4>
-                          <p className="text-white text-sm leading-relaxed bg-blue-500/10 border border-blue-500/20 p-4 rounded-lg">
-                            {noticeMetadata.description}
+                          <h4 className="text-gray-400 text-sm font-medium mb-2">Notice Description</h4>
+                          <p className="text-white text-sm leading-relaxed bg-black border border-white/10 p-4 rounded-lg">
+                            {selectedNotice.description}
                           </p>
                         </div>
-                      )}
-                      
-                      {/* Description */}
-                      <div>
-                        <h4 className="text-gray-400 text-sm font-medium mb-2">Notice Description</h4>
-                        <p className="text-white text-sm leading-relaxed bg-black border border-white/10 p-4 rounded-lg">
-                          {selectedNotice.description}
-                        </p>
-                      </div>
 
-                      {/* Required Documents */}
-                      <div>
-                        <h4 className="text-gray-400 text-sm font-medium mb-2">Required Documents</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedNotice.documents.map((doc: string, idx: number) => (
-                            <span key={idx} className="px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg text-sm flex items-center gap-2">
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        {/* Required Documents */}
+                        <div>
+                          <h4 className="text-gray-400 text-sm font-medium mb-2">Required Documents</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedNotice.documents.map((doc: string, idx: number) => (
+                              <span key={idx} className="px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg text-sm flex items-center gap-2">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                  <polyline points="14 2 14 8 20 8" />
+                                </svg>
+                                {doc}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Timeline */}
+                        <div>
+                          <h4 className="text-gray-400 text-sm font-medium mb-3">Activity Timeline</h4>
+                          <div className="space-y-3">
+                            {selectedNotice.timeline.map((event: any, idx: number) => (
+                              <div key={idx} className="flex items-start gap-3">
+                                <div className="flex flex-col items-center">
+                                  <div className={`w-3 h-3 rounded-full ${idx === 0 ? 'bg-white' : 'bg-gray-600'}`}></div>
+                                  {idx < selectedNotice.timeline.length - 1 && (
+                                    <div className="w-0.5 h-8 bg-gray-700"></div>
+                                  )}
+                                </div>
+                                <div className="flex-1 pb-2">
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-white text-sm">{event.action}</p>
+                                    <span className="text-gray-500 text-xs">{new Date(event.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                                  </div>
+                                  <p className="text-gray-500 text-xs">by {event.by}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Response Section (only for pending notices) */}
+                        {selectedNotice.status === 'pending' && (
+                          <div className="border-t border-white/10 pt-6">
+                            <h4 className="text-gray-400 text-sm font-medium mb-3">Submit Response</h4>
+                            <textarea
+                              value={noticeResponse}
+                              onChange={(e) => setNoticeResponse(e.target.value)}
+                              placeholder="Enter your response or remarks..."
+                              rows={4}
+                              className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors resize-none"
+                            />
+                            <div className="flex items-center justify-between mt-4">
+                              <button className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                                </svg>
+                                Attach Documents
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  setIsSubmittingResponse(true)
+                                  await new Promise(resolve => setTimeout(resolve, 1500))
+                                  setSelectedNotice({ ...selectedNotice, status: 'responded', timeline: [...selectedNotice.timeline, { date: new Date().toISOString().split('T')[0], action: 'Response Submitted', by: 'You' }] })
+                                  setNoticeResponse('')
+                                  setIsSubmittingResponse(false)
+                                }}
+                                disabled={isSubmittingResponse || !noticeResponse.trim()}
+                                className="px-6 py-2 bg-white text-black rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {isSubmittingResponse ? (
+                                  <>
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    Submitting...
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <line x1="22" y1="2" x2="11" y2="13" />
+                                      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                                    </svg>
+                                    Submit Response
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Actions for responded/resolved notices */}
+                        {selectedNotice.status !== 'pending' && (
+                          <div className="border-t border-white/10 pt-6 flex items-center gap-3">
+                            <button className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                              </svg>
+                              Download Notice
+                            </button>
+                            <button className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                                 <polyline points="14 2 14 8 20 8" />
                               </svg>
-                              {doc}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Timeline */}
-                      <div>
-                        <h4 className="text-gray-400 text-sm font-medium mb-3">Activity Timeline</h4>
-                        <div className="space-y-3">
-                          {selectedNotice.timeline.map((event: any, idx: number) => (
-                            <div key={idx} className="flex items-start gap-3">
-                              <div className="flex flex-col items-center">
-                                <div className={`w-3 h-3 rounded-full ${idx === 0 ? 'bg-white' : 'bg-gray-600'}`}></div>
-                                {idx < selectedNotice.timeline.length - 1 && (
-                                  <div className="w-0.5 h-8 bg-gray-700"></div>
-                                )}
-                              </div>
-                              <div className="flex-1 pb-2">
-                                <div className="flex items-center justify-between">
-                                  <p className="text-white text-sm">{event.action}</p>
-                                  <span className="text-gray-500 text-xs">{new Date(event.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
-                                </div>
-                                <p className="text-gray-500 text-xs">by {event.by}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Response Section (only for pending notices) */}
-                      {selectedNotice.status === 'pending' && (
-                        <div className="border-t border-white/10 pt-6">
-                          <h4 className="text-gray-400 text-sm font-medium mb-3">Submit Response</h4>
-                          <textarea
-                            value={noticeResponse}
-                            onChange={(e) => setNoticeResponse(e.target.value)}
-                            placeholder="Enter your response or remarks..."
-                            rows={4}
-                            className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors resize-none"
-                          />
-                          <div className="flex items-center justify-between mt-4">
-                            <button className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                              </svg>
-                              Attach Documents
+                              View Response
                             </button>
-                            <button
-                              onClick={async () => {
-                                setIsSubmittingResponse(true)
-                                await new Promise(resolve => setTimeout(resolve, 1500))
-                                setSelectedNotice({ ...selectedNotice, status: 'responded', timeline: [...selectedNotice.timeline, { date: new Date().toISOString().split('T')[0], action: 'Response Submitted', by: 'You' }] })
-                                setNoticeResponse('')
-                                setIsSubmittingResponse(false)
-                              }}
-                              disabled={isSubmittingResponse || !noticeResponse.trim()}
-                              className="px-6 py-2 bg-white text-black rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {isSubmittingResponse ? (
-                                <>
-                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                  Submitting...
-                                </>
-                              ) : (
-                                <>
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <line x1="22" y1="2" x2="11" y2="13" />
-                                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                                  </svg>
-                                  Submit Response
-                                </>
-                              )}
-                            </button>
+                            {selectedNotice.status === 'responded' && (
+                              <button className="px-4 py-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors flex items-center gap-2 text-sm">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                  <polyline points="22 4 12 14.01 9 11.01" />
+                                </svg>
+                                Mark as Resolved
+                              </button>
+                            )}
                           </div>
-                        </div>
-                      )}
-
-                      {/* Actions for responded/resolved notices */}
-                      {selectedNotice.status !== 'pending' && (
-                        <div className="border-t border-white/10 pt-6 flex items-center gap-3">
-                          <button className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                              <polyline points="7 10 12 15 17 10" />
-                              <line x1="12" y1="15" x2="12" y2="3" />
-                            </svg>
-                            Download Notice
-                          </button>
-                          <button className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                              <polyline points="14 2 14 8 20 8" />
-                            </svg>
-                            View Response
-                          </button>
-                          {selectedNotice.status === 'responded' && (
-                            <button className="px-4 py-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors flex items-center gap-2 text-sm">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                                <polyline points="22 4 12 14.01 9 11.01" />
-                              </svg>
-                              Mark as Resolved
-                            </button>
-                          )}
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
                   )
                 })() : (
                   <div className="bg-black border border-white/10 rounded-2xl h-full flex flex-col items-center justify-center py-20">
@@ -5727,14 +5714,14 @@ function DataRoomPageInner() {
                       {countryConfig?.compliance?.defaultCategories?.map(category => (
                         <option key={category} value={category}>{category}</option>
                       )) || (
-                        <>
-                      <option value="Income Tax">Income Tax</option>
-                      <option value="GST">GST</option>
-                      <option value="MCA/RoC">MCA/RoC</option>
-                      <option value="Labour Law">Labour Law</option>
-                      <option value="Other">Other</option>
-                        </>
-                      )}
+                          <>
+                            <option value="Income Tax">Income Tax</option>
+                            <option value="GST">GST</option>
+                            <option value="MCA/RoC">MCA/RoC</option>
+                            <option value="Labour Law">Labour Law</option>
+                            <option value="Other">Other</option>
+                          </>
+                        )}
                     </select>
                   </div>
 
@@ -6010,15 +5997,15 @@ function DataRoomPageInner() {
                   <button
                     onClick={async () => {
                       // Validation
-                      if (!newNoticeForm.type || !newNoticeForm.subType || !newNoticeForm.section || 
-                          !newNoticeForm.subject || !newNoticeForm.issuedBy || !newNoticeForm.issuedDate || 
-                          !newNoticeForm.dueDate || !newNoticeForm.description) {
+                      if (!newNoticeForm.type || !newNoticeForm.subType || !newNoticeForm.section ||
+                        !newNoticeForm.subject || !newNoticeForm.issuedBy || !newNoticeForm.issuedDate ||
+                        !newNoticeForm.dueDate || !newNoticeForm.description) {
                         alert('Please fill in all required fields')
                         return
                       }
 
                       setIsSubmittingNotice(true)
-                      
+
                       // Simulate API call
                       await new Promise(resolve => setTimeout(resolve, 1500))
 
@@ -6046,7 +6033,7 @@ function DataRoomPageInner() {
 
                       // Add to notices list
                       setDemoNotices([newNotice, ...demoNotices])
-                      
+
                       // Select the new notice
                       setSelectedNotice(newNotice)
 
@@ -6097,18 +6084,18 @@ function DataRoomPageInner() {
           const formFreq = getFormFrequency(req.requirement)
           const legalSections = getRelevantLegalSections(req.requirement, req.category)
           const authority = getAuthorityForCategory(req.category)
-          
+
           // Get all relevant forms for this category (country-aware)
           const categoryForms = countryConfig?.regulatory?.commonForms?.filter(form => {
             const formLower = form.toLowerCase()
             const categoryLower = req.category.toLowerCase()
-            
+
             if (countryCode === 'IN') {
               // India-specific patterns
-            if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
-            if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
-            if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
-            if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
+              if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
+              if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
+              if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
+              if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
             } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
               // GCC countries
               if ((categoryLower === 'vat' || categoryLower === 'tax') && (formLower.includes('vat') || formLower.includes('tax return') || formLower.includes('corporate tax') || formLower.includes('zakat'))) return true
@@ -6118,12 +6105,12 @@ function DataRoomPageInner() {
               if ((categoryLower === 'federal tax' || categoryLower === 'state tax') && (formLower.includes('tax') || formLower.includes('return') || formLower.includes('ein'))) return true
               if (categoryLower === 'business license' && (formLower.includes('license') || formLower.includes('registration') || formLower.includes('report'))) return true
             }
-            
+
             return false
           }) || []
-          
+
           const formFrequency = countryConfig?.regulatory?.formFrequencies
-          
+
           return (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
               <div className="bg-black border border-white/10 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -6166,24 +6153,22 @@ function DataRoomPageInner() {
                       </div>
                       <div className="flex items-start justify-between">
                         <span className="text-gray-400">Status:</span>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          req.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                          req.status === 'overdue' ? 'bg-red-500/20 text-red-400' :
-                          req.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                          'bg-gray-500/20 text-gray-400'
-                        }`}>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${req.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                            req.status === 'overdue' ? 'bg-red-500/20 text-red-400' :
+                              req.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                                'bg-gray-500/20 text-gray-400'
+                          }`}>
                           {req.status.toUpperCase()}
                         </span>
                       </div>
                       {formFreq && (
                         <div className="flex items-start justify-between">
                           <span className="text-gray-400">Filing Frequency:</span>
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            formFreq === 'monthly' ? 'bg-blue-500/20 text-blue-400' :
-                            formFreq === 'quarterly' ? 'bg-purple-500/20 text-purple-400' :
-                            formFreq === 'annual' ? 'bg-green-500/20 text-green-400' :
-                            'bg-gray-500/20 text-gray-400'
-                          }`}>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${formFreq === 'monthly' ? 'bg-blue-500/20 text-blue-400' :
+                              formFreq === 'quarterly' ? 'bg-purple-500/20 text-purple-400' :
+                                formFreq === 'annual' ? 'bg-green-500/20 text-green-400' :
+                                  'bg-gray-500/20 text-gray-400'
+                            }`}>
                             {formFreq.toUpperCase()}
                           </span>
                         </div>
@@ -6228,12 +6213,11 @@ function DataRoomPageInner() {
                           <div key={form} className="flex items-center justify-between p-2 bg-gray-800 rounded border border-gray-700">
                             <span className="text-white text-sm">{form}</span>
                             {formFrequency?.[form] && (
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
-                                formFrequency[form] === 'monthly' ? 'bg-blue-500/20 text-blue-400' :
-                                formFrequency[form] === 'quarterly' ? 'bg-purple-500/20 text-purple-400' :
-                                formFrequency[form] === 'annual' ? 'bg-green-500/20 text-green-400' :
-                                'bg-gray-500/20 text-gray-400'
-                              }`}>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${formFrequency[form] === 'monthly' ? 'bg-blue-500/20 text-blue-400' :
+                                  formFrequency[form] === 'quarterly' ? 'bg-purple-500/20 text-purple-400' :
+                                    formFrequency[form] === 'annual' ? 'bg-green-500/20 text-green-400' :
+                                      'bg-gray-500/20 text-gray-400'
+                                }`}>
                                 {formFrequency[form].toUpperCase()}
                               </span>
                             )}
@@ -6619,11 +6603,10 @@ function DataRoomPageInner() {
                     <button
                       key={tab.id}
                       onClick={() => setGstActiveSection(tab.id as any)}
-                      className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap ${
-                        gstActiveSection === tab.id
+                      className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap ${gstActiveSection === tab.id
                           ? 'bg-white text-black'
                           : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
-                      }`}
+                        }`}
                     >
                       <span>{tab.icon}</span>
                       <span>{tab.label}</span>
@@ -7049,11 +7032,10 @@ function DataRoomPageInner() {
                 <div className="flex items-center gap-1 sm:gap-2 bg-gray-800 rounded-lg p-0.5 sm:p-1">
                   <button
                     onClick={() => setTrackerView('list')}
-                    className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${
-                      trackerView === 'list'
+                    className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${trackerView === 'list'
                         ? 'bg-white text-black'
                         : 'text-gray-400 hover:text-white'
-                    }`}
+                      }`}
                     title="List View"
                   >
                     <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -7068,11 +7050,10 @@ function DataRoomPageInner() {
                   </button>
                   <button
                     onClick={() => setTrackerView('calendar')}
-                    className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${
-                      trackerView === 'calendar'
+                    className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${trackerView === 'calendar'
                         ? 'bg-white text-black'
                         : 'text-gray-400 hover:text-white'
-                    }`}
+                      }`}
                     title="Calendar View"
                   >
                     <svg width="14" height="14" className="sm:w-4 sm:h-4 hidden sm:inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -7091,13 +7072,13 @@ function DataRoomPageInner() {
                   className="bg-gray-800 text-gray-300 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm"
                   title="Refresh requirements"
                 >
-                  <svg 
-                    width="14" 
-                    height="14" 
+                  <svg
+                    width="14"
+                    height="14"
                     className={`sm:w-4 sm:h-4 ${isLoadingRequirements ? 'animate-spin' : ''}`}
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
                     strokeWidth="2"
                   >
                     <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
@@ -7142,7 +7123,7 @@ function DataRoomPageInner() {
                     <span className="sm:hidden">Add</span>
                   </button>
                 )}
-                <button 
+                <button
                   onClick={async () => {
                     if (user?.id && currentCompany?.id) {
                       // Generate calendar file (ICS format)
@@ -7156,7 +7137,7 @@ function DataRoomPageInner() {
                       link.click()
                       document.body.removeChild(link)
                       URL.revokeObjectURL(url)
-                      
+
                       // Track calendar sync
                       await trackCalendarSync(user.id, currentCompany.id).catch(err => {
                         console.error('Failed to track calendar sync:', err)
@@ -7165,25 +7146,25 @@ function DataRoomPageInner() {
                   }}
                   className="bg-primary-dark-card border border-gray-700 text-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-white/40/50 transition-colors flex items-center gap-1.5 sm:gap-2 font-medium text-xs sm:text-base"
                 >
-                <svg
-                  width="14"
-                  height="14"
-                  className="sm:w-[18px] sm:h-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
-                <span className="hidden sm:inline">Sync Calendar</span>
-                <span className="sm:hidden">Sync</span>
-              </button>
+                  <svg
+                    width="14"
+                    height="14"
+                    className="sm:w-[18px] sm:h-[18px]"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                  <span className="hidden sm:inline">Sync Calendar</span>
+                  <span className="sm:hidden">Sync</span>
+                </button>
               </div>
             </div>
 
@@ -7215,11 +7196,10 @@ function DataRoomPageInner() {
                         setSelectedQuarter(null)
                       }
                     }}
-                    className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 appearance-none cursor-pointer ${
-                      selectedTrackerFY 
-                        ? 'border-white/40 bg-white/10 text-white' 
+                    className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 appearance-none cursor-pointer ${selectedTrackerFY
+                        ? 'border-white/40 bg-white/10 text-white'
                         : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
-                    }`}
+                      }`}
                     title={selectedTrackerFY ? `Includes months: ${getFinancialYearMonths(countryCode, selectedTrackerFY).join(', ')}` : 'Select financial year'}
                   >
                     <option value="">All Years</option>
@@ -7244,11 +7224,10 @@ function DataRoomPageInner() {
                     setIsMonthDropdownOpen(!isMonthDropdownOpen)
                     setIsQuarterDropdownOpen(false)
                   }}
-                  className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors flex items-center justify-between sm:justify-start gap-2 text-sm sm:text-base ${
-                    selectedMonth
+                  className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors flex items-center justify-between sm:justify-start gap-2 text-sm sm:text-base ${selectedMonth
                       ? 'border-white/40 bg-white/10 text-white'
                       : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
-                  }`}
+                    }`}
                 >
                   <span>{selectedMonth || 'All Months'}</span>
                   <svg
@@ -7278,11 +7257,10 @@ function DataRoomPageInner() {
                           setSelectedMonth(null)
                           setIsMonthDropdownOpen(false)
                         }}
-                        className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${
-                          selectedMonth === null
+                        className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${selectedMonth === null
                             ? 'bg-white/10 text-white'
                             : 'text-gray-300'
-                        }`}
+                          }`}
                       >
                         All Months
                       </button>
@@ -7295,11 +7273,10 @@ function DataRoomPageInner() {
                             setIsMonthDropdownOpen(false)
                             setSelectedQuarter(null) // Clear quarter when month is selected
                           }}
-                          className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${
-                            selectedMonth === month
+                          className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${selectedMonth === month
                               ? 'bg-white/10 text-white'
                               : 'text-gray-300'
-                          }`}
+                            }`}
                         >
                           {month}
                         </button>
@@ -7316,11 +7293,10 @@ function DataRoomPageInner() {
                     setIsQuarterDropdownOpen(!isQuarterDropdownOpen)
                     setIsMonthDropdownOpen(false)
                   }}
-                  className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors flex items-center justify-between sm:justify-start gap-2 text-sm sm:text-base ${
-                    selectedQuarter
+                  className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors flex items-center justify-between sm:justify-start gap-2 text-sm sm:text-base ${selectedQuarter
                       ? 'border-white/40 bg-white/10 text-white'
                       : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
-                  }`}
+                    }`}
                 >
                   <span>{selectedQuarter ? quarters.find(q => q.value === selectedQuarter)?.label.split(' - ')[0] : 'All Quarters'}</span>
                   <svg
@@ -7350,11 +7326,10 @@ function DataRoomPageInner() {
                           setSelectedQuarter(null)
                           setIsQuarterDropdownOpen(false)
                         }}
-                        className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${
-                          selectedQuarter === null
+                        className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${selectedQuarter === null
                             ? 'bg-white/10 text-white'
                             : 'text-gray-300'
-                        }`}
+                          }`}
                       >
                         All Quarters
                       </button>
@@ -7367,11 +7342,10 @@ function DataRoomPageInner() {
                             setIsQuarterDropdownOpen(false)
                             setSelectedMonth(null) // Clear month when quarter is selected
                           }}
-                          className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${
-                            selectedQuarter === quarter.value
+                          className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${selectedQuarter === quarter.value
                               ? 'bg-white/10 text-white'
                               : 'text-gray-300'
-                          }`}
+                            }`}
                         >
                           {quarter.label}
                         </button>
@@ -7417,7 +7391,7 @@ function DataRoomPageInner() {
                   </button>
                 )}
               </div>
-              
+
               {/* Bulk Actions */}
               {canEdit && selectedRequirements.size > 0 && (
                 <div className="flex items-center gap-2">
@@ -7465,28 +7439,27 @@ function DataRoomPageInner() {
                 <button
                   key={filter}
                   onClick={() => setCategoryFilter(filter)}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 transition-colors capitalize text-xs sm:text-sm whitespace-nowrap flex-shrink-0 ${
-                    categoryFilter === filter
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 transition-colors capitalize text-xs sm:text-sm whitespace-nowrap flex-shrink-0 ${categoryFilter === filter
                       ? 'border-white/40 bg-white/10 text-white'
                       : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
-                  }`}
+                    }`}
                 >
                   {filter === 'all'
                     ? 'All'
                     : filter === 'critical'
-                    ? (
+                      ? (
                         <>
                           <span className="sm:hidden">Critical</span>
                           <span className="hidden sm:inline">Passed Due Date (Critical)</span>
                         </>
                       )
-                    : filter}
+                      : filter}
                 </button>
               ))}
             </div>
 
             {/* Regulatory Requirements Table */}
-                      <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden">
+            <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden">
               {isLoadingRequirements ? (
                 <div className="py-8 sm:py-12 flex flex-col items-center justify-center">
                   <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-white/40 border-t-transparent rounded-full animate-spin mb-4"></div>
@@ -7532,7 +7505,7 @@ function DataRoomPageInner() {
                     <>
                       <p className="text-gray-400 text-sm sm:text-base font-medium mb-2">No regulatory requirements yet</p>
                       <p className="text-gray-500 text-xs sm:text-sm mb-4 text-center px-4">
-                        {canEdit 
+                        {canEdit
                           ? "Get started by adding your first compliance requirement. Requirements are automatically generated based on your company profile, or you can add custom ones."
                           : "No compliance requirements have been set up for this company yet."}
                       </p>
@@ -7569,563 +7542,684 @@ function DataRoomPageInner() {
                   )}
                 </div>
               ) : (
-              <div className="sm:overflow-x-auto scrollbar-hide">
-                {(() => {
-                  // Get all unique categories from ALL requirements (before filtering) - dynamic, not hardcoded
-                  const allCategories = Array.from(new Set((displayRequirements || []).map(req => req.category).filter(Boolean)))
-                  // Use country-specific categories as preferred order, fallback to dynamic categories
-                  const preferredOrder = complianceCategories.length > 0 ? complianceCategories : ['Income Tax', 'GST', 'Payroll', 'RoC', 'Renewals', 'Prof.Tax', 'Other', 'Others']
-                  const categoryOrder = [
-                    ...preferredOrder.filter(cat => allCategories.includes(cat)),
-                    ...allCategories.filter(cat => !preferredOrder.includes(cat) && cat).sort((a, b) => {
-                      const catA = a || ''
-                      const catB = b || ''
-                      if (!catA && !catB) return 0
-                      if (!catA) return 1
-                      if (!catB) return -1
-                      return catA.localeCompare(catB)
-                    })
-                  ]
-                  
-                  // Helper function to parse date and get month/quarter
-                  const getMonthFromDate = (dateStr: string | null | undefined) => {
-                    if (!dateStr) return -1
-                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-                    const monthStr = dateStr.split(' ')[0]
-                    return months.indexOf(monthStr)
-                  }
-                  
-                  const getQuarterFromDate = (dateStr: string) => {
-                    const month = getMonthFromDate(dateStr)
-                    if (month >= 3 && month <= 5) return 'q1' // Apr-Jun
-                    if (month >= 6 && month <= 8) return 'q2' // Jul-Sep
-                    if (month >= 9 && month <= 11) return 'q3' // Oct-Dec
-                    return 'q4' // Jan-Mar
-                  }
-                  
-                  const getMonthName = (monthIndex: number) => {
-                    const months = ['January', 'February', 'March', 'April', 'May', 'June',
-                      'July', 'August', 'September', 'October', 'November', 'December']
-                    return months[monthIndex]
-                  }
+                <div className="sm:overflow-x-auto scrollbar-hide">
+                  {(() => {
+                    // Get all unique categories from ALL requirements (before filtering) - dynamic, not hardcoded
+                    const allCategories = Array.from(new Set((displayRequirements || []).map(req => req.category).filter(Boolean)))
+                    // Use country-specific categories as preferred order, fallback to dynamic categories
+                    const preferredOrder = complianceCategories.length > 0 ? complianceCategories : ['Income Tax', 'GST', 'Payroll', 'RoC', 'Renewals', 'Prof.Tax', 'Other', 'Others']
+                    const categoryOrder = [
+                      ...preferredOrder.filter(cat => allCategories.includes(cat)),
+                      ...allCategories.filter(cat => !preferredOrder.includes(cat) && cat).sort((a, b) => {
+                        const catA = a || ''
+                        const catB = b || ''
+                        if (!catA && !catB) return 0
+                        if (!catA) return 1
+                        if (!catB) return -1
+                        return catA.localeCompare(catB)
+                      })
+                    ]
 
-                  // Improved date parsing with multiple format support and normalization
-                  const parseDate = (dateStr: string): Date | null => {
-                    if (!dateStr) return null
-                    
-                    // Use the normalized date function for consistency
-                    return normalizeDate(dateStr)
-                  }
-
-                  // Use memoized functions for performance
-                  const calculateDelay = calculateDelayMemoized
-                  const calculatePenalty = (penaltyStr: string | null, daysDelayed: number | null, penaltyBaseAmount?: number | null) => {
-                    return calculatePenaltyMemoized(penaltyStr, daysDelayed, penaltyBaseAmount)
-                  }
-
-                  // Legacy calculatePenalty function kept for reference but replaced above
-                  const _calculatePenaltyLegacy = (penaltyStr: string | null, daysDelayed: number | null): string => {
-                    // If no delay or penalty string is empty, return '-'
-                    if (daysDelayed === null || daysDelayed <= 0 || !penaltyStr || penaltyStr.trim() === '') {
-                      return '-'
+                    // Helper function to parse date and get month/quarter
+                    const getMonthFromDate = (dateStr: string | null | undefined) => {
+                      if (!dateStr) return -1
+                      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                      const monthStr = dateStr.split(' ')[0]
+                      return months.indexOf(monthStr)
                     }
 
-                    const penalty = penaltyStr.trim()
-
-                    // Handle NULL (from database)
-                    if (penalty === 'NULL' || penalty === 'null' || penalty === '') {
-                      return 'Refer to Act'
+                    const getQuarterFromDate = (dateStr: string) => {
+                      const month = getMonthFromDate(dateStr)
+                      if (month >= 3 && month <= 5) return 'q1' // Apr-Jun
+                      if (month >= 6 && month <= 8) return 'q2' // Jul-Sep
+                      if (month >= 9 && month <= 11) return 'q3' // Oct-Dec
+                      return 'q4' // Jan-Mar
                     }
 
-                    // ============================================
-                    // Handle NUMERIC FORMATS (new database format)
-                    // ============================================
+                    const getMonthName = (monthIndex: number) => {
+                      const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December']
+                      return months[monthIndex]
+                    }
 
-                    // Simple daily rate: "50", "100", "200"
-                    if (/^\d+$/.test(penalty)) {
-                      const dailyRate = parseInt(penalty, 10)
-                      if (!isNaN(dailyRate) && dailyRate > 0) {
-                        return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
+                    // Improved date parsing with multiple format support and normalization
+                    const parseDate = (dateStr: string): Date | null => {
+                      if (!dateStr) return null
+
+                      // Use the normalized date function for consistency
+                      return normalizeDate(dateStr)
+                    }
+
+                    // Use memoized functions for performance
+                    const calculateDelay = calculateDelayMemoized
+                    const calculatePenalty = (penaltyStr: string | null, daysDelayed: number | null, penaltyBaseAmount?: number | null) => {
+                      return calculatePenaltyMemoized(penaltyStr, daysDelayed, penaltyBaseAmount)
+                    }
+
+                    // Legacy calculatePenalty function kept for reference but replaced above
+                    const _calculatePenaltyLegacy = (penaltyStr: string | null, daysDelayed: number | null): string => {
+                      // If no delay or penalty string is empty, return '-'
+                      if (daysDelayed === null || daysDelayed <= 0 || !penaltyStr || penaltyStr.trim() === '') {
+                        return '-'
                       }
-                    }
 
-                    // Complex format with max cap: "100|500000" (daily|max)
-                    if (/^\d+\|\d+$/.test(penalty)) {
-                      const [dailyRateStr, maxCapStr] = penalty.split('|')
-                      const dailyRate = parseInt(dailyRateStr, 10)
-                      const maxCap = parseInt(maxCapStr, 10)
-                      
-                      if (!isNaN(dailyRate) && dailyRate > 0) {
-                        let calculated = dailyRate * daysDelayed
-                        const isCapped = !isNaN(maxCap) && maxCap > 0 && calculated > maxCap
-                        if (isCapped) {
-                          calculated = maxCap
-                          return `${formatCurrency(Math.round(calculated), countryCode)} (capped at ${formatCurrency(maxCap, countryCode)})`
+                      const penalty = penaltyStr.trim()
+
+                      // Handle NULL (from database)
+                      if (penalty === 'NULL' || penalty === 'null' || penalty === '') {
+                        return 'Refer to Act'
+                      }
+
+                      // ============================================
+                      // Handle NUMERIC FORMATS (new database format)
+                      // ============================================
+
+                      // Simple daily rate: "50", "100", "200"
+                      if (/^\d+$/.test(penalty)) {
+                        const dailyRate = parseInt(penalty, 10)
+                        if (!isNaN(dailyRate) && dailyRate > 0) {
+                          return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
                         }
-                        return formatCurrency(Math.round(calculated), countryCode)
                       }
-                    }
 
-                    // ============================================
-                    // Handle REMAINING TEXT FORMATS (fallback)
-                    // ============================================
+                      // Complex format with max cap: "100|500000" (daily|max)
+                      if (/^\d+\|\d+$/.test(penalty)) {
+                        const [dailyRateStr, maxCapStr] = penalty.split('|')
+                        const dailyRate = parseInt(dailyRateStr, 10)
+                        const maxCap = parseInt(maxCapStr, 10)
 
-                    // Extract daily rate from penalty string (e.g., "₹100/day", "100/day")
-                    // Handle "50/day (NIL: 20/day)" - extract first number
-                    // Use country-specific currency symbol
-                    const currencySymbol = countryConfig.currency.symbol
-                    const currencySymbolEscaped = currencySymbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-                    let dailyRateMatch = penalty.match(/(\d+)\/day\s*\([^)]*NIL[^)]*\)/i)
-                    if (!dailyRateMatch) {
-                      dailyRateMatch = penalty.match(new RegExp(`(?:${currencySymbolEscaped})?[\\d,]+(?:\\.[\\d]+)?\\/day`, 'i'))
-                    }
-                    if (dailyRateMatch) {
-                      const rateStr = dailyRateMatch[1] || dailyRateMatch[0].replace(new RegExp(currencySymbolEscaped, 'gi'), '').replace(/\/day/gi, '').replace(/,/g, '')
-                      const dailyRate = parseFloat(rateStr.replace(/,/g, ''))
-                      if (!isNaN(dailyRate) && dailyRate > 0) {
-                        let calculatedPenalty = dailyRate * daysDelayed
-                        
-                        // Check for maximum limit
-                        const maxMatch = penalty.match(new RegExp(`max\\s*(?:${currencySymbolEscaped})?[\\d,]+(?:\\.[\\d]+)?`, 'i'))
-                        if (maxMatch) {
-                          const maxStr = maxMatch[0].replace(new RegExp(`max\\s*(?:${currencySymbolEscaped})?`, 'gi'), '').replace(/,/g, '')
-                          const maxAmount = parseFloat(maxStr)
-                          if (!isNaN(maxAmount) && maxAmount > 0) {
-                            const isCapped = calculatedPenalty > maxAmount
-                            calculatedPenalty = Math.min(calculatedPenalty, maxAmount)
-                            if (isCapped) {
-                              return `${formatCurrency(calculatedPenalty, countryCode)} (capped at ${formatCurrency(maxAmount, countryCode)})`
+                        if (!isNaN(dailyRate) && dailyRate > 0) {
+                          let calculated = dailyRate * daysDelayed
+                          const isCapped = !isNaN(maxCap) && maxCap > 0 && calculated > maxCap
+                          if (isCapped) {
+                            calculated = maxCap
+                            return `${formatCurrency(Math.round(calculated), countryCode)} (capped at ${formatCurrency(maxCap, countryCode)})`
+                          }
+                          return formatCurrency(Math.round(calculated), countryCode)
+                        }
+                      }
+
+                      // ============================================
+                      // Handle REMAINING TEXT FORMATS (fallback)
+                      // ============================================
+
+                      // Extract daily rate from penalty string (e.g., "₹100/day", "100/day")
+                      // Handle "50/day (NIL: 20/day)" - extract first number
+                      // Use country-specific currency symbol
+                      const currencySymbol = countryConfig.currency.symbol
+                      const currencySymbolEscaped = currencySymbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                      let dailyRateMatch = penalty.match(/(\d+)\/day\s*\([^)]*NIL[^)]*\)/i)
+                      if (!dailyRateMatch) {
+                        dailyRateMatch = penalty.match(new RegExp(`(?:${currencySymbolEscaped})?[\\d,]+(?:\\.[\\d]+)?\\/day`, 'i'))
+                      }
+                      if (dailyRateMatch) {
+                        const rateStr = dailyRateMatch[1] || dailyRateMatch[0].replace(new RegExp(currencySymbolEscaped, 'gi'), '').replace(/\/day/gi, '').replace(/,/g, '')
+                        const dailyRate = parseFloat(rateStr.replace(/,/g, ''))
+                        if (!isNaN(dailyRate) && dailyRate > 0) {
+                          let calculatedPenalty = dailyRate * daysDelayed
+
+                          // Check for maximum limit
+                          const maxMatch = penalty.match(new RegExp(`max\\s*(?:${currencySymbolEscaped})?[\\d,]+(?:\\.[\\d]+)?`, 'i'))
+                          if (maxMatch) {
+                            const maxStr = maxMatch[0].replace(new RegExp(`max\\s*(?:${currencySymbolEscaped})?`, 'gi'), '').replace(/,/g, '')
+                            const maxAmount = parseFloat(maxStr)
+                            if (!isNaN(maxAmount) && maxAmount > 0) {
+                              const isCapped = calculatedPenalty > maxAmount
+                              calculatedPenalty = Math.min(calculatedPenalty, maxAmount)
+                              if (isCapped) {
+                                return `${formatCurrency(calculatedPenalty, countryCode)} (capped at ${formatCurrency(maxAmount, countryCode)})`
+                              }
                             }
                           }
+
+                          return formatCurrency(calculatedPenalty, countryCode)
                         }
-                        
-                        return formatCurrency(calculatedPenalty, countryCode)
                       }
-                    }
 
-                    // Handle "200/day + 10000-100000" - extract daily rate before the +
-                    const dailyWithRangeMatch = penalty.match(/(\d+)\/day\s*\+\s*[\d-]+/i)
-                    if (dailyWithRangeMatch) {
-                      const dailyRate = parseFloat(dailyWithRangeMatch[1].replace(/,/g, ''))
-                      if (!isNaN(dailyRate) && dailyRate > 0) {
-                        return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
+                      // Handle "200/day + 10000-100000" - extract daily rate before the +
+                      const dailyWithRangeMatch = penalty.match(/(\d+)\/day\s*\+\s*[\d-]+/i)
+                      if (dailyWithRangeMatch) {
+                        const dailyRate = parseFloat(dailyWithRangeMatch[1].replace(/,/g, ''))
+                        if (!isNaN(dailyRate) && dailyRate > 0) {
+                          return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
+                        }
                       }
-                    }
 
-                    // Handle "2%/month + 5/day" - extract daily rate after the +
-                    const interestPlusDailyMatch = penalty.match(/[\d.]+%[^+]*\+\s*(\d+)\/day/i)
-                    if (interestPlusDailyMatch) {
-                      const dailyRate = parseFloat(interestPlusDailyMatch[1].replace(/,/g, ''))
-                      if (!isNaN(dailyRate) && dailyRate > 0) {
-                        return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
+                      // Handle "2%/month + 5/day" - extract daily rate after the +
+                      const interestPlusDailyMatch = penalty.match(/[\d.]+%[^+]*\+\s*(\d+)\/day/i)
+                      if (interestPlusDailyMatch) {
+                        const dailyRate = parseFloat(interestPlusDailyMatch[1].replace(/,/g, ''))
+                        if (!isNaN(dailyRate) && dailyRate > 0) {
+                          return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
+                        }
                       }
-                    }
-                    
-                    // Handle range formats like "25000-300000" - extract minimum
-                    const rangeMatch = penalty.match(/(\d+)\s*-\s*(\d+)/)
-                    if (rangeMatch && !penalty.includes('%') && !penalty.includes('/day')) {
-                      const minAmount = parseFloat(rangeMatch[1].replace(/,/g, ''))
-                      if (!isNaN(minAmount) && minAmount > 0) {
-                        return `${formatCurrency(Math.round(minAmount), countryCode)} (minimum)`
-                      }
-                    }
 
-                    // Check for explicit fixed penalty amounts
-                    const fixedKeywords = /(?:fixed|one-time|one time|flat|lump)/i
-                    if (fixedKeywords.test(penalty)) {
-                      let fixedMatch = penalty.match(/₹[\d,]+(?:\.[\d]+)?/i)
-                      if (!fixedMatch) {
-                        const plainNumberMatch = penalty.match(/[\d,]+(?:\.[\d]+)?/i)
-                        if (plainNumberMatch) {
-                          const amount = plainNumberMatch[0].replace(/,/g, '')
-                          const numAmount = parseFloat(amount)
-                          if (!isNaN(numAmount) && numAmount > 0) {
-                            return formatCurrency(numAmount, countryCode)
+                      // Handle range formats like "25000-300000" - extract minimum
+                      const rangeMatch = penalty.match(/(\d+)\s*-\s*(\d+)/)
+                      if (rangeMatch && !penalty.includes('%') && !penalty.includes('/day')) {
+                        const minAmount = parseFloat(rangeMatch[1].replace(/,/g, ''))
+                        if (!isNaN(minAmount) && minAmount > 0) {
+                          return `${formatCurrency(Math.round(minAmount), countryCode)} (minimum)`
+                        }
+                      }
+
+                      // Check for explicit fixed penalty amounts
+                      const fixedKeywords = /(?:fixed|one-time|one time|flat|lump)/i
+                      if (fixedKeywords.test(penalty)) {
+                        let fixedMatch = penalty.match(/₹[\d,]+(?:\.[\d]+)?/i)
+                        if (!fixedMatch) {
+                          const plainNumberMatch = penalty.match(/[\d,]+(?:\.[\d]+)?/i)
+                          if (plainNumberMatch) {
+                            const amount = plainNumberMatch[0].replace(/,/g, '')
+                            const numAmount = parseFloat(amount)
+                            if (!isNaN(numAmount) && numAmount > 0) {
+                              return formatCurrency(numAmount, countryCode)
+                            }
                           }
+                        } else {
+                          return fixedMatch[0]
                         }
-                      } else {
-                      return fixedMatch[0]
+                      }
+
+                      // Plain number as daily rate (fallback for text format)
+                      const plainNumberMatch = penalty.match(/^[\d,]+(?:\.[\d]+)?$/i)
+                      if (plainNumberMatch && !penalty.includes('/day') && !penalty.includes('Interest') && !penalty.includes('+')) {
+                        const amount = plainNumberMatch[0].replace(/,/g, '')
+                        const numAmount = parseFloat(amount)
+                        if (!isNaN(numAmount) && numAmount > 0) {
+                          const calculatedPenalty = numAmount * daysDelayed
+                          return formatCurrency(calculatedPenalty, countryCode)
+                        }
+                      }
+
+                      // Check for penalties with Interest
+                      if (penalty.includes('Interest') || penalty.includes('+ Interest')) {
+                        return 'Cannot calculate - Insufficient information (Interest calculation requires principal amount)'
+                      }
+
+                      // Check for vague "as per Act" references
+                      if (/as per.*Act/i.test(penalty) || /as per.*guidelines/i.test(penalty)) {
+                        return 'Refer to Act'
+                      }
+
+                      // Check for penalties that are too complex
+                      if (penalty.includes('+') && !penalty.includes('/day')) {
+                        return 'Cannot calculate - Complex penalty structure requires additional information'
+                      }
+
+                      return 'Cannot calculate - Insufficient information'
+                    }
+
+                    // Filter by date (Financial Year, Month, Quarter - all independent/loosely coupled)
+                    let dateFilteredRequirements = displayRequirements
+
+                    // Helper to check if date falls within a financial year (country-aware)
+                    const isInFinancialYear = (reqDate: Date | null, fyStr: string): boolean => {
+                      if (!reqDate || !fyStr) return false
+                      return isInFinancialYearUtil(reqDate, fyStr, countryCode)
+                    }
+
+                    // Filter by Financial Year (if selected) - with null safety
+                    if (selectedTrackerFY) {
+                      try {
+                        dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
+                          if (!req.dueDate) return false
+                          const reqDate = parseDate(req.dueDate)
+                          return isInFinancialYear(reqDate, selectedTrackerFY)
+                        })
+                      } catch (error) {
+                        console.error('Error filtering by financial year:', error)
+                        // Fallback: don't filter if parsing fails
                       }
                     }
 
-                    // Plain number as daily rate (fallback for text format)
-                    const plainNumberMatch = penalty.match(/^[\d,]+(?:\.[\d]+)?$/i)
-                    if (plainNumberMatch && !penalty.includes('/day') && !penalty.includes('Interest') && !penalty.includes('+')) {
-                      const amount = plainNumberMatch[0].replace(/,/g, '')
-                      const numAmount = parseFloat(amount)
-                      if (!isNaN(numAmount) && numAmount > 0) {
-                        const calculatedPenalty = numAmount * daysDelayed
-                        return formatCurrency(calculatedPenalty, countryCode)
-                      }
-                    }
-
-                    // Check for penalties with Interest
-                    if (penalty.includes('Interest') || penalty.includes('+ Interest')) {
-                      return 'Cannot calculate - Insufficient information (Interest calculation requires principal amount)'
-                    }
-
-                    // Check for vague "as per Act" references
-                    if (/as per.*Act/i.test(penalty) || /as per.*guidelines/i.test(penalty)) {
-                      return 'Refer to Act'
-                    }
-
-                    // Check for penalties that are too complex
-                    if (penalty.includes('+') && !penalty.includes('/day')) {
-                      return 'Cannot calculate - Complex penalty structure requires additional information'
-                    }
-
-                    return 'Cannot calculate - Insufficient information'
-                  }
-                  
-                  // Filter by date (Financial Year, Month, Quarter - all independent/loosely coupled)
-                  let dateFilteredRequirements = displayRequirements
-                  
-                  // Helper to check if date falls within a financial year (country-aware)
-                  const isInFinancialYear = (reqDate: Date | null, fyStr: string): boolean => {
-                    if (!reqDate || !fyStr) return false
-                    return isInFinancialYearUtil(reqDate, fyStr, countryCode)
-                  }
-                  
-                  // Filter by Financial Year (if selected) - with null safety
-                  if (selectedTrackerFY) {
-                    try {
+                    // Filter by Month (if selected) - works independently but shows relationship
+                    if (selectedMonth) {
+                      const monthIndex = months.indexOf(selectedMonth)
                       dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
-                        if (!req.dueDate) return false
                         const reqDate = parseDate(req.dueDate)
-                        return isInFinancialYear(reqDate, selectedTrackerFY)
+                        if (!reqDate) return false
+                        return reqDate.getUTCMonth() === monthIndex
                       })
-                    } catch (error) {
-                      console.error('Error filtering by financial year:', error)
-                      // Fallback: don't filter if parsing fails
-                    }
-                  }
-                  
-                  // Filter by Month (if selected) - works independently but shows relationship
-                  if (selectedMonth) {
-                    const monthIndex = months.indexOf(selectedMonth)
-                    dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
-                      const reqDate = parseDate(req.dueDate)
-                      if (!reqDate) return false
-                      return reqDate.getUTCMonth() === monthIndex
-                    })
-                  }
-                  
-                  // Filter by Quarter (if selected) - works independently but shows relationship
-                  if (selectedQuarter) {
-                    dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
-                      const reqDate = parseDate(req.dueDate)
-                      if (!reqDate) return false
-                      const reqMonth = reqDate.getUTCMonth()
-                      const reqQuarter = reqMonth >= 3 && reqMonth <= 5 ? 'q1' : // Apr-Jun
-                                        reqMonth >= 6 && reqMonth <= 8 ? 'q2' : // Jul-Sep
-                                        reqMonth >= 9 && reqMonth <= 11 ? 'q3' : // Oct-Dec
-                                        'q4' // Jan-Mar
-                      return reqQuarter === selectedQuarter
-                    })
-                  }
-                  
-                  // Filter by status/category and additional filters
-                  const filteredRequirements = dateFilteredRequirements.filter((req) => {
-                    // Status filter
-                    if (categoryFilter !== 'all') {
-                      if (categoryFilter === 'critical' && !(req.isCritical || req.status === 'overdue')) return false
-                      if (categoryFilter === 'pending' && req.status !== 'pending') return false
-                      if (categoryFilter === 'upcoming' && req.status !== 'upcoming') return false
-                      if (categoryFilter === 'completed' && req.status !== 'completed') return false
                     }
 
-                    // Entity type filter
-                    if (entityTypeFilter !== 'all') {
-                      // Get entity type from requirement metadata or company
-                      const reqEntityType = (req as any).entity_type || entityDetails?.type
-                      if (reqEntityType !== entityTypeFilter) return false
-                    }
-
-                    // Industry filter
-                    if (industryFilter !== 'all') {
-                      const reqIndustry = (req as any).industry || entityDetails?.industryCategory
-                      if (reqIndustry !== industryFilter) return false
-                    }
-
-                    // Industry category filter
-                    if (industryCategoryFilter !== 'all') {
-                      const reqIndustryCategory = (req as any).industry_category || entityDetails?.industryCategory
-                      if (reqIndustryCategory !== industryCategoryFilter) return false
-                    }
-
-                    // Compliance type filter
-                    if (complianceTypeFilter !== 'all') {
-                      const reqComplianceType = (req as any).compliance_type
-                      if (reqComplianceType !== complianceTypeFilter) return false
-                    }
-
-                    // Search filter
-                    if (trackerSearchQuery.trim()) {
-                      const query = trackerSearchQuery.toLowerCase().trim()
-                      const searchableText = [
-                        req.category,
-                        req.requirement,
-                        req.description,
-                        req.status,
-                        req.compliance_type,
-                        req.financial_year
-                      ].filter(Boolean).join(' ').toLowerCase()
-                      if (!searchableText.includes(query)) return false
-                    }
-
-                    return true
-                  })
-
-                  const groupedByCategory = categoryOrder.map((category) => {
-                    const items = filteredRequirements
-                      .filter((req) => req.category === category)
-                      .sort((a, b) => {
-                        const dateA = a.dueDate || ''
-                        const dateB = b.dueDate || ''
-                        if (!dateA && !dateB) return 0
-                        if (!dateA) return 1
-                        if (!dateB) return -1
-                        return dateA.localeCompare(dateB)
+                    // Filter by Quarter (if selected) - works independently but shows relationship
+                    if (selectedQuarter) {
+                      dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
+                        const reqDate = parseDate(req.dueDate)
+                        if (!reqDate) return false
+                        const reqMonth = reqDate.getUTCMonth()
+                        const reqQuarter = reqMonth >= 3 && reqMonth <= 5 ? 'q1' : // Apr-Jun
+                          reqMonth >= 6 && reqMonth <= 8 ? 'q2' : // Jul-Sep
+                            reqMonth >= 9 && reqMonth <= 11 ? 'q3' : // Oct-Dec
+                              'q4' // Jan-Mar
+                        return reqQuarter === selectedQuarter
                       })
-                    return { category, items }
-                  }).filter((group) => group.items.length > 0)
+                    }
 
-                  // Calendar view helper functions - use improved parseDate for consistency and null safety
-                  const parseDateForCalendar = (dateStr: string | null | undefined): Date | null => {
-                    if (!dateStr) return null
-                    return parseDate(dateStr)
-                  }
-
-                  // Group requirements by date for calendar view
-                  const requirementsByDate = new Map<string, typeof filteredRequirements>()
-                  filteredRequirements.forEach((req) => {
-                    const date = parseDateForCalendar(req.dueDate)
-                    if (date) {
-                      const dateKey = date.toISOString().split('T')[0] // YYYY-MM-DD
-                      if (!requirementsByDate.has(dateKey)) {
-                        requirementsByDate.set(dateKey, [])
+                    // Filter by status/category and additional filters
+                    const filteredRequirements = dateFilteredRequirements.filter((req) => {
+                      // Status filter
+                      if (categoryFilter !== 'all') {
+                        if (categoryFilter === 'critical' && !(req.isCritical || req.status === 'overdue')) return false
+                        if (categoryFilter === 'pending' && req.status !== 'pending') return false
+                        if (categoryFilter === 'upcoming' && req.status !== 'upcoming') return false
+                        if (categoryFilter === 'completed' && req.status !== 'completed') return false
                       }
-                      requirementsByDate.get(dateKey)!.push(req)
+
+                      // Entity type filter
+                      if (entityTypeFilter !== 'all') {
+                        // Get entity type from requirement metadata or company
+                        const reqEntityType = (req as any).entity_type || entityDetails?.type
+                        if (reqEntityType !== entityTypeFilter) return false
+                      }
+
+                      // Industry filter
+                      if (industryFilter !== 'all') {
+                        const reqIndustry = (req as any).industry || entityDetails?.industryCategory
+                        if (reqIndustry !== industryFilter) return false
+                      }
+
+                      // Industry category filter
+                      if (industryCategoryFilter !== 'all') {
+                        const reqIndustryCategory = (req as any).industry_category || entityDetails?.industryCategory
+                        if (reqIndustryCategory !== industryCategoryFilter) return false
+                      }
+
+                      // Compliance type filter
+                      if (complianceTypeFilter !== 'all') {
+                        const reqComplianceType = (req as any).compliance_type
+                        if (reqComplianceType !== complianceTypeFilter) return false
+                      }
+
+                      // Search filter
+                      if (trackerSearchQuery.trim()) {
+                        const query = trackerSearchQuery.toLowerCase().trim()
+                        const searchableText = [
+                          req.category,
+                          req.requirement,
+                          req.description,
+                          req.status,
+                          req.compliance_type,
+                          req.financial_year
+                        ].filter(Boolean).join(' ').toLowerCase()
+                        if (!searchableText.includes(query)) return false
+                      }
+
+                      return true
+                    })
+
+                    const groupedByCategory = categoryOrder.map((category) => {
+                      const items = filteredRequirements
+                        .filter((req) => req.category === category)
+                        .sort((a, b) => {
+                          const dateA = a.dueDate || ''
+                          const dateB = b.dueDate || ''
+                          if (!dateA && !dateB) return 0
+                          if (!dateA) return 1
+                          if (!dateB) return -1
+                          return dateA.localeCompare(dateB)
+                        })
+                      return { category, items }
+                    }).filter((group) => group.items.length > 0)
+
+                    // Calendar view helper functions - use improved parseDate for consistency and null safety
+                    const parseDateForCalendar = (dateStr: string | null | undefined): Date | null => {
+                      if (!dateStr) return null
+                      return parseDate(dateStr)
                     }
-                  })
 
-                  // Use state for calendar month/year
-                  const currentCalendarMonth = calendarMonth
-                  const currentCalendarYear = calendarYear
-                  
-                  // Remove old navigation functions - they're now inline
+                    // Group requirements by date for calendar view
+                    const requirementsByDate = new Map<string, typeof filteredRequirements>()
+                    filteredRequirements.forEach((req) => {
+                      const date = parseDateForCalendar(req.dueDate)
+                      if (date) {
+                        const dateKey = date.toISOString().split('T')[0] // YYYY-MM-DD
+                        if (!requirementsByDate.has(dateKey)) {
+                          requirementsByDate.set(dateKey, [])
+                        }
+                        requirementsByDate.get(dateKey)!.push(req)
+                      }
+                    })
 
-                  if (trackerView === 'calendar') {
-                    // Recalculate for current calendar month/year
-                    const firstDay = new Date(currentCalendarYear, currentCalendarMonth, 1)
-                    const lastDay = new Date(currentCalendarYear, currentCalendarMonth + 1, 0)
-                    const daysInMonth = lastDay.getDate()
-                    const startingDayOfWeek = firstDay.getDay()
+                    // Use state for calendar month/year
+                    const currentCalendarMonth = calendarMonth
+                    const currentCalendarYear = calendarYear
 
-                  return (
-                      <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-3 sm:p-6">
-                        {/* Calendar Header with Navigation - Stack on Mobile */}
-                        <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-4">
-                              <button
-                                onClick={() => setCalendarYear(currentCalendarYear - 1)}
-                                className="p-1.5 sm:p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
-                                title="Previous Year"
-                              >
-                                <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <polyline points="11 17 6 12 11 7" />
-                                  <polyline points="18 17 13 12 18 7" />
-                                </svg>
-                              </button>
-                              <button
-                                onClick={() => {
-                                  if (currentCalendarMonth === 0) {
-                                    setCalendarMonth(11)
-                                    setCalendarYear(currentCalendarYear - 1)
-                                  } else {
-                                    setCalendarMonth(currentCalendarMonth - 1)
-                                  }
-                                }}
-                                className="p-1.5 sm:p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
-                                title="Previous Month"
-                              >
-                                <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <polyline points="15 18 9 12 15 6" />
-                                </svg>
-                              </button>
-                              <h3 className="text-base sm:text-xl font-semibold text-white min-w-[140px] sm:min-w-[200px] text-center">
-                                {months[currentCalendarMonth]} {currentCalendarYear}
-                              </h3>
-                              <button
-                                onClick={() => {
-                                  if (currentCalendarMonth === 11) {
-                                    setCalendarMonth(0)
+                    // Remove old navigation functions - they're now inline
+
+                    if (trackerView === 'calendar') {
+                      // Recalculate for current calendar month/year
+                      const firstDay = new Date(currentCalendarYear, currentCalendarMonth, 1)
+                      const lastDay = new Date(currentCalendarYear, currentCalendarMonth + 1, 0)
+                      const daysInMonth = lastDay.getDate()
+                      const startingDayOfWeek = firstDay.getDay()
+
+                      return (
+                        <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-3 sm:p-6">
+                          {/* Calendar Header with Navigation - Stack on Mobile */}
+                          <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-4">
+                                <button
+                                  onClick={() => setCalendarYear(currentCalendarYear - 1)}
+                                  className="p-1.5 sm:p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
+                                  title="Previous Year"
+                                >
+                                  <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="11 17 6 12 11 7" />
+                                    <polyline points="18 17 13 12 18 7" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (currentCalendarMonth === 0) {
+                                      setCalendarMonth(11)
+                                      setCalendarYear(currentCalendarYear - 1)
+                                    } else {
+                                      setCalendarMonth(currentCalendarMonth - 1)
+                                    }
+                                  }}
+                                  className="p-1.5 sm:p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
+                                  title="Previous Month"
+                                >
+                                  <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="15 18 9 12 15 6" />
+                                  </svg>
+                                </button>
+                                <h3 className="text-base sm:text-xl font-semibold text-white min-w-[140px] sm:min-w-[200px] text-center">
+                                  {months[currentCalendarMonth]} {currentCalendarYear}
+                                </h3>
+                                <button
+                                  onClick={() => {
+                                    if (currentCalendarMonth === 11) {
+                                      setCalendarMonth(0)
+                                      setCalendarYear(currentCalendarYear + 1)
+                                    } else {
+                                      setCalendarMonth(currentCalendarMonth + 1)
+                                    }
+                                  }}
+                                  className="p-1.5 sm:p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
+                                  title="Next Month"
+                                >
+                                  <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="9 18 15 12 9 6" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => {
                                     setCalendarYear(currentCalendarYear + 1)
-                                  } else {
-                                    setCalendarMonth(currentCalendarMonth + 1)
-                                  }
-                                }}
-                                className="p-1.5 sm:p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
-                                title="Next Month"
-                              >
-                                <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <polyline points="9 18 15 12 9 6" />
-                                </svg>
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setCalendarYear(currentCalendarYear + 1)
-                                }}
-                                className="p-1.5 sm:p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
-                                title="Next Year"
-                              >
-                                <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <polyline points="13 17 18 12 13 7" />
-                                  <polyline points="6 17 11 12 6 7" />
-                                </svg>
-                              </button>
-                            </div>
-                            {selectedTrackerFY && (
-                              <p className="text-gray-400 text-xs sm:text-sm mt-2 text-center sm:text-left">{selectedTrackerFY}</p>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Calendar Grid */}
-                        <div className="grid grid-cols-7 gap-1 sm:gap-2">
-                          {/* Day headers */}
-                          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                            <div key={day} className="text-center text-[10px] sm:text-xs font-medium text-gray-400 py-1 sm:py-2">
-                              {day}
-                            </div>
-                          ))}
-                          {/* Empty cells for days before month starts */}
-                          {Array.from({ length: startingDayOfWeek }).map((_, i) => (
-                            <div key={`empty-${i}`} className="aspect-square"></div>
-                          ))}
-                          {/* Calendar days */}
-                          {Array.from({ length: daysInMonth }).map((_, i) => {
-                            const day = i + 1
-                            const dateKey = `${currentCalendarYear}-${String(currentCalendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-                            const dayRequirements = requirementsByDate.get(dateKey) || []
-                            const isToday = new Date().toDateString() === new Date(currentCalendarYear, currentCalendarMonth, day).toDateString()
-                            
-                            return (
-                              <div
-                                key={day}
-                                className={`min-h-[60px] sm:min-h-[120px] border border-gray-700 rounded sm:rounded-lg p-1 sm:p-2 bg-gray-900/50 ${
-                                  isToday ? 'ring-1 sm:ring-2 ring-white/40' : ''
-                                }`}
-                              >
-                                <div className={`text-xs sm:text-sm mb-1 sm:mb-2 font-medium ${isToday ? 'text-white font-bold' : 'text-gray-300'}`}>
-                                  {day}
-                                </div>
-                                <div className="space-y-1 sm:space-y-1.5 overflow-y-auto max-h-[45px] sm:max-h-[90px]">
-                                  {dayRequirements.map((req) => {
-                                    const isOverdue = req.status === 'overdue' || (parseDateForCalendar(req.dueDate) && parseDateForCalendar(req.dueDate)! < new Date())
-                                    const daysDelayed = calculateDelay(req.dueDate, req.status)
-                                    const calculatedPenalty = calculatePenalty(req.penalty, daysDelayed, req.penalty_base_amount)
-                                    
-                                    return (
-                                      <div
-                                        key={req.id}
-                                        className={`text-[10px] sm:text-xs p-1 sm:p-2 rounded border cursor-pointer hover:opacity-80 transition-opacity ${
-                                          isOverdue
-                                            ? 'bg-red-500/20 text-red-400 border-red-500/30'
-                                            : req.status === 'completed'
-                                            ? 'bg-green-500/20 text-green-400 border-green-500/30'
-                                            : req.status === 'pending'
-                                            ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                                            : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                                        }`}
-                                        title={`${req.category} - ${req.requirement}\n${req.description || ''}\nStatus: ${req.status}\nPenalty: ${req.penalty}\nCalculated: ${calculatedPenalty}`}
-                                      >
-                                        <div className="font-semibold truncate">{req.requirement}</div>
-                                        <div className="text-[8px] sm:text-[10px] text-gray-400 truncate mt-0.5 hidden sm:block">{req.category}</div>
-                                        <div className="flex items-center gap-0.5 sm:gap-1 mt-0.5 sm:mt-1">
-                                          <span className={`px-1 sm:px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-medium ${
-                                            req.status === 'completed' ? 'bg-green-500/30 text-green-300' :
-                                            req.status === 'overdue' ? 'bg-red-500/30 text-red-300' :
-                                            req.status === 'pending' ? 'bg-yellow-500/30 text-yellow-300' :
-                                            'bg-gray-700 text-gray-300'
-                                          }`}>
-                                            {req.status === 'completed' ? '✓' : req.status === 'overdue' ? '!' : req.status === 'pending' ? '⏳' : '○'}
-                                          </span>
-                                          {req.compliance_type && (
-                                            <span className="text-[8px] sm:text-[10px] text-gray-400 hidden sm:inline">
-                                              {req.compliance_type.charAt(0).toUpperCase()}
-                                            </span>
-                                          )}
-                                        </div>
-                                        {calculatedPenalty !== '-' && (
-                                          <div className="text-[8px] sm:text-[10px] text-red-400 mt-0.5 font-medium truncate">
-                                            {calculatedPenalty}
-                                          </div>
-                                        )}
-                                      </div>
-                                    )
-                                  })}
-                                </div>
+                                  }}
+                                  className="p-1.5 sm:p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
+                                  title="Next Year"
+                                >
+                                  <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="13 17 18 12 13 7" />
+                                    <polyline points="6 17 11 12 6 7" />
+                                  </svg>
+                                </button>
                               </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )
-                  }
-
-                  // List view
-                  return (
-                    <>
-                      {/* Mobile Card View */}
-                      <div className="block sm:hidden space-y-3">
-                        {groupedByCategory.map((group, groupIndex) => (
-                          <div key={group.category}>
-                            {/* Category Header */}
-                            <div className="mb-2">
-                              <h3 className="text-white font-semibold text-base">
-                                {group.category}
-                              </h3>
-                              {groupIndex > 0 && (
-                                <div className="h-0.5 bg-gradient-to-r from-transparent via-white/30 to-transparent my-2"></div>
+                              {selectedTrackerFY && (
+                                <p className="text-gray-400 text-xs sm:text-sm mt-2 text-center sm:text-left">{selectedTrackerFY}</p>
                               )}
                             </div>
-                            {/* Category Items as Cards */}
-                            <div className="space-y-3">
-                              {group.items.map((req) => {
-                                const daysDelayed = calculateDelay(req.dueDate, req.status)
-                                const calculatedPenalty = calculatePenalty(req.penalty, daysDelayed)
-                                const complianceType = req.compliance_type
-                                const formFreq = getFormFrequency(req.requirement)
-                                const legalSections = getRelevantLegalSections(req.requirement, req.category)
-                                const authority = getAuthorityForCategory(req.category)
-                                
-                                return (
-                                  <div key={req.id} className="bg-black border border-white/10 rounded-lg p-3 space-y-2">
-                                    {/* Requirement Header with Checkbox */}
-                                    <div className="flex items-start gap-2">
-                                      {canEdit && (
-                                        <input
-                                          type="checkbox"
-                                          checked={selectedRequirements.has(req.id)}
-                                          onChange={(e) => {
-                                            const newSelected = new Set(selectedRequirements)
-                                            if (e.target.checked) {
-                                              newSelected.add(req.id)
-                                            } else {
-                                              newSelected.delete(req.id)
-                                            }
-                                            setSelectedRequirements(newSelected)
-                                          }}
-                                          className="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-800 text-white focus:ring-white/40 focus:ring-2 cursor-pointer"
-                                        />
-                                      )}
-                                      {(req.isCritical || req.status === 'overdue') && (
+                          </div>
+
+                          {/* Calendar Grid */}
+                          <div className="grid grid-cols-7 gap-1 sm:gap-2">
+                            {/* Day headers */}
+                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                              <div key={day} className="text-center text-[10px] sm:text-xs font-medium text-gray-400 py-1 sm:py-2">
+                                {day}
+                              </div>
+                            ))}
+                            {/* Empty cells for days before month starts */}
+                            {Array.from({ length: startingDayOfWeek }).map((_, i) => (
+                              <div key={`empty-${i}`} className="aspect-square"></div>
+                            ))}
+                            {/* Calendar days */}
+                            {Array.from({ length: daysInMonth }).map((_, i) => {
+                              const day = i + 1
+                              const dateKey = `${currentCalendarYear}-${String(currentCalendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                              const dayRequirements = requirementsByDate.get(dateKey) || []
+                              const isToday = new Date().toDateString() === new Date(currentCalendarYear, currentCalendarMonth, day).toDateString()
+
+                              return (
+                                <div
+                                  key={day}
+                                  className={`min-h-[60px] sm:min-h-[120px] border border-gray-700 rounded sm:rounded-lg p-1 sm:p-2 bg-gray-900/50 ${isToday ? 'ring-1 sm:ring-2 ring-white/40' : ''
+                                    }`}
+                                >
+                                  <div className={`text-xs sm:text-sm mb-1 sm:mb-2 font-medium ${isToday ? 'text-white font-bold' : 'text-gray-300'}`}>
+                                    {day}
+                                  </div>
+                                  <div className="space-y-1 sm:space-y-1.5 overflow-y-auto max-h-[45px] sm:max-h-[90px]">
+                                    {dayRequirements.map((req) => {
+                                      const isOverdue = req.status === 'overdue' || (parseDateForCalendar(req.dueDate) && parseDateForCalendar(req.dueDate)! < new Date())
+                                      const daysDelayed = calculateDelay(req.dueDate, req.status)
+                                      const calculatedPenalty = calculatePenalty(req.penalty, daysDelayed, req.penalty_base_amount)
+
+                                      return (
+                                        <div
+                                          key={req.id}
+                                          className={`text-[10px] sm:text-xs p-1 sm:p-2 rounded border cursor-pointer hover:opacity-80 transition-opacity ${isOverdue
+                                              ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                                              : req.status === 'completed'
+                                                ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                                                : req.status === 'pending'
+                                                  ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                                                  : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                                            }`}
+                                          title={`${req.category} - ${req.requirement}\n${req.description || ''}\nStatus: ${req.status}\nPenalty: ${req.penalty}\nCalculated: ${calculatedPenalty}`}
+                                        >
+                                          <div className="font-semibold truncate">{req.requirement}</div>
+                                          <div className="text-[8px] sm:text-[10px] text-gray-400 truncate mt-0.5 hidden sm:block">{req.category}</div>
+                                          <div className="flex items-center gap-0.5 sm:gap-1 mt-0.5 sm:mt-1">
+                                            <span className={`px-1 sm:px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-medium ${req.status === 'completed' ? 'bg-green-500/30 text-green-300' :
+                                                req.status === 'overdue' ? 'bg-red-500/30 text-red-300' :
+                                                  req.status === 'pending' ? 'bg-yellow-500/30 text-yellow-300' :
+                                                    'bg-gray-700 text-gray-300'
+                                              }`}>
+                                              {req.status === 'completed' ? '✓' : req.status === 'overdue' ? '!' : req.status === 'pending' ? '⏳' : '○'}
+                                            </span>
+                                            {req.compliance_type && (
+                                              <span className="text-[8px] sm:text-[10px] text-gray-400 hidden sm:inline">
+                                                {req.compliance_type.charAt(0).toUpperCase()}
+                                              </span>
+                                            )}
+                                          </div>
+                                          {calculatedPenalty !== '-' && (
+                                            <div className="text-[8px] sm:text-[10px] text-red-400 mt-0.5 font-medium truncate">
+                                              {calculatedPenalty}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    // List view
+                    return (
+                      <>
+                        {/* Mobile Card View */}
+                        <div className="block sm:hidden space-y-3">
+                          {groupedByCategory.map((group, groupIndex) => (
+                            <div key={group.category}>
+                              {/* Category Header */}
+                              <div className="mb-2">
+                                <h3 className="text-white font-semibold text-base">
+                                  {group.category}
+                                </h3>
+                                {groupIndex > 0 && (
+                                  <div className="h-0.5 bg-gradient-to-r from-transparent via-white/30 to-transparent my-2"></div>
+                                )}
+                              </div>
+                              {/* Category Items as Cards */}
+                              <div className="space-y-3">
+                                {group.items.map((req) => {
+                                  const daysDelayed = calculateDelay(req.dueDate, req.status)
+                                  const calculatedPenalty = calculatePenalty(req.penalty, daysDelayed)
+                                  const complianceType = req.compliance_type
+                                  const formFreq = getFormFrequency(req.requirement)
+                                  const legalSections = getRelevantLegalSections(req.requirement, req.category)
+                                  const authority = getAuthorityForCategory(req.category)
+
+                                  return (
+                                    <div key={req.id} className="bg-black border border-white/10 rounded-lg p-3 space-y-2">
+                                      {/* Requirement Header with Checkbox */}
+                                      <div className="flex items-start gap-2">
+                                        {canEdit && (
+                                          <input
+                                            type="checkbox"
+                                            checked={selectedRequirements.has(req.id)}
+                                            onChange={(e) => {
+                                              const newSelected = new Set(selectedRequirements)
+                                              if (e.target.checked) {
+                                                newSelected.add(req.id)
+                                              } else {
+                                                newSelected.delete(req.id)
+                                              }
+                                              setSelectedRequirements(newSelected)
+                                            }}
+                                            className="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-800 text-white focus:ring-white/40 focus:ring-2 cursor-pointer"
+                                          />
+                                        )}
+                                        {(req.isCritical || req.status === 'overdue') && (
+                                          <svg
+                                            width="16"
+                                            height="16"
+                                            className="flex-shrink-0 mt-0.5 text-red-500"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                          >
+                                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                            <line x1="12" y1="9" x2="12" y2="13" />
+                                            <line x1="12" y1="17" x2="12.01" y2="17" />
+                                          </svg>
+                                        )}
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <div className="text-white font-medium text-sm break-words">{req.requirement}</div>
+                                            {formFreq && (
+                                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${formFreq === 'monthly' ? 'bg-blue-500/20 text-blue-400' :
+                                                  formFreq === 'quarterly' ? 'bg-purple-500/20 text-purple-400' :
+                                                    formFreq === 'annual' ? 'bg-green-500/20 text-green-400' :
+                                                      'bg-gray-500/20 text-gray-400'
+                                                }`}>
+                                                {formFreq.toUpperCase()}
+                                              </span>
+                                            )}
+                                          </div>
+                                          {req.description && (
+                                            <div className="text-gray-400 text-xs break-words mt-1">{req.description}</div>
+                                          )}
+                                          {(formFreq || authority || legalSections.length > 0) && (
+                                            <button
+                                              onClick={() => setComplianceDetailsModal(req)}
+                                              className="mt-2 text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1 transition-colors"
+                                            >
+                                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <line x1="12" y1="16" x2="12" y2="12" />
+                                                <line x1="12" y1="8" x2="12.01" y2="8" />
+                                              </svg>
+                                              View Details
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Status and Type Row */}
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        {canEdit ? (
+                                          <select
+                                            value={req.status}
+                                            onChange={(e) => handleStatusChange(req.id, e.target.value as any)}
+                                            className={`px-2 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${req.status === 'completed'
+                                                ? 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30'
+                                                : req.status === 'overdue'
+                                                  ? 'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30'
+                                                  : req.status === 'pending'
+                                                    ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30'
+                                                    : req.status === 'upcoming'
+                                                      ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30'
+                                                      : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
+                                              }`}
+                                            style={{
+                                              appearance: 'none',
+                                              backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+                                              backgroundRepeat: 'no-repeat',
+                                              backgroundPosition: 'right 6px center',
+                                              paddingRight: '22px'
+                                            }}
+                                          >
+                                            <option value="not_started">NOT STARTED</option>
+                                            <option value="upcoming">UPCOMING</option>
+                                            <option value="pending">PENDING</option>
+                                            <option value="overdue">OVERDUE</option>
+                                            <option value="completed">COMPLETED</option>
+                                          </select>
+                                        ) : (
+                                          <span
+                                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${req.status === 'completed'
+                                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                                : req.status === 'overdue'
+                                                  ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                                  : req.status === 'pending'
+                                                    ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                                                    : req.status === 'upcoming'
+                                                      ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                                                      : 'bg-gray-800 text-gray-400 border border-gray-700'
+                                              }`}
+                                          >
+                                            {req.status === 'completed'
+                                              ? 'COMPLETED'
+                                              : req.status === 'overdue'
+                                                ? 'OVERDUE'
+                                                : req.status === 'pending'
+                                                  ? 'PENDING'
+                                                  : req.status === 'upcoming'
+                                                    ? 'UPCOMING'
+                                                    : 'NOT STARTED'}
+                                          </span>
+                                        )}
+                                        {complianceType && (
+                                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${complianceType === 'one-time' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
+                                              complianceType === 'annual' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                                                complianceType === 'monthly' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                                                  complianceType === 'quarterly' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' :
+                                                    'bg-gray-500/20 text-white border border-gray-500/30'
+                                            }`} title={
+                                              complianceType === 'one-time' ? 'One-time: happens once, no recurring' :
+                                                complianceType === 'annual' ? 'Annual: recurs every year' :
+                                                  complianceType === 'monthly' ? 'Monthly: recurs every month' :
+                                                    complianceType === 'quarterly' ? 'Quarterly: recurs every quarter' :
+                                                      ''
+                                            }>
+                                            {complianceType === 'one-time' ? 'ONE-TIME' :
+                                              complianceType === 'annual' ? 'ANNUAL' :
+                                                complianceType.toUpperCase()}
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      {/* Due Date */}
+                                      <div className="flex items-center gap-1.5 text-white">
                                         <svg
-                                          width="16"
-                                          height="16"
-                                          className="flex-shrink-0 mt-0.5 text-red-500"
+                                          width="14"
+                                          height="14"
+                                          className="flex-shrink-0 text-gray-400"
                                           viewBox="0 0 24 24"
                                           fill="none"
                                           stroke="currentColor"
@@ -8133,770 +8227,638 @@ function DataRoomPageInner() {
                                           strokeLinecap="round"
                                           strokeLinejoin="round"
                                         >
-                                          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                                          <line x1="12" y1="9" x2="12" y2="13" />
-                                          <line x1="12" y1="17" x2="12.01" y2="17" />
+                                          <circle cx="12" cy="12" r="10" />
+                                          <polyline points="12 6 12 12 16 14" />
                                         </svg>
-                                      )}
-                                      <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                          <div className="text-white font-medium text-sm break-words">{req.requirement}</div>
-                                          {formFreq && (
-                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                                              formFreq === 'monthly' ? 'bg-blue-500/20 text-blue-400' :
-                                              formFreq === 'quarterly' ? 'bg-purple-500/20 text-purple-400' :
-                                              formFreq === 'annual' ? 'bg-green-500/20 text-green-400' :
-                                              'bg-gray-500/20 text-gray-400'
-                                            }`}>
-                                              {formFreq.toUpperCase()}
+                                        <span className="text-xs">Due: {req.dueDate}</span>
+                                      </div>
+
+                                      {/* Delayed, Penalty, Calculated Penalty */}
+                                      <div className="grid grid-cols-2 gap-2 text-xs">
+                                        {daysDelayed !== null && (
+                                          <div>
+                                            <span className="text-gray-400">Delayed:</span>
+                                            <span className="text-red-400 font-medium ml-1">
+                                              {daysDelayed} {daysDelayed === 1 ? 'day' : 'days'}
                                             </span>
+                                          </div>
+                                        )}
+                                        {req.penalty && (
+                                          <div>
+                                            <span className="text-gray-400">Penalty:</span>
+                                            <span className="text-red-400 ml-1 break-words">{req.penalty}</span>
+                                          </div>
+                                        )}
+                                        {calculatedPenalty !== '-' && (
+                                          <div className="col-span-2">
+                                            <span className="text-gray-400">Calculated Penalty:</span>
+                                            <span className="text-red-400 font-semibold ml-1">
+                                              {calculatedPenalty}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* Audit Trail */}
+                                      {((req as any).filed_on || (req as any).filed_by || (req as any).status_reason) && (
+                                        <div className="pt-2 border-t border-white/10 space-y-1.5">
+                                          {(req as any).filed_on && (
+                                            <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <polyline points="12 6 12 12 16 14" />
+                                              </svg>
+                                              <span>Filed on: {new Date((req as any).filed_on).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                            </div>
+                                          )}
+                                          {(req as any).filed_by && (
+                                            <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                                <circle cx="12" cy="7" r="4" />
+                                              </svg>
+                                              <span>Filed by: {((req as any).filed_by_name || 'User')}</span>
+                                            </div>
+                                          )}
+                                          {(req as any).status_reason && (
+                                            <div className="flex items-start gap-1.5 text-xs text-gray-400">
+                                              <svg width="12" height="12" className="mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <line x1="12" y1="16" x2="12" y2="12" />
+                                                <line x1="12" y1="8" x2="12.01" y2="8" />
+                                              </svg>
+                                              <span>Reason: {(req as any).status_reason}</span>
+                                            </div>
                                           )}
                                         </div>
-                                        {req.description && (
-                                          <div className="text-gray-400 text-xs break-words mt-1">{req.description}</div>
-                                        )}
-                                        {(formFreq || authority || legalSections.length > 0) && (
+                                      )}
+
+                                      {/* Actions */}
+                                      {canEdit && (
+                                        <div className="flex items-center gap-2 pt-2 border-t border-white/10">
                                           <button
-                                            onClick={() => setComplianceDetailsModal(req)}
-                                            className="mt-2 text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1 transition-colors"
-                                          >
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                              <circle cx="12" cy="12" r="10" />
-                                              <line x1="12" y1="16" x2="12" y2="12" />
-                                              <line x1="12" y1="8" x2="12.01" y2="8" />
-                                            </svg>
-                                            View Details
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Status and Type Row */}
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      {canEdit ? (
-                                        <select
-                                          value={req.status}
-                                          onChange={(e) => handleStatusChange(req.id, e.target.value as any)}
-                                          className={`px-2 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
-                                            req.status === 'completed'
-                                              ? 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30'
-                                              : req.status === 'overdue'
-                                              ? 'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30'
-                                              : req.status === 'pending'
-                                              ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30'
-                                              : req.status === 'upcoming'
-                                              ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30'
-                                              : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
-                                          }`}
-                                          style={{
-                                            appearance: 'none',
-                                            backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
-                                            backgroundRepeat: 'no-repeat',
-                                            backgroundPosition: 'right 6px center',
-                                            paddingRight: '22px'
-                                          }}
-                                        >
-                                          <option value="not_started">NOT STARTED</option>
-                                          <option value="upcoming">UPCOMING</option>
-                                          <option value="pending">PENDING</option>
-                                          <option value="overdue">OVERDUE</option>
-                                          <option value="completed">COMPLETED</option>
-                                        </select>
-                                      ) : (
-                                        <span
-                                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                                            req.status === 'completed'
-                                              ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                              : req.status === 'overdue'
-                                              ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                                              : req.status === 'pending'
-                                              ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                                              : req.status === 'upcoming'
-                                              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                                              : 'bg-gray-800 text-gray-400 border border-gray-700'
-                                          }`}
-                                        >
-                                          {req.status === 'completed'
-                                            ? 'COMPLETED'
-                                            : req.status === 'overdue'
-                                            ? 'OVERDUE'
-                                            : req.status === 'pending'
-                                            ? 'PENDING'
-                                            : req.status === 'upcoming'
-                                            ? 'UPCOMING'
-                                            : 'NOT STARTED'}
-                                        </span>
-                                      )}
-                                      {complianceType && (
-                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                          complianceType === 'one-time' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
-                                          complianceType === 'annual' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                                          complianceType === 'monthly' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                                          complianceType === 'quarterly' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' :
-                                          'bg-gray-500/20 text-white border border-gray-500/30'
-                                        }`} title={
-                                          complianceType === 'one-time' ? 'One-time: happens once, no recurring' :
-                                          complianceType === 'annual' ? 'Annual: recurs every year' :
-                                          complianceType === 'monthly' ? 'Monthly: recurs every month' :
-                                          complianceType === 'quarterly' ? 'Quarterly: recurs every quarter' :
-                                          ''
-                                        }>
-                                          {complianceType === 'one-time' ? 'ONE-TIME' :
-                                           complianceType === 'annual' ? 'ANNUAL' :
-                                           complianceType.toUpperCase()}
-                                        </span>
-                                      )}
-                                    </div>
-                                    
-                                    {/* Due Date */}
-                                    <div className="flex items-center gap-1.5 text-white">
-                                      <svg
-                                        width="14"
-                                        height="14"
-                                        className="flex-shrink-0 text-gray-400"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      >
-                                        <circle cx="12" cy="12" r="10" />
-                                        <polyline points="12 6 12 12 16 14" />
-                                      </svg>
-                                      <span className="text-xs">Due: {req.dueDate}</span>
-                                    </div>
-                                    
-                                    {/* Delayed, Penalty, Calculated Penalty */}
-                                    <div className="grid grid-cols-2 gap-2 text-xs">
-                                      {daysDelayed !== null && (
-                                        <div>
-                                          <span className="text-gray-400">Delayed:</span>
-                                          <span className="text-red-400 font-medium ml-1">
-                                            {daysDelayed} {daysDelayed === 1 ? 'day' : 'days'}
-                                          </span>
-                                        </div>
-                                      )}
-                                      {req.penalty && (
-                                        <div>
-                                          <span className="text-gray-400">Penalty:</span>
-                                          <span className="text-red-400 ml-1 break-words">{req.penalty}</span>
-                                        </div>
-                                      )}
-                                      {calculatedPenalty !== '-' && (
-                                        <div className="col-span-2">
-                                          <span className="text-gray-400">Calculated Penalty:</span>
-                                          <span className="text-red-400 font-semibold ml-1">
-                                            {calculatedPenalty}
-                                          </span>
-                                        </div>
-                                      )}
-                                    </div>
-                                    
-                                    {/* Audit Trail */}
-                                    {((req as any).filed_on || (req as any).filed_by || (req as any).status_reason) && (
-                                      <div className="pt-2 border-t border-white/10 space-y-1.5">
-                                        {(req as any).filed_on && (
-                                          <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                              <circle cx="12" cy="12" r="10" />
-                                              <polyline points="12 6 12 12 16 14" />
-                                            </svg>
-                                            <span>Filed on: {new Date((req as any).filed_on).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                                          </div>
-                                        )}
-                                        {(req as any).filed_by && (
-                                          <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                              <circle cx="12" cy="7" r="4" />
-                                            </svg>
-                                            <span>Filed by: {((req as any).filed_by_name || 'User')}</span>
-                                          </div>
-                                        )}
-                                        {(req as any).status_reason && (
-                                          <div className="flex items-start gap-1.5 text-xs text-gray-400">
-                                            <svg width="12" height="12" className="mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                              <circle cx="12" cy="12" r="10" />
-                                              <line x1="12" y1="16" x2="12" y2="12" />
-                                              <line x1="12" y1="8" x2="12.01" y2="8" />
-                                            </svg>
-                                            <span>Reason: {(req as any).status_reason}</span>
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                    
-                                    {/* Actions */}
-                                    {canEdit && (
-                                      <div className="flex items-center gap-2 pt-2 border-t border-white/10">
-                                        <button
-                                          onClick={() => {
-                                            const originalReq = (regulatoryRequirements || []).find(r => r.id === req.id)
-                                            if (originalReq) {
-                                              setEditingRequirement(originalReq)
-                                              setRequirementForm({
-                                                category: originalReq.category,
-                                                requirement: originalReq.requirement,
-                                                description: originalReq.description || '',
-                                                due_date: originalReq.due_date,
-                                                penalty: originalReq.penalty || '',
-                                                penalty_base_amount: originalReq.penalty_base_amount || null,
-                                                is_critical: originalReq.is_critical,
-                                                financial_year: originalReq.financial_year || '',
-                                                status: originalReq.status,
-                                                compliance_type: (originalReq as any).compliance_type || 'one-time',
-                                                year: new Date().getFullYear().toString()
-                                              })
-                                              setIsEditModalOpen(true)
-                                            }
-                                          }}
-                                          className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 rounded-lg transition-colors"
-                                          title="Edit"
-                                        >
-                                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                          </svg>
-                                        </button>
-                                        <button
-                                          onClick={async () => {
-                                            if (!confirm('Are you sure you want to delete this compliance requirement?')) return
-                                            if (!currentCompany) return
-                                            
-                                            try {
-                                              const result = await deleteRequirement(req.id, currentCompany.id)
-                                              if (result.success) {
-                                                const refreshResult = await getRegulatoryRequirements(currentCompany.id)
-                                                if (refreshResult.success && refreshResult.requirements) {
-                                                  setRegulatoryRequirements(refreshResult.requirements)
-                                                }
-                                                alert('Requirement deleted successfully')
-                                              } else {
-                                                alert(`Failed to delete: ${result.error}`)
-                                              }
-                                            } catch (error: any) {
-                                              console.error('Error deleting requirement:', error)
-                                              alert(`Error: ${error.message}`)
-                                            }
-                                          }}
-                                          className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
-                                          title="Delete"
-                                        >
-                                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <polyline points="3 6 5 6 21 6" />
-                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                          </svg>
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      
-                      {/* Desktop Table View */}
-                      <table className="hidden sm:table w-full">
-                      <thead className="bg-black border-b border-white/10">
-                        <tr>
-                          {canEdit && (
-                            <th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider w-12">
-                              <input
-                                type="checkbox"
-                                checked={filteredRequirements.length > 0 && filteredRequirements.every(req => selectedRequirements.has(req.id))}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedRequirements(new Set(filteredRequirements.map(req => req.id)))
-                                  } else {
-                                    setSelectedRequirements(new Set())
-                                  }
-                                }}
-                                className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-white focus:ring-white/40 focus:ring-2 cursor-pointer"
-                              />
-                            </th>
-                          )}
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            CATEGORY
-                          </th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            REQUIREMENT
-                          </th>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                              TYPE
-                          </th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            STATUS
-                          </th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                            DUE DATE
-                          </th>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
-                            DOCUMENTS
-                          </th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
-                            FILED ON
-                          </th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden xl:table-cell">
-                            FILED BY
-                          </th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden xl:table-cell">
-                            STATUS REASON
-                          </th>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
-                            PENALTY
-                          </th>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
-                              CALC PENALTY
-                            </th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden xl:table-cell">
-                            LEGAL ACTION
-                          </th>
-                            {canEdit && (
-                          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                                ACTIONS
-                          </th>
-                            )}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {groupedByCategory.map((group, groupIndex) => (
-                          <React.Fragment key={group.category}>
-                            {/* Visual Separator between categories */}
-                            {groupIndex > 0 && (
-                              <tr>
-                                <td colSpan={canEdit ? 13 : 12} className="px-0 py-0">
-                                  <div className="h-0.5 bg-gradient-to-r from-transparent via-white/30 to-transparent my-2"></div>
-                                </td>
-                              </tr>
-                            )}
-                            {/* Category Items */}
-                            {group.items.map((req, itemIndex) => {
-                              const formFreq = getFormFrequency(req.requirement)
-                              const legalSections = getRelevantLegalSections(req.requirement, req.category)
-                              const authority = getAuthorityForCategory(req.category)
-                              
-                              return (
-                              <tr key={req.id} className="hover:bg-black/50 transition-colors border-t border-white/10">
-                                {canEdit && (
-                                  <td className="px-4 py-4">
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedRequirements.has(req.id)}
-                                      onChange={(e) => {
-                                        const newSelected = new Set(selectedRequirements)
-                                        if (e.target.checked) {
-                                          newSelected.add(req.id)
-                                        } else {
-                                          newSelected.delete(req.id)
-                                        }
-                                        setSelectedRequirements(newSelected)
-                                      }}
-                                      className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-white focus:ring-white/40 focus:ring-2 cursor-pointer"
-                                    />
-                                  </td>
-                                )}
-                                {itemIndex === 0 && (
-                                  <td 
-                                    className="px-6 py-4 border-r-0 border-l-0 border-t-0 border-b-0 align-top"
-                                    rowSpan={group.items.length}
-                                  >
-                                    <span className="text-white font-semibold text-2xl block">
-                                      {group.category}
-                                    </span>
-                                  </td>
-                                )}
-                                <td className="px-6 py-4">
-                                    <div className="flex items-start gap-2">
-                                    {(req.isCritical || req.status === 'overdue') && (
-                                      <svg
-                                        width="16"
-                                        height="16"
-                                        className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-500"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      >
-                                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                                        <line x1="12" y1="9" x2="12" y2="13" />
-                                        <line x1="12" y1="17" x2="12.01" y2="17" />
-                                      </svg>
-                                    )}
-                                      <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                          <div className="text-white font-medium text-base break-words">{req.requirement}</div>
-                                          {formFreq && (
-                                            <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
-                                              formFreq === 'monthly' ? 'bg-blue-500/20 text-blue-400' :
-                                              formFreq === 'quarterly' ? 'bg-purple-500/20 text-purple-400' :
-                                              formFreq === 'annual' ? 'bg-green-500/20 text-green-400' :
-                                              'bg-gray-500/20 text-gray-400'
-                                            }`}>
-                                              {formFreq.toUpperCase()}
-                                            </span>
-                                          )}
-                                        </div>
-                                        <div className="text-gray-400 text-sm break-words">{req.description}</div>
-                                        {(formFreq || authority || legalSections.length > 0) && (
-                                          <button
-                                            onClick={() => setComplianceDetailsModal(req)}
-                                            className="mt-2 text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1 transition-colors"
-                                          >
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                              <circle cx="12" cy="12" r="10" />
-                                              <line x1="12" y1="16" x2="12" y2="12" />
-                                              <line x1="12" y1="8" x2="12.01" y2="8" />
-                                            </svg>
-                                            View Details
-                                          </button>
-                                        )}
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    {(() => {
-                                      const complianceType = req.compliance_type
-                                      if (!complianceType) return <span className="text-gray-500 text-sm">-</span>
-                                      return (
-                                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                          complianceType === 'one-time' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
-                                          complianceType === 'annual' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                                          complianceType === 'monthly' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                                          complianceType === 'quarterly' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' :
-                                          'bg-gray-500/20 text-white border border-gray-500/30'
-                                        }`} title={
-                                          complianceType === 'one-time' ? 'One-time: happens once, no recurring' :
-                                          complianceType === 'annual' ? 'Annual: recurs every year' :
-                                          complianceType === 'monthly' ? 'Monthly: recurs every month' :
-                                          complianceType === 'quarterly' ? 'Quarterly: recurs every quarter' :
-                                          ''
-                                        }>
-                                          {complianceType === 'one-time' ? 'ONE-TIME' :
-                                           complianceType === 'annual' ? 'ANNUAL' :
-                                           complianceType.toUpperCase()}
-                                        </span>
-                                      )
-                                    })()}
-                                  </td>
-                                  <td className="px-6 py-4">
-                                    {canEdit ? (
-                                      <select
-                                        value={req.status}
-                                        onChange={(e) => handleStatusChange(req.id, e.target.value as any)}
-                                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
-                                          req.status === 'completed'
-                                            ? 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30'
-                                            : req.status === 'overdue'
-                                            ? 'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30'
-                                            : req.status === 'pending'
-                                            ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30'
-                                            : req.status === 'upcoming'
-                                            ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30'
-                                            : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
-                                        }`}
-                                        style={{
-                                          appearance: 'none',
-                                          backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
-                                          backgroundRepeat: 'no-repeat',
-                                          backgroundPosition: 'right 6px center',
-                                          paddingRight: '22px'
-                                        }}
-                                      >
-                                        <option value="not_started">NOT STARTED</option>
-                                        <option value="upcoming">UPCOMING</option>
-                                        <option value="pending">PENDING</option>
-                                        <option value="overdue">OVERDUE</option>
-                                        <option value="completed">COMPLETED</option>
-                                      </select>
-                                    ) : (
-                                  <span
-                                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-                                      req.status === 'completed'
-                                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                        : req.status === 'overdue'
-                                        ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                                        : req.status === 'pending'
-                                        ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                                        : req.status === 'upcoming'
-                                        ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                                        : 'bg-gray-800 text-gray-400 border border-gray-700'
-                                    }`}
-                                  >
-                                    {req.status === 'completed'
-                                      ? 'COMPLETED'
-                                      : req.status === 'overdue'
-                                      ? 'OVERDUE'
-                                      : req.status === 'pending'
-                                      ? 'PENDING'
-                                      : req.status === 'upcoming'
-                                      ? 'UPCOMING'
-                                      : 'NOT STARTED'}
-                                  </span>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4">
-                                  {(() => {
-                                    const daysDelayed = calculateDelay(req.dueDate, req.status)
-                                    return (
-                                      <div className="flex flex-col">
-                                  <div className="flex items-center gap-2 text-white">
-                                    <svg
-                                      width="16"
-                                      height="16"
-                                        className="w-4 h-4 flex-shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                                    >
-                                      <circle cx="12" cy="12" r="10" />
-                                      <polyline points="12 6 12 12 16 14" />
-                                    </svg>
-                                      <span className="text-sm whitespace-nowrap">{req.dueDate}</span>
-                                  </div>
-                                        {daysDelayed !== null && daysDelayed > 0 && (
-                                          <div className="text-red-400 text-xs mt-1 ml-6">
-                                            Delayed by {daysDelayed} {daysDelayed === 1 ? 'day' : 'days'}
-                                          </div>
-                                        )}
-                                      </div>
-                                    )
-                                  })()}
-                                </td>
-                                  <td className="px-6 py-4 hidden md:table-cell">
-                                  {/* Documents Required Column */}
-                                  {(() => {
-                                    const requiredDocs = req.required_documents || []
-                                    // Debug logging
-                                    if (req.requirement === 'GSTR-3B - Monthly Summary Return' || req.requirement === 'ESI Challan - Monthly ESI Payment') {
-                                      console.log('[RENDER] Documents for', req.requirement, ':', {
-                                        required_documents: req.required_documents,
-                                        type: typeof req.required_documents,
-                                        isArray: Array.isArray(req.required_documents),
-                                        length: Array.isArray(req.required_documents) ? req.required_documents.length : 'N/A',
-                                        parsed: requiredDocs
-                                      })
-                                    }
-                                    if (!Array.isArray(requiredDocs) || requiredDocs.length === 0) {
-                                      return <div className="text-gray-500 text-sm">-</div>
-                                    }
-                                    return (
-                                      <div className="flex flex-wrap gap-1">
-                                        {requiredDocs.slice(0, 3).map((doc: string, idx: number) => (
-                                          <button
-                                            key={idx}
                                             onClick={() => {
-                                              const requirement = (regulatoryRequirements || []).find(r => r.id === req.id)
-                                              if (requirement) {
-                                                setDocumentUploadModal({
-                                                  isOpen: true,
-                                                  requirementId: req.id,
-                                                  requirement: req.requirement,
-                                                  category: req.category,
-                                                  documentName: doc,
-                                                  complianceType: req.compliance_type || 'one-time',
-                                                  dueDate: req.dueDate,
-                                                  financialYear: req.financial_year || null,
-                                                  allRequiredDocs: requiredDocs
+                                              const originalReq = (regulatoryRequirements || []).find(r => r.id === req.id)
+                                              if (originalReq) {
+                                                setEditingRequirement(originalReq)
+                                                setRequirementForm({
+                                                  category: originalReq.category,
+                                                  requirement: originalReq.requirement,
+                                                  description: originalReq.description || '',
+                                                  due_date: originalReq.due_date,
+                                                  penalty: originalReq.penalty || '',
+                                                  penalty_base_amount: originalReq.penalty_base_amount || null,
+                                                  is_critical: originalReq.is_critical,
+                                                  financial_year: originalReq.financial_year || '',
+                                                  status: originalReq.status,
+                                                  compliance_type: (originalReq as any).compliance_type || 'one-time',
+                                                  year: new Date().getFullYear().toString()
                                                 })
+                                                setIsEditModalOpen(true)
                                               }
                                             }}
-                                            className="group px-2 py-0.5 text-xs rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 hover:border-blue-400 transition-colors flex items-center gap-1"
-                                            title={`Click to upload ${doc}`}
+                                            className="p-1.5 text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 rounded-lg transition-colors"
+                                            title="Edit"
                                           >
-                                            <span>{doc.length > 12 ? doc.substring(0, 12) + '...' : doc}</span>
-                                            <svg 
-                                              className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" 
-                                              fill="none" 
-                                              stroke="currentColor" 
-                                              viewBox="0 0 24 24"
-                                            >
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                                             </svg>
                                           </button>
-                                        ))}
-                                        {requiredDocs.length > 3 && (
-                                          <span className="px-2 py-0.5 text-xs rounded-full bg-gray-700 text-gray-400">
-                                            +{requiredDocs.length - 3}
+                                          <button
+                                            onClick={async () => {
+                                              if (!confirm('Are you sure you want to delete this compliance requirement?')) return
+                                              if (!currentCompany) return
+
+                                              try {
+                                                const result = await deleteRequirement(req.id, currentCompany.id)
+                                                if (result.success) {
+                                                  const refreshResult = await getRegulatoryRequirements(currentCompany.id)
+                                                  if (refreshResult.success && refreshResult.requirements) {
+                                                    setRegulatoryRequirements(refreshResult.requirements)
+                                                  }
+                                                  alert('Requirement deleted successfully')
+                                                } else {
+                                                  alert(`Failed to delete: ${result.error}`)
+                                                }
+                                              } catch (error: any) {
+                                                console.error('Error deleting requirement:', error)
+                                                alert(`Error: ${error.message}`)
+                                              }
+                                            }}
+                                            className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
+                                            title="Delete"
+                                          >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                              <polyline points="3 6 5 6 21 6" />
+                                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                            </svg>
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Desktop Table View */}
+                        <table className="hidden sm:table w-full">
+                          <thead className="bg-black border-b border-white/10">
+                            <tr>
+                              {canEdit && (
+                                <th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider w-12">
+                                  <input
+                                    type="checkbox"
+                                    checked={filteredRequirements.length > 0 && filteredRequirements.every(req => selectedRequirements.has(req.id))}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedRequirements(new Set(filteredRequirements.map(req => req.id)))
+                                      } else {
+                                        setSelectedRequirements(new Set())
+                                      }
+                                    }}
+                                    className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-white focus:ring-white/40 focus:ring-2 cursor-pointer"
+                                  />
+                                </th>
+                              )}
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                CATEGORY
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                REQUIREMENT
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                TYPE
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                STATUS
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                DUE DATE
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
+                                DOCUMENTS
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+                                FILED ON
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden xl:table-cell">
+                                FILED BY
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden xl:table-cell">
+                                STATUS REASON
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+                                PENALTY
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+                                CALC PENALTY
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden xl:table-cell">
+                                LEGAL ACTION
+                              </th>
+                              {canEdit && (
+                                <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                  ACTIONS
+                                </th>
+                              )}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {groupedByCategory.map((group, groupIndex) => (
+                              <React.Fragment key={group.category}>
+                                {/* Visual Separator between categories */}
+                                {groupIndex > 0 && (
+                                  <tr>
+                                    <td colSpan={canEdit ? 13 : 12} className="px-0 py-0">
+                                      <div className="h-0.5 bg-gradient-to-r from-transparent via-white/30 to-transparent my-2"></div>
+                                    </td>
+                                  </tr>
+                                )}
+                                {/* Category Items */}
+                                {group.items.map((req, itemIndex) => {
+                                  const formFreq = getFormFrequency(req.requirement)
+                                  const legalSections = getRelevantLegalSections(req.requirement, req.category)
+                                  const authority = getAuthorityForCategory(req.category)
+
+                                  return (
+                                    <tr key={req.id} className="hover:bg-black/50 transition-colors border-t border-white/10">
+                                      {canEdit && (
+                                        <td className="px-4 py-4">
+                                          <input
+                                            type="checkbox"
+                                            checked={selectedRequirements.has(req.id)}
+                                            onChange={(e) => {
+                                              const newSelected = new Set(selectedRequirements)
+                                              if (e.target.checked) {
+                                                newSelected.add(req.id)
+                                              } else {
+                                                newSelected.delete(req.id)
+                                              }
+                                              setSelectedRequirements(newSelected)
+                                            }}
+                                            className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-white focus:ring-white/40 focus:ring-2 cursor-pointer"
+                                          />
+                                        </td>
+                                      )}
+                                      {itemIndex === 0 && (
+                                        <td
+                                          className="px-6 py-4 border-r-0 border-l-0 border-t-0 border-b-0 align-top"
+                                          rowSpan={group.items.length}
+                                        >
+                                          <span className="text-white font-semibold text-2xl block">
+                                            {group.category}
+                                          </span>
+                                        </td>
+                                      )}
+                                      <td className="px-6 py-4">
+                                        <div className="flex items-start gap-2">
+                                          {(req.isCritical || req.status === 'overdue') && (
+                                            <svg
+                                              width="16"
+                                              height="16"
+                                              className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-500"
+                                              viewBox="0 0 24 24"
+                                              fill="none"
+                                              stroke="currentColor"
+                                              strokeWidth="2"
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                            >
+                                              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                              <line x1="12" y1="9" x2="12" y2="13" />
+                                              <line x1="12" y1="17" x2="12.01" y2="17" />
+                                            </svg>
+                                          )}
+                                          <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                              <div className="text-white font-medium text-base break-words">{req.requirement}</div>
+                                              {formFreq && (
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${formFreq === 'monthly' ? 'bg-blue-500/20 text-blue-400' :
+                                                    formFreq === 'quarterly' ? 'bg-purple-500/20 text-purple-400' :
+                                                      formFreq === 'annual' ? 'bg-green-500/20 text-green-400' :
+                                                        'bg-gray-500/20 text-gray-400'
+                                                  }`}>
+                                                  {formFreq.toUpperCase()}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="text-gray-400 text-sm break-words">{req.description}</div>
+                                            {(formFreq || authority || legalSections.length > 0) && (
+                                              <button
+                                                onClick={() => setComplianceDetailsModal(req)}
+                                                className="mt-2 text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1 transition-colors"
+                                              >
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                  <circle cx="12" cy="12" r="10" />
+                                                  <line x1="12" y1="16" x2="12" y2="12" />
+                                                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                                                </svg>
+                                                View Details
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4">
+                                        {(() => {
+                                          const complianceType = req.compliance_type
+                                          if (!complianceType) return <span className="text-gray-500 text-sm">-</span>
+                                          return (
+                                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${complianceType === 'one-time' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
+                                                complianceType === 'annual' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                                                  complianceType === 'monthly' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                                                    complianceType === 'quarterly' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' :
+                                                      'bg-gray-500/20 text-white border border-gray-500/30'
+                                              }`} title={
+                                                complianceType === 'one-time' ? 'One-time: happens once, no recurring' :
+                                                  complianceType === 'annual' ? 'Annual: recurs every year' :
+                                                    complianceType === 'monthly' ? 'Monthly: recurs every month' :
+                                                      complianceType === 'quarterly' ? 'Quarterly: recurs every quarter' :
+                                                        ''
+                                              }>
+                                              {complianceType === 'one-time' ? 'ONE-TIME' :
+                                                complianceType === 'annual' ? 'ANNUAL' :
+                                                  complianceType.toUpperCase()}
+                                            </span>
+                                          )
+                                        })()}
+                                      </td>
+                                      <td className="px-6 py-4">
+                                        {canEdit ? (
+                                          <select
+                                            value={req.status}
+                                            onChange={(e) => handleStatusChange(req.id, e.target.value as any)}
+                                            className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${req.status === 'completed'
+                                                ? 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30'
+                                                : req.status === 'overdue'
+                                                  ? 'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30'
+                                                  : req.status === 'pending'
+                                                    ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30'
+                                                    : req.status === 'upcoming'
+                                                      ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30'
+                                                      : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
+                                              }`}
+                                            style={{
+                                              appearance: 'none',
+                                              backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+                                              backgroundRepeat: 'no-repeat',
+                                              backgroundPosition: 'right 6px center',
+                                              paddingRight: '22px'
+                                            }}
+                                          >
+                                            <option value="not_started">NOT STARTED</option>
+                                            <option value="upcoming">UPCOMING</option>
+                                            <option value="pending">PENDING</option>
+                                            <option value="overdue">OVERDUE</option>
+                                            <option value="completed">COMPLETED</option>
+                                          </select>
+                                        ) : (
+                                          <span
+                                            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${req.status === 'completed'
+                                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                                : req.status === 'overdue'
+                                                  ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                                  : req.status === 'pending'
+                                                    ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                                                    : req.status === 'upcoming'
+                                                      ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                                                      : 'bg-gray-800 text-gray-400 border border-gray-700'
+                                              }`}
+                                          >
+                                            {req.status === 'completed'
+                                              ? 'COMPLETED'
+                                              : req.status === 'overdue'
+                                                ? 'OVERDUE'
+                                                : req.status === 'pending'
+                                                  ? 'PENDING'
+                                                  : req.status === 'upcoming'
+                                                    ? 'UPCOMING'
+                                                    : 'NOT STARTED'}
                                           </span>
                                         )}
-                                      </div>
-                                    )
-                                  })()}
-                                </td>
-                                  <td className="px-6 py-4 hidden lg:table-cell">
-                                  {/* Filed On Column */}
-                                  {(() => {
-                                    const filedOn = (req as any).filed_on
-                                    if (!filedOn) {
-                                      return <div className="text-gray-500 text-sm">-</div>
-                                    }
-                                    return (
-                                      <div className="text-green-400 text-sm">
-                                        {new Date(filedOn).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                      </div>
-                                    )
-                                  })()}
-                                </td>
-                                <td className="px-6 py-4 hidden xl:table-cell">
-                                  {/* Filed By Column */}
-                                  {(() => {
-                                    const filedBy = (req as any).filed_by
-                                    if (!filedBy) {
-                                      return <div className="text-gray-500 text-sm">-</div>
-                                    }
-                                    return (
-                                      <div className="text-blue-400 text-sm">
-                                        {(req as any).filed_by_name || 'User'}
-                                      </div>
-                                    )
-                                  })()}
-                                </td>
-                                <td className="px-6 py-4 hidden xl:table-cell">
-                                  {/* Status Reason Column */}
-                                  {(() => {
-                                    const statusReason = (req as any).status_reason
-                                    if (!statusReason) {
-                                      return <div className="text-gray-500 text-sm">-</div>
-                                    }
-                                    return (
-                                      <div className="text-yellow-400 text-xs max-w-[200px]" title={statusReason}>
-                                        {statusReason.length > 30 ? statusReason.substring(0, 30) + '...' : statusReason}
-                                      </div>
-                                    )
-                                  })()}
-                                </td>
-                                <td className="px-6 py-4 hidden lg:table-cell">
-                                  <div className="text-gray-300 text-sm break-words max-w-[150px]" title={req.penalty || ''}>
-                                    {req.penalty ? (req.penalty.length > 30 ? req.penalty.substring(0, 30) + '...' : req.penalty) : '-'}
-                                  </div>
-                                </td>
-                                  <td className="px-6 py-4 hidden lg:table-cell">
-                                  {(() => {
-                                    const daysDelayed = calculateDelay(req.dueDate, req.status)
-                                    const calculatedPenalty = calculatePenalty(req.penalty, daysDelayed, req.penalty_base_amount)
-                                    if (calculatedPenalty === '-') {
-                                      return <div className="text-gray-500 text-sm">-</div>
-                                    }
-                                    if (calculatedPenalty.includes('Needs')) {
-                                      return (
-                                        <button
-                                          onClick={() => {
-                                            // TODO: Open modal to add base amount
-                                            alert('Feature coming soon: Add base amount for penalty calculation')
-                                          }}
-                                          className="text-yellow-400 text-xs underline hover:text-yellow-300"
-                                          title="Click to add required amount"
-                                        >
-                                          {calculatedPenalty}
-                                        </button>
-                                      )
-                                    }
-                                    if (calculatedPenalty.startsWith('Cannot calculate') || calculatedPenalty.startsWith('Refer')) {
-                                      return (
-                                        <div className="text-yellow-400 text-xs max-w-xs" title={calculatedPenalty}>
-                                          {calculatedPenalty}
+                                      </td>
+                                      <td className="px-6 py-4">
+                                        {(() => {
+                                          const daysDelayed = calculateDelay(req.dueDate, req.status)
+                                          return (
+                                            <div className="flex flex-col">
+                                              <div className="flex items-center gap-2 text-white">
+                                                <svg
+                                                  width="16"
+                                                  height="16"
+                                                  className="w-4 h-4 flex-shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                                >
+                                                  <circle cx="12" cy="12" r="10" />
+                                                  <polyline points="12 6 12 12 16 14" />
+                                                </svg>
+                                                <span className="text-sm whitespace-nowrap">{req.dueDate}</span>
+                                              </div>
+                                              {daysDelayed !== null && daysDelayed > 0 && (
+                                                <div className="text-red-400 text-xs mt-1 ml-6">
+                                                  Delayed by {daysDelayed} {daysDelayed === 1 ? 'day' : 'days'}
+                                                </div>
+                                              )}
+                                            </div>
+                                          )
+                                        })()}
+                                      </td>
+                                      <td className="px-6 py-4 hidden md:table-cell">
+                                        {/* Documents Required Column */}
+                                        {(() => {
+                                          const requiredDocs = req.required_documents || []
+                                          // Debug logging
+                                          if (req.requirement === 'GSTR-3B - Monthly Summary Return' || req.requirement === 'ESI Challan - Monthly ESI Payment') {
+                                            console.log('[RENDER] Documents for', req.requirement, ':', {
+                                              required_documents: req.required_documents,
+                                              type: typeof req.required_documents,
+                                              isArray: Array.isArray(req.required_documents),
+                                              length: Array.isArray(req.required_documents) ? req.required_documents.length : 'N/A',
+                                              parsed: requiredDocs
+                                            })
+                                          }
+                                          if (!Array.isArray(requiredDocs) || requiredDocs.length === 0) {
+                                            return <div className="text-gray-500 text-sm">-</div>
+                                          }
+                                          return (
+                                            <div className="flex flex-wrap gap-1">
+                                              {requiredDocs.slice(0, 3).map((doc: string, idx: number) => (
+                                                <button
+                                                  key={idx}
+                                                  onClick={() => {
+                                                    const requirement = (regulatoryRequirements || []).find(r => r.id === req.id)
+                                                    if (requirement) {
+                                                      setDocumentUploadModal({
+                                                        isOpen: true,
+                                                        requirementId: req.id,
+                                                        requirement: req.requirement,
+                                                        category: req.category,
+                                                        documentName: doc,
+                                                        complianceType: req.compliance_type || 'one-time',
+                                                        dueDate: req.dueDate,
+                                                        financialYear: req.financial_year || null,
+                                                        allRequiredDocs: requiredDocs
+                                                      })
+                                                    }
+                                                  }}
+                                                  className="group px-2 py-0.5 text-xs rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 hover:border-blue-400 transition-colors flex items-center gap-1"
+                                                  title={`Click to upload ${doc}`}
+                                                >
+                                                  <span>{doc.length > 12 ? doc.substring(0, 12) + '...' : doc}</span>
+                                                  <svg
+                                                    className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                  >
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                                  </svg>
+                                                </button>
+                                              ))}
+                                              {requiredDocs.length > 3 && (
+                                                <span className="px-2 py-0.5 text-xs rounded-full bg-gray-700 text-gray-400">
+                                                  +{requiredDocs.length - 3}
+                                                </span>
+                                              )}
+                                            </div>
+                                          )
+                                        })()}
+                                      </td>
+                                      <td className="px-6 py-4 hidden lg:table-cell">
+                                        {/* Filed On Column */}
+                                        {(() => {
+                                          const filedOn = (req as any).filed_on
+                                          if (!filedOn) {
+                                            return <div className="text-gray-500 text-sm">-</div>
+                                          }
+                                          return (
+                                            <div className="text-green-400 text-sm">
+                                              {new Date(filedOn).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                            </div>
+                                          )
+                                        })()}
+                                      </td>
+                                      <td className="px-6 py-4 hidden xl:table-cell">
+                                        {/* Filed By Column */}
+                                        {(() => {
+                                          const filedBy = (req as any).filed_by
+                                          if (!filedBy) {
+                                            return <div className="text-gray-500 text-sm">-</div>
+                                          }
+                                          return (
+                                            <div className="text-blue-400 text-sm">
+                                              {(req as any).filed_by_name || 'User'}
+                                            </div>
+                                          )
+                                        })()}
+                                      </td>
+                                      <td className="px-6 py-4 hidden xl:table-cell">
+                                        {/* Status Reason Column */}
+                                        {(() => {
+                                          const statusReason = (req as any).status_reason
+                                          if (!statusReason) {
+                                            return <div className="text-gray-500 text-sm">-</div>
+                                          }
+                                          return (
+                                            <div className="text-yellow-400 text-xs max-w-[200px]" title={statusReason}>
+                                              {statusReason.length > 30 ? statusReason.substring(0, 30) + '...' : statusReason}
+                                            </div>
+                                          )
+                                        })()}
+                                      </td>
+                                      <td className="px-6 py-4 hidden lg:table-cell">
+                                        <div className="text-gray-300 text-sm break-words max-w-[150px]" title={req.penalty || ''}>
+                                          {req.penalty ? (req.penalty.length > 30 ? req.penalty.substring(0, 30) + '...' : req.penalty) : '-'}
                                         </div>
-                                      )
-                                    }
-                                    return (
-                                      <div className="text-red-400 text-sm font-semibold">
-                                        {calculatedPenalty}
-                                      </div>
-                                    )
-                                  })()}
-                                </td>
-                                <td className="px-6 py-4 hidden xl:table-cell">
-                                  {/* Possible Legal Action Column */}
-                                  {(() => {
-                                    const legalAction = (req as any).possible_legal_action
-                                    if (!legalAction) {
-                                      return <div className="text-gray-500 text-sm">-</div>
-                                    }
-                                    return (
-                                      <div className="text-white text-xs max-w-[150px]" title={legalAction}>
-                                        {legalAction.length > 40 ? legalAction.substring(0, 40) + '...' : legalAction}
-                                      </div>
-                                    )
-                                  })()}
-                                </td>
-                                  {canEdit && (
-                                    <td className="px-6 py-4">
-                                      <div className="flex items-center gap-2">
-                                        <button
-                                          onClick={() => {
-                                            const originalReq = (regulatoryRequirements || []).find(r => r.id === req.id)
-                                            if (originalReq) {
-                                              setEditingRequirement(originalReq)
-                                              setRequirementForm({
-                                                category: originalReq.category,
-                                                requirement: originalReq.requirement,
-                                                description: originalReq.description || '',
-                                                due_date: originalReq.due_date,
-                                                penalty: originalReq.penalty || '',
-                                                penalty_base_amount: originalReq.penalty_base_amount || null,
-                                                is_critical: originalReq.is_critical,
-                                                financial_year: originalReq.financial_year || '',
-                                                status: originalReq.status,
-                                                compliance_type: (originalReq as any).compliance_type || 'one-time',
-                                                year: new Date().getFullYear().toString()
-                                              })
-                                              setIsEditModalOpen(true)
-                                            }
-                                          }}
-                                          className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 rounded-lg transition-colors"
-                                          title="Edit"
-                                        >
-                                          <svg width="16" height="16" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                          </svg>
-                                        </button>
-                                        <button
-                                          onClick={async () => {
-                                            if (!confirm('Are you sure you want to delete this compliance requirement?')) return
-                                            if (!currentCompany) return
-                                            
-                                            try {
-                                              const result = await deleteRequirement(req.id, currentCompany.id)
-                                              if (result.success) {
-                                                // Refresh requirements
-                                                const refreshResult = await getRegulatoryRequirements(currentCompany.id)
-                                                if (refreshResult.success && refreshResult.requirements) {
-                                                  setRegulatoryRequirements(refreshResult.requirements)
+                                      </td>
+                                      <td className="px-6 py-4 hidden lg:table-cell">
+                                        {(() => {
+                                          const daysDelayed = calculateDelay(req.dueDate, req.status)
+                                          const calculatedPenalty = calculatePenalty(req.penalty, daysDelayed, req.penalty_base_amount)
+                                          if (calculatedPenalty === '-') {
+                                            return <div className="text-gray-500 text-sm">-</div>
+                                          }
+                                          if (calculatedPenalty.includes('Needs')) {
+                                            return (
+                                              <button
+                                                onClick={() => {
+                                                  // TODO: Open modal to add base amount
+                                                  alert('Feature coming soon: Add base amount for penalty calculation')
+                                                }}
+                                                className="text-yellow-400 text-xs underline hover:text-yellow-300"
+                                                title="Click to add required amount"
+                                              >
+                                                {calculatedPenalty}
+                                              </button>
+                                            )
+                                          }
+                                          if (calculatedPenalty.startsWith('Cannot calculate') || calculatedPenalty.startsWith('Refer')) {
+                                            return (
+                                              <div className="text-yellow-400 text-xs max-w-xs" title={calculatedPenalty}>
+                                                {calculatedPenalty}
+                                              </div>
+                                            )
+                                          }
+                                          return (
+                                            <div className="text-red-400 text-sm font-semibold">
+                                              {calculatedPenalty}
+                                            </div>
+                                          )
+                                        })()}
+                                      </td>
+                                      <td className="px-6 py-4 hidden xl:table-cell">
+                                        {/* Possible Legal Action Column */}
+                                        {(() => {
+                                          const legalAction = (req as any).possible_legal_action
+                                          if (!legalAction) {
+                                            return <div className="text-gray-500 text-sm">-</div>
+                                          }
+                                          return (
+                                            <div className="text-white text-xs max-w-[150px]" title={legalAction}>
+                                              {legalAction.length > 40 ? legalAction.substring(0, 40) + '...' : legalAction}
+                                            </div>
+                                          )
+                                        })()}
+                                      </td>
+                                      {canEdit && (
+                                        <td className="px-6 py-4">
+                                          <div className="flex items-center gap-2">
+                                            <button
+                                              onClick={() => {
+                                                const originalReq = (regulatoryRequirements || []).find(r => r.id === req.id)
+                                                if (originalReq) {
+                                                  setEditingRequirement(originalReq)
+                                                  setRequirementForm({
+                                                    category: originalReq.category,
+                                                    requirement: originalReq.requirement,
+                                                    description: originalReq.description || '',
+                                                    due_date: originalReq.due_date,
+                                                    penalty: originalReq.penalty || '',
+                                                    penalty_base_amount: originalReq.penalty_base_amount || null,
+                                                    is_critical: originalReq.is_critical,
+                                                    financial_year: originalReq.financial_year || '',
+                                                    status: originalReq.status,
+                                                    compliance_type: (originalReq as any).compliance_type || 'one-time',
+                                                    year: new Date().getFullYear().toString()
+                                                  })
+                                                  setIsEditModalOpen(true)
                                                 }
-                                                alert('Requirement deleted successfully')
-                                              } else {
-                                                alert(`Failed to delete: ${result.error}`)
-                                              }
-                                            } catch (error: any) {
-                                              console.error('Error deleting requirement:', error)
-                                              alert(`Error: ${error.message}`)
-                                            }
-                                          }}
-                                          className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
-                                          title="Delete"
-                                        >
-                                          <svg width="16" height="16" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <polyline points="3 6 5 6 21 6" />
-                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                          </svg>
-                                        </button>
-                                      </div>
-                                    </td>
-                                  )}
-                              </tr>
-                              )
-                            })}
-                          </React.Fragment>
-                        ))}
-                      </tbody>
-                    </table>
-                    </>
-                  )
-                })()}
-              </div>
+                                              }}
+                                              className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 rounded-lg transition-colors"
+                                              title="Edit"
+                                            >
+                                              <svg width="16" height="16" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                              </svg>
+                                            </button>
+                                            <button
+                                              onClick={async () => {
+                                                if (!confirm('Are you sure you want to delete this compliance requirement?')) return
+                                                if (!currentCompany) return
+
+                                                try {
+                                                  const result = await deleteRequirement(req.id, currentCompany.id)
+                                                  if (result.success) {
+                                                    // Refresh requirements
+                                                    const refreshResult = await getRegulatoryRequirements(currentCompany.id)
+                                                    if (refreshResult.success && refreshResult.requirements) {
+                                                      setRegulatoryRequirements(refreshResult.requirements)
+                                                    }
+                                                    alert('Requirement deleted successfully')
+                                                  } else {
+                                                    alert(`Failed to delete: ${result.error}`)
+                                                  }
+                                                } catch (error: any) {
+                                                  console.error('Error deleting requirement:', error)
+                                                  alert(`Error: ${error.message}`)
+                                                }
+                                              }}
+                                              className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
+                                              title="Delete"
+                                            >
+                                              <svg width="16" height="16" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <polyline points="3 6 5 6 21 6" />
+                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                              </svg>
+                                            </button>
+                                          </div>
+                                        </td>
+                                      )}
+                                    </tr>
+                                  )
+                                })}
+                              </React.Fragment>
+                            ))}
+                          </tbody>
+                        </table>
+                      </>
+                    )
+                  })()}
+                </div>
               )}
             </div>
 
@@ -8985,13 +8947,13 @@ function DataRoomPageInner() {
                         onChange={(e) => setRequirementForm(prev => ({ ...prev, requirement: e.target.value }))}
                         className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                         placeholder={
-                          countryCode === 'IN' 
+                          countryCode === 'IN'
                             ? 'e.g., TDS Payment - Monthly'
                             : countryCode === 'US'
-                            ? 'e.g., Federal Tax Return - Quarterly'
-                            : ['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')
-                            ? 'e.g., VAT Return - Monthly'
-                            : 'e.g., Tax Return - Monthly'
+                              ? 'e.g., Federal Tax Return - Quarterly'
+                              : ['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')
+                                ? 'e.g., VAT Return - Monthly'
+                                : 'e.g., Tax Return - Monthly'
                         }
                       />
                     </div>
@@ -9028,32 +8990,32 @@ function DataRoomPageInner() {
                     </div>
 
                     {/* Year Selection - Show for monthly, quarterly, and annual */}
-                    {(requirementForm.compliance_type === 'monthly' || 
-                      requirementForm.compliance_type === 'quarterly' || 
+                    {(requirementForm.compliance_type === 'monthly' ||
+                      requirementForm.compliance_type === 'quarterly' ||
                       requirementForm.compliance_type === 'annual') && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Year *
-                        </label>
-                        <select
-                          value={requirementForm.year}
-                          onChange={(e) => setRequirementForm(prev => ({ ...prev, year: e.target.value }))}
-                          className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
-                        >
-                          {Array.from({ length: 5 }, (_, i) => {
-                            const year = new Date().getFullYear() - 2 + i
-                            return (
-                              <option key={year} value={year.toString()}>
-                                {year}
-                              </option>
-                            )
-                          })}
-                        </select>
-                        <p className="text-xs text-gray-400 mt-1">
-                          Select the year for which this compliance applies
-                        </p>
-                      </div>
-                    )}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Year *
+                          </label>
+                          <select
+                            value={requirementForm.year}
+                            onChange={(e) => setRequirementForm(prev => ({ ...prev, year: e.target.value }))}
+                            className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                          >
+                            {Array.from({ length: 5 }, (_, i) => {
+                              const year = new Date().getFullYear() - 2 + i
+                              return (
+                                <option key={year} value={year.toString()}>
+                                  {year}
+                                </option>
+                              )
+                            })}
+                          </select>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Select the year for which this compliance applies
+                          </p>
+                        </div>
+                      )}
 
                     {/* Due Date */}
                     <div>
@@ -9089,7 +9051,7 @@ function DataRoomPageInner() {
                         placeholder={`e.g., Late fee ${countryConfig.currency.symbol}200/day or Interest @ 1%/month`}
                       />
                       <p className="text-xs text-gray-400 mt-1">
-                        {countryCode === 'IN' 
+                        {countryCode === 'IN'
                           ? 'For interest-based penalties, include the rate (e.g., "Interest @ 1%/month" or "u/s 234B & 234C")'
                           : `For interest-based penalties, include the rate (e.g., "Interest @ 1%/month"). Use ${countryConfig.currency.symbol} for amounts.`
                         }
@@ -9097,31 +9059,31 @@ function DataRoomPageInner() {
                     </div>
 
                     {/* Base Amount for Interest Calculations - Show when penalty includes "Interest" */}
-                    {(requirementForm.penalty.toLowerCase().includes('interest') || 
-                      requirementForm.penalty.includes('234B') || 
+                    {(requirementForm.penalty.toLowerCase().includes('interest') ||
+                      requirementForm.penalty.includes('234B') ||
                       requirementForm.penalty.includes('234C') ||
                       requirementForm.penalty.includes('u/s 234')) && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Base Amount (Principal) <span className="text-yellow-400">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          value={requirementForm.penalty_base_amount || ''}
-                          onChange={(e) => {
-                            const value = e.target.value === '' ? null : parseFloat(e.target.value)
-                            setRequirementForm(prev => ({ ...prev, penalty_base_amount: value }))
-                          }}
-                          className="w-full px-4 py-3 bg-black border border-yellow-500/30 rounded-lg text-white focus:outline-none focus:border-yellow-500/50 focus:ring-1 focus:ring-yellow-500/50 transition-colors"
-                          placeholder="e.g., 100000"
-                          min="0"
-                          step="0.01"
-                        />
-                        <p className="text-xs text-yellow-400 mt-1">
-                          Required for interest calculation. Enter the principal amount on which interest is calculated (e.g., unpaid tax amount).
-                        </p>
-                      </div>
-                    )}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Base Amount (Principal) <span className="text-yellow-400">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            value={requirementForm.penalty_base_amount || ''}
+                            onChange={(e) => {
+                              const value = e.target.value === '' ? null : parseFloat(e.target.value)
+                              setRequirementForm(prev => ({ ...prev, penalty_base_amount: value }))
+                            }}
+                            className="w-full px-4 py-3 bg-black border border-yellow-500/30 rounded-lg text-white focus:outline-none focus:border-yellow-500/50 focus:ring-1 focus:ring-yellow-500/50 transition-colors"
+                            placeholder="e.g., 100000"
+                            min="0"
+                            step="0.01"
+                          />
+                          <p className="text-xs text-yellow-400 mt-1">
+                            Required for interest calculation. Enter the principal amount on which interest is calculated (e.g., unpaid tax amount).
+                          </p>
+                        </div>
+                      )}
 
                     {/* Financial Year */}
                     <div>
@@ -9407,7 +9369,7 @@ function DataRoomPageInner() {
                     </option>
                   ))}
                 </select>
-                
+
                 <label className="text-sm font-medium text-gray-300 sm:ml-auto">Sort by:</label>
                 <select
                   value={sortOption}
@@ -9421,7 +9383,7 @@ function DataRoomPageInner() {
                   <option value="expiry">Expiry Date</option>
                   <option value="folder">Folder</option>
                 </select>
-                
+
                 <label className="text-sm font-medium text-gray-300">Expiry:</label>
                 <select
                   value={expiringSoonFilter}
@@ -9477,44 +9439,44 @@ function DataRoomPageInner() {
                   const filteredVaultDocs = (vaultDocuments || []).filter(doc => {
                     // If no FY selected, show all documents
                     if (!selectedFY) return true
-                    
+
                     // Prefer period_financial_year if available (for tracker-uploaded docs)
                     if (doc.period_financial_year) {
                       return doc.period_financial_year === selectedFY
                     }
-                    
+
                     // Fallback to registration_date for older documents
                     if (doc.registration_date) {
-                    const docFY = getFinancialYear(doc.registration_date)
-                    return docFY === selectedFY
+                      const docFY = getFinancialYear(doc.registration_date)
+                      return docFY === selectedFY
                     }
-                    
+
                     // If no period or registration date, don't show when FY is selected
                     return false
                   })
-                  
+
                   // Filter uploaded docs by folder, but move PAN and TAN to Financials and licenses
                   let uploadedDocs = filteredVaultDocs.filter(d => {
                     if (folderName === 'Financials and licenses') {
                       // Include PAN and TAN from any folder
-                      return d.folder_name === folderName || 
-                             (d.document_type === 'PAN' || d.document_type === 'TAN')
+                      return d.folder_name === folderName ||
+                        (d.document_type === 'PAN' || d.document_type === 'TAN')
                     } else {
                       // Exclude PAN and TAN from other folders
-                      return d.folder_name === folderName && 
-                             d.document_type !== 'PAN' && 
-                             d.document_type !== 'TAN'
+                      return d.folder_name === folderName &&
+                        d.document_type !== 'PAN' &&
+                        d.document_type !== 'TAN'
                     }
                   })
-                  
+
                   const predefinedNames = predefinedDocuments[folderName] || []
-                  
+
                   // Use new version grouping system
                   const versionGroups = groupDocumentsByVersion(uploadedDocs)
-                  
+
                   // Combine predefined and uploaded docs
                   const folderDocs: any[] = []
-                  
+
                   predefinedNames.forEach((name: string) => {
                     const versionGroup = versionGroups.find(g => g.documentType === name)
                     if (!versionGroup) {
@@ -9544,7 +9506,7 @@ function DataRoomPageInner() {
                       })
                     }
                   })
-                  
+
                   // Apply search filter
                   let filteredFolderDocs = folderDocs
                   if (searchQuery.trim()) {
@@ -9577,7 +9539,7 @@ function DataRoomPageInner() {
                     filteredFolderDocs.sort((a, b) => {
                       const nameA = (a.document_type || '').toLowerCase()
                       const nameB = (b.document_type || '').toLowerCase()
-                      return sortOption === 'name-asc' 
+                      return sortOption === 'name-asc'
                         ? nameA.localeCompare(nameB)
                         : nameB.localeCompare(nameA)
                     })
@@ -9613,14 +9575,14 @@ function DataRoomPageInner() {
                     })
                   }
 
-                  const iconColor = folderName === 'Constitutional Documents' ? 'bg-gray-500' : 
-                                   folderName === 'Financials and licenses' ? 'bg-purple-500' :
-                                   folderName === 'Taxation & GST Compliance' ? 'bg-green-500' : 'bg-blue-500'
-                  
+                  const iconColor = folderName === 'Constitutional Documents' ? 'bg-gray-500' :
+                    folderName === 'Financials and licenses' ? 'bg-purple-500' :
+                      folderName === 'Taxation & GST Compliance' ? 'bg-green-500' : 'bg-blue-500'
+
                   const isExpanded = expandedFolders.has(folderName)
                   const uploadedCount = filteredFolderDocs.filter((d: any) => d.status === 'uploaded').length
                   const pendingCount = filteredFolderDocs.filter((d: any) => d.status === 'pending').length
-                  
+
                   return (
                     <div key={folderName} className="bg-black border border-white/10 rounded-xl sm:rounded-2xl overflow-hidden">
                       {/* Folder Header - Clickable to expand/collapse */}
@@ -9675,96 +9637,395 @@ function DataRoomPageInner() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                       </button>
-                      
+
                       {/* Folder Content - Collapsible */}
                       {isExpanded && (
                         <div className="px-4 sm:px-6 pb-4 sm:pb-6">
-                  <div className="space-y-1.5 sm:space-y-2">
-                        {isLoadingVaultDocuments ? (
-                          // Skeleton loaders
-                          Array.from({ length: 3 }).map((_, idx) => (
-                            <div key={`skeleton-${idx}`} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border border-gray-800 bg-gray-900 animate-pulse">
-                              <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                                <div className="w-4 h-4 sm:w-5 sm:h-5 bg-gray-700 rounded flex-shrink-0"></div>
-                                <div className="min-w-0 flex-1 space-y-2">
-                                  <div className="h-4 bg-gray-700 rounded w-3/4"></div>
-                                  <div className="h-3 bg-gray-800 rounded w-1/2"></div>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <div className="h-8 bg-gray-700 rounded w-16"></div>
-                                <div className="h-8 bg-gray-700 rounded w-16"></div>
-                              </div>
-                            </div>
-                          ))
-                        ) : filteredFolderDocs.length > 0 ? filteredFolderDocs.map((doc: any) => {
-                          // Handle version groups with tree structure
-                          if (doc.isVersionGroup && doc.versionGroup) {
-                            const versionGroup = doc.versionGroup as VersionGroup
-                            const docKey = `${folderName}-${doc.document_type}`
-                            const isVersionsExpanded = expandedDocumentVersions.has(docKey)
-                            const latestVersion = versionGroup.latestVersion
-                            const latestDocStatus = getDocumentStatus(latestVersion)
-                            
-                            return (
-                              <div key={docKey} className="space-y-2">
-                                {/* Parent Document Card - Latest Version Preview */}
-                                <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border transition-colors ${
-                                  latestDocStatus === 'expired' 
-                                    ? 'bg-red-900/20 border-red-500/30 hover:border-red-500/50' 
-                                    : latestDocStatus === 'expiring'
-                                    ? 'bg-yellow-900/20 border-yellow-500/30 hover:border-yellow-500/50'
-                                    : 'bg-gray-900 border-gray-800 hover:border-white/40/50'
-                                }`}>
+                          <div className="space-y-1.5 sm:space-y-2">
+                            {isLoadingVaultDocuments ? (
+                              // Skeleton loaders
+                              Array.from({ length: 3 }).map((_, idx) => (
+                                <div key={`skeleton-${idx}`} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border border-gray-800 bg-gray-900 animate-pulse">
                                   <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                                    <div className={`flex-shrink-0 mt-0.5 sm:mt-0 ${
-                                      latestDocStatus === 'expired' ? 'text-red-400' :
-                                      latestDocStatus === 'expiring' ? 'text-yellow-400' :
-                                      latestDocStatus === 'valid' ? 'text-green-400' :
-                                      'text-gray-400'
-                                    }`}>
-                                      {getFileTypeIcon(latestVersion.file_name || latestVersion.document_type)}
+                                    <div className="w-4 h-4 sm:w-5 sm:h-5 bg-gray-700 rounded flex-shrink-0"></div>
+                                    <div className="min-w-0 flex-1 space-y-2">
+                                      <div className="h-4 bg-gray-700 rounded w-3/4"></div>
+                                      <div className="h-3 bg-gray-800 rounded w-1/2"></div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-8 bg-gray-700 rounded w-16"></div>
+                                    <div className="h-8 bg-gray-700 rounded w-16"></div>
+                                  </div>
+                                </div>
+                              ))
+                            ) : filteredFolderDocs.length > 0 ? filteredFolderDocs.map((doc: any) => {
+                              // Handle version groups with tree structure
+                              if (doc.isVersionGroup && doc.versionGroup) {
+                                const versionGroup = doc.versionGroup as VersionGroup
+                                const docKey = `${folderName}-${doc.document_type}`
+                                const isVersionsExpanded = expandedDocumentVersions.has(docKey)
+                                const latestVersion = versionGroup.latestVersion
+                                const latestDocStatus = getDocumentStatus(latestVersion)
+
+                                return (
+                                  <div key={docKey} className="space-y-2">
+                                    {/* Parent Document Card - Latest Version Preview */}
+                                    <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border transition-colors ${latestDocStatus === 'expired'
+                                        ? 'bg-red-900/20 border-red-500/30 hover:border-red-500/50'
+                                        : latestDocStatus === 'expiring'
+                                          ? 'bg-yellow-900/20 border-yellow-500/30 hover:border-yellow-500/50'
+                                          : 'bg-gray-900 border-gray-800 hover:border-white/40/50'
+                                      }`}>
+                                      <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                                        <div className={`flex-shrink-0 mt-0.5 sm:mt-0 ${latestDocStatus === 'expired' ? 'text-red-400' :
+                                            latestDocStatus === 'expiring' ? 'text-yellow-400' :
+                                              latestDocStatus === 'valid' ? 'text-green-400' :
+                                                'text-gray-400'
+                                          }`}>
+                                          {getFileTypeIcon(latestVersion.file_name || latestVersion.document_type)}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-sm sm:text-base break-words font-medium text-white">
+                                              {latestVersion.document_type}
+                                            </span>
+                                            <span className="px-2 py-0.5 text-xs rounded-full border bg-green-500/20 text-green-400 border-green-500/30 font-medium">
+                                              Latest
+                                            </span>
+                                            <span className="px-1.5 py-0.5 text-xs rounded bg-gray-800 text-gray-400">
+                                              {versionGroup.totalVersions} version{versionGroup.totalVersions !== 1 ? 's' : ''}
+                                            </span>
+                                            {formatPeriodInfo(latestVersion) && (
+                                              <span className={`px-1.5 py-0.5 text-xs rounded border ${getPeriodBadgeColor(latestVersion.period_type)}`}>
+                                                {formatPeriodInfo(latestVersion)}
+                                              </span>
+                                            )}
+                                            {latestDocStatus && (
+                                              <span className={`px-1.5 py-0.5 text-xs rounded border font-medium ${getStatusBadgeColor(latestDocStatus)}`}>
+                                                {latestDocStatus === 'expired' ? 'Expired' :
+                                                  latestDocStatus === 'expiring' ? 'Expiring' :
+                                                    latestDocStatus === 'valid' ? 'Valid' : 'No Expiry'}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="text-xs mt-1 flex items-center gap-3 text-gray-500">
+                                            {latestVersion.created_at && (
+                                              <span>Uploaded {formatRelativeTime(latestVersion.created_at)}</span>
+                                            )}
+                                            {latestVersion.file_size && (
+                                              <span>{formatFileSize(latestVersion.file_size)}</span>
+                                            )}
+                                            {latestVersion.expiry_date && (
+                                              <span>Expires: {formatDateForDisplay(latestVersion.expiry_date)}</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                                        <button
+                                          onClick={() => handlePreview(latestVersion)}
+                                          className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0 flex items-center gap-1"
+                                          title="Preview document"
+                                        >
+                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                          </svg>
+                                          Preview
+                                        </button>
+                                        <button
+                                          onClick={() => handleView(latestVersion.file_path)}
+                                          className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
+                                        >
+                                          View
+                                        </button>
+                                        <button
+                                          onClick={() => handleExport(latestVersion.file_path, latestVersion.file_name)}
+                                          className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
+                                        >
+                                          Export
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            setExpandedDocumentVersions(prev => {
+                                              const newSet = new Set(prev)
+                                              if (newSet.has(docKey)) {
+                                                newSet.delete(docKey)
+                                              } else {
+                                                newSet.add(docKey)
+                                              }
+                                              return newSet
+                                            })
+                                          }}
+                                          className="text-gray-400 hover:text-white font-medium text-xs sm:text-sm border border-gray-700 px-2 sm:px-3 py-1 rounded-lg hover:bg-gray-800 transition-colors flex-shrink-0 flex items-center gap-1"
+                                        >
+                                          <svg className={`w-3 h-3 transition-transform ${isVersionsExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                          </svg>
+                                          Versions
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {/* Collapsible Yearly Versions Section */}
+                                    {isVersionsExpanded && (
+                                      <div className="ml-4 sm:ml-6 pl-4 sm:pl-6 border-l-2 border-gray-800 space-y-2">
+                                        {Array.from(versionGroup.yearlyVersions.entries())
+                                          .sort(([fyA], [fyB]) => {
+                                            // Sort years: newest first, "Other" last
+                                            if (fyA === 'Other') return 1
+                                            if (fyB === 'Other') return -1
+                                            return fyB.localeCompare(fyA)
+                                          })
+                                          .map(([financialYear, versions]) => {
+                                            const yearKey = `${docKey}-${financialYear}`
+                                            const isYearExpanded = expandedYearGroups[docKey]?.has(financialYear) ?? false
+                                            const latestInYear = versions[0] // Already sorted newest first
+
+                                            return (
+                                              <div key={yearKey} className="space-y-1.5">
+                                                {/* Year Group Header */}
+                                                <button
+                                                  onClick={() => {
+                                                    setExpandedYearGroups(prev => {
+                                                      const docGroups = prev[docKey] || new Set()
+                                                      const newSet = new Set(docGroups)
+                                                      if (newSet.has(financialYear)) {
+                                                        newSet.delete(financialYear)
+                                                      } else {
+                                                        newSet.add(financialYear)
+                                                      }
+                                                      return { ...prev, [docKey]: newSet }
+                                                    })
+                                                  }}
+                                                  className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-900/50 transition-colors text-left"
+                                                >
+                                                  <div className="flex items-center gap-2">
+                                                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                    </svg>
+                                                    <span className="text-sm font-medium text-gray-300">{financialYear}</span>
+                                                    <span className="text-xs text-gray-500">({versions.length} version{versions.length !== 1 ? 's' : ''})</span>
+                                                  </div>
+                                                  <svg className={`w-4 h-4 text-gray-500 transition-transform ${isYearExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                  </svg>
+                                                </button>
+
+                                                {/* Versions in Year - Collapsible */}
+                                                {isYearExpanded && (
+                                                  <div className="ml-2 space-y-1.5">
+                                                    {versions.map((version: any, idx: number) => {
+                                                      const versionStatus = getDocumentStatus(version)
+                                                      const isLatestInYear = idx === 0
+
+                                                      return (
+                                                        <div
+                                                          key={version.id}
+                                                          className={`flex items-center justify-between gap-2 p-2 rounded-lg border transition-colors ${isLatestInYear
+                                                              ? 'bg-gray-900/50 border-gray-700'
+                                                              : 'bg-gray-900/30 border-gray-800/50'
+                                                            }`}
+                                                        >
+                                                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                            {/* Timeline connector */}
+                                                            <div className="flex flex-col items-center">
+                                                              <div className={`w-2 h-2 rounded-full ${isLatestInYear ? 'bg-green-400' : 'bg-gray-600'
+                                                                }`}></div>
+                                                              {idx < versions.length - 1 && (
+                                                                <div className="w-0.5 h-4 bg-gray-700 mt-0.5"></div>
+                                                              )}
+                                                            </div>
+
+                                                            <div className="min-w-0 flex-1">
+                                                              <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="text-xs text-gray-400">v{versions.length - idx}</span>
+                                                                {isLatestInYear && (
+                                                                  <span className="px-1.5 py-0.5 text-xs rounded border bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                                                    Latest in {financialYear}
+                                                                  </span>
+                                                                )}
+                                                                {formatPeriodInfo(version) && (
+                                                                  <span className={`px-1.5 py-0.5 text-xs rounded border ${getPeriodBadgeColor(version.period_type)}`}>
+                                                                    {formatPeriodInfo(version)}
+                                                                  </span>
+                                                                )}
+                                                                {versionStatus && (
+                                                                  <span className={`px-1.5 py-0.5 text-xs rounded border font-medium ${getStatusBadgeColor(versionStatus)}`}>
+                                                                    {versionStatus === 'expired' ? 'Expired' :
+                                                                      versionStatus === 'expiring' ? 'Expiring' :
+                                                                        versionStatus === 'valid' ? 'Valid' : 'No Expiry'}
+                                                                  </span>
+                                                                )}
+                                                              </div>
+                                                              <div className="text-xs mt-0.5 text-gray-500 flex items-center gap-2">
+                                                                {version.created_at && (
+                                                                  <span>{formatRelativeTime(version.created_at)}</span>
+                                                                )}
+                                                                {version.file_size && (
+                                                                  <span>• {formatFileSize(version.file_size)}</span>
+                                                                )}
+                                                              </div>
+                                                            </div>
+                                                          </div>
+                                                          <div className="flex items-center gap-1 flex-shrink-0">
+                                                            <button
+                                                              onClick={() => handlePreview(version)}
+                                                              className="text-gray-400 hover:text-white p-1.5 rounded hover:bg-gray-800 transition-colors"
+                                                              title="Preview"
+                                                            >
+                                                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                              </svg>
+                                                            </button>
+                                                            <button
+                                                              onClick={() => handleView(version.file_path)}
+                                                              className="text-gray-400 hover:text-white p-1.5 rounded hover:bg-gray-800 transition-colors"
+                                                              title="View"
+                                                            >
+                                                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                              </svg>
+                                                            </button>
+                                                            <button
+                                                              onClick={() => handleExport(version.file_path, version.file_name)}
+                                                              className="text-gray-400 hover:text-white p-1.5 rounded hover:bg-gray-800 transition-colors"
+                                                              title="Export"
+                                                            >
+                                                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                                              </svg>
+                                                            </button>
+                                                          </div>
+                                                        </div>
+                                                      )
+                                                    })}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            )
+                                          })}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              }
+
+                              // Handle pending documents
+                              if (doc.status === 'pending') {
+                                return (
+                                  <div key={doc.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-dashed bg-yellow-900/10 border-yellow-500/20">
+                                    <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                                      <svg
+                                        width="16"
+                                        height="16"
+                                        className="sm:w-5 sm:h-5 flex-shrink-0 mt-0.5 sm:mt-0 text-yellow-500"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                      >
+                                        <circle cx="12" cy="12" r="10" />
+                                        <line x1="12" y1="8" x2="12" y2="12" />
+                                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                                      </svg>
+                                      <div className="min-w-0 flex-1">
+                                        <span className="text-sm sm:text-base break-words font-medium text-yellow-400 italic">
+                                          {doc.document_type} (Pending Upload)
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        setUploadFormData(prev => ({
+                                          ...prev,
+                                          folder: folderName,
+                                          documentName: doc.document_type
+                                        }))
+                                        setIsUploadModalOpen(true)
+                                      }}
+                                      className="text-white hover:text-white font-medium text-xs sm:text-sm border border-white/40 px-3 sm:px-4 py-1.5 rounded-lg hover:bg-white/20 transition-colors w-full sm:w-auto"
+                                    >
+                                      Upload Now
+                                    </button>
+                                  </div>
+                                )
+                              }
+
+                              // Handle single version documents (no version group)
+                              const docStatus = getDocumentStatus(doc)
+                              return (
+                                <div key={doc.id} className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg border transition-colors ${docStatus === 'expired'
+                                    ? 'bg-red-900/20 border-red-500/30 hover:border-red-500/50'
+                                    : docStatus === 'expiring'
+                                      ? 'bg-yellow-900/20 border-yellow-500/30 hover:border-yellow-500/50'
+                                      : 'bg-gray-900 border-gray-800 hover:border-white/40/50'
+                                  }`}>
+                                  <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                                    <div className={`flex-shrink-0 mt-0.5 sm:mt-0 ${docStatus === 'expired' ? 'text-red-400' :
+                                        docStatus === 'expiring' ? 'text-yellow-400' :
+                                          docStatus === 'valid' ? 'text-green-400' :
+                                            'text-gray-400'
+                                      }`}>
+                                      {getFileTypeIcon(doc.file_name || doc.document_type)}
                                     </div>
                                     <div className="min-w-0 flex-1">
                                       <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="text-sm sm:text-base break-words font-medium text-white">
-                                          {latestVersion.document_type}
+                                        <span className={`text-sm break-words font-medium ${docStatus === 'expired' ? 'text-red-400' :
+                                            docStatus === 'expiring' ? 'text-yellow-400' :
+                                              'text-white'
+                                          }`}>
+                                          {doc.document_type}
                                         </span>
-                                        <span className="px-2 py-0.5 text-xs rounded-full border bg-green-500/20 text-green-400 border-green-500/30 font-medium">
-                                          Latest
-                                        </span>
-                                        <span className="px-1.5 py-0.5 text-xs rounded bg-gray-800 text-gray-400">
-                                          {versionGroup.totalVersions} version{versionGroup.totalVersions !== 1 ? 's' : ''}
-                                        </span>
-                                        {formatPeriodInfo(latestVersion) && (
-                                          <span className={`px-1.5 py-0.5 text-xs rounded border ${getPeriodBadgeColor(latestVersion.period_type)}`}>
-                                            {formatPeriodInfo(latestVersion)}
+                                        {formatPeriodInfo(doc) && (
+                                          <span className={`px-1.5 py-0.5 text-xs rounded border ${getPeriodBadgeColor(doc.period_type)}`}>
+                                            {formatPeriodInfo(doc)}
                                           </span>
                                         )}
-                                        {latestDocStatus && (
-                                          <span className={`px-1.5 py-0.5 text-xs rounded border font-medium ${getStatusBadgeColor(latestDocStatus)}`}>
-                                            {latestDocStatus === 'expired' ? 'Expired' :
-                                             latestDocStatus === 'expiring' ? 'Expiring' :
-                                             latestDocStatus === 'valid' ? 'Valid' : 'No Expiry'}
+                                        {docStatus && (
+                                          <span className={`px-1.5 py-0.5 text-xs rounded border font-medium ${getStatusBadgeColor(docStatus)}`}>
+                                            {docStatus === 'expired' ? 'Expired' :
+                                              docStatus === 'expiring' ? 'Expiring' :
+                                                docStatus === 'valid' ? 'Valid' : 'No Expiry'}
                                           </span>
                                         )}
                                       </div>
-                                      <div className="text-xs mt-1 flex items-center gap-3 text-gray-500">
-                                        {latestVersion.created_at && (
-                                          <span>Uploaded {formatRelativeTime(latestVersion.created_at)}</span>
+                                      <div className={`text-xs mt-0.5 break-words flex items-center gap-2 flex-wrap ${docStatus === 'expired' ? 'text-red-400/80' :
+                                          docStatus === 'expiring' ? 'text-yellow-400/80' :
+                                            'text-gray-500'
+                                        }`}>
+                                        {doc.created_at && (
+                                          <span>Uploaded {formatRelativeTime(doc.created_at)}</span>
                                         )}
-                                        {latestVersion.file_size && (
-                                          <span>{formatFileSize(latestVersion.file_size)}</span>
+                                        {doc.file_size && (
+                                          <span>• {formatFileSize(doc.file_size)}</span>
                                         )}
-                                        {latestVersion.expiry_date && (
-                                          <span>Expires: {formatDateForDisplay(latestVersion.expiry_date)}</span>
+                                        {doc.expiry_date && (
+                                          <span>• Expires: {formatDateForDisplay(doc.expiry_date)}</span>
+                                        )}
+                                        {doc.requirement_id && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              router.push(`/data-room?tab=tracker&requirement_id=${doc.requirement_id}`)
+                                            }}
+                                            className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1"
+                                          >
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                            </svg>
+                                            Tracker
+                                          </button>
                                         )}
                                       </div>
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                                    <button 
-                                      onClick={() => handlePreview(latestVersion)}
+                                    <button
+                                      onClick={() => handlePreview(doc)}
                                       className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0 flex items-center gap-1"
                                       title="Preview document"
                                     >
@@ -9774,340 +10035,33 @@ function DataRoomPageInner() {
                                       </svg>
                                       Preview
                                     </button>
-                                    <button 
-                                      onClick={() => handleView(latestVersion.file_path)}
+                                    <button
+                                      onClick={() => handleView(doc.file_path)}
                                       className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
                                     >
                                       View
                                     </button>
-                                    <button 
-                                      onClick={() => handleExport(latestVersion.file_path, latestVersion.file_name)}
+                                    <button
+                                      onClick={() => handleExport(doc.file_path, doc.file_name)}
                                       className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
                                     >
                                       Export
                                     </button>
                                     <button
-                                      onClick={() => {
-                                        setExpandedDocumentVersions(prev => {
-                                          const newSet = new Set(prev)
-                                          if (newSet.has(docKey)) {
-                                            newSet.delete(docKey)
-                                          } else {
-                                            newSet.add(docKey)
-                                          }
-                                          return newSet
-                                        })
-                                      }}
-                                      className="text-gray-400 hover:text-white font-medium text-xs sm:text-sm border border-gray-700 px-2 sm:px-3 py-1 rounded-lg hover:bg-gray-800 transition-colors flex-shrink-0 flex items-center gap-1"
+                                      onClick={() => handleRemove(doc.id, doc.file_path)}
+                                      className="text-red-400 hover:text-red-300 font-medium text-xs sm:text-sm border border-red-500/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-red-500/10 transition-colors flex-shrink-0"
                                     >
-                                      <svg className={`w-3 h-3 transition-transform ${isVersionsExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                      </svg>
-                                      Versions
+                                      Remove
                                     </button>
                                   </div>
                                 </div>
-
-                                {/* Collapsible Yearly Versions Section */}
-                                {isVersionsExpanded && (
-                                  <div className="ml-4 sm:ml-6 pl-4 sm:pl-6 border-l-2 border-gray-800 space-y-2">
-                                    {Array.from(versionGroup.yearlyVersions.entries())
-                                      .sort(([fyA], [fyB]) => {
-                                        // Sort years: newest first, "Other" last
-                                        if (fyA === 'Other') return 1
-                                        if (fyB === 'Other') return -1
-                                        return fyB.localeCompare(fyA)
-                                      })
-                                      .map(([financialYear, versions]) => {
-                                        const yearKey = `${docKey}-${financialYear}`
-                                        const isYearExpanded = expandedYearGroups[docKey]?.has(financialYear) ?? false
-                                        const latestInYear = versions[0] // Already sorted newest first
-                                        
-                                        return (
-                                          <div key={yearKey} className="space-y-1.5">
-                                            {/* Year Group Header */}
-                                            <button
-                                              onClick={() => {
-                                                setExpandedYearGroups(prev => {
-                                                  const docGroups = prev[docKey] || new Set()
-                                                  const newSet = new Set(docGroups)
-                                                  if (newSet.has(financialYear)) {
-                                                    newSet.delete(financialYear)
-                                                  } else {
-                                                    newSet.add(financialYear)
-                                                  }
-                                                  return { ...prev, [docKey]: newSet }
-                                                })
-                                              }}
-                                              className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-900/50 transition-colors text-left"
-                                            >
-                                              <div className="flex items-center gap-2">
-                                                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                </svg>
-                                                <span className="text-sm font-medium text-gray-300">{financialYear}</span>
-                                                <span className="text-xs text-gray-500">({versions.length} version{versions.length !== 1 ? 's' : ''})</span>
-                                              </div>
-                                              <svg className={`w-4 h-4 text-gray-500 transition-transform ${isYearExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                              </svg>
-                                            </button>
-
-                                            {/* Versions in Year - Collapsible */}
-                                            {isYearExpanded && (
-                                              <div className="ml-2 space-y-1.5">
-                                                {versions.map((version: any, idx: number) => {
-                                                  const versionStatus = getDocumentStatus(version)
-                                                  const isLatestInYear = idx === 0
-                                                  
-                                                  return (
-                                                    <div
-                                                      key={version.id}
-                                                      className={`flex items-center justify-between gap-2 p-2 rounded-lg border transition-colors ${
-                                                        isLatestInYear
-                                                          ? 'bg-gray-900/50 border-gray-700'
-                                                          : 'bg-gray-900/30 border-gray-800/50'
-                                                      }`}
-                                                    >
-                                                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                                                        {/* Timeline connector */}
-                                                        <div className="flex flex-col items-center">
-                                                          <div className={`w-2 h-2 rounded-full ${
-                                                            isLatestInYear ? 'bg-green-400' : 'bg-gray-600'
-                                                          }`}></div>
-                                                          {idx < versions.length - 1 && (
-                                                            <div className="w-0.5 h-4 bg-gray-700 mt-0.5"></div>
-                                                          )}
-                                                        </div>
-                                                        
-                                                        <div className="min-w-0 flex-1">
-                                                          <div className="flex items-center gap-2 flex-wrap">
-                                                            <span className="text-xs text-gray-400">v{versions.length - idx}</span>
-                                                            {isLatestInYear && (
-                                                              <span className="px-1.5 py-0.5 text-xs rounded border bg-blue-500/20 text-blue-400 border-blue-500/30">
-                                                                Latest in {financialYear}
-                                                              </span>
-                                                            )}
-                                                            {formatPeriodInfo(version) && (
-                                                              <span className={`px-1.5 py-0.5 text-xs rounded border ${getPeriodBadgeColor(version.period_type)}`}>
-                                                                {formatPeriodInfo(version)}
-                                                              </span>
-                                                            )}
-                                                            {versionStatus && (
-                                                              <span className={`px-1.5 py-0.5 text-xs rounded border font-medium ${getStatusBadgeColor(versionStatus)}`}>
-                                                                {versionStatus === 'expired' ? 'Expired' :
-                                                                 versionStatus === 'expiring' ? 'Expiring' :
-                                                                 versionStatus === 'valid' ? 'Valid' : 'No Expiry'}
-                                                              </span>
-                                                            )}
-                                                          </div>
-                                                          <div className="text-xs mt-0.5 text-gray-500 flex items-center gap-2">
-                                                            {version.created_at && (
-                                                              <span>{formatRelativeTime(version.created_at)}</span>
-                                                            )}
-                                                            {version.file_size && (
-                                                              <span>• {formatFileSize(version.file_size)}</span>
-                                                            )}
-                                                          </div>
-                                                        </div>
-                                                      </div>
-                                                      <div className="flex items-center gap-1 flex-shrink-0">
-                                                        <button
-                                                          onClick={() => handlePreview(version)}
-                                                          className="text-gray-400 hover:text-white p-1.5 rounded hover:bg-gray-800 transition-colors"
-                                                          title="Preview"
-                                                        >
-                                                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                          </svg>
-                                                        </button>
-                                                        <button
-                                                          onClick={() => handleView(version.file_path)}
-                                                          className="text-gray-400 hover:text-white p-1.5 rounded hover:bg-gray-800 transition-colors"
-                                                          title="View"
-                                                        >
-                                                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                          </svg>
-                                                        </button>
-                                                        <button
-                                                          onClick={() => handleExport(version.file_path, version.file_name)}
-                                                          className="text-gray-400 hover:text-white p-1.5 rounded hover:bg-gray-800 transition-colors"
-                                                          title="Export"
-                                                        >
-                                                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                          </svg>
-                                                        </button>
-                                                      </div>
-                                                    </div>
-                                                  )
-                                                })}
-                                              </div>
-                                            )}
-                                          </div>
-                                        )
-                                      })}
-                                  </div>
-                                )}
+                              )
+                            }) : (
+                              <div className="p-6 sm:p-8 text-center bg-gray-900/50 rounded-lg border border-dashed border-gray-800">
+                                <p className="text-gray-500 text-xs sm:text-sm">No documents defined for this folder.</p>
                               </div>
-                            )
-                          }
-                          
-                          // Handle pending documents
-                          if (doc.status === 'pending') {
-                            return (
-                              <div key={doc.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-dashed bg-yellow-900/10 border-yellow-500/20">
-                                <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                                  <svg
-                                    width="16"
-                                    height="16"
-                                    className="sm:w-5 sm:h-5 flex-shrink-0 mt-0.5 sm:mt-0 text-yellow-500"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                  >
-                                    <circle cx="12" cy="12" r="10" />
-                                    <line x1="12" y1="8" x2="12" y2="12" />
-                                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                                  </svg>
-                                  <div className="min-w-0 flex-1">
-                                    <span className="text-sm sm:text-base break-words font-medium text-yellow-400 italic">
-                                      {doc.document_type} (Pending Upload)
-                                    </span>
-                                  </div>
-                                </div>
-                                <button 
-                                  onClick={() => {
-                                    setUploadFormData(prev => ({ 
-                                      ...prev, 
-                                      folder: folderName,
-                                      documentName: doc.document_type
-                                    }))
-                                    setIsUploadModalOpen(true)
-                                  }}
-                                  className="text-white hover:text-white font-medium text-xs sm:text-sm border border-white/40 px-3 sm:px-4 py-1.5 rounded-lg hover:bg-white/20 transition-colors w-full sm:w-auto"
-                                >
-                                  Upload Now
-                                </button>
-                              </div>
-                            )
-                          }
-                          
-                          // Handle single version documents (no version group)
-                          const docStatus = getDocumentStatus(doc)
-                          return (
-                            <div key={doc.id} className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg border transition-colors ${
-                              docStatus === 'expired' 
-                                ? 'bg-red-900/20 border-red-500/30 hover:border-red-500/50' 
-                                : docStatus === 'expiring'
-                                ? 'bg-yellow-900/20 border-yellow-500/30 hover:border-yellow-500/50'
-                                : 'bg-gray-900 border-gray-800 hover:border-white/40/50'
-                            }`}>
-                              <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                                <div className={`flex-shrink-0 mt-0.5 sm:mt-0 ${
-                                  docStatus === 'expired' ? 'text-red-400' :
-                                  docStatus === 'expiring' ? 'text-yellow-400' :
-                                  docStatus === 'valid' ? 'text-green-400' :
-                                  'text-gray-400'
-                                }`}>
-                                  {getFileTypeIcon(doc.file_name || doc.document_type)}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className={`text-sm break-words font-medium ${
-                                      docStatus === 'expired' ? 'text-red-400' :
-                                      docStatus === 'expiring' ? 'text-yellow-400' :
-                                      'text-white'
-                                    }`}>
-                                      {doc.document_type}
-                                    </span>
-                                    {formatPeriodInfo(doc) && (
-                                      <span className={`px-1.5 py-0.5 text-xs rounded border ${getPeriodBadgeColor(doc.period_type)}`}>
-                                        {formatPeriodInfo(doc)}
-                                      </span>
-                                    )}
-                                    {docStatus && (
-                                      <span className={`px-1.5 py-0.5 text-xs rounded border font-medium ${getStatusBadgeColor(docStatus)}`}>
-                                        {docStatus === 'expired' ? 'Expired' :
-                                         docStatus === 'expiring' ? 'Expiring' :
-                                         docStatus === 'valid' ? 'Valid' : 'No Expiry'}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className={`text-xs mt-0.5 break-words flex items-center gap-2 flex-wrap ${
-                                    docStatus === 'expired' ? 'text-red-400/80' :
-                                    docStatus === 'expiring' ? 'text-yellow-400/80' :
-                                    'text-gray-500'
-                                  }`}>
-                                    {doc.created_at && (
-                                      <span>Uploaded {formatRelativeTime(doc.created_at)}</span>
-                                    )}
-                                    {doc.file_size && (
-                                      <span>• {formatFileSize(doc.file_size)}</span>
-                                    )}
-                                    {doc.expiry_date && (
-                                      <span>• Expires: {formatDateForDisplay(doc.expiry_date)}</span>
-                                    )}
-                                    {doc.requirement_id && (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          router.push(`/data-room?tab=tracker&requirement_id=${doc.requirement_id}`)
-                                        }}
-                                        className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1"
-                                      >
-                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                        </svg>
-                                        Tracker
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                                <button 
-                                  onClick={() => handlePreview(doc)}
-                                  className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0 flex items-center gap-1"
-                                  title="Preview document"
-                                >
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                  </svg>
-                                  Preview
-                                </button>
-                                <button 
-                                  onClick={() => handleView(doc.file_path)}
-                                  className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
-                                >
-                                  View
-                                </button>
-                                <button 
-                                  onClick={() => handleExport(doc.file_path, doc.file_name)}
-                                  className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
-                                >
-                                  Export
-                                </button>
-                                <button 
-                                  onClick={() => handleRemove(doc.id, doc.file_path)}
-                                  className="text-red-400 hover:text-red-300 font-medium text-xs sm:text-sm border border-red-500/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-red-500/10 transition-colors flex-shrink-0"
-                                >
-                                  Remove
-                                </button>
-                              </div>
-                            </div>
-                          )
-                        }) : (
-                          <div className="p-6 sm:p-8 text-center bg-gray-900/50 rounded-lg border border-dashed border-gray-800">
-                            <p className="text-gray-500 text-xs sm:text-sm">No documents defined for this folder.</p>
-                      </div>
-                        )}
-                      </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -10118,10 +10072,10 @@ function DataRoomPageInner() {
               {/* Right Sidebar */}
               <div className="lg:col-span-1 space-y-4 sm:space-y-6">
                 {/* Storage Stats */}
-                  <button
-                    onClick={() => setIsStorageBreakdownOpen(true)}
-                    className="w-full bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-left hover:border-white/20 transition-colors"
-                  >
+                <button
+                  onClick={() => setIsStorageBreakdownOpen(true)}
+                  className="w-full bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-left hover:border-white/20 transition-colors"
+                >
                   <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
                     <svg
                       width="16"
@@ -10155,7 +10109,7 @@ function DataRoomPageInner() {
                 </button>
 
                 {/* Recent Activity */}
-                  <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                   <h3 className="text-base sm:text-lg font-light text-white mb-3 sm:mb-4">Recent Activity</h3>
                   <div className="space-y-2 sm:space-y-3">
                     <div className="flex items-center gap-2 sm:gap-3">
@@ -10243,14 +10197,14 @@ function DataRoomPageInner() {
                               />
                               <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-gray-800 rounded-lg shadow-2xl z-20 max-h-64 overflow-y-auto">
                                 {(() => {
-                                  const suggestions = uploadFormData.documentName 
+                                  const suggestions = uploadFormData.documentName
                                     ? suggestFoldersForDocument(uploadFormData.documentName)
                                     : []
-                                  
+
                                   return documentFolders.map((folder) => {
                                     const isRecommended = suggestions.includes(folder)
                                     const { authority, formCount } = getFolderDescription(folder)
-                                  
+
                                     return (
                                       <button
                                         key={folder}
@@ -10258,9 +10212,8 @@ function DataRoomPageInner() {
                                           setUploadFormData((prev) => ({ ...prev, folder, documentName: prev.documentName }))
                                           setIsFolderDropdownOpen(false)
                                         }}
-                                        className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-gray-800 transition-colors text-white text-sm sm:text-base ${
-                                          isRecommended ? 'bg-blue-500/10 border-l-2 border-blue-500' : ''
-                                        }`}
+                                        className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-gray-800 transition-colors text-white text-sm sm:text-base ${isRecommended ? 'bg-blue-500/10 border-l-2 border-blue-500' : ''
+                                          }`}
                                       >
                                         <div className="flex items-center justify-between">
                                           <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -10293,9 +10246,9 @@ function DataRoomPageInner() {
                         const relevantForms = getRelevantFormsForFolder(uploadFormData.folder)
                         const authority = getAuthorityForFolder(uploadFormData.folder)
                         const formFrequency = countryConfig?.regulatory?.formFrequencies
-                        
+
                         if (relevantForms.length === 0 && !authority) return null
-                        
+
                         return (
                           <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 sm:p-4">
                             <div className="flex items-center justify-between mb-2 sm:mb-3">
@@ -10318,7 +10271,7 @@ function DataRoomPageInner() {
                                 </svg>
                               </button>
                             </div>
-                            
+
                             {showComplianceContext && (
                               <div className="space-y-2 sm:space-y-3">
                                 {authority && (
@@ -10327,7 +10280,7 @@ function DataRoomPageInner() {
                                     <span className="text-[10px] sm:text-xs text-white ml-2">{authority}</span>
                                   </div>
                                 )}
-                                
+
                                 {relevantForms.length > 0 && (
                                   <div>
                                     <span className="text-[10px] sm:text-xs text-gray-400 mb-1.5 sm:mb-2 block">Relevant Forms:</span>
@@ -10343,12 +10296,11 @@ function DataRoomPageInner() {
                                         >
                                           {form}
                                           {formFrequency?.[form] && (
-                                            <span className={`text-[8px] ${
-                                              formFrequency[form] === 'monthly' ? 'text-blue-400' :
-                                              formFrequency[form] === 'quarterly' ? 'text-purple-400' :
-                                              formFrequency[form] === 'annual' ? 'text-green-400' :
-                                              'text-gray-400'
-                                            }`}>
+                                            <span className={`text-[8px] ${formFrequency[form] === 'monthly' ? 'text-blue-400' :
+                                                formFrequency[form] === 'quarterly' ? 'text-purple-400' :
+                                                  formFrequency[form] === 'annual' ? 'text-green-400' :
+                                                    'text-gray-400'
+                                              }`}>
                                               ({formFrequency[form][0].toUpperCase()})
                                             </span>
                                           )}
@@ -10417,7 +10369,7 @@ function DataRoomPageInner() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                           </svg>
                         </button>
-                        
+
                         {isAdvancedOptionsOpen && (
                           <div className="mt-4 space-y-4 sm:space-y-6">
                             {/* Frequency Selection */}
@@ -10550,15 +10502,15 @@ function DataRoomPageInner() {
                             {isUploading ? (
                               <div className="w-8 h-8 sm:w-12 sm:h-12 border-4 border-white/40 border-t-transparent rounded-full animate-spin mb-3 sm:mb-4"></div>
                             ) : (
-                            <svg
-                              width="32"
-                              height="32"
-                              className="sm:w-12 sm:h-12 text-gray-400 mb-2 sm:mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                            >
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                              <polyline points="17 8 12 3 7 8" />
-                              <line x1="12" y1="3" x2="12" y2="15" />
-                            </svg>
+                              <svg
+                                width="32"
+                                height="32"
+                                className="sm:w-12 sm:h-12 text-gray-400 mb-2 sm:mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                              >
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                              </svg>
                             )}
                             <p className="mb-1 sm:mb-2 text-xs sm:text-sm text-white font-medium text-center">
                               {isUploading ? 'Uploading...' : 'Click to upload or drag and drop'}
@@ -10608,22 +10560,22 @@ function DataRoomPageInner() {
                             </>
                           ) : (
                             <>
-                          <svg
-                            width="16"
-                            height="16"
-                            className="sm:w-[18px] sm:h-[18px]"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="17 8 12 3 7 8" />
-                            <line x1="12" y1="3" x2="12" y2="15" />
-                          </svg>
-                          Upload Document
+                              <svg
+                                width="16"
+                                height="16"
+                                className="sm:w-[18px] sm:h-[18px]"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                              </svg>
+                              Upload Document
                             </>
                           )}
                         </button>
@@ -11029,24 +10981,24 @@ function DataRoomPageInner() {
                                 const selectedDocIds = allDocuments
                                   .filter(doc => selectedDocuments.has(doc.id))
                                   .map(doc => doc.id)
-                                
+
                                 // Get full document data from vaultDocuments (with file_path)
-                                const selectedDocsWithPaths = vaultDocuments.filter(doc => 
+                                const selectedDocsWithPaths = vaultDocuments.filter(doc =>
                                   selectedDocIds.includes(doc.id)
                                 )
-                                
+
                                 if (selectedDocsWithPaths.length === 0) {
                                   showToast('No documents found to export. Please check your selection and financial year filter.', 'warning')
                                   return
                                 }
-                                
+
                                 // Show a message that downloads will start
                                 const proceed = confirm(`You are about to download ${selectedDocsWithPaths.length} file(s)${selectedFY ? ` for ${selectedFY}` : ''}. Your browser may ask for permission to download multiple files. Continue?`)
                                 if (!proceed) return
-                                
+
                                 let successCount = 0
                                 let failCount = 0
-                                
+
                                 // Download each file sequentially with proper delays
                                 for (let i = 0; i < selectedDocsWithPaths.length; i++) {
                                   const doc = selectedDocsWithPaths[i]
@@ -11059,22 +11011,22 @@ function DataRoomPageInner() {
                                           const response = await fetch(result.url)
                                           const blob = await response.blob()
                                           const url = window.URL.createObjectURL(blob)
-                                          
+
                                           const link = document.createElement('a')
                                           link.href = url
                                           link.download = doc.document_type || doc.file_name || `document-${i + 1}`
                                           link.style.display = 'none'
                                           document.body.appendChild(link)
-                                          
+
                                           // Trigger download
                                           link.click()
-                                          
+
                                           // Clean up
                                           setTimeout(() => {
                                             document.body.removeChild(link)
                                             window.URL.revokeObjectURL(url)
                                           }, 100)
-                                          
+
                                           successCount++
                                         } catch (fetchError) {
                                           // Fallback to direct link method
@@ -11085,14 +11037,14 @@ function DataRoomPageInner() {
                                           link.style.display = 'none'
                                           document.body.appendChild(link)
                                           link.click()
-                                          
+
                                           setTimeout(() => {
                                             document.body.removeChild(link)
                                           }, 1000)
-                                          
+
                                           successCount++
                                         }
-                                        
+
                                         // Wait between downloads - longer delay for browser to process
                                         if (i < selectedDocsWithPaths.length - 1) {
                                           await new Promise(resolve => setTimeout(resolve, 1000))
@@ -11109,7 +11061,7 @@ function DataRoomPageInner() {
                                     failCount++
                                   }
                                 }
-                                
+
                                 // Show result
                                 if (successCount > 0) {
                                   if (failCount > 0) {
@@ -11120,9 +11072,9 @@ function DataRoomPageInner() {
                                 } else {
                                   showToast('Failed to download files. Please try again or check your browser settings.', 'error')
                                 }
-                                
-                              setIsExportModalOpen(false)
-                              setSelectedDocuments(new Set())
+
+                                setIsExportModalOpen(false)
+                                setSelectedDocuments(new Set())
                               } catch (error: any) {
                                 console.error('Export failed:', error)
                                 showToast('Export failed: ' + (error.message || 'Unknown error'), 'error')
@@ -11537,13 +11489,13 @@ function DataRoomPageInner() {
                     const categoryForms = countryConfig?.regulatory?.commonForms?.filter(form => {
                       const formLower = form.toLowerCase()
                       const categoryLower = documentUploadModal.category.toLowerCase()
-                      
+
                       if (countryCode === 'IN') {
                         // India-specific patterns
-                      if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
-                      if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
-                      if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
-                      if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
+                        if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
+                        if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
+                        if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
+                        if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
                       } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
                         // GCC countries
                         if ((categoryLower === 'vat' || categoryLower === 'tax') && (formLower.includes('vat') || formLower.includes('tax return') || formLower.includes('corporate tax') || formLower.includes('zakat'))) return true
@@ -11553,12 +11505,12 @@ function DataRoomPageInner() {
                         if ((categoryLower === 'federal tax' || categoryLower === 'state tax') && (formLower.includes('tax') || formLower.includes('return') || formLower.includes('ein'))) return true
                         if (categoryLower === 'business license' && (formLower.includes('license') || formLower.includes('registration') || formLower.includes('report'))) return true
                       }
-                      
+
                       return false
                     }) || []
-                    
+
                     const formFrequency = countryConfig?.regulatory?.formFrequencies
-                    
+
                     if (categoryForms.length > 0) {
                       return (
                         <div className="mt-3 pt-3 border-t border-gray-700">
@@ -11568,12 +11520,11 @@ function DataRoomPageInner() {
                               <div key={form} className="px-2 py-1 bg-gray-800 rounded text-xs">
                                 <div className="text-white">{form}</div>
                                 {formFrequency?.[form] && (
-                                  <div className={`text-[10px] mt-0.5 ${
-                                    formFrequency[form] === 'monthly' ? 'text-blue-400' :
-                                    formFrequency[form] === 'quarterly' ? 'text-purple-400' :
-                                    formFrequency[form] === 'annual' ? 'text-green-400' :
-                                    'text-gray-400'
-                                  }`}>
+                                  <div className={`text-[10px] mt-0.5 ${formFrequency[form] === 'monthly' ? 'text-blue-400' :
+                                      formFrequency[form] === 'quarterly' ? 'text-purple-400' :
+                                        formFrequency[form] === 'annual' ? 'text-green-400' :
+                                          'text-gray-400'
+                                    }`}>
                                     {formFrequency[form].toUpperCase()}
                                   </div>
                                 )}
@@ -11597,11 +11548,10 @@ function DataRoomPageInner() {
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Select File</label>
                 <div
-                  className={`border-2 border-dashed rounded-lg p-6 transition-colors ${
-                    uploadFile
+                  className={`border-2 border-dashed rounded-lg p-6 transition-colors ${uploadFile
                       ? 'border-green-500/50 bg-green-500/10'
                       : 'border-gray-700 bg-gray-900/50 hover:border-gray-600'
-                  }`}
+                    }`}
                   onDragOver={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
@@ -11861,15 +11811,15 @@ function DataRoomPageInner() {
                   <button
                     onClick={async () => {
                       if (!currentCompany) return
-                      
+
                       if (bulkActionType === 'status') {
                         const statusSelect = document.getElementById('bulkStatusSelect') as HTMLSelectElement
                         const newStatus = statusSelect.value as 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed'
-                        
+
                         try {
                           let successCount = 0
                           let failCount = 0
-                          
+
                           for (const reqId of selectedRequirements) {
                             const result = await updateRequirementStatus(reqId, currentCompany.id, newStatus)
                             if (result.success) {
@@ -11878,7 +11828,7 @@ function DataRoomPageInner() {
                               failCount++
                             }
                           }
-                          
+
                           if (successCount > 0) {
                             showToast(`Updated ${successCount} requirement(s)`, 'success')
                             const refreshResult = await getRegulatoryRequirements(currentCompany.id)
@@ -11889,7 +11839,7 @@ function DataRoomPageInner() {
                           if (failCount > 0) {
                             showToast(`Failed to update ${failCount} requirement(s)`, 'error')
                           }
-                          
+
                           setSelectedRequirements(new Set())
                           setIsBulkActionModalOpen(false)
                           setBulkActionType(null)
@@ -11900,11 +11850,11 @@ function DataRoomPageInner() {
                         if (!confirm(`Are you absolutely sure you want to delete ${selectedRequirements.size} requirement(s)? This cannot be undone.`)) {
                           return
                         }
-                        
+
                         try {
                           let successCount = 0
                           let failCount = 0
-                          
+
                           for (const reqId of selectedRequirements) {
                             const result = await deleteRequirement(reqId, currentCompany.id)
                             if (result.success) {
@@ -11913,7 +11863,7 @@ function DataRoomPageInner() {
                               failCount++
                             }
                           }
-                          
+
                           if (successCount > 0) {
                             showToast(`Deleted ${successCount} requirement(s)`, 'success')
                             const refreshResult = await getRegulatoryRequirements(currentCompany.id)
@@ -11924,7 +11874,7 @@ function DataRoomPageInner() {
                           if (failCount > 0) {
                             showToast(`Failed to delete ${failCount} requirement(s)`, 'error')
                           }
-                          
+
                           setSelectedRequirements(new Set())
                           setIsBulkActionModalOpen(false)
                           setBulkActionType(null)
@@ -11933,11 +11883,10 @@ function DataRoomPageInner() {
                         }
                       }
                     }}
-                    className={`px-4 py-2 rounded-lg transition-colors ${
-                      bulkActionType === 'delete'
+                    className={`px-4 py-2 rounded-lg transition-colors ${bulkActionType === 'delete'
                         ? 'bg-red-500 text-white hover:bg-red-600'
                         : 'bg-white text-black hover:bg-gray-700'
-                    }`}
+                      }`}
                   >
                     {bulkActionType === 'status' ? 'Update' : 'Delete'}
                   </button>
@@ -12092,21 +12041,19 @@ function DataRoomPageInner() {
               <div className="border-b border-gray-800 flex">
                 <button
                   onClick={() => setPreviewModalTab('preview')}
-                  className={`px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${
-                    previewModalTab === 'preview'
+                  className={`px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${previewModalTab === 'preview'
                       ? 'text-white border-b-2 border-white'
                       : 'text-gray-400 hover:text-gray-300'
-                  }`}
+                    }`}
                 >
                   Preview
                 </button>
                 <button
                   onClick={() => setPreviewModalTab('compliance')}
-                  className={`px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${
-                    previewModalTab === 'compliance'
+                  className={`px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${previewModalTab === 'compliance'
                       ? 'text-white border-b-2 border-white'
                       : 'text-gray-400 hover:text-gray-300'
-                  }`}
+                    }`}
                 >
                   Compliance Info
                 </button>
@@ -12126,15 +12073,15 @@ function DataRoomPageInner() {
                   </div>
                 ) : (
                   (() => {
-                    const requirement = (previewDocument as any).requirement_id 
+                    const requirement = (previewDocument as any).requirement_id
                       ? (regulatoryRequirements || []).find((r: any) => r.id === (previewDocument as any).requirement_id)
                       : null
-                    
+
                     const folderName = previewDocument.folder_name
                     const documentName = previewDocument.document_type
                     const legalSections = getLegalSectionsForDocument(documentName, folderName)
                     const authority = getAuthorityForFolder(folderName)
-                    
+
                     return (
                       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
                         {/* Related Requirement */}
@@ -12147,12 +12094,11 @@ function DataRoomPageInner() {
                                 <div className="text-gray-400 text-xs sm:text-sm">{requirement.description}</div>
                               )}
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                  requirement.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                                  requirement.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                                  requirement.status === 'overdue' ? 'bg-red-500/20 text-red-400' :
-                                  'bg-gray-500/20 text-gray-400'
-                                }`}>
+                                <span className={`px-2 py-1 rounded text-xs font-medium ${requirement.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                                    requirement.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                                      requirement.status === 'overdue' ? 'bg-red-500/20 text-red-400' :
+                                        'bg-gray-500/20 text-gray-400'
+                                  }`}>
                                   {requirement.status.toUpperCase()}
                                 </span>
                                 {requirement.due_date && (
@@ -12179,7 +12125,7 @@ function DataRoomPageInner() {
                             </div>
                           </div>
                         )}
-                        
+
                         {/* Legal Sections */}
                         {legalSections.length > 0 && (
                           <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
@@ -12197,7 +12143,7 @@ function DataRoomPageInner() {
                             </div>
                           </div>
                         )}
-                        
+
                         {/* Authority */}
                         {authority && (
                           <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
@@ -12205,7 +12151,7 @@ function DataRoomPageInner() {
                             <p className="text-gray-300 text-sm">{authority}</p>
                           </div>
                         )}
-                        
+
                         {/* Show message if no compliance info */}
                         {!requirement && legalSections.length === 0 && !authority && (
                           <div className="text-center py-8">

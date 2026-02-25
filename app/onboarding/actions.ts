@@ -35,7 +35,7 @@ export async function completeOnboarding(
 ) {
   const supabase = await createClient()
   const adminSupabase = createAdminClient()
-  
+
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
     throw new Error('Unauthorized')
@@ -49,23 +49,23 @@ export async function completeOnboarding(
   // 1. Insert Company into public schema
   // For backward compatibility, set industry to first industry from industries array
   const firstIndustry = formData.industries.length > 0 ? formData.industries[0] : null
-  
+
   // Parse ex-directors: split by comma or newline, trim, and filter empty strings
   const exDirectorsArray = formData.exDirectors
     ? formData.exDirectors
-        .split(/[,\n]/)
-        .map(name => name.trim())
-        .filter(name => name.length > 0)
+      .split(/[,\n]/)
+      .map(name => name.trim())
+      .filter(name => name.length > 0)
     : null
-  
+
   const { data: company, error: companyError } = await adminSupabase
     .from('companies')
     .insert({
       user_id: user.id,
       name: formData.companyName,
       type: formData.companyType,
-      pan: formData.panNumber || null,
-      cin: formData.cinNumber,
+      tax_id: formData.panNumber || null,
+      registration_id: formData.cinNumber,
       industry: firstIndustry,  // Set for backward compatibility (NOT NULL constraint)
       industries: formData.industries.length > 0 ? formData.industries : null,  // Store as array
       industry_categories: formData.industryCategories,
@@ -115,10 +115,10 @@ export async function completeOnboarding(
       first_name: dir.firstName,
       last_name: dir.lastName,
       middle_name: dir.middleName || null,
-      din: dir.din || null,
+      director_id: dir.din || null,
       designation: dir.designation || null,
       dob: dir.dob || null,
-      pan: dir.pan || null,
+      tax_id: dir.pan || null,
       email: dir.email || null,
       mobile: dir.mobile || null,
       is_verified: dir.verified || false,
@@ -149,7 +149,7 @@ export async function completeOnboarding(
         await Promise.all(formData.documents.map(async (doc) => {
           const template = templates?.find(t => t.document_name === doc.type)
           const embedding = await generateEmbedding(`${doc.type} ${doc.name}`)
-          
+
           return {
             company_id: company.id,
             document_type: doc.type,
@@ -173,7 +173,7 @@ export async function completeOnboarding(
     if (insertedDocs) {
       for (const doc of insertedDocs) {
         // We don't await this so the user doesn't wait for parsing
-        processDocumentContent(doc.id, company.id, doc.file_path).catch(err => 
+        processDocumentContent(doc.id, company.id, doc.file_path).catch(err =>
           console.error(`Async processing failed for ${doc.id}:`, err)
         )
       }
@@ -217,7 +217,7 @@ export async function completeOnboarding(
     // - If user has no subscription: Create company-level trial for the new company
     if (!companyHasSubscription && !isEnterprise) {
       console.log('[completeOnboarding] Creating company-level trial for new company (not Enterprise):', company.id)
-      
+
       // Use RPC function to create company trial
       const { data: trialData, error: trialError } = await adminSupabase
         .rpc('create_company_trial', {
@@ -274,10 +274,10 @@ export async function updateCompany(
   if (!validateCompanyId(companyId)) {
     throw new Error('Invalid company ID format')
   }
-  
+
   const supabase = await createClient()
   const adminSupabase = createAdminClient()
-  
+
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
     throw new Error('Unauthorized')
@@ -285,33 +285,33 @@ export async function updateCompany(
 
   // Update Company in public schema
   const updateData: any = {
-      name: formData.companyName,
-      type: formData.companyType,
-      pan: formData.panNumber,
-      industry_categories: formData.industryCategories,
-      other_industry_category: formData.otherIndustryCategory,
-      address: formData.address,
-      city: formData.city,
-      state: formData.state,
-      pin_code: formData.pinCode,
-      phone_number: formData.phoneNumber,
-      email: formData.email,
-      landline: formData.landline,
-      other_info: formData.other
+    name: formData.companyName,
+    type: formData.companyType,
+    tax_id: formData.panNumber,
+    industry_categories: formData.industryCategories,
+    other_industry_category: formData.otherIndustryCategory,
+    address: formData.address,
+    city: formData.city,
+    state: formData.state,
+    pin_code: formData.pinCode,
+    phone_number: formData.phoneNumber,
+    email: formData.email,
+    landline: formData.landline,
+    other_info: formData.other
   }
-  
+
   // Add industries if provided
   if (formData.industries !== undefined) {
     updateData.industries = formData.industries.length > 0 ? formData.industries : null
   }
-  
+
   // Add ex-directors if provided
   if (formData.exDirectors !== undefined) {
     const exDirectorsArray = formData.exDirectors
       ? formData.exDirectors
-          .split(/[,\n]/)
-          .map(name => name.trim())
-          .filter(name => name.length > 0)
+        .split(/[,\n]/)
+        .map(name => name.trim())
+        .filter(name => name.length > 0)
       : null
     updateData.ex_directors = exDirectorsArray
   }
@@ -347,10 +347,10 @@ export async function updateCompany(
         first_name: dir.firstName,
         last_name: dir.lastName,
         middle_name: dir.middleName || null,
-        din: dir.din || null,
+        director_id: dir.din || null,
         designation: dir.designation || null,
         dob: dir.dob || null,
-        pan: dir.pan || null,
+        tax_id: dir.pan || null,
         email: dir.email || null,
         mobile: dir.mobile || null,
         is_verified: dir.verified || false,
@@ -377,10 +377,10 @@ export async function getCompanyDirectors(companyId: string) {
   if (!validateCompanyId(companyId)) {
     return { success: false, directors: [], error: 'Invalid company ID format' }
   }
-  
+
   const supabase = await createClient()
   const adminSupabase = createAdminClient()
-  
+
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
     return { success: false, directors: [], error: 'Unauthorized' }
@@ -403,10 +403,10 @@ export async function getCompanyDirectors(companyId: string) {
     firstName: dir.first_name || '',
     lastName: dir.last_name || '',
     middleName: dir.middle_name || '',
-    din: dir.din || '',
+    din: dir.director_id || '',
     designation: dir.designation || '',
     dob: dir.dob || '',
-    pan: dir.pan || '',
+    pan: dir.tax_id || '',
     email: dir.email || '',
     mobile: dir.mobile || '',
     verified: dir.is_verified || false,
@@ -442,19 +442,19 @@ export async function uploadDocument(
   if (!validateCompanyId(companyId)) {
     throw new Error('Invalid company ID format')
   }
-  
+
   // SECURITY: Sanitize string inputs
   const sanitizedFolderName = sanitizeStringInput(data.folderName, 500)
   const sanitizedDocumentName = sanitizeStringInput(data.documentName, 500)
   const sanitizedFileName = sanitizeStringInput(data.fileName, 500)
-  
+
   if (!sanitizedFolderName || !sanitizedDocumentName || !sanitizedFileName) {
     throw new Error('Invalid input: folder name, document name, or file name contains invalid characters')
   }
-  
+
   const supabase = await createClient()
   const adminSupabase = createAdminClient()
-  
+
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
     throw new Error('Unauthorized')
@@ -495,7 +495,7 @@ export async function uploadDocument(
 
   // Trigger content processing in background
   if (insertedDoc) {
-    processDocumentContent(insertedDoc.id, companyId, insertedDoc.file_path).catch(err => 
+    processDocumentContent(insertedDoc.id, companyId, insertedDoc.file_path).catch(err =>
       console.error(`Async processing failed for ${insertedDoc.id}:`, err)
     )
   }
@@ -506,7 +506,7 @@ export async function uploadDocument(
 export async function getDownloadUrl(filePath: string) {
   try {
     const supabase = await createClient()
-    
+
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       throw new Error('Unauthorized')
@@ -530,16 +530,16 @@ export async function deleteDocument(documentId: string, filePath: string) {
     if (!isValidUUID(documentId)) {
       throw new Error('Invalid document ID format')
     }
-    
+
     // SECURITY: Sanitize filePath
     const sanitizedFilePath = sanitizeStringInput(filePath, 1000)
     if (!sanitizedFilePath) {
       throw new Error('Invalid file path')
     }
-    
+
     const supabase = await createClient()
     const adminSupabase = createAdminClient()
-    
+
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       throw new Error('Unauthorized')
@@ -573,7 +573,7 @@ export async function deleteDocument(documentId: string, filePath: string) {
 export async function getDocumentTemplates() {
   try {
     const adminSupabase = createAdminClient()
-    
+
     const { data, error } = await adminSupabase
       .from('document_templates_internal')
       .select('*')
@@ -599,10 +599,10 @@ export async function getCompanyDocuments(companyId: string) {
     if (!validateCompanyId(companyId)) {
       return { success: false, documents: [], error: 'Invalid company ID format' }
     }
-    
+
     const supabase = await createClient()
     const adminSupabase = createAdminClient()
-    
+
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return { success: false, documents: [], error: 'Unauthorized' }

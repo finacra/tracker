@@ -62,11 +62,11 @@ export interface CompositePenaltyConfig {
   parts: PenaltyConfig[];
 }
 
-export type PenaltyConfig = 
-  | DailyPenaltyConfig 
-  | FlatPenaltyConfig 
-  | InterestPenaltyConfig 
-  | PercentagePenaltyConfig 
+export type PenaltyConfig =
+  | DailyPenaltyConfig
+  | FlatPenaltyConfig
+  | InterestPenaltyConfig
+  | PercentagePenaltyConfig
   | RangePenaltyConfig
   | PerInvoicePenaltyConfig
   | CompositePenaltyConfig;
@@ -74,8 +74,7 @@ export type PenaltyConfig =
 export interface CompanyFinancials {
   turnover?: number;
   tax_due?: number;
-  pf_contribution?: number;
-  esi_contribution?: number;
+  local_contributions?: Record<string, number>;
   income?: number;
 }
 
@@ -124,7 +123,7 @@ export function formatCurrency(
  */
 function getBaseAmount(base: string, financials: CompanyFinancials | null): number | null {
   if (!financials) return null;
-  
+
   switch (base) {
     case 'turnover':
       return financials.turnover ?? null;
@@ -133,9 +132,9 @@ function getBaseAmount(base: string, financials: CompanyFinancials | null): numb
       return financials.tax_due ?? null;
     case 'contribution':
     case 'pf_contribution':
-      return financials.pf_contribution ?? null;
+      return financials.local_contributions?.pf_contribution ?? null;
     case 'esi_contribution':
-      return financials.esi_contribution ?? null;
+      return financials.local_contributions?.esi_contribution ?? null;
     case 'income':
       return financials.income ?? null;
     default:
@@ -155,12 +154,12 @@ function calculateDailyPenalty(
 ): PenaltyResult {
   const rate = isNilReturn && config.nil_rate ? config.nil_rate : config.rate;
   let amount = rate * daysDelayed;
-  
+
   // Handle absolute cap
   if (config.cap && !config.cap_type) {
     amount = Math.min(amount, config.cap);
   }
-  
+
   // Handle percentage-based cap
   if (config.cap_type === 'percentage' && config.cap_rate && config.cap_base) {
     const baseAmount = getBaseAmount(config.cap_base, financials);
@@ -175,7 +174,7 @@ function calculateDailyPenalty(
     const cap = (config.cap_rate / 100) * baseAmount;
     amount = Math.min(amount, cap);
   }
-  
+
   return {
     success: true,
     amount,
@@ -193,7 +192,7 @@ function calculateFlatPenalty(
   countryCode: string = 'IN'
 ): PenaltyResult {
   let amount = config.amount;
-  
+
   // Check for reduced amount condition
   if (config.reduced_amount && config.reduced_condition) {
     if (config.reduced_condition === 'income_under_5l') {
@@ -202,7 +201,7 @@ function calculateFlatPenalty(
       }
     }
   }
-  
+
   return {
     success: true,
     amount,
@@ -222,7 +221,7 @@ function calculateInterestPenalty(
   countryCode: string = 'IN'
 ): PenaltyResult {
   const baseAmount = baseAmountOverride ?? getBaseAmount(config.base, financials);
-  
+
   if (baseAmount === null) {
     return {
       success: false,
@@ -230,10 +229,10 @@ function calculateInterestPenalty(
       needs_amount: config.base
     };
   }
-  
+
   let periods: number;
   let periodLabel: string;
-  
+
   switch (config.period) {
     case 'day':
       periods = daysDelayed;
@@ -251,9 +250,9 @@ function calculateInterestPenalty(
       periods = daysDelayed / 30;
       periodLabel = 'months';
   }
-  
+
   const amount = (config.rate / 100) * baseAmount * periods;
-  
+
   return {
     success: true,
     amount,
@@ -275,7 +274,7 @@ function calculatePercentagePenalty(
   countryCode: string = 'IN'
 ): PenaltyResult {
   const baseAmount = baseAmountOverride ?? getBaseAmount(config.base, financials);
-  
+
   if (baseAmount === null) {
     return {
       success: false,
@@ -283,16 +282,16 @@ function calculatePercentagePenalty(
       needs_amount: config.base
     };
   }
-  
+
   // Use midpoint for range-based rates
   const rate = config.rate ?? ((config.rate_min ?? 0) + (config.rate_max ?? 0)) / 2;
   let amount = (rate / 100) * baseAmount;
-  
+
   // Apply cap if specified
   if (config.cap) {
     amount = Math.min(amount, config.cap);
   }
-  
+
   return {
     success: true,
     amount,
@@ -324,7 +323,7 @@ function calculatePerInvoicePenalty(
   countryCode: string = 'IN'
 ): PenaltyResult {
   const baseAmount = getBaseAmount(config.base, financials);
-  
+
   if (baseAmount === null) {
     return {
       success: false,
@@ -332,10 +331,10 @@ function calculatePerInvoicePenalty(
       needs_amount: config.base
     };
   }
-  
+
   const perInvoice = Math.max((config.rate / 100) * baseAmount, config.min_per_invoice);
   const amount = perInvoice * invoiceCount;
-  
+
   return {
     success: true,
     amount,
@@ -357,14 +356,14 @@ function calculateCompositePenalty(
   let totalAmount = 0;
   const breakdown: string[] = [];
   const neededAmounts: string[] = [];
-  
+
   for (const part of config.parts) {
     const result = computePenalty(part, daysDelayed, financials, baseAmountOverride, { countryCode });
-    
+
     if (result.needs_amount) {
       neededAmounts.push(result.needs_amount);
     }
-    
+
     if (result.success && result.amount !== undefined) {
       totalAmount += result.amount;
       if (result.breakdown) {
@@ -372,7 +371,7 @@ function calculateCompositePenalty(
       }
     }
   }
-  
+
   // If any part needs an amount, return that
   if (neededAmounts.length > 0) {
     const uniqueNeeded = [...new Set(neededAmounts)];
@@ -385,7 +384,7 @@ function calculateCompositePenalty(
       warning: `Partial calculation - missing: ${uniqueNeeded.join(', ')}`
     };
   }
-  
+
   return {
     success: true,
     amount: totalAmount,
@@ -416,7 +415,7 @@ export function computePenalty(
       display: 'No penalty config'
     };
   }
-  
+
   if (daysDelayed <= 0) {
     return {
       success: true,
@@ -424,31 +423,31 @@ export function computePenalty(
       display: 'No delay'
     };
   }
-  
+
   const countryCode = options.countryCode || 'IN' // Default to 'IN' for backward compatibility
 
   switch (config.type) {
     case 'daily':
       return calculateDailyPenalty(config, daysDelayed, financials, options.isNilReturn, countryCode);
-    
+
     case 'flat':
       return calculateFlatPenalty(config, financials, countryCode);
-    
+
     case 'interest':
       return calculateInterestPenalty(config, daysDelayed, financials, baseAmountOverride, countryCode);
-    
+
     case 'percentage':
       return calculatePercentagePenalty(config, financials, baseAmountOverride, countryCode);
-    
+
     case 'range':
       return calculateRangePenalty(config, countryCode);
-    
+
     case 'per_invoice':
       return calculatePerInvoicePenalty(config, financials, options.invoiceCount ?? 1, countryCode);
-    
+
     case 'composite':
       return calculateCompositePenalty(config, daysDelayed, financials, baseAmountOverride, countryCode);
-    
+
     default:
       return {
         success: false,
@@ -462,7 +461,7 @@ export function computePenalty(
  */
 export function parsePenaltyConfig(configInput: unknown): PenaltyConfig | null {
   if (!configInput) return null;
-  
+
   try {
     if (typeof configInput === 'string') {
       return JSON.parse(configInput) as PenaltyConfig;
@@ -480,7 +479,7 @@ export function parsePenaltyConfig(configInput: unknown): PenaltyConfig | null {
  */
 export function getPenaltySummary(config: PenaltyConfig | null, countryCode: string = 'IN'): string {
   if (!config) return '-';
-  
+
   switch (config.type) {
     case 'daily': {
       let summary = `${formatCurrency(config.rate, countryCode)}/day`;
@@ -492,25 +491,25 @@ export function getPenaltySummary(config: PenaltyConfig | null, countryCode: str
       }
       return summary;
     }
-    
+
     case 'flat':
       return formatCurrency(config.amount, countryCode);
-    
+
     case 'interest':
       return `${config.rate}% p.${config.period[0]}.`;
-    
+
     case 'percentage':
       return `${config.rate}% of ${config.base}${config.cap ? ` (max ${formatCurrency(config.cap, countryCode)})` : ''}`;
-    
+
     case 'range':
       return `${formatCurrency(config.min, countryCode)} - ${formatCurrency(config.max, countryCode)}`;
-    
+
     case 'per_invoice':
       return `${config.rate}% per invoice (min ${formatCurrency(config.min_per_invoice, countryCode)})`;
-    
+
     case 'composite':
       return config.parts.map(part => getPenaltySummary(part, countryCode)).join(' + ');
-    
+
     default:
       return 'Complex penalty';
   }
@@ -555,7 +554,7 @@ export function calculatePenaltyFromText(
     const [dailyRateStr, maxCapStr] = penalty.split('|');
     const dailyRate = parseInt(dailyRateStr, 10);
     const maxCap = parseInt(maxCapStr, 10);
-    
+
     if (!isNaN(dailyRate) && dailyRate > 0) {
       let calculated = dailyRate * daysDelayed;
       if (!isNaN(maxCap) && maxCap > 0) {
@@ -589,7 +588,7 @@ export function calculatePenaltyFromText(
       const dailyRate = parseFloat(dailyMatch[1].replace(/,/g, ''));
       if (!isNaN(dailyRate) && dailyRate > 0) {
         let calculated = dailyRate * daysDelayed;
-        
+
         // Check for max cap
         const maxPatterns = [
           /max\.?\s*(?:Rs\.?\s*|₹\s*)?([\d,]+)/i,
@@ -607,7 +606,7 @@ export function calculatePenaltyFromText(
             }
           }
         }
-        
+
         return { success: true, amount: calculated, display: formatINR(calculated) };
       }
     }
@@ -628,11 +627,11 @@ export function calculatePenaltyFromText(
     let minAmount = parseFloat(rangeMatch[1].replace(/,/g, ''));
     if (rangeMatch[0].toLowerCase().includes('k')) minAmount *= 1000;
     if (rangeMatch[0].toLowerCase().includes('l')) minAmount *= 100000;
-    
+
     if (!isNaN(minAmount) && minAmount > 0) {
-      return { 
-        success: true, 
-        amount: minAmount, 
+      return {
+        success: true,
+        amount: minAmount,
         display: formatCurrency(minAmount, countryCode),
         warning: 'Showing minimum from range'
       };
