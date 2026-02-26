@@ -18,6 +18,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { tier, billingCycle, companyId } = body
 
+    // Get company country_code for currency
+    let countryCode = 'IN'
+    if (companyId) {
+      const { data: company } = await supabase
+        .from('companies')
+        .select('country_code')
+        .eq('id', companyId)
+        .single()
+      if (company?.country_code) {
+        countryCode = company.country_code
+      }
+    }
+
     // Validate inputs
     if (!tier || !billingCycle) {
       return NextResponse.json(
@@ -35,7 +48,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const pricing = calculatePricing(tierConfig, billingCycle as BillingCycle)
+    const pricing = calculatePricing(tierConfig, billingCycle as BillingCycle, countryCode)
     const amountInPaise = Math.round(pricing.price * 100) // Convert to paise
 
     // Validate Razorpay credentials
@@ -56,11 +69,11 @@ export async function POST(request: NextRequest) {
     const shortUserId = user.id.replace(/-/g, '').substring(0, 8) // Remove dashes and take first 8 chars
     const timestamp = Date.now().toString().slice(-10) // Last 10 digits of timestamp
     const receipt = `sub_${shortUserId}_${timestamp}` // Max length: 4 + 8 + 1 + 10 = 23 chars
-    
+
     const razorpay = getRazorpayInstance()
     const order = await razorpay.orders.create({
       amount: amountInPaise,
-      currency: 'INR',
+      currency: pricing.currency || 'INR',
       receipt: receipt,
       notes: {
         user_id: user.id,
@@ -77,9 +90,10 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         company_id: companyId || null,
-        razorpay_order_id: order.id,
+        provider_order_id: order.id,
+        payment_provider: 'razorpay',
         amount: pricing.price,
-        currency: 'INR',
+        currency: pricing.currency || 'INR',
         status: 'pending',
         tier: tier,
         billing_cycle: billingCycle,
@@ -114,7 +128,7 @@ export async function POST(request: NextRequest) {
       keySecret: process.env.RAZORPAY_KEY_SECRET ? 'Set' : 'Missing',
     })
     return NextResponse.json(
-      { 
+      {
         error: error.message || 'Failed to create order',
         details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       },

@@ -7,8 +7,8 @@ interface Payment {
   id: string
   user_id: string
   company_id: string | null
-  razorpay_order_id: string
-  razorpay_payment_id: string | null
+  provider_order_id: string
+  provider_payment_id: string | null
   amount: number
   amount_paid: number | null
   currency: string
@@ -87,7 +87,7 @@ export default function TransactionHistory({ supabase }: TransactionHistoryProps
             .from('companies')
             .select('id, name')
             .in('id', companyIds)
-          
+
           if (companyData) {
             companyData.forEach((company: any) => {
               companyNamesMap[company.id] = company.name
@@ -116,8 +116,8 @@ export default function TransactionHistory({ supabase }: TransactionHistoryProps
     if (!searchQuery) return true
     const query = searchQuery.toLowerCase()
     return (
-      payment.razorpay_order_id?.toLowerCase().includes(query) ||
-      payment.razorpay_payment_id?.toLowerCase().includes(query) ||
+      payment.provider_order_id?.toLowerCase().includes(query) ||
+      payment.provider_payment_id?.toLowerCase().includes(query) ||
       payment.user_email?.toLowerCase().includes(query) ||
       payment.company_name?.toLowerCase().includes(query) ||
       payment.receipt?.toLowerCase().includes(query)
@@ -134,10 +134,12 @@ export default function TransactionHistory({ supabase }: TransactionHistoryProps
       .reduce((sum, p) => sum + (p.amount_paid || p.amount || 0), 0),
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
+  const formatCurrency = (amount: number, currencyCode: string = 'INR') => {
+    // Determine locale based on currency
+    const locale = currencyCode === 'INR' ? 'en-IN' : 'en-US'
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
-      currency: 'INR',
+      currency: currencyCode,
       minimumFractionDigits: 0,
     }).format(amount)
   }
@@ -272,21 +274,21 @@ export default function TransactionHistory({ supabase }: TransactionHistoryProps
                       {payment.company_name || '-'}
                     </td>
                     <td className="px-6 py-4 text-gray-300 text-sm font-mono text-xs">
-                      <div className="max-w-[150px] truncate" title={payment.razorpay_order_id}>
-                        {payment.razorpay_order_id}
+                      <div className="max-w-[150px] truncate" title={payment.provider_order_id}>
+                        {payment.provider_order_id}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-300 text-sm font-mono text-xs">
-                      {payment.razorpay_payment_id ? (
-                        <div className="max-w-[150px] truncate" title={payment.razorpay_payment_id}>
-                          {payment.razorpay_payment_id}
+                      {payment.provider_payment_id ? (
+                        <div className="max-w-[150px] truncate" title={payment.provider_payment_id}>
+                          {payment.provider_payment_id}
                         </div>
                       ) : (
                         <span className="text-gray-500">-</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-white font-medium">
-                      {formatCurrency(payment.amount_paid || payment.amount || 0)}
+                      {formatCurrency(payment.amount_paid || payment.amount || 0, payment.currency)}
                     </td>
                     <td className="px-6 py-4">
                       {payment.tier ? (
@@ -307,13 +309,12 @@ export default function TransactionHistory({ supabase }: TransactionHistoryProps
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        payment.status === 'completed'
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${payment.status === 'completed'
                           ? 'bg-green-500/20 text-green-400 border border-green-500/30'
                           : payment.status === 'pending'
-                          ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                          : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                      }`}>
+                            ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                            : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                        }`}>
                         {payment.status.toUpperCase()}
                       </span>
                       {payment.error_description && (

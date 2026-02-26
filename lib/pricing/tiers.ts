@@ -62,7 +62,7 @@ export const PRICING_TIERS: PricingTierConfig[] = [
     features: [
       '1 company per subscription',
       'Up to 3 team members per company',
-      'Basic CIN/DIN verification',
+      'Basic Company/Director verification',
       'Document storage (10GB per company)',
       'Email support',
       'Standard compliance tracking',
@@ -85,7 +85,7 @@ export const PRICING_TIERS: PricingTierConfig[] = [
     features: [
       'Up to 100 companies per subscription',
       'Unlimited team members per company',
-      'Premium CIN/DIN verification',
+      'Premium Company/Director verification',
       'Document storage (500GB total)',
       '24/7 priority support',
       'Advanced compliance tracking & automation',
@@ -217,7 +217,7 @@ export function formatPriceWithCurrency(
   try {
     const { CountryRegistry } = require('../countries')
     const country = CountryRegistry.get(countryCode) || CountryRegistry.get('IN')
-    
+
     // Determine locale based on country
     let locale: string
     switch (countryCode) {
@@ -237,7 +237,7 @@ export function formatPriceWithCurrency(
       default:
         locale = 'en-IN' // Default to Indian locale
     }
-    
+
     return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: country.currency.code,
@@ -245,11 +245,11 @@ export function formatPriceWithCurrency(
     }).format(price)
   } catch {
     // Fallback to INR if country module not available
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(price)
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(price)
   }
 }
 

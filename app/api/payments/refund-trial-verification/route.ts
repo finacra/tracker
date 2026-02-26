@@ -10,7 +10,7 @@ import { getRazorpayInstance } from '@/lib/razorpay/client'
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
-    
+
     // Get all trial verification payments that are scheduled for refund
     // and the scheduled time has passed
     const now = new Date().toISOString()
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       .eq('status', 'completed')
       .eq('refund_status', 'scheduled')
       .lte('refund_scheduled_at', now)
-      .is('razorpay_refund_id', null)
+      .is('provider_refund_id', null)
 
     if (fetchError) {
       console.error('Error fetching payments to refund:', fetchError)
@@ -45,13 +45,13 @@ export async function POST(request: NextRequest) {
     // Process refunds
     for (const payment of paymentsToRefund) {
       try {
-        if (!payment.razorpay_payment_id) {
-          console.error(`Payment ${payment.id} missing razorpay_payment_id`)
+        if (!payment.provider_payment_id) {
+          console.error(`Payment ${payment.id} missing provider_payment_id`)
           continue
         }
 
         // Create refund in Razorpay
-        const refund = await razorpay.payments.refund(payment.razorpay_payment_id, {
+        const refund = await razorpay.payments.refund(payment.provider_payment_id, {
           amount: payment.amount * 100, // Convert to paise
           notes: {
             reason: 'Trial verification refund - 24 hours after payment',
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
         await supabase
           .from('payments')
           .update({
-            razorpay_refund_id: refund.id,
+            provider_refund_id: refund.id,
             refund_status: 'completed',
             refunded_at: new Date().toISOString(),
             refund_amount: payment.amount,
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       } catch (error: any) {
         console.error(`Error refunding payment ${payment.id}:`, error)
         errors.push(`Payment ${payment.id}: ${error.message}`)
-        
+
         // Mark as failed if it's a permanent error
         if (error.statusCode === 400 || error.statusCode === 404) {
           await supabase

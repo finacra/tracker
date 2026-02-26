@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
       .eq('status', 'completed')
       .eq('refund_status', 'scheduled')
       .lte('refund_scheduled_at', now)
-      .is('razorpay_refund_id', null)
+      .is('provider_refund_id', null)
 
     if (fetchError) {
       console.error('[process-trial-refunds] Error fetching payments:', fetchError)
@@ -64,9 +64,9 @@ Deno.serve(async (req) => {
     if (!paymentsToRefund || paymentsToRefund.length === 0) {
       console.log('[process-trial-refunds] No payments to refund')
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           success: true,
-          message: 'No payments to refund', 
+          message: 'No payments to refund',
           refunded: 0,
           timestamp: new Date().toISOString()
         }),
@@ -82,9 +82,9 @@ Deno.serve(async (req) => {
     // Call the refund API endpoint
     // Note: We're calling our own API endpoint which has the Razorpay client setup
     const refundApiUrl = `${appUrl}/api/payments/refund-trial-verification`
-    
+
     console.log(`[process-trial-refunds] Calling refund API: ${refundApiUrl}`)
-    
+
     const refundResponse = await fetch(refundApiUrl, {
       method: 'POST',
       headers: {
@@ -98,9 +98,9 @@ Deno.serve(async (req) => {
       const errorText = await refundResponse.text()
       console.error('[process-trial-refunds] Refund API error:', errorText)
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           success: false,
-          error: 'Failed to process refunds', 
+          error: 'Failed to process refunds',
           details: errorText,
           paymentsFound: paymentsToRefund.length,
           timestamp: new Date().toISOString()
@@ -130,9 +130,9 @@ Deno.serve(async (req) => {
   } catch (error: any) {
     console.error('[process-trial-refunds] Unexpected error:', error)
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         success: false,
-        error: 'Internal server error', 
+        error: 'Internal server error',
         details: error.message,
         timestamp: new Date().toISOString()
       }),

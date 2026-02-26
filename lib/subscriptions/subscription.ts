@@ -30,7 +30,7 @@ export type CompanyAccessType = 'subscription' | 'trial' | 'invited' | 'superadm
 
 export async function getActiveSubscription(userId?: string): Promise<Subscription | null> {
   const supabase = createClient()
-  
+
   if (!userId) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
@@ -66,7 +66,7 @@ export async function getSubscriptionTier(userId?: string): Promise<'starter' | 
 
 export async function cancelSubscription(subscriptionId: string, cancelAtPeriodEnd: boolean = true): Promise<boolean> {
   const supabase = createClient()
-  
+
   const { error } = await supabase
     .from('subscriptions')
     .update({
@@ -97,7 +97,7 @@ export function getDaysUntilExpiry(subscription: Subscription): number {
  */
 export async function getCompanySubscription(companyId: string): Promise<Subscription | null> {
   const supabase = createClient()
-  
+
   const { data, error } = await supabase
     .from('subscriptions')
     .select('*')
@@ -119,7 +119,7 @@ export async function getCompanySubscription(companyId: string): Promise<Subscri
  */
 export async function hasActiveTrial(companyId: string): Promise<boolean> {
   const supabase = createClient()
-  
+
   const { data, error } = await supabase
     .from('subscriptions')
     .select('id, trial_ends_at')
@@ -144,7 +144,7 @@ export async function hasActiveTrial(companyId: string): Promise<boolean> {
  */
 export async function getTrialDaysRemaining(companyId: string): Promise<number | null> {
   const supabase = createClient()
-  
+
   const { data, error } = await supabase
     .from('subscriptions')
     .select('trial_ends_at')
@@ -172,7 +172,7 @@ export async function createTrialSubscription(
   trialDays: number = 15
 ): Promise<{ success: boolean; subscriptionId?: string; error?: string }> {
   const supabase = createClient()
-  
+
   const now = new Date()
   const trialEnd = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000)
 
@@ -188,6 +188,26 @@ export async function createTrialSubscription(
     return { success: true, subscriptionId: existing.id }
   }
 
+  // Get company country_code for currency
+  const { data: company } = await supabase
+    .from('companies')
+    .select('country_code')
+    .eq('id', companyId)
+    .single()
+
+  let currency = 'INR'
+  if (company?.country_code) {
+    try {
+      const { CountryRegistry } = require('../countries')
+      const country = CountryRegistry.get(company.country_code)
+      if (country) {
+        currency = country.currency.code
+      }
+    } catch {
+      // Fallback to INR
+    }
+  }
+
   const { data, error } = await supabase
     .from('subscriptions')
     .insert({
@@ -196,7 +216,7 @@ export async function createTrialSubscription(
       tier: 'starter',
       billing_cycle: 'monthly',
       amount: 0,
-      currency: 'INR',
+      currency: currency,
       status: 'trial',
       is_trial: true,
       trial_started_at: now.toISOString(),

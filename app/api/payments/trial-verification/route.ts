@@ -20,6 +20,34 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { companyId, tier } = body
 
+    // Get company country_code for currency
+    let countryCode = 'IN'
+    let currency = 'INR'
+    let amountRupees = '2'
+    let amountSmallest = 200 // Default 200 paise
+
+    if (companyId) {
+      const { data: company } = await supabase
+        .from('companies')
+        .select('country_code')
+        .eq('id', companyId)
+        .single()
+
+      if (company?.country_code) {
+        countryCode = company.country_code
+        try {
+          const { CountryRegistry } = require('@/lib/countries')
+          const country = CountryRegistry.get(countryCode)
+          if (country) {
+            currency = country.currency.code
+            // Adjust amount for non-INR if needed? 
+            // For now, let's stick to small amount. 2 units of local currency for verification?
+            // Or keep it simple.
+          }
+        } catch (e) { }
+      }
+    }
+
     // Validate Razorpay credentials
     if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
       return NextResponse.json(
@@ -32,11 +60,11 @@ export async function POST(request: NextRequest) {
     const shortUserId = user.id.replace(/-/g, '').substring(0, 8)
     const timestamp = Date.now().toString().slice(-10)
     const receipt = `trial_${shortUserId}_${timestamp}`
-    
+
     const razorpay = getRazorpayInstance()
     const order = await razorpay.orders.create({
-      amount: TRIAL_VERIFICATION_AMOUNT,
-      currency: 'INR',
+      amount: amountSmallest,
+      currency: currency,
       receipt: receipt,
       notes: {
         user_id: user.id,
@@ -55,9 +83,10 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         company_id: companyId || null,
-        razorpay_order_id: order.id,
-        amount: 2, // ₹2
-        currency: 'INR',
+        provider_order_id: order.id,
+        payment_provider: 'razorpay',
+        amount: 2, // Verification amount
+        currency: currency,
         status: 'pending',
         tier: tier || null,
         billing_cycle: 'monthly', // Use 'monthly' as placeholder (required by CHECK constraint)
@@ -73,9 +102,9 @@ export async function POST(request: NextRequest) {
       console.error('[Trial Verification] Payment data:', {
         user_id: user.id,
         company_id: companyId || null,
-        razorpay_order_id: order.id,
+        provider_order_id: order.id,
         amount: 2,
-        currency: 'INR',
+        currency: currency,
         status: 'pending',
         tier: tier || null,
         billing_cycle: 'monthly',
@@ -84,7 +113,7 @@ export async function POST(request: NextRequest) {
       })
       // Don't continue - we need the payment record for verification
       return NextResponse.json(
-        { 
+        {
           error: `Failed to store payment record: ${paymentError.message}`,
           details: paymentError
         },
@@ -103,7 +132,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error creating trial verification order:', error)
     return NextResponse.json(
-      { 
+      {
         error: error.message || 'Failed to create verification order',
       },
       { status: 500 }

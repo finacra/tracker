@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       console.error('[Webhook] 1. Webhook secret is not configured in Razorpay dashboard')
       console.error('[Webhook] 2. Webhook URL is not properly configured')
       console.error('[Webhook] 3. This is a test webhook from Razorpay dashboard (test webhooks may not include signature)')
-      
+
       // In production, we should reject webhooks without signatures for security
       // But we'll log the event data for debugging purposes
       try {
@@ -47,9 +47,9 @@ export async function POST(request: NextRequest) {
       } catch (e) {
         console.error('[Webhook] Could not parse event body')
       }
-      
+
       return NextResponse.json(
-        { 
+        {
           error: 'Missing signature',
           message: 'X-Razorpay-Signature header is required. Please configure webhook secret in Razorpay dashboard.'
         },
@@ -122,14 +122,15 @@ async function handlePaymentCaptured(payload: any, supabase: any, adminSupabase:
   const { data: updatedPayment, error: updateError } = await supabase
     .from('payments')
     .update({
-      razorpay_payment_id: payment.id,
+      provider_payment_id: payment.id,
+      payment_provider: 'razorpay',
       status: 'completed',
       amount_paid: payment.amount / 100, // Convert from paise to rupees
       payment_method: payment.method,
       paid_at: new Date(payment.created_at * 1000).toISOString(),
       updated_at: new Date().toISOString(),
     })
-    .eq('razorpay_order_id', order.id)
+    .eq('provider_order_id', order.id)
     .select()
     .single()
 
@@ -141,21 +142,21 @@ async function handlePaymentCaptured(payload: any, supabase: any, adminSupabase:
   const notes = order.notes || {}
   if (notes.type === 'trial_verification') {
     console.log(`[Webhook] Trial verification payment captured for user: ${notes.user_id}, company: ${notes.company_id || 'none'}`)
-    
+
     // Schedule refund for 24 hours later
     const refundScheduledAt = new Date()
     refundScheduledAt.setHours(refundScheduledAt.getHours() + 24)
-    
+
     await supabase
       .from('payments')
       .update({
         refund_scheduled_at: refundScheduledAt.toISOString(),
         refund_status: 'scheduled',
       })
-      .eq('razorpay_order_id', order.id)
-    
+      .eq('provider_order_id', order.id)
+
     console.log(`[Webhook] Trial verification payment captured. Refund scheduled for: ${refundScheduledAt.toISOString()}`)
-    
+
     // Create trial after payment verification (if payment record has user_id and company_id)
     if (updatedPayment && notes.user_id) {
       try {
@@ -212,7 +213,7 @@ async function handlePaymentCaptured(payload: any, supabase: any, adminSupabase:
         // Don't fail the webhook - payment is verified, trial can be created manually if needed
       }
     }
-    
+
     return
   }
 
@@ -224,6 +225,7 @@ async function handlePaymentCaptured(payload: any, supabase: any, adminSupabase:
       notes.tier,
       notes.billing_cycle,
       payment.amount / 100,
+      payment.currency || 'INR',
       supabase
     )
   }
@@ -244,13 +246,14 @@ async function handlePaymentFailed(payload: any, supabase: any) {
   const { error: updateError } = await supabase
     .from('payments')
     .update({
-      razorpay_payment_id: payment.id,
+      provider_payment_id: payment.id,
+      payment_provider: 'razorpay',
       status: 'failed',
       error_code: payment.error_code,
       error_description: payment.error_description,
       updated_at: new Date().toISOString(),
     })
-    .eq('razorpay_order_id', order?.id || payment.order_id || '')
+    .eq('provider_order_id', order?.id || payment.order_id || '')
 
   if (updateError) {
     console.error('[Webhook] Error updating failed payment:', updateError)
@@ -275,7 +278,7 @@ async function handleOrderPaid(payload: any, supabase: any) {
       amount_paid: order.amount_paid ? order.amount_paid / 100 : null,
       updated_at: new Date().toISOString(),
     })
-    .eq('razorpay_order_id', order.id)
+    .eq('provider_order_id', order.id)
 }
 
 async function createOrUpdateSubscription(
@@ -284,6 +287,7 @@ async function createOrUpdateSubscription(
   tier: string,
   billingCycle: string,
   amount: number,
+  currency: string,
   supabase: any
 ) {
   const startDate = new Date()
@@ -359,8 +363,9 @@ async function createOrUpdateSubscription(
         tier,
         billing_cycle: billingCycle,
         amount,
-        currency: 'INR',
+        currency,
         status: 'active',
+        payment_provider: 'razorpay',
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString(),
         current_period_start: startDate.toISOString(),

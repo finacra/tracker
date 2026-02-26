@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
       .select('*')
-      .eq('razorpay_order_id', razorpay_order_id)
+      .eq('provider_order_id', razorpay_order_id)
       .eq('user_id', user.id)
       .single()
 
@@ -59,15 +59,15 @@ export async function POST(request: NextRequest) {
       console.error('[Payment Verify] Error fetching payment:', paymentError)
       console.error('[Payment Verify] Order ID:', razorpay_order_id)
       console.error('[Payment Verify] User ID:', user.id)
-      
+
       // Try to find payment without user_id filter (for debugging)
       const { data: allPayments } = await supabase
         .from('payments')
         .select('*')
-        .eq('razorpay_order_id', razorpay_order_id)
-      
+        .eq('provider_order_id', razorpay_order_id)
+
       console.error('[Payment Verify] Payments found with order ID:', allPayments)
-      
+
       return NextResponse.json(
         { error: `Payment record not found: ${paymentError.message}` },
         { status: 404 }
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       console.error('[Payment Verify] Payment is null')
       console.error('[Payment Verify] Order ID:', razorpay_order_id)
       console.error('[Payment Verify] User ID:', user.id)
-      
+
       return NextResponse.json(
         { error: 'Payment record not found' },
         { status: 404 }
@@ -89,8 +89,9 @@ export async function POST(request: NextRequest) {
     const { error: updateError } = await supabase
       .from('payments')
       .update({
-        razorpay_payment_id: razorpay_payment_id,
-        razorpay_signature: razorpay_signature,
+        provider_payment_id: razorpay_payment_id,
+        provider_signature: razorpay_signature,
+        payment_provider: 'razorpay',
         status: 'completed',
         amount_paid: payment.amount,
         paid_at: new Date().toISOString(),
