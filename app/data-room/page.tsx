@@ -1019,6 +1019,20 @@ function DataRoomPageInner() {
   const [showComplianceContext, setShowComplianceContext] = useState(true)
   const [bulkUploadFiles, setBulkUploadFiles] = useState<File[]>([])
   const [bulkUploadProgress, setBulkUploadProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 })
+  // Track advanced options for each file in bulk upload (indexed by file name)
+  const [bulkUploadFileOptions, setBulkUploadFileOptions] = useState<Record<string, {
+    documentName: string
+    registrationDate: string
+    expiryDate: string
+    frequency: string
+    hasNote: boolean
+    externalEmail: string
+    externalPassword: string
+  }>>({})
+  // Track which file's advanced options are expanded
+  const [expandedBulkFileOptions, setExpandedBulkFileOptions] = useState<Set<string>>(new Set())
+  // Track which file's document name dropdown is open
+  const [openDocumentNameDropdown, setOpenDocumentNameDropdown] = useState<string | null>(null)
   const [previewDocument, setPreviewDocument] = useState<any | null>(null)
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
   const [previewModalTab, setPreviewModalTab] = useState<'preview' | 'compliance'>('preview')
@@ -10777,6 +10791,9 @@ function DataRoomPageInner() {
                     setIsBulkUploadModalOpen(false)
                     setBulkUploadFiles([])
                     setBulkUploadProgress({ current: 0, total: 0 })
+                    setBulkUploadFileOptions({})
+                    setExpandedBulkFileOptions(new Set())
+                    setOpenDocumentNameDropdown(null)
                   }}
                 />
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
@@ -10793,6 +10810,9 @@ function DataRoomPageInner() {
                           setIsBulkUploadModalOpen(false)
                           setBulkUploadFiles([])
                           setBulkUploadProgress({ current: 0, total: 0 })
+                          setBulkUploadFileOptions({})
+                          setExpandedBulkFileOptions(new Set())
+                          setOpenDocumentNameDropdown(null)
                         }}
                         className="text-gray-400 hover:text-white transition-colors p-1"
                       >
@@ -10897,29 +10917,332 @@ function DataRoomPageInner() {
                             onChange={(e) => {
                               const files = Array.from(e.target.files || [])
                               setBulkUploadFiles(files)
+                              // Initialize options for new files
+                              const newOptions: Record<string, any> = { ...bulkUploadFileOptions }
+                              const newExpanded = new Set(expandedBulkFileOptions)
+                              files.forEach(file => {
+                                if (!newOptions[file.name]) {
+                                  newOptions[file.name] = {
+                                    documentName: file.name.replace(/\.[^/.]+$/, ''),
+                                    registrationDate: '',
+                                    expiryDate: '',
+                                    frequency: 'one-time',
+                                    hasNote: false,
+                                    externalEmail: '',
+                                    externalPassword: '',
+                                  }
+                                }
+                                // Auto-expand new files so advanced options are visible
+                                newExpanded.add(file.name)
+                              })
+                              setBulkUploadFileOptions(newOptions)
+                              setExpandedBulkFileOptions(newExpanded)
                             }}
                           />
                         </label>
                         {bulkUploadFiles.length > 0 && (
-                          <div className="mt-3 space-y-2 max-h-40 overflow-y-auto">
-                            <p className="text-xs sm:text-sm text-gray-400">
-                              {bulkUploadFiles.length} file(s) selected:
-                            </p>
-                            {bulkUploadFiles.map((file, idx) => (
-                              <div key={idx} className="flex items-center justify-between p-2 bg-gray-900 rounded text-xs sm:text-sm text-gray-300">
-                                <span className="truncate flex-1">{file.name}</span>
+                          <div className="mt-3 space-y-3 max-h-[60vh] overflow-y-auto">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs sm:text-sm text-gray-400 font-medium">
+                                {bulkUploadFiles.length} file(s) selected:
+                              </p>
+                              <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => {
-                                    setBulkUploadFiles(prev => prev.filter((_, i) => i !== idx))
+                                    const allExpanded = new Set(bulkUploadFiles.map(f => f.name))
+                                    setExpandedBulkFileOptions(allExpanded)
                                   }}
-                                  className="ml-2 text-red-400 hover:text-red-300"
+                                  className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-gray-800 transition-colors"
                                 >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                  </svg>
+                                  Expand All
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setExpandedBulkFileOptions(new Set())
+                                  }}
+                                  className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded hover:bg-gray-800 transition-colors"
+                                >
+                                  Collapse All
                                 </button>
                               </div>
-                            ))}
+                            </div>
+                            {bulkUploadFiles.map((file, idx) => {
+                              const fileKey = file.name
+                              const fileOptions = bulkUploadFileOptions[fileKey] || {
+                                documentName: file.name.replace(/\.[^/.]+$/, ''),
+                                registrationDate: '',
+                                expiryDate: '',
+                                frequency: 'one-time',
+                                hasNote: false,
+                                externalEmail: '',
+                                externalPassword: '',
+                              }
+                              const isExpanded = expandedBulkFileOptions.has(fileKey)
+                              
+                              return (
+                                <div key={idx} className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden">
+                                  {/* File Header */}
+                                  <div className="flex items-center justify-between p-3">
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                      <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                      <span className="truncate text-xs sm:text-sm text-gray-300 flex-1">{file.name}</span>
+                                      <span className="text-[10px] text-gray-500 flex-shrink-0">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      <button
+                                        onClick={() => {
+                                          const newExpanded = new Set(expandedBulkFileOptions)
+                                          if (isExpanded) {
+                                            newExpanded.delete(fileKey)
+                                          } else {
+                                            newExpanded.add(fileKey)
+                                          }
+                                          setExpandedBulkFileOptions(newExpanded)
+                                        }}
+                                        className="text-gray-400 hover:text-white transition-colors p-1"
+                                        title={isExpanded ? 'Collapse options' : 'Expand options'}
+                                      >
+                                        <svg
+                                          className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setBulkUploadFiles(prev => prev.filter((_, i) => i !== idx))
+                                          const newOptions = { ...bulkUploadFileOptions }
+                                          delete newOptions[fileKey]
+                                          setBulkUploadFileOptions(newOptions)
+                                          const newExpanded = new Set(expandedBulkFileOptions)
+                                          newExpanded.delete(fileKey)
+                                          setExpandedBulkFileOptions(newExpanded)
+                                          if (openDocumentNameDropdown === fileKey) {
+                                            setOpenDocumentNameDropdown(null)
+                                          }
+                                        }}
+                                        className="text-red-400 hover:text-red-300 transition-colors p-1"
+                                        title="Remove file"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Advanced Options */}
+                                  {isExpanded && (
+                                    <div className="border-t border-gray-800 p-3 space-y-4 bg-gray-950/50">
+                                      {/* Document Name with Dropdown */}
+                                      <div>
+                                        <label className="block text-xs font-medium text-gray-300 mb-1.5">
+                                          Document Name <span className="text-red-500">*</span>
+                                        </label>
+                                        <div className="relative">
+                                          <input
+                                            type="text"
+                                            value={fileOptions.documentName}
+                                            onChange={(e) => {
+                                              setBulkUploadFileOptions(prev => ({
+                                                ...prev,
+                                                [fileKey]: { ...prev[fileKey], documentName: e.target.value }
+                                              }))
+                                            }}
+                                            placeholder="Select from list or type custom name"
+                                            className="w-full px-3 py-2 pr-8 bg-black border border-gray-700 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              setOpenDocumentNameDropdown(openDocumentNameDropdown === fileKey ? null : fileKey)
+                                            }}
+                                            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors p-1"
+                                            title="Show document name options"
+                                          >
+                                            <svg 
+                                              className={`w-4 h-4 transition-transform ${openDocumentNameDropdown === fileKey ? 'rotate-180' : ''}`}
+                                              fill="none" 
+                                              stroke="currentColor" 
+                                              viewBox="0 0 24 24"
+                                            >
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                          </button>
+                                          
+                                          {/* Custom Dropdown Menu */}
+                                          {openDocumentNameDropdown === fileKey && (
+                                            <>
+                                              <div
+                                                className="fixed inset-0 z-10"
+                                                onClick={() => setOpenDocumentNameDropdown(null)}
+                                              />
+                                              <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-gray-800 rounded-lg shadow-2xl z-20 max-h-48 overflow-y-auto">
+                                                {uploadFormData.folder && predefinedDocuments[uploadFormData.folder] && predefinedDocuments[uploadFormData.folder].length > 0 ? (
+                                                  <>
+                                                    {predefinedDocuments[uploadFormData.folder].map((docName: string, docIdx: number) => (
+                                                      <button
+                                                        key={docIdx}
+                                                        type="button"
+                                                        onClick={() => {
+                                                          setBulkUploadFileOptions(prev => ({
+                                                            ...prev,
+                                                            [fileKey]: { ...prev[fileKey], documentName: docName }
+                                                          }))
+                                                          setOpenDocumentNameDropdown(null)
+                                                        }}
+                                                        className="w-full px-3 py-2 text-left hover:bg-gray-800 transition-colors text-white text-xs"
+                                                      >
+                                                        {docName}
+                                                      </button>
+                                                    ))}
+                                                    <div className="border-t border-gray-800 my-1"></div>
+                                                    <div className="px-3 py-2 text-[10px] text-gray-400">
+                                                      Or type a custom name above
+                                                    </div>
+                                                  </>
+                                                ) : (
+                                                  <div className="px-3 py-2 text-xs text-gray-400">
+                                                    No predefined documents for this folder. Type a custom name above.
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
+                                        {uploadFormData.folder && predefinedDocuments[uploadFormData.folder] && predefinedDocuments[uploadFormData.folder].length > 0 && (
+                                          <p className="text-[10px] text-gray-500 mt-1">
+                                            Select from {predefinedDocuments[uploadFormData.folder].length} predefined document(s) or type a custom name
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      {/* Frequency */}
+                                      <div>
+                                        <label className="block text-xs font-medium text-gray-300 mb-1.5">
+                                          Frequency
+                                        </label>
+                                        <select
+                                          value={fileOptions.frequency}
+                                          onChange={(e) => {
+                                            setBulkUploadFileOptions(prev => ({
+                                              ...prev,
+                                              [fileKey]: { ...prev[fileKey], frequency: e.target.value }
+                                            }))
+                                          }}
+                                          className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-xs focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors cursor-pointer"
+                                        >
+                                          <option value="one-time">One-time</option>
+                                          <option value="monthly">Monthly</option>
+                                          <option value="quarterly">Quarterly</option>
+                                          <option value="annually">Annually</option>
+                                          <option value="yearly">Yearly</option>
+                                        </select>
+                                      </div>
+
+                                      {/* Dates */}
+                                      <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                          <label className="block text-xs font-medium text-gray-300 mb-1.5">
+                                            Date of Registration
+                                          </label>
+                                          <input
+                                            type="date"
+                                            value={fileOptions.registrationDate}
+                                            onChange={(e) => {
+                                              setBulkUploadFileOptions(prev => ({
+                                                ...prev,
+                                                [fileKey]: { ...prev[fileKey], registrationDate: e.target.value }
+                                              }))
+                                            }}
+                                            className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-xs focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="block text-xs font-medium text-gray-300 mb-1.5">
+                                            Expiry Date
+                                          </label>
+                                          <input
+                                            type="date"
+                                            value={fileOptions.expiryDate}
+                                            onChange={(e) => {
+                                              setBulkUploadFileOptions(prev => ({
+                                                ...prev,
+                                                [fileKey]: { ...prev[fileKey], expiryDate: e.target.value }
+                                              }))
+                                            }}
+                                            className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-xs focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                                          />
+                                        </div>
+                                      </div>
+
+                                      {/* Portal Credentials */}
+                                      <div>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                          <input
+                                            type="checkbox"
+                                            checked={fileOptions.hasNote}
+                                            onChange={(e) => {
+                                              setBulkUploadFileOptions(prev => ({
+                                                ...prev,
+                                                [fileKey]: { ...prev[fileKey], hasNote: e.target.checked }
+                                              }))
+                                            }}
+                                            className="w-4 h-4 text-white bg-gray-800 border-gray-600 rounded focus:ring-white/40 focus:ring-2"
+                                          />
+                                          <span className="text-xs text-gray-300">Add External Portal Credentials</span>
+                                        </label>
+                                        
+                                        {fileOptions.hasNote && (
+                                          <div className="mt-2 space-y-2 bg-white/5 border border-white/10 rounded-lg p-2.5">
+                                            <div>
+                                              <label className="block text-xs font-medium text-gray-300 mb-1.5">
+                                                Portal Email
+                                              </label>
+                                              <input
+                                                type="email"
+                                                value={fileOptions.externalEmail}
+                                                onChange={(e) => {
+                                                  setBulkUploadFileOptions(prev => ({
+                                                    ...prev,
+                                                    [fileKey]: { ...prev[fileKey], externalEmail: e.target.value }
+                                                  }))
+                                                }}
+                                                placeholder="portal@example.com"
+                                                className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                                              />
+                                            </div>
+                                            <div>
+                                              <label className="block text-xs font-medium text-gray-300 mb-1.5">
+                                                Portal Password
+                                              </label>
+                                              <input
+                                                type="password"
+                                                value={fileOptions.externalPassword}
+                                                onChange={(e) => {
+                                                  setBulkUploadFileOptions(prev => ({
+                                                    ...prev,
+                                                    [fileKey]: { ...prev[fileKey], externalPassword: e.target.value }
+                                                  }))
+                                                }}
+                                                placeholder="Enter password"
+                                                className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                                              />
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
                           </div>
                         )}
                       </div>
@@ -10947,6 +11270,9 @@ function DataRoomPageInner() {
                             setIsBulkUploadModalOpen(false)
                             setBulkUploadFiles([])
                             setBulkUploadProgress({ current: 0, total: 0 })
+                            setBulkUploadFileOptions({})
+                            setExpandedBulkFileOptions(new Set())
+                            setOpenDocumentNameDropdown(null)
                           }}
                           disabled={isUploading}
                           className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 text-sm sm:text-base"
@@ -10960,6 +11286,21 @@ function DataRoomPageInner() {
                               return
                             }
 
+                            // Validate that all files have document names
+                            const filesWithoutNames = bulkUploadFiles.filter(file => {
+                              const fileOptions = bulkUploadFileOptions[file.name]
+                              return !fileOptions || !fileOptions.documentName || fileOptions.documentName.trim() === ''
+                            })
+
+                            if (filesWithoutNames.length > 0) {
+                              showToast(`Please provide document names for all files. ${filesWithoutNames.length} file(s) missing document name.`, 'warning')
+                              // Expand files without names
+                              const newExpanded = new Set(expandedBulkFileOptions)
+                              filesWithoutNames.forEach(file => newExpanded.add(file.name))
+                              setExpandedBulkFileOptions(newExpanded)
+                              return
+                            }
+
                             setIsUploading(true)
                             setBulkUploadProgress({ current: 0, total: bulkUploadFiles.length })
                             let successCount = 0
@@ -10969,8 +11310,25 @@ function DataRoomPageInner() {
                               for (let i = 0; i < bulkUploadFiles.length; i++) {
                                 const file = bulkUploadFiles[i]
                                 try {
+                                  // Get options for this file
+                                  const fileKey = file.name
+                                  const fileOptions = bulkUploadFileOptions[fileKey] || {
+                                    documentName: file.name.replace(/\.[^/.]+$/, ''),
+                                    registrationDate: '',
+                                    expiryDate: '',
+                                    frequency: 'one-time',
+                                    hasNote: false,
+                                    externalEmail: '',
+                                    externalPassword: '',
+                                  }
+
+                                  // Validate document name
+                                  if (!fileOptions.documentName || fileOptions.documentName.trim() === '') {
+                                    throw new Error(`Document name is required for ${file.name}`)
+                                  }
+
                                   const fileExt = file.name.split('.').pop()
-                                  const fileName = `${file.name.replace(/\s+/g, '_').replace(/\.[^/.]+$/, '')}_${Date.now()}.${fileExt}`
+                                  const fileName = `${fileOptions.documentName.replace(/\s+/g, '_')}_${Date.now()}.${fileExt}`
                                   const filePath = `${user?.id}/${currentCompany.id}/${fileName}`
 
                                   // Upload to Storage
@@ -10980,16 +11338,16 @@ function DataRoomPageInner() {
 
                                   if (uploadError) throw uploadError
 
-                                  // Save metadata
+                                  // Save metadata with per-file options
                                   const result = await uploadDocument(currentCompany.id, {
                                     folderName: uploadFormData.folder,
-                                    documentName: file.name.replace(/\.[^/.]+$/, ''),
-                                    registrationDate: '',
-                                    expiryDate: '',
-                                    isPortalRequired: false,
-                                    portalEmail: '',
-                                    portalPassword: '',
-                                    frequency: 'one-time',
+                                    documentName: fileOptions.documentName,
+                                    registrationDate: fileOptions.registrationDate,
+                                    expiryDate: fileOptions.expiryDate,
+                                    isPortalRequired: fileOptions.hasNote,
+                                    portalEmail: fileOptions.externalEmail,
+                                    portalPassword: fileOptions.externalPassword,
+                                    frequency: fileOptions.frequency,
                                     filePath: filePath,
                                     fileName: file.name,
                                   })
@@ -11018,6 +11376,9 @@ function DataRoomPageInner() {
                               setIsBulkUploadModalOpen(false)
                               setBulkUploadFiles([])
                               setBulkUploadProgress({ current: 0, total: 0 })
+                              setBulkUploadFileOptions({})
+                              setExpandedBulkFileOptions(new Set())
+                              setOpenDocumentNameDropdown(null)
                             } catch (error: any) {
                               console.error('Bulk upload failed:', error)
                               showToast('Bulk upload failed: ' + error.message, 'error')
