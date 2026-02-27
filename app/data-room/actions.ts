@@ -2829,6 +2829,80 @@ interface SendDocumentsEmailParams {
   message: string
 }
 
+/**
+ * Get directors for a company
+ * Uses admin client to bypass RLS
+ */
+export async function getDirectors(companyId: string): Promise<{
+  success: boolean
+  directors?: Array<{
+    id: string
+    firstName: string
+    lastName: string
+    middleName: string
+    din?: string
+    designation?: string
+    dob?: string
+    pan?: string
+    email?: string
+    mobile?: string
+    verified: boolean
+  }>
+  error?: string
+}> {
+  try {
+    if (!validateCompanyId(companyId)) {
+      return { success: false, error: 'Invalid company ID format' }
+    }
+
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return { success: false, error: 'Unauthorized' }
+    }
+
+    // Check if user has access to this company
+    const hasAccess = await canUserView(companyId)
+    if (!hasAccess) {
+      return { success: false, error: 'No access to this company' }
+    }
+
+    const adminSupabase = createAdminClient()
+
+    const { data: directors, error } = await adminSupabase
+      .from('directors')
+      .select('*')
+      .eq('company_id', companyId)
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching directors:', error)
+      return { success: false, error: error.message }
+    }
+
+    // Transform to match frontend Director interface
+    const transformedDirectors = (directors || []).map(dir => ({
+      id: dir.id,
+      firstName: dir.first_name || '',
+      lastName: dir.last_name || '',
+      middleName: dir.middle_name || '',
+      din: dir.director_id || '',
+      designation: dir.designation || '',
+      dob: dir.dob || '',
+      pan: dir.tax_id || '',
+      email: dir.email || '',
+      mobile: dir.mobile || '',
+      verified: dir.is_verified || false
+    }))
+
+    return { success: true, directors: transformedDirectors }
+  } catch (err) {
+    console.error('Error in getDirectors:', err)
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+}
+
 export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
   console.log('[sendDocumentsEmail] Starting with params:', {
     companyId: params.companyId,

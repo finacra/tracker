@@ -9,7 +9,7 @@ import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
 import { createClient } from '@/utils/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { uploadDocument, getCompanyDocuments, getDocumentTemplates, getDownloadUrl, deleteDocument } from '@/app/onboarding/actions'
-import { getRegulatoryRequirements, updateRequirementStatus, createRequirement, deleteRequirement, updateRequirement, sendDocumentsEmail, type RegulatoryRequirement } from '@/app/data-room/actions'
+import { getRegulatoryRequirements, updateRequirementStatus, createRequirement, deleteRequirement, updateRequirement, sendDocumentsEmail, getDirectors, type RegulatoryRequirement } from '@/app/data-room/actions'
 import { trackTrackerTabOpened, trackStatusChange, trackDocumentUpload, trackCalendarSync, trackVaultFileExport, trackReportDownload, trackVaultFileUpload } from '@/lib/tracking/kpi-tracker'
 import jsPDF from 'jspdf'
 import { useUserRole } from '@/hooks/useUserRole'
@@ -437,19 +437,29 @@ function DataRoomPageInner() {
       console.log('[fetchDetails] Starting fetch for company:', currentCompany.id)
 
       try {
-        // Fetch company details, directors, and documents IN PARALLEL
+        // Fetch company details and directors IN PARALLEL
+        // Use server action for directors to bypass RLS
         const [companyResult, directorsResult] = await Promise.all([
           supabase.from('companies').select('*').eq('id', currentCompany.id).single(),
-          supabase.from('directors').select('*').eq('company_id', currentCompany.id)
+          getDirectors(currentCompany.id)
         ])
 
         console.log('[fetchDetails] Parallel fetch completed in', Math.round(performance.now() - startTime), 'ms')
 
-        if (companyResult.error) throw companyResult.error
-        if (directorsResult.error) throw directorsResult.error
+        if (companyResult.error) {
+          console.error('[fetchDetails] Company fetch error:', companyResult.error)
+          throw companyResult.error
+        }
+        if (!directorsResult.success) {
+          console.error('[fetchDetails] Directors fetch error:', directorsResult.error)
+          // Don't throw - continue with empty directors array
+        }
 
         const company = companyResult.data
-        const directors = directorsResult.data
+        const directors = directorsResult.directors || []
+        
+        console.log('[fetchDetails] Directors fetched:', directors.length, 'directors')
+        console.log('[fetchDetails] Directors data:', directors)
 
         // Map to EntityDetails structure
         if (company) {
@@ -486,18 +496,18 @@ function DataRoomPageInner() {
             industryCategory: Array.isArray(company.industry_categories)
               ? company.industry_categories.join(', ')
               : company.industry,
-            directors: (directors || []).map(d => ({
+            directors: directors.map(d => ({
               id: d.id,
-              firstName: d.first_name,
-              lastName: d.last_name || '',
-              middleName: d.middle_name || '',
-              din: d.director_id,
+              firstName: d.firstName,
+              lastName: d.lastName,
+              middleName: d.middleName,
+              din: d.din,
               designation: d.designation,
               dob: d.dob,
-              pan: d.tax_id,
+              pan: d.pan,
               email: d.email,
               mobile: d.mobile,
-              verified: d.is_verified
+              verified: d.verified
             }))
           }
           setEntityDetails(mappedDetails)
@@ -3339,18 +3349,24 @@ function DataRoomPageInner() {
                     <div className="flex-1 space-y-3 sm:space-y-4">
                       {/* Directors Dropdown */}
                       <div>
-                        <select
-                          value={selectedDirectorId || ''}
-                          onChange={(e) => setSelectedDirectorId(e.target.value || null)}
-                          className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-black border border-white/20 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
-                        >
-                          <option value="">Select a director to view profile</option>
-                          {entityDetails.directors.map((director) => (
-                            <option key={director.id} value={director.id}>
-                              {director.firstName} {director.middleName} {director.lastName} {director.din ? `(${countryConfig.labels.directorId || 'Director ID'}: ${director.din})` : ''}
-                            </option>
-                          ))}
-                        </select>
+                        {entityDetails.directors && entityDetails.directors.length > 0 ? (
+                          <select
+                            value={selectedDirectorId || ''}
+                            onChange={(e) => setSelectedDirectorId(e.target.value || null)}
+                            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-black border border-white/20 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
+                          >
+                            <option value="">Select a director to view profile</option>
+                            {entityDetails.directors.map((director) => (
+                              <option key={director.id} value={director.id}>
+                                {director.firstName} {director.middleName} {director.lastName} {director.din ? `(${countryConfig.labels.directorId || 'Director ID'}: ${director.din})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <div className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-black border border-white/20 rounded-lg text-gray-400 text-sm sm:text-base">
+                            No directors found for this company
+                          </div>
+                        )}
                       </div>
 
                       {/* Director Profile */}
