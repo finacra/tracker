@@ -570,22 +570,43 @@ function DataRoomPageInner() {
     // Reset fetch refs so new data is fetched for the new company
     detailsFetchedRef.current = null
     requirementsFetchedRef.current = null
+    templatesFetchedRef.current.clear() // Clear the Set for templates
   }, [router, searchParams])
 
   // Sync URL params to state on mount/change (only when companies are loaded)
+  // Only sync FROM URL TO STATE, not the other way around (to prevent loops)
   useEffect(() => {
     if (companies.length === 0) return // Wait for companies to load
     
     const urlCompanyId = searchParams.get('company_id') || searchParams.get('company')
-    if (urlCompanyId && currentCompany?.id !== urlCompanyId) {
-      // URL has different company, find and set it
+    if (urlCompanyId) {
+      // Only update if URL has a company and it's different from current
       const companyFromUrl = companies.find(c => c.id === urlCompanyId)
-      if (companyFromUrl) {
+      if (companyFromUrl && (!currentCompany || currentCompany.id !== urlCompanyId)) {
         setCurrentCompany(companyFromUrl)
         setSelectedDirectorId(null) // Reset director when company changes
+        // Reset fetch refs so new data is fetched for the new company
+        detailsFetchedRef.current = null
+        requirementsFetchedRef.current = null
+        templatesFetchedRef.current.clear() // Clear the Set for templates
+      }
+    } else if (currentCompany && companies.length > 0) {
+      // If URL has no company but we have one selected, set first company as default
+      // This only happens on initial load when there's no URL param
+      if (!searchParams.has('company_id') && !searchParams.has('company')) {
+        const firstCompany = companies[0]
+        if (firstCompany && firstCompany.id !== currentCompany.id) {
+          setCurrentCompany(firstCompany)
+          setSelectedDirectorId(null)
+          // Update URL to match
+          const params = new URLSearchParams(searchParams.toString())
+          params.set('company_id', firstCompany.id)
+          router.replace(`/data-room?${params.toString()}`, { scroll: false })
+        }
       }
     }
-  }, [searchParams, companies.length, currentCompany?.id])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, companies.length]) // Only depend on URL and companies, not currentCompany to prevent loops
 
   const [selectedDirectorId, setSelectedDirectorId] = useState<string | null>(null)
 
@@ -4291,7 +4312,7 @@ function DataRoomPageInner() {
             coverY += Math.min(companyLines.length, 3) * 18 + 10
             doc.setFont('helvetica', 'italic')
             doc.setFontSize(14)
-            doc.text('BY FINNOVATE AI', margin, coverY, { maxWidth: contentWidth })
+            doc.text('BY FINACRA AI', margin, coverY, { maxWidth: contentWidth })
 
             // Footer details (bottom-left)
             const footerBlockY = pageHeight - 70
@@ -4951,7 +4972,7 @@ function DataRoomPageInner() {
             // QR code
             try {
               const QRCode: any = await import('qrcode')
-              const qrUrl = 'https://www.finnovateai.com'
+              const qrUrl = 'https://www.finacra.com'
               const qrDataUrl: string = await QRCode.toDataURL(qrUrl, {
                 margin: 1,
                 width: 260,
@@ -4975,7 +4996,7 @@ function DataRoomPageInner() {
               doc.setFontSize(10)
               doc.setTextColor(textGray[0], textGray[1], textGray[2])
               doc.text('Scan to visit', pageWidth / 2, qrY + qrSize + 32, { align: 'center' })
-              doc.text('www.finnovateai.com', pageWidth / 2, qrY + qrSize + 44, { align: 'center' })
+              doc.text('www.finacra.com', pageWidth / 2, qrY + qrSize + 44, { align: 'center' })
             } catch (qrErr) {
               // Fallback if QR generation fails: show the URL + CTA text
               doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
@@ -4985,7 +5006,7 @@ function DataRoomPageInner() {
               doc.setFont('helvetica', 'normal')
               doc.setFontSize(10)
               doc.setTextColor(textGray[0], textGray[1], textGray[2])
-              doc.text('www.finnovateai.com', pageWidth / 2, pageHeight / 2 + 14, { align: 'center' })
+              doc.text('www.finacra.com', pageWidth / 2, pageHeight / 2 + 14, { align: 'center' })
             }
 
             // Footer - Add to all pages with proper spacing
@@ -6602,7 +6623,7 @@ function DataRoomPageInner() {
                     </button>
 
                     <p className="text-center text-xs text-gray-500">
-                      By connecting, you agree to share your GST data securely with Finnovate
+                      By connecting, you agree to share your GST data securely with Finacra
                     </p>
                   </div>
                 </div>
