@@ -122,6 +122,30 @@ function DataRoomPageInner() {
   }, [searchParams])
 
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null)
+  
+  // Sync company with URL params when company changes
+  useEffect(() => {
+    if (!currentCompany) return
+    
+    const currentCompanyId = searchParams.get('company_id') || searchParams.get('company')
+    // Only update URL if it's different to avoid loops
+    if (currentCompanyId !== currentCompany.id) {
+      const params = new URLSearchParams(searchParams.toString())
+      params.set('company_id', currentCompany.id)
+      router.replace(`/data-room?${params.toString()}`, { scroll: false })
+    }
+  }, [currentCompany?.id, searchParams, router])
+  
+  // Handler for company changes from CompanySelector
+  const updateCompanyAndURL = useCallback((company: Company | null) => {
+    setCurrentCompany(prev => {
+      // Only update if different to prevent unnecessary re-renders
+      if (prev?.id === company?.id) {
+        return prev
+      }
+      return company
+    })
+  }, [])
   const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [entityDetails, setEntityDetails] = useState<EntityDetails | null>(null)
@@ -304,6 +328,7 @@ function DataRoomPageInner() {
             if (prev?.id === selected.id) {
               return prev
             }
+            // URL will be synced by useEffect when currentCompany changes
             return selected
           })
         } else {
@@ -312,6 +337,7 @@ function DataRoomPageInner() {
           setCurrentCompany(prev => {
             // Only update if not already null to prevent unnecessary re-renders
             if (prev === null) return prev
+            // URL will be synced by useEffect when currentCompany changes
             return null
           })
         }
@@ -325,7 +351,7 @@ function DataRoomPageInner() {
 
     // Run fetchCompanies
     fetchCompanies()
-  }, [user, supabase, authLoading, initialCompanyId])
+  }, [user, supabase, authLoading, initialCompanyId, searchParams, router])
 
   // Check if user has access to ANY company - redirect if no access at all
   useEffect(() => {
@@ -526,6 +552,11 @@ function DataRoomPageInner() {
 
     fetchDetails()
   }, [currentCompany, supabase])
+  
+  // Reset director selection when company changes
+  useEffect(() => {
+    setSelectedDirectorId(null)
+  }, [currentCompany?.id])
 
   const [selectedDirectorId, setSelectedDirectorId] = useState<string | null>(null)
 
@@ -3079,7 +3110,7 @@ function DataRoomPageInner() {
           <CompanySelector
             companies={companies}
             currentCompany={currentCompany}
-            onCompanyChange={setCurrentCompany}
+            onCompanyChange={updateCompanyAndURL}
           />
         </div>
 
