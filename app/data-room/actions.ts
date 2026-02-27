@@ -3161,3 +3161,154 @@ export async function getHiddenDocumentTemplates(
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
   }
 }
+
+/**
+ * Hide a compliance for a specific company
+ * This excludes it from tracker display, penalty calculations, and reports
+ */
+export async function hideComplianceForCompany(
+  companyId: string,
+  requirementId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!validateCompanyId(companyId)) {
+      return { success: false, error: 'Invalid company ID format' }
+    }
+
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return { success: false, error: 'Unauthorized' }
+    }
+
+    // Check if user has admin or editor access to this company
+    const hasAccess = await canUserEdit(companyId)
+    if (!hasAccess) {
+      return { success: false, error: 'Only admins and editors can hide compliances' }
+    }
+
+    const adminSupabase = createAdminClient()
+
+    // Insert exclusion (using upsert to handle duplicates)
+    const { error: insertError } = await adminSupabase
+      .from('company_compliance_exclusions')
+      .upsert({
+        company_id: companyId,
+        requirement_id: requirementId,
+        created_by: user.id
+      }, {
+        onConflict: 'company_id,requirement_id'
+      })
+
+    if (insertError) {
+      // If table doesn't exist, create it first (for development)
+      if (insertError.code === '42P01') {
+        console.warn('Table company_compliance_exclusions does not exist. Please create it first.')
+        return { success: false, error: 'Database table not found. Please run migration to create company_compliance_exclusions table.' }
+      }
+      console.error('Error hiding compliance:', insertError)
+      return { success: false, error: insertError.message }
+    }
+
+    return { success: true }
+  } catch (err) {
+    console.error('Error in hideComplianceForCompany:', err)
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+}
+
+/**
+ * Show a compliance for a company (remove from exclusions)
+ */
+export async function showComplianceForCompany(
+  companyId: string,
+  requirementId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!validateCompanyId(companyId)) {
+      return { success: false, error: 'Invalid company ID format' }
+    }
+
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return { success: false, error: 'Unauthorized' }
+    }
+
+    // Check if user has admin or editor access to this company
+    const hasAccess = await canUserEdit(companyId)
+    if (!hasAccess) {
+      return { success: false, error: 'Only admins and editors can manage compliances' }
+    }
+
+    const adminSupabase = createAdminClient()
+
+    // Delete exclusion
+    const { error: deleteError } = await adminSupabase
+      .from('company_compliance_exclusions')
+      .delete()
+      .eq('company_id', companyId)
+      .eq('requirement_id', requirementId)
+
+    if (deleteError) {
+      console.error('Error showing compliance:', deleteError)
+      return { success: false, error: deleteError.message }
+    }
+
+    return { success: true }
+  } catch (err) {
+    console.error('Error in showComplianceForCompany:', err)
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+}
+
+/**
+ * Get hidden compliance IDs for a company
+ */
+export async function getHiddenCompliances(
+  companyId: string
+): Promise<{ success: boolean; hiddenComplianceIds?: string[]; error?: string }> {
+  try {
+    if (!validateCompanyId(companyId)) {
+      return { success: false, error: 'Invalid company ID format' }
+    }
+
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return { success: false, error: 'Unauthorized' }
+    }
+
+    // Check if user has access to this company
+    const hasAccess = await canUserView(companyId)
+    if (!hasAccess) {
+      return { success: false, error: 'No access to this company' }
+    }
+
+    const adminSupabase = createAdminClient()
+
+    const { data: exclusions, error } = await adminSupabase
+      .from('company_compliance_exclusions')
+      .select('requirement_id')
+      .eq('company_id', companyId)
+
+    if (error) {
+      // If table doesn't exist, return empty array (for development)
+      if (error.code === '42P01') {
+        console.warn('Table company_compliance_exclusions does not exist. Please create it first.')
+        return { success: true, hiddenComplianceIds: [] }
+      }
+      console.error('Error fetching hidden compliances:', error)
+      return { success: false, error: error.message }
+    }
+
+    const hiddenIds = (exclusions || []).map(ex => ex.requirement_id)
+    return { success: true, hiddenComplianceIds: hiddenIds }
+  } catch (err) {
+    console.error('Error in getHiddenCompliances:', err)
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+}

@@ -9,7 +9,7 @@ import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
 import { createClient } from '@/utils/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { uploadDocument, getCompanyDocuments, getDocumentTemplates, getDownloadUrl, deleteDocument } from '@/app/onboarding/actions'
-import { getRegulatoryRequirements, updateRequirementStatus, createRequirement, deleteRequirement, updateRequirement, sendDocumentsEmail, getDirectors, hideDocumentTemplateForCompany, getHiddenDocumentTemplates, type RegulatoryRequirement } from '@/app/data-room/actions'
+import { getRegulatoryRequirements, updateRequirementStatus, createRequirement, deleteRequirement, updateRequirement, sendDocumentsEmail, getDirectors, hideDocumentTemplateForCompany, getHiddenDocumentTemplates, hideComplianceForCompany, showComplianceForCompany, getHiddenCompliances, type RegulatoryRequirement } from '@/app/data-room/actions'
 import { trackTrackerTabOpened, trackStatusChange, trackDocumentUpload, trackCalendarSync, trackVaultFileExport, trackReportDownload, trackVaultFileUpload } from '@/lib/tracking/kpi-tracker'
 import jsPDF from 'jspdf'
 import { useUserRole } from '@/hooks/useUserRole'
@@ -131,6 +131,7 @@ function DataRoomPageInner() {
   const [hiddenTemplates, setHiddenTemplates] = useState<Set<string>>(new Set()) // Track hidden templates as "folderName:documentName"
   const [regulatoryRequirements, setRegulatoryRequirements] = useState<RegulatoryRequirement[]>([])
   const [isLoadingRequirements, setIsLoadingRequirements] = useState(false)
+  const [hiddenCompliances, setHiddenCompliances] = useState<Set<string>>(new Set()) // Track hidden compliance IDs
 
   // Refs to track if data has been fetched to prevent re-fetching on tab switch
   const companiesFetchedRef = useRef(false)
@@ -616,6 +617,30 @@ function DataRoomPageInner() {
     }
 
     fetchHiddenTemplates()
+  }, [currentCompany?.id])
+
+  // Fetch hidden compliances when company changes
+  useEffect(() => {
+    async function fetchHiddenCompliances() {
+      if (!currentCompany) {
+        setHiddenCompliances(new Set())
+        return
+      }
+
+      try {
+        const result = await getHiddenCompliances(currentCompany.id)
+        if (result.success && result.hiddenComplianceIds) {
+          setHiddenCompliances(new Set(result.hiddenComplianceIds))
+        } else {
+          setHiddenCompliances(new Set())
+        }
+      } catch (error) {
+        console.error('Error fetching hidden compliances:', error)
+        setHiddenCompliances(new Set())
+      }
+    }
+
+    fetchHiddenCompliances()
   }, [currentCompany?.id])
 
   const [activeTab, setActiveTab] = useState('overview')
@@ -1857,6 +1882,19 @@ function DataRoomPageInner() {
   const [isBulkActionModalOpen, setIsBulkActionModalOpen] = useState(false)
   const [bulkActionType, setBulkActionType] = useState<'status' | 'delete' | null>(null)
 
+  // DSC/DIN Management state
+  const [directorDscDinData, setDirectorDscDinData] = useState<Record<string, {
+    dscFile: File | null
+    dinFile: File | null
+    dscFilePath: string | null
+    dinFilePath: string | null
+    portalEmail: string
+    portalPassword: string
+    hasCredentials: boolean
+    expiryDate: string
+    reminderEnabled: boolean
+  }>>({})
+
   // CRUD modals and forms
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -2374,7 +2412,7 @@ function DataRoomPageInner() {
         if (result.missingDocs && result.missingDocs.length > 0 && actualStatus === 'completed') {
           showToast(`Status updated to completed. Note: ${result.missingDocs.length} required document(s) still pending. Admin has been notified.`, 'success')
         } else {
-          showToast('Status updated successfully', 'success')
+        showToast('Status updated successfully', 'success')
         }
       } else {
         showToast(`Failed to update status: ${result.error}`, 'error')
@@ -3080,9 +3118,13 @@ function DataRoomPageInner() {
     }
   }, [uploadFile])
 
-  // Convert database requirements to display format and apply category filter
+  // Convert database requirements to display format and apply filters
   const displayRequirements = (regulatoryRequirements || [])
     .filter(req => {
+      // Filter out hidden compliances
+      if (hiddenCompliances.has(req.id)) {
+        return false
+      }
       // Apply category filter
       if (selectedCategory !== 'all' && req.category !== selectedCategory) {
         return false
@@ -3090,28 +3132,28 @@ function DataRoomPageInner() {
       return true
     })
     .map(req => ({
-      id: req.id,
-      template_id: (req as any).template_id ?? null,
-      category: req.category,
-      requirement: req.requirement,
-      description: req.description || '',
-      status: req.status,
-      dueDate: formatDate(req.due_date),
-      penalty: req.penalty || '',
-      isCritical: req.is_critical,
-      financial_year: req.financial_year,
-      entity_type: (req as any).entity_type,
-      industry: (req as any).industry,
-      industry_category: (req as any).industry_category,
-      compliance_type: (req as any).compliance_type,
-      required_documents: req.required_documents || [],
-      possible_legal_action: req.possible_legal_action,
-      penalty_config: req.penalty_config,
-      penalty_base_amount: req.penalty_base_amount,
-      filed_on: req.filed_on,
-      filed_by: req.filed_by,
-      status_reason: req.status_reason,
-    }))
+    id: req.id,
+    template_id: (req as any).template_id ?? null,
+    category: req.category,
+    requirement: req.requirement,
+    description: req.description || '',
+    status: req.status,
+    dueDate: formatDate(req.due_date),
+    penalty: req.penalty || '',
+    isCritical: req.is_critical,
+    financial_year: req.financial_year,
+    entity_type: (req as any).entity_type,
+    industry: (req as any).industry,
+    industry_category: (req as any).industry_category,
+    compliance_type: (req as any).compliance_type,
+    required_documents: req.required_documents || [],
+    possible_legal_action: req.possible_legal_action,
+    penalty_config: req.penalty_config,
+    penalty_base_amount: req.penalty_base_amount,
+    filed_on: req.filed_on,
+    filed_by: req.filed_by,
+    status_reason: req.status_reason,
+  }))
 
 
   const [teamMembers] = useState([
@@ -3332,6 +3374,31 @@ function DataRoomPageInner() {
             <span className="text-sm sm:text-base">Reports</span>
           </button>
           <button
+            onClick={() => setActiveTab('dsc-din')}
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'dsc-din'
+                ? 'border-white/40 bg-white/10 text-white'
+                : 'border-white/20 bg-black text-white hover:text-white hover:border-white/40'
+              }`}
+          >
+            <svg
+              width="16"
+              height="16"
+              className="sm:w-[18px] sm:h-[18px]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <span className="text-sm sm:text-base">DSC & DIN</span>
+          </button>
+          <button
             onClick={() => setActiveTab('notices')}
             className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'notices'
                 ? 'border-white/40 bg-white/10 text-white'
@@ -3494,21 +3561,21 @@ function DataRoomPageInner() {
                       {/* Directors Dropdown */}
                       <div>
                         {entityDetails.directors && entityDetails.directors.length > 0 ? (
-                          <select
-                            value={selectedDirectorId || ''}
+                        <select
+                          value={selectedDirectorId || ''}
                             onChange={(e) => {
                               e.preventDefault()
                               setSelectedDirectorId(e.target.value || null)
                             }}
-                            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-black border border-white/20 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
-                          >
-                            <option value="">Select a director to view profile</option>
-                            {entityDetails.directors.map((director) => (
-                              <option key={director.id} value={director.id}>
-                                {director.firstName} {director.middleName} {director.lastName} {director.din ? `(${countryConfig.labels.directorId || 'Director ID'}: ${director.din})` : ''}
-                              </option>
-                            ))}
-                          </select>
+                          className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-black border border-white/20 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
+                        >
+                          <option value="">Select a director to view profile</option>
+                          {entityDetails.directors.map((director) => (
+                            <option key={director.id} value={director.id}>
+                              {director.firstName} {director.middleName} {director.lastName} {director.din ? `(${countryConfig.labels.directorId || 'Director ID'}: ${director.din})` : ''}
+                            </option>
+                          ))}
+                        </select>
                         ) : (
                           <div className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-black border border-white/20 rounded-lg text-gray-400 text-sm sm:text-base">
                             No directors found for this company
@@ -8569,7 +8636,37 @@ function DataRoomPageInner() {
                                           </button>
                                           <button
                                             onClick={async () => {
-                                              if (!confirm('Are you sure you want to delete this compliance requirement?')) return
+                                              if (!confirm(`Are you sure you want to remove "${req.requirement}" from this company? This will hide it from the tracker and exclude it from penalty calculations and reports, but it won't be deleted.`)) return
+                                              if (!currentCompany) return
+
+                                              try {
+                                                const result = await hideComplianceForCompany(currentCompany.id, req.id)
+                                                if (result.success) {
+                                                  // Update hidden compliances set
+                                                  setHiddenCompliances(prev => {
+                                                    const newSet = new Set(prev)
+                                                    newSet.add(req.id)
+                                                    return newSet
+                                                  })
+                                                  showToast(`"${req.requirement}" removed from tracker`, 'success')
+                                                } else {
+                                                  showToast(result.error || 'Failed to remove compliance', 'error')
+                                                }
+                                              } catch (error: any) {
+                                                console.error('Error hiding compliance:', error)
+                                                showToast('Failed to remove compliance', 'error')
+                                              }
+                                            }}
+                                            className="p-1.5 text-orange-400 hover:text-orange-300 hover:bg-orange-500/20 rounded-lg transition-colors"
+                                            title="Remove from this company (hide from tracker)"
+                                          >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                              <path d="M18 6L6 18M6 6l12 12" />
+                                            </svg>
+                                          </button>
+                                          <button
+                                            onClick={async () => {
+                                              if (!confirm('Are you sure you want to delete this compliance requirement permanently?')) return
                                               if (!currentCompany) return
 
                                               try {
@@ -8579,17 +8676,17 @@ function DataRoomPageInner() {
                                                   if (refreshResult.success && refreshResult.requirements) {
                                                     setRegulatoryRequirements(refreshResult.requirements)
                                                   }
-                                                  alert('Requirement deleted successfully')
+                                                  showToast('Requirement deleted successfully', 'success')
                                                 } else {
-                                                  alert(`Failed to delete: ${result.error}`)
+                                                  showToast(result.error || 'Failed to delete', 'error')
                                                 }
                                               } catch (error: any) {
                                                 console.error('Error deleting requirement:', error)
-                                                alert(`Error: ${error.message}`)
+                                                showToast(error.message || 'Error deleting requirement', 'error')
                                               }
                                             }}
                                             className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
-                                            title="Delete"
+                                            title="Delete permanently"
                                           >
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                               <polyline points="3 6 5 6 21 6" />
@@ -9059,7 +9156,37 @@ function DataRoomPageInner() {
                                             </button>
                                             <button
                                               onClick={async () => {
-                                                if (!confirm('Are you sure you want to delete this compliance requirement?')) return
+                                                if (!confirm(`Are you sure you want to remove "${req.requirement}" from this company? This will hide it from the tracker and exclude it from penalty calculations and reports, but it won't be deleted.`)) return
+                                                if (!currentCompany) return
+
+                                                try {
+                                                  const result = await hideComplianceForCompany(currentCompany.id, req.id)
+                                                  if (result.success) {
+                                                    // Update hidden compliances set
+                                                    setHiddenCompliances(prev => {
+                                                      const newSet = new Set(prev)
+                                                      newSet.add(req.id)
+                                                      return newSet
+                                                    })
+                                                    showToast(`"${req.requirement}" removed from tracker`, 'success')
+                                                  } else {
+                                                    showToast(result.error || 'Failed to remove compliance', 'error')
+                                                  }
+                                                } catch (error: any) {
+                                                  console.error('Error hiding compliance:', error)
+                                                  showToast('Failed to remove compliance', 'error')
+                                                }
+                                              }}
+                                              className="p-2 text-orange-400 hover:text-orange-300 hover:bg-orange-500/20 rounded-lg transition-colors"
+                                              title="Remove from this company (hide from tracker)"
+                                            >
+                                              <svg width="16" height="16" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M18 6L6 18M6 6l12 12" />
+                                              </svg>
+                                            </button>
+                                            <button
+                                              onClick={async () => {
+                                                if (!confirm('Are you sure you want to delete this compliance requirement permanently?')) return
                                                 if (!currentCompany) return
 
                                                 try {
@@ -9070,17 +9197,17 @@ function DataRoomPageInner() {
                                                     if (refreshResult.success && refreshResult.requirements) {
                                                       setRegulatoryRequirements(refreshResult.requirements)
                                                     }
-                                                    alert('Requirement deleted successfully')
+                                                    showToast('Requirement deleted successfully', 'success')
                                                   } else {
-                                                    alert(`Failed to delete: ${result.error}`)
+                                                    showToast(result.error || 'Failed to delete', 'error')
                                                   }
                                                 } catch (error: any) {
                                                   console.error('Error deleting requirement:', error)
-                                                  alert(`Error: ${error.message}`)
+                                                  showToast(error.message || 'Error deleting requirement', 'error')
                                                 }
                                               }}
                                               className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
-                                              title="Delete"
+                                              title="Delete permanently"
                                             >
                                               <svg width="16" height="16" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                 <polyline points="3 6 5 6 21 6" />
@@ -9461,6 +9588,448 @@ function DataRoomPageInner() {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'dsc-din' && (
+          <div className="space-y-4 sm:space-y-6">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">DSC & DIN Management</h2>
+                <p className="text-gray-400 text-sm sm:text-base">Manage Digital Signature Certificates (DSC) and Director Identification Numbers (DIN) for directors.</p>
+              </div>
+            </div>
+
+            {/* Directors List */}
+            {entityDetails && entityDetails.directors && entityDetails.directors.length > 0 ? (
+              <div className="space-y-4">
+                {entityDetails.directors.map((director) => {
+                  const directorId = director.id
+                  const directorData = directorDscDinData[directorId] || {
+                    dscFile: null,
+                    dinFile: null,
+                    dscFilePath: null,
+                    dinFilePath: null,
+                    portalEmail: '',
+                    portalPassword: '',
+                    hasCredentials: false,
+                    expiryDate: (() => {
+                      // Default to September 30 of current year, or next year if we've passed September
+                      const now = new Date()
+                      const currentYear = now.getFullYear()
+                      const currentMonth = now.getMonth() // 0-11, where 8 = September
+                      const year = currentMonth >= 8 ? currentYear + 1 : currentYear
+                      return `${year}-09-30`
+                    })(),
+                    reminderEnabled: false
+                  }
+
+                  const directorName = `${director.firstName} ${director.middleName ? director.middleName + ' ' : ''}${director.lastName}`.trim()
+                  const isExpiringSoon = (() => {
+                    if (!directorData.expiryDate) return false
+                    const expiry = new Date(directorData.expiryDate)
+                    const now = new Date()
+                    const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+                    return daysUntilExpiry <= 30 && daysUntilExpiry > 0
+                  })()
+                  const isExpired = (() => {
+                    if (!directorData.expiryDate) return false
+                    return new Date(directorData.expiryDate) < new Date()
+                  })()
+
+                  return (
+                    <div key={directorId} className="bg-black border border-gray-800 rounded-xl p-4 sm:p-6 space-y-4 sm:space-y-6">
+                      {/* Director Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 pb-4 border-b border-gray-800">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 flex items-center justify-center text-white font-medium text-lg sm:text-xl">
+                            {directorName.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <h3 className="text-lg sm:text-xl font-medium text-white">{directorName}</h3>
+                            {director.din && (
+                              <p className="text-sm text-gray-400">DIN: {director.din}</p>
+                            )}
+                            {director.designation && (
+                              <p className="text-xs text-gray-500">{director.designation}</p>
+                            )}
+                          </div>
+                        </div>
+                        {directorData.expiryDate && (
+                          <div className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                            isExpired
+                              ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                              : isExpiringSoon
+                                ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                                : 'bg-green-500/20 text-green-400 border border-green-500/30'
+                          }`}>
+                            {isExpired ? 'Expired' : isExpiringSoon ? 'Expiring Soon' : 'Valid'}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                        {/* DSC Certificate Section */}
+                        <div className="space-y-3">
+                          <h4 className="text-base sm:text-lg font-medium text-white flex items-center gap-2">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            DSC Certificate
+                          </h4>
+                          
+                          {directorData.dscFilePath ? (
+                            <div className="bg-gray-900/50 rounded-lg p-3 border border-gray-800">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                  <span className="text-sm text-gray-300">DSC Certificate Uploaded</span>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    setDirectorDscDinData(prev => ({
+                                      ...prev,
+                                      [directorId]: { ...prev[directorId], dscFile: null, dscFilePath: null }
+                                    }))
+                                  }}
+                                  className="text-red-400 hover:text-red-300 text-sm"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-700 rounded-lg cursor-pointer hover:border-white/40 transition-colors bg-gray-900/50">
+                              <div className="flex flex-col items-center justify-center pt-4 pb-4 px-4">
+                                <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                <p className="mb-1 text-xs sm:text-sm text-white font-medium text-center">
+                                  Click to upload DSC certificate
+                                </p>
+                                <p className="text-[10px] sm:text-xs text-gray-400 text-center">
+                                  PDF, DOC, DOCX (max. 10MB)
+                                </p>
+                              </div>
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept=".pdf,.doc,.docx"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0]
+                                  if (file) {
+                                    setDirectorDscDinData(prev => ({
+                                      ...prev,
+                                      [directorId]: { ...prev[directorId] || {
+                                        dscFile: null,
+                                        dinFile: null,
+                                        dscFilePath: null,
+                                        dinFilePath: null,
+                                        portalEmail: '',
+                                        portalPassword: '',
+                                        hasCredentials: false,
+                                        expiryDate: (() => {
+                                          const now = new Date()
+                                          const currentYear = now.getFullYear()
+                                          const currentMonth = now.getMonth()
+                                          const year = currentMonth >= 8 ? currentYear + 1 : currentYear
+                                          return `${year}-09-30`
+                                        })(),
+                                        reminderEnabled: false
+                                      }, dscFile: file }
+                                    }))
+                                  }
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
+
+                        {/* DIN Certificate Section */}
+                        <div className="space-y-3">
+                          <h4 className="text-base sm:text-lg font-medium text-white flex items-center gap-2">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                            </svg>
+                            DIN Certificate
+                          </h4>
+                          
+                          {directorData.dinFilePath ? (
+                            <div className="bg-gray-900/50 rounded-lg p-3 border border-gray-800">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                  <span className="text-sm text-gray-300">DIN Certificate Uploaded</span>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    setDirectorDscDinData(prev => ({
+                                      ...prev,
+                                      [directorId]: { ...prev[directorId], dinFile: null, dinFilePath: null }
+                                    }))
+                                  }}
+                                  className="text-red-400 hover:text-red-300 text-sm"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-700 rounded-lg cursor-pointer hover:border-white/40 transition-colors bg-gray-900/50">
+                              <div className="flex flex-col items-center justify-center pt-4 pb-4 px-4">
+                                <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                <p className="mb-1 text-xs sm:text-sm text-white font-medium text-center">
+                                  Click to upload DIN certificate
+                                </p>
+                                <p className="text-[10px] sm:text-xs text-gray-400 text-center">
+                                  PDF, DOC, DOCX (max. 10MB)
+                                </p>
+                              </div>
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept=".pdf,.doc,.docx"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0]
+                                  if (file) {
+                                    setDirectorDscDinData(prev => ({
+                                      ...prev,
+                                      [directorId]: { ...prev[directorId] || {
+                                        dscFile: null,
+                                        dinFile: null,
+                                        dscFilePath: null,
+                                        dinFilePath: null,
+                                        portalEmail: '',
+                                        portalPassword: '',
+                                        hasCredentials: false,
+                                        expiryDate: (() => {
+                                          const now = new Date()
+                                          const currentYear = now.getFullYear()
+                                          const currentMonth = now.getMonth()
+                                          const year = currentMonth >= 8 ? currentYear + 1 : currentYear
+                                          return `${year}-09-30`
+                                        })(),
+                                        reminderEnabled: false
+                                      }, dinFile: file }
+                                    }))
+                                  }
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Portal Credentials Section */}
+                      <div className="space-y-3 pt-4 border-t border-gray-800">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={directorData.hasCredentials}
+                            onChange={(e) => {
+                              setDirectorDscDinData(prev => ({
+                                ...prev,
+                                [directorId]: { ...prev[directorId] || {
+                                  dscFile: null,
+                                  dinFile: null,
+                                  dscFilePath: null,
+                                  dinFilePath: null,
+                                  portalEmail: '',
+                                  portalPassword: '',
+                                  hasCredentials: false,
+                                  expiryDate: (() => {
+                                    const now = new Date()
+                                    const currentYear = now.getFullYear()
+                                    const currentMonth = now.getMonth()
+                                    const year = currentMonth >= 8 ? currentYear + 1 : currentYear
+                                    return `${year}-09-30`
+                                  })(),
+                                  reminderEnabled: false
+                                }, hasCredentials: e.target.checked }
+                              }))
+                            }}
+                            className="w-4 h-4 text-white bg-gray-800 border-gray-600 rounded focus:ring-white/40 focus:ring-2"
+                          />
+                          <span className="text-sm sm:text-base text-white font-medium">Store Portal Credentials</span>
+                        </label>
+
+                        {directorData.hasCredentials && (
+                          <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                            <div>
+                              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1.5">
+                                Portal Email
+                              </label>
+                              <input
+                                type="email"
+                                value={directorData.portalEmail}
+                                onChange={(e) => {
+                                  setDirectorDscDinData(prev => ({
+                                    ...prev,
+                                    [directorId]: { ...prev[directorId] || {
+                                      dscFile: null,
+                                      dinFile: null,
+                                      dscFilePath: null,
+                                      dinFilePath: null,
+                                      portalEmail: '',
+                                      portalPassword: '',
+                                      hasCredentials: false,
+                                      expiryDate: (() => {
+                                        const now = new Date()
+                                        const currentYear = now.getFullYear()
+                                        const currentMonth = now.getMonth()
+                                        const year = currentMonth >= 8 ? currentYear + 1 : currentYear
+                                        return `${year}-09-30`
+                                      })(),
+                                      reminderEnabled: false
+                                    }, portalEmail: e.target.value }
+                                  }))
+                                }}
+                                placeholder="portal@example.com"
+                                className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-xs sm:text-sm placeholder-gray-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1.5">
+                                Portal Password
+                              </label>
+                              <input
+                                type="password"
+                                value={directorData.portalPassword}
+                                onChange={(e) => {
+                                  setDirectorDscDinData(prev => ({
+                                    ...prev,
+                                    [directorId]: { ...prev[directorId] || {
+                                      dscFile: null,
+                                      dinFile: null,
+                                      dscFilePath: null,
+                                      dinFilePath: null,
+                                      portalEmail: '',
+                                      portalPassword: '',
+                                      hasCredentials: false,
+                                      expiryDate: (() => {
+                                        const now = new Date()
+                                        const currentYear = now.getFullYear()
+                                        const currentMonth = now.getMonth()
+                                        const year = currentMonth >= 8 ? currentYear + 1 : currentYear
+                                        return `${year}-09-30`
+                                      })(),
+                                      reminderEnabled: false
+                                    }, portalPassword: e.target.value }
+                                  }))
+                                }}
+                                placeholder="Enter password"
+                                className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-xs sm:text-sm placeholder-gray-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Expiry Date and Reminder Section */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-800">
+                        <div>
+                          <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1.5">
+                            Expiry Date
+                          </label>
+                          <input
+                            type="date"
+                            value={directorData.expiryDate}
+                            onChange={(e) => {
+                              setDirectorDscDinData(prev => ({
+                                ...prev,
+                                [directorId]: { ...prev[directorId] || {
+                                  dscFile: null,
+                                  dinFile: null,
+                                  dscFilePath: null,
+                                  dinFilePath: null,
+                                  portalEmail: '',
+                                  portalPassword: '',
+                                  hasCredentials: false,
+                                  expiryDate: (() => {
+                                    const now = new Date()
+                                    const currentYear = now.getFullYear()
+                                    const currentMonth = now.getMonth()
+                                    const year = currentMonth >= 8 ? currentYear + 1 : currentYear
+                                    return `${year}-09-30`
+                                  })(),
+                                  reminderEnabled: false
+                                }, expiryDate: e.target.value }
+                              }))
+                            }}
+                            className="w-full px-3 py-2 bg-black border border-gray-700 rounded-lg text-white text-xs sm:text-sm focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                          />
+                          <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Default: September 30 (yearly)</p>
+                        </div>
+                        <div>
+                          <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-1.5">
+                            Reminder Settings
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer mt-2">
+                            <input
+                              type="checkbox"
+                              checked={directorData.reminderEnabled}
+                              onChange={(e) => {
+                                setDirectorDscDinData(prev => ({
+                                  ...prev,
+                                  [directorId]: { ...prev[directorId] || {
+                                    dscFile: null,
+                                    dinFile: null,
+                                    dscFilePath: null,
+                                    dinFilePath: null,
+                                    portalEmail: '',
+                                    portalPassword: '',
+                                    hasCredentials: false,
+                                    expiryDate: (() => {
+                                      const now = new Date()
+                                      const currentYear = now.getFullYear()
+                                      const currentMonth = now.getMonth()
+                                      const year = currentMonth >= 8 ? currentYear + 1 : currentYear
+                                      return `${year}-09-30`
+                                    })(),
+                                    reminderEnabled: false
+                                  }, reminderEnabled: e.target.checked }
+                                }))
+                              }}
+                              className="w-4 h-4 text-white bg-gray-800 border-gray-600 rounded focus:ring-white/40 focus:ring-2"
+                            />
+                            <span className="text-xs sm:text-sm text-gray-300">Enable reminder 1 month before expiry</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Save Button */}
+                      <div className="pt-4 border-t border-gray-800">
+                        <button
+                          onClick={async () => {
+                            // In a real implementation, this would save to the database
+                            showToast('DSC/DIN data saved successfully for ' + directorName, 'success')
+                          }}
+                          className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm sm:text-base"
+                        >
+                          Save Changes
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="bg-black border border-gray-800 rounded-xl p-8 sm:p-12 text-center">
+                <svg className="w-12 h-12 sm:w-16 sm:h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <p className="text-gray-400 text-sm sm:text-base mb-2">No directors found</p>
+                <p className="text-gray-500 text-xs sm:text-sm">Directors will appear here once they are added to the company.</p>
               </div>
             )}
           </div>
@@ -10222,19 +10791,19 @@ function DataRoomPageInner() {
                                         </svg>
                                         Remove
                                       </button>
-                                      <button
-                                        onClick={() => {
-                                          setUploadFormData(prev => ({
-                                            ...prev,
-                                            folder: folderName,
-                                            documentName: doc.document_type
-                                          }))
-                                          setIsUploadModalOpen(true)
-                                        }}
-                                        className="text-white hover:text-white font-medium text-xs sm:text-sm border border-white/40 px-3 sm:px-4 py-1.5 rounded-lg hover:bg-white/20 transition-colors w-full sm:w-auto"
-                                      >
-                                        Upload Now
-                                      </button>
+                                    <button
+                                      onClick={() => {
+                                        setUploadFormData(prev => ({
+                                          ...prev,
+                                          folder: folderName,
+                                          documentName: doc.document_type
+                                        }))
+                                        setIsUploadModalOpen(true)
+                                      }}
+                                      className="text-white hover:text-white font-medium text-xs sm:text-sm border border-white/40 px-3 sm:px-4 py-1.5 rounded-lg hover:bg-white/20 transition-colors w-full sm:w-auto"
+                                    >
+                                      Upload Now
+                                    </button>
                                     </div>
                                   </div>
                                 )
@@ -11033,8 +11602,8 @@ function DataRoomPageInner() {
                           <div className="mt-3 space-y-3 max-h-[60vh] overflow-y-auto">
                             <div className="flex items-center justify-between">
                               <p className="text-xs sm:text-sm text-gray-400 font-medium">
-                                {bulkUploadFiles.length} file(s) selected:
-                              </p>
+                              {bulkUploadFiles.length} file(s) selected:
+                            </p>
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => {
@@ -11102,9 +11671,9 @@ function DataRoomPageInner() {
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                         </svg>
                                       </button>
-                                      <button
-                                        onClick={() => {
-                                          setBulkUploadFiles(prev => prev.filter((_, i) => i !== idx))
+                                <button
+                                  onClick={() => {
+                                    setBulkUploadFiles(prev => prev.filter((_, i) => i !== idx))
                                           const newOptions = { ...bulkUploadFileOptions }
                                           delete newOptions[fileKey]
                                           setBulkUploadFileOptions(newOptions)
@@ -11117,12 +11686,12 @@ function DataRoomPageInner() {
                                         }}
                                         className="text-red-400 hover:text-red-300 transition-colors p-1"
                                         title="Remove file"
-                                      >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                      </button>
-                                    </div>
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              </div>
                                   </div>
                                   
                                   {/* Advanced Options */}
