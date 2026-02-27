@@ -625,8 +625,8 @@ export async function updateRequirementStatus(
         })
 
         if (missingDocs.length > 0) {
-          // Cannot complete - set to pending with status reason
-          actualStatus = 'pending'
+          // Allow completion even with missing documents, but set status reason
+          // Admin will be notified about missing documents
           statusReason = `Missing documents: ${missingDocs.join(', ')}`
           shouldNotifyMissingDocs = true
         }
@@ -645,7 +645,11 @@ export async function updateRequirementStatus(
     if (actualStatus === 'completed') {
       updateData.filed_on = new Date().toISOString().split('T')[0]
       updateData.filed_by = user.id
-      updateData.status_reason = null
+      // Keep status_reason if documents are missing (don't clear it)
+      // Only clear if no reason was set
+      if (!statusReason) {
+        updateData.status_reason = null
+      }
     }
 
     let query = adminSupabase
@@ -666,28 +670,32 @@ export async function updateRequirementStatus(
     }
 
     // In-app notifications (after DB update, so UI is consistent)
-    if (shouldNotifyMissingDocs) {
-      await notifyCompanyAdmins(
-        adminSupabase,
-        reqCompanyId,
-        'missing_docs',
-        `Compliance requires documents`,
-        `"${requirement.requirement}" cannot be completed. Missing: ${missingDocs.join(', ')}`,
-        requirementId,
-        { missing_docs: missingDocs, attempted_status: 'completed' }
-      )
-    }
-
     if (newStatus !== requirement.status) {
       if (actualStatus === 'completed') {
+        // If completed with missing documents, notify admin about missing docs
+        if (shouldNotifyMissingDocs && missingDocs.length > 0) {
+          await notifyCompanyAdmins(
+            adminSupabase,
+            reqCompanyId,
+            'missing_docs',
+            `Compliance completed - Documents pending`,
+            `"${requirement.requirement}" has been marked as completed, but required documents are still pending: ${missingDocs.join(', ')}`,
+            requirementId,
+            { missing_docs: missingDocs, status: 'completed' }
+          )
+        }
+        
+        // Always notify about status change to completed
         await notifyCompanyAdmins(
           adminSupabase,
           reqCompanyId,
           'status_change',
           `Compliance completed`,
-          `"${requirement.requirement}" has been marked as completed.`,
+          missingDocs.length > 0
+            ? `"${requirement.requirement}" has been marked as completed. Note: ${missingDocs.length} required document(s) still pending.`
+            : `"${requirement.requirement}" has been marked as completed.`,
           requirementId,
-          { old_status: requirement.status, new_status: 'completed' }
+          { old_status: requirement.status, new_status: 'completed', missing_docs: missingDocs.length > 0 ? missingDocs : undefined }
         )
       } else {
         await notifyCompanyAdmins(
@@ -700,6 +708,17 @@ export async function updateRequirementStatus(
           { old_status: requirement.status, new_status: actualStatus, reason: statusReason }
         )
       }
+    } else if (shouldNotifyMissingDocs && missingDocs.length > 0) {
+      // Status didn't change but documents are missing (edge case)
+      await notifyCompanyAdmins(
+        adminSupabase,
+        reqCompanyId,
+        'missing_docs',
+        `Compliance requires documents`,
+        `"${requirement.requirement}" is missing required documents: ${missingDocs.join(', ')}`,
+        requirementId,
+        { missing_docs: missingDocs }
+      )
     }
 
     // Queue email notifications for status changes (batched every 5 min)
@@ -3018,5 +3037,127 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
   } catch (error: any) {
     console.error('[sendDocumentsEmail] Error:', error)
     return { success: false, error: error.message || 'Unknown error occurred' }
+  }
+}
+
+/**
+ * Hide a document template for a specific company
+ * Stores the exclusion in company_document_template_exclusions table
+ */
+export async function hideDocumentTemplateForCompany(
+  companyId: string,
+  documentName: string,
+  folderName: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!validateCompanyId(companyId)) {
+      return { success: false, error: 'Invalid company ID format' }
+    }
+
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return { success: false, error: 'Unauthorized' }
+    }
+
+    // Check if user has access to this company
+    const hasAccess = await canUserEdit(companyId)
+    if (!hasAccess) {
+      return { success: false, error: 'No permission to modify this company' }
+    }
+
+    const adminSupabase = createAdminClient()
+
+    // Check if exclusion already exists
+    const { data: existing, error: checkError } = await adminSupabase
+      .from('company_document_template_exclusions')
+      .select('id')
+      .eq('company_id', companyId)
+      .eq('document_name', documentName)
+      .eq('folder_name', folderName)
+      .maybeSingle()
+
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = not found, which is fine
+      console.error('Error checking existing exclusion:', checkError)
+      return { success: false, error: checkError.message }
+    }
+
+    // If already exists, return success
+    if (existing) {
+      return { success: true }
+    }
+
+    // Insert exclusion
+    const { error: insertError } = await adminSupabase
+      .from('company_document_template_exclusions')
+      .insert({
+        company_id: companyId,
+        document_name: documentName,
+        folder_name: folderName,
+        created_by: user.id
+      })
+
+    if (insertError) {
+      // If table doesn't exist, create it first (for development)
+      if (insertError.code === '42P01') {
+        console.warn('Table company_document_template_exclusions does not exist. Please create it first.')
+        return { success: false, error: 'Database table not found. Please run migration to create company_document_template_exclusions table.' }
+      }
+      console.error('Error hiding document template:', insertError)
+      return { success: false, error: insertError.message }
+    }
+
+    return { success: true }
+  } catch (err) {
+    console.error('Error in hideDocumentTemplateForCompany:', err)
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+}
+
+/**
+ * Get hidden document templates for a company
+ */
+export async function getHiddenDocumentTemplates(
+  companyId: string
+): Promise<{ success: boolean; hiddenTemplates?: Array<{ document_name: string; folder_name: string }>; error?: string }> {
+  try {
+    if (!validateCompanyId(companyId)) {
+      return { success: false, error: 'Invalid company ID format' }
+    }
+
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return { success: false, error: 'Unauthorized' }
+    }
+
+    // Check if user has access to this company
+    const hasAccess = await canUserView(companyId)
+    if (!hasAccess) {
+      return { success: false, error: 'No access to this company' }
+    }
+
+    const adminSupabase = createAdminClient()
+
+    const { data: exclusions, error } = await adminSupabase
+      .from('company_document_template_exclusions')
+      .select('document_name, folder_name')
+      .eq('company_id', companyId)
+
+    if (error) {
+      // If table doesn't exist, return empty array
+      if (error.code === '42P01') {
+        return { success: true, hiddenTemplates: [] }
+      }
+      console.error('Error fetching hidden templates:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, hiddenTemplates: exclusions || [] }
+  } catch (err) {
+    console.error('Error in getHiddenDocumentTemplates:', err)
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
   }
 }

@@ -9,7 +9,7 @@ import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
 import { createClient } from '@/utils/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { uploadDocument, getCompanyDocuments, getDocumentTemplates, getDownloadUrl, deleteDocument } from '@/app/onboarding/actions'
-import { getRegulatoryRequirements, updateRequirementStatus, createRequirement, deleteRequirement, updateRequirement, sendDocumentsEmail, getDirectors, type RegulatoryRequirement } from '@/app/data-room/actions'
+import { getRegulatoryRequirements, updateRequirementStatus, createRequirement, deleteRequirement, updateRequirement, sendDocumentsEmail, getDirectors, hideDocumentTemplateForCompany, getHiddenDocumentTemplates, type RegulatoryRequirement } from '@/app/data-room/actions'
 import { trackTrackerTabOpened, trackStatusChange, trackDocumentUpload, trackCalendarSync, trackVaultFileExport, trackReportDownload, trackVaultFileUpload } from '@/lib/tracking/kpi-tracker'
 import jsPDF from 'jspdf'
 import { useUserRole } from '@/hooks/useUserRole'
@@ -128,6 +128,7 @@ function DataRoomPageInner() {
   const [vaultDocuments, setVaultDocuments] = useState<any[]>([])
   const [isLoadingVaultDocuments, setIsLoadingVaultDocuments] = useState(false)
   const [documentTemplates, setDocumentTemplates] = useState<any[]>([])
+  const [hiddenTemplates, setHiddenTemplates] = useState<Set<string>>(new Set()) // Track hidden templates as "folderName:documentName"
   const [regulatoryRequirements, setRegulatoryRequirements] = useState<RegulatoryRequirement[]>([])
   const [isLoadingRequirements, setIsLoadingRequirements] = useState(false)
 
@@ -590,6 +591,31 @@ function DataRoomPageInner() {
   // Reset director selection when company changes
   useEffect(() => {
     setSelectedDirectorId(null)
+  }, [currentCompany?.id])
+
+  // Fetch hidden templates when company changes
+  useEffect(() => {
+    async function fetchHiddenTemplates() {
+      if (!currentCompany) {
+        setHiddenTemplates(new Set())
+        return
+      }
+
+      try {
+        const result = await getHiddenDocumentTemplates(currentCompany.id)
+        if (result.success && result.hiddenTemplates) {
+          const hiddenSet = new Set(
+            result.hiddenTemplates.map(t => `${t.folder_name}:${t.document_name}`)
+          )
+          setHiddenTemplates(hiddenSet)
+        }
+      } catch (error) {
+        console.error('Error fetching hidden templates:', error)
+        setHiddenTemplates(new Set())
+      }
+    }
+
+    fetchHiddenTemplates()
   }, [currentCompany?.id])
 
   const [activeTab, setActiveTab] = useState('overview')
@@ -1187,9 +1213,9 @@ function DataRoomPageInner() {
     return finalFolders
   }, [DEFAULT_FOLDERS, documentTemplates, countryCode])
 
-  // Merge database templates with defaults
-  const predefinedDocuments = documentTemplates.length > 0
-    ? (() => {
+  // Merge database templates with defaults, filtering out hidden templates
+  const predefinedDocuments = useMemo(() => {
+    if (documentTemplates.length > 0) {
       // Start with defaults (ensures PAN and TAN are in Financials and licenses)
       const merged = { ...DEFAULT_DOCUMENTS }
 
@@ -1197,6 +1223,12 @@ function DataRoomPageInner() {
       documentTemplates.forEach(template => {
         const docName = template.document_name
         const folderName = template.folder_name
+
+        // Skip if this template is hidden for this company
+        const templateKey = `${folderName}:${docName}`
+        if (hiddenTemplates.has(templateKey)) {
+          return
+        }
 
         // Country-specific tax ID documents should be in "Financials and licenses"
         const taxIdLabel = countryConfig?.labels.taxId || 'PAN'
@@ -1234,9 +1266,27 @@ function DataRoomPageInner() {
         )
       }
 
+      // Also filter out hidden templates from default documents
+      Object.keys(merged).forEach(folder => {
+        merged[folder] = merged[folder].filter((docName: string) => {
+          const templateKey = `${folder}:${docName}`
+          return !hiddenTemplates.has(templateKey)
+        })
+      })
+
       return merged
-    })()
-    : DEFAULT_DOCUMENTS
+    } else {
+      // Filter hidden templates from default documents too
+      const filtered = { ...DEFAULT_DOCUMENTS }
+      Object.keys(filtered).forEach(folder => {
+        filtered[folder] = filtered[folder].filter((docName: string) => {
+          const templateKey = `${folder}:${docName}`
+          return !hiddenTemplates.has(templateKey)
+        })
+      })
+      return filtered
+    }
+  }, [documentTemplates, hiddenTemplates, countryCode, countryConfig])
 
   const handleView = async (filePath: string) => {
     try {
@@ -2289,20 +2339,27 @@ function DataRoomPageInner() {
       if (result.success) {
         // Track status change
         if (user?.id && currentCompany?.id) {
-          await trackStatusChange(user.id, currentCompany.id, requirementId, oldStatus, newStatus).catch(err => {
+          await trackStatusChange(user.id, currentCompany.id, requirementId, oldStatus, result.actualStatus || newStatus).catch(err => {
             console.error('Failed to track status change:', err)
           })
         }
 
-        // Update local state
+        // Update local state with actual status (may differ from requested if validation changed it)
+        const actualStatus: 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed' = (result.actualStatus || newStatus) as 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed'
         setRegulatoryRequirements(prev =>
           prev.map(req =>
             req.id === requirementId
-              ? { ...req, status: newStatus }
+              ? { ...req, status: actualStatus, status_reason: result.missingDocs ? `Missing documents: ${result.missingDocs.join(', ')}` : req.status_reason }
               : req
           )
         )
-        showToast('Status updated successfully', 'success')
+        
+        // Show appropriate message
+        if (result.missingDocs && result.missingDocs.length > 0 && actualStatus === 'completed') {
+          showToast(`Status updated to completed. Note: ${result.missingDocs.length} required document(s) still pending. Admin has been notified.`, 'success')
+        } else {
+          showToast('Status updated successfully', 'success')
+        }
       } else {
         showToast(`Failed to update status: ${result.error}`, 'error')
       }
@@ -10020,19 +10077,62 @@ function DataRoomPageInner() {
                                         </span>
                                       </div>
                                     </div>
-                                    <button
-                                      onClick={() => {
-                                        setUploadFormData(prev => ({
-                                          ...prev,
-                                          folder: folderName,
-                                          documentName: doc.document_type
-                                        }))
-                                        setIsUploadModalOpen(true)
-                                      }}
-                                      className="text-white hover:text-white font-medium text-xs sm:text-sm border border-white/40 px-3 sm:px-4 py-1.5 rounded-lg hover:bg-white/20 transition-colors w-full sm:w-auto"
-                                    >
-                                      Upload Now
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={async () => {
+                                          if (!currentCompany) return
+                                          
+                                          const confirmed = window.confirm(
+                                            `Are you sure you want to remove "${doc.document_type}" from this company's compliance vault? This will hide it from view but won't delete any uploaded documents.`
+                                          )
+                                          
+                                          if (confirmed) {
+                                            try {
+                                              const result = await hideDocumentTemplateForCompany(
+                                                currentCompany.id,
+                                                doc.document_type,
+                                                folderName
+                                              )
+                                              
+                                              if (result.success) {
+                                                // Update hidden templates set
+                                                setHiddenTemplates(prev => {
+                                                  const newSet = new Set(prev)
+                                                  newSet.add(`${folderName}:${doc.document_type}`)
+                                                  return newSet
+                                                })
+                                                showToast(`"${doc.document_type}" removed from vault`, 'success')
+                                              } else {
+                                                showToast(result.error || 'Failed to remove document', 'error')
+                                              }
+                                            } catch (error) {
+                                              console.error('Error hiding template:', error)
+                                              showToast('Failed to remove document', 'error')
+                                            }
+                                          }
+                                        }}
+                                        className="text-red-400 hover:text-red-300 font-medium text-xs sm:text-sm border border-red-500/40 px-3 sm:px-4 py-1.5 rounded-lg hover:bg-red-500/20 transition-colors w-full sm:w-auto flex items-center gap-1.5 justify-center"
+                                        title="Remove this document type (not applicable for this company)"
+                                      >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                        Remove
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setUploadFormData(prev => ({
+                                            ...prev,
+                                            folder: folderName,
+                                            documentName: doc.document_type
+                                          }))
+                                          setIsUploadModalOpen(true)
+                                        }}
+                                        className="text-white hover:text-white font-medium text-xs sm:text-sm border border-white/40 px-3 sm:px-4 py-1.5 rounded-lg hover:bg-white/20 transition-colors w-full sm:w-auto"
+                                      >
+                                        Upload Now
+                                      </button>
+                                    </div>
                                   </div>
                                 )
                               }
