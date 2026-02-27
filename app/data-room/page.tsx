@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense, useMemo, useCallback } from 'react'
+import { useState, useEffect, Suspense, useMemo, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import React from 'react'
 import Header from '@/components/Header'
@@ -122,30 +122,6 @@ function DataRoomPageInner() {
   }, [searchParams])
 
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null)
-  
-  // Sync company with URL params when company changes
-  useEffect(() => {
-    if (!currentCompany) return
-    
-    const currentCompanyId = searchParams.get('company_id') || searchParams.get('company')
-    // Only update URL if it's different to avoid loops
-    if (currentCompanyId !== currentCompany.id) {
-      const params = new URLSearchParams(searchParams.toString())
-      params.set('company_id', currentCompany.id)
-      router.replace(`/data-room?${params.toString()}`, { scroll: false })
-    }
-  }, [currentCompany?.id, searchParams, router])
-  
-  // Handler for company changes from CompanySelector
-  const updateCompanyAndURL = useCallback((company: Company | null) => {
-    setCurrentCompany(prev => {
-      // Only update if different to prevent unnecessary re-renders
-      if (prev?.id === company?.id) {
-        return prev
-      }
-      return company
-    })
-  }, [])
   const [companies, setCompanies] = useState<Company[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [entityDetails, setEntityDetails] = useState<EntityDetails | null>(null)
@@ -154,6 +130,11 @@ function DataRoomPageInner() {
   const [documentTemplates, setDocumentTemplates] = useState<any[]>([])
   const [regulatoryRequirements, setRegulatoryRequirements] = useState<RegulatoryRequirement[]>([])
   const [isLoadingRequirements, setIsLoadingRequirements] = useState(false)
+
+  // Refs to track if data has been fetched to prevent re-fetching on tab switch
+  const companiesFetchedRef = useRef(false)
+  const detailsFetchedRef = useRef<string | null>(null)
+  const requirementsFetchedRef = useRef<string | null>(null)
   const [isGeneratingEnhancedPDF, setIsGeneratingEnhancedPDF] = useState(false)
   const [pdfGenerationProgress, setPdfGenerationProgress] = useState({ current: 0, total: 0, step: '' })
 
@@ -180,6 +161,12 @@ function DataRoomPageInner() {
     // If no user after loading, return early
     if (!user) {
       console.log('[fetchCompanies] No user after auth loaded, returning early')
+      return
+    }
+
+    // Skip if already fetched (prevents re-fetch on tab switch)
+    if (companiesFetchedRef.current && companies.length > 0) {
+      console.log('[fetchCompanies] Already fetched, skipping...')
       return
     }
 
@@ -315,6 +302,9 @@ function DataRoomPageInner() {
         console.log('[fetchCompanies] Total companies found:', allCompanies.length)
         console.log('[fetchCompanies] Companies:', allCompanies.map(c => ({ id: c.id, name: c.name })))
 
+        // Mark as fetched
+        companiesFetchedRef.current = true
+
         if (allCompanies.length > 0) {
           const preferred = initialCompanyId
             ? allCompanies.find(c => c.id === initialCompanyId)
@@ -328,16 +318,20 @@ function DataRoomPageInner() {
             if (prev?.id === selected.id) {
               return prev
             }
-            // URL will be synced by useEffect when currentCompany changes
             return selected
           })
+          // Update URL params when setting initial company (only if not already set)
+          if (!initialCompanyId || initialCompanyId !== selected.id) {
+            const params = new URLSearchParams(searchParams.toString())
+            params.set('company_id', selected.id)
+            router.replace(`/data-room?${params.toString()}`, { scroll: false })
+          }
         } else {
           console.log('[fetchCompanies] No companies found, clearing state')
           setCompanies([])
           setCurrentCompany(prev => {
             // Only update if not already null to prevent unnecessary re-renders
             if (prev === null) return prev
-            // URL will be synced by useEffect when currentCompany changes
             return null
           })
         }
@@ -351,7 +345,7 @@ function DataRoomPageInner() {
 
     // Run fetchCompanies
     fetchCompanies()
-  }, [user, supabase, authLoading, initialCompanyId, searchParams, router])
+  }, [user, supabase, authLoading, initialCompanyId])
 
   // Check if user has access to ANY company - redirect if no access at all
   useEffect(() => {
@@ -458,6 +452,12 @@ function DataRoomPageInner() {
     async function fetchDetails() {
       if (!currentCompany) return
 
+      // Skip if already fetched for this company (prevents re-fetch on tab switch)
+      if (detailsFetchedRef.current === currentCompany.id) {
+        console.log('[fetchDetails] Already fetched for company:', currentCompany.id, 'skipping...')
+        return
+      }
+
       setIsLoading(true)
       const startTime = performance.now()
       console.log('[fetchDetails] Starting fetch for company:', currentCompany.id)
@@ -539,6 +539,9 @@ function DataRoomPageInner() {
           setEntityDetails(mappedDetails)
         }
 
+        // Mark as fetched for this company
+        detailsFetchedRef.current = currentCompany.id
+
         // Fetch vault documents in background (don't block UI)
         fetchVaultDocuments()
 
@@ -552,13 +555,42 @@ function DataRoomPageInner() {
 
     fetchDetails()
   }, [currentCompany, supabase])
-  
+
+  // Handle company change - update both state and URL params
+  const handleCompanyChange = useCallback((company: Company) => {
+    setCurrentCompany(company)
+    // Update URL params without causing navigation
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('company_id', company.id)
+    router.replace(`/data-room?${params.toString()}`, { scroll: false })
+    // Reset director selection when company changes
+    setSelectedDirectorId(null)
+    // Reset fetch refs so new data is fetched for the new company
+    detailsFetchedRef.current = null
+    requirementsFetchedRef.current = null
+  }, [router, searchParams])
+
+  // Sync URL params to state on mount/change (only when companies are loaded)
+  useEffect(() => {
+    if (companies.length === 0) return // Wait for companies to load
+    
+    const urlCompanyId = searchParams.get('company_id') || searchParams.get('company')
+    if (urlCompanyId && currentCompany?.id !== urlCompanyId) {
+      // URL has different company, find and set it
+      const companyFromUrl = companies.find(c => c.id === urlCompanyId)
+      if (companyFromUrl) {
+        setCurrentCompany(companyFromUrl)
+        setSelectedDirectorId(null) // Reset director when company changes
+      }
+    }
+  }, [searchParams, companies.length, currentCompany?.id])
+
+  const [selectedDirectorId, setSelectedDirectorId] = useState<string | null>(null)
+
   // Reset director selection when company changes
   useEffect(() => {
     setSelectedDirectorId(null)
   }, [currentCompany?.id])
-
-  const [selectedDirectorId, setSelectedDirectorId] = useState<string | null>(null)
 
   const [activeTab, setActiveTab] = useState('overview')
 
@@ -625,38 +657,30 @@ function DataRoomPageInner() {
   // Fetch compliance categories from database
   const { categories: complianceCategories } = useComplianceCategories(countryCode || 'IN')
 
+  // Track if templates have been fetched to prevent re-fetching on tab switch
+  const templatesFetchedRef = useRef<Set<string>>(new Set())
+
   // Fetch document templates when country code changes (must be after countryCode is defined)
   useEffect(() => {
     if (!countryCode) return
+    // Skip if already fetched for this country
+    if (templatesFetchedRef.current.has(countryCode)) return
 
     async function fetchTemplates() {
       try {
-        // Try to get country-specific templates from document_templates_internal
-        const clientSupabase = createClient()
-        const { data, error } = await clientSupabase
-          .from('document_templates_internal')
-          .select('*')
-          .eq('country_code', countryCode) // Filter by country
-          .order('folder_name', { ascending: true })
-
-        if (error) {
-          // If country_code column doesn't exist or error, try without filter
-          console.warn('Error fetching country-specific templates, trying without filter:', error)
-          const { data: fallbackData } = await clientSupabase
-            .from('document_templates_internal')
-            .select('*')
-            .order('folder_name', { ascending: true })
-          setDocumentTemplates(fallbackData || [])
-        } else {
-          setDocumentTemplates(data || [])
+        // Use server action which bypasses RLS
+        const result = await getDocumentTemplates()
+        if (result.success && result.templates) {
+          // Filter by country code on client side if templates have country_code
+          const filtered = result.templates.filter((t: any) => 
+            !t.country_code || t.country_code === countryCode
+          )
+          setDocumentTemplates(filtered)
+          templatesFetchedRef.current.add(countryCode)
         }
       } catch (error) {
         console.error('Error fetching templates:', error)
-        // Fallback to original method
-        const result = await getDocumentTemplates()
-        if (result.success) {
-          setDocumentTemplates(result.templates || [])
-        }
+        setDocumentTemplates([])
       }
     }
 
@@ -1805,6 +1829,12 @@ function DataRoomPageInner() {
         return
       }
 
+      // Skip if already fetched for this company (prevents re-fetch on tab switch)
+      if (requirementsFetchedRef.current === currentCompany.id) {
+        console.log('[fetchRequirements] Already fetched for company:', currentCompany.id, 'skipping...')
+        return
+      }
+
       setIsLoadingRequirements(true)
       const startTime = performance.now()
       console.log('[fetchRequirements] Starting fetch for company:', currentCompany.id)
@@ -1828,6 +1858,8 @@ function DataRoomPageInner() {
             }
           }
           setRegulatoryRequirements(result.requirements)
+          // Mark as fetched for this company
+          requirementsFetchedRef.current = currentCompany.id
         } else {
           console.error('Failed to fetch requirements:', result.error)
           setRegulatoryRequirements([])
@@ -3110,7 +3142,7 @@ function DataRoomPageInner() {
           <CompanySelector
             companies={companies}
             currentCompany={currentCompany}
-            onCompanyChange={updateCompanyAndURL}
+            onCompanyChange={handleCompanyChange}
           />
         </div>
 
@@ -3383,7 +3415,10 @@ function DataRoomPageInner() {
                         {entityDetails.directors && entityDetails.directors.length > 0 ? (
                           <select
                             value={selectedDirectorId || ''}
-                            onChange={(e) => setSelectedDirectorId(e.target.value || null)}
+                            onChange={(e) => {
+                              e.preventDefault()
+                              setSelectedDirectorId(e.target.value || null)
+                            }}
                             className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-black border border-white/20 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
                           >
                             <option value="">Select a director to view profile</option>
