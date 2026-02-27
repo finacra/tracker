@@ -1844,7 +1844,9 @@ function DataRoomPageInner() {
   const [trackerView, setTrackerView] = useState<'list' | 'calendar'>('list')
   const [calendarMonth, setCalendarMonth] = useState<number>(new Date().getMonth())
   const [calendarYear, setCalendarYear] = useState<number>(new Date().getFullYear())
-  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all') // Status filter (all, critical, pending, etc.)
+  const [selectedCategory, setSelectedCategory] = useState<string>('all') // Category filter (Income Tax, GST, etc.)
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false)
   const [entityTypeFilter, setEntityTypeFilter] = useState<string>('all')
   const [industryFilter, setIndustryFilter] = useState<string>('all')
   const [industryCategoryFilter, setIndustryCategoryFilter] = useState<string>('all')
@@ -3078,30 +3080,38 @@ function DataRoomPageInner() {
     }
   }, [uploadFile])
 
-  // Convert database requirements to display format
-  const displayRequirements = (regulatoryRequirements || []).map(req => ({
-    id: req.id,
-    template_id: (req as any).template_id ?? null,
-    category: req.category,
-    requirement: req.requirement,
-    description: req.description || '',
-    status: req.status,
-    dueDate: formatDate(req.due_date),
-    penalty: req.penalty || '',
-    isCritical: req.is_critical,
-    financial_year: req.financial_year,
-    entity_type: (req as any).entity_type,
-    industry: (req as any).industry,
-    industry_category: (req as any).industry_category,
-    compliance_type: (req as any).compliance_type,
-    required_documents: req.required_documents || [],
-    possible_legal_action: req.possible_legal_action,
-    penalty_config: req.penalty_config,
-    penalty_base_amount: req.penalty_base_amount,
-    filed_on: req.filed_on,
-    filed_by: req.filed_by,
-    status_reason: req.status_reason,
-  }))
+  // Convert database requirements to display format and apply category filter
+  const displayRequirements = (regulatoryRequirements || [])
+    .filter(req => {
+      // Apply category filter
+      if (selectedCategory !== 'all' && req.category !== selectedCategory) {
+        return false
+      }
+      return true
+    })
+    .map(req => ({
+      id: req.id,
+      template_id: (req as any).template_id ?? null,
+      category: req.category,
+      requirement: req.requirement,
+      description: req.description || '',
+      status: req.status,
+      dueDate: formatDate(req.due_date),
+      penalty: req.penalty || '',
+      isCritical: req.is_critical,
+      financial_year: req.financial_year,
+      entity_type: (req as any).entity_type,
+      industry: (req as any).industry,
+      industry_category: (req as any).industry_category,
+      compliance_type: (req as any).compliance_type,
+      required_documents: req.required_documents || [],
+      possible_legal_action: req.possible_legal_action,
+      penalty_config: req.penalty_config,
+      penalty_base_amount: req.penalty_base_amount,
+      filed_on: req.filed_on,
+      filed_by: req.filed_by,
+      status_reason: req.status_reason,
+    }))
 
 
   const [teamMembers] = useState([
@@ -7349,21 +7359,21 @@ function DataRoomPageInner() {
                         setSelectedQuarter(null)
                       }
                     }}
-                    className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 appearance-none cursor-pointer ${selectedTrackerFY
+                    className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 appearance-none cursor-pointer bg-gray-900 ${selectedTrackerFY
                         ? 'border-white/40 bg-white/10 text-white'
-                        : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
+                        : 'border-gray-700 text-white hover:border-gray-600'
                       }`}
                     title={selectedTrackerFY ? `Includes months: ${getFinancialYearMonths(countryCode, selectedTrackerFY).join(', ')}` : 'Select financial year'}
                   >
-                    <option value="">All Years</option>
+                    <option value="" className="bg-gray-900 text-white">All Years</option>
                     {financialYears.map((fy) => (
-                      <option key={fy} value={fy}>
+                      <option key={fy} value={fy} className="bg-gray-900 text-white">
                         {fy}
                       </option>
                     ))}
                   </select>
                   {selectedTrackerFY && (
-                    <div className="absolute top-full left-0 mt-1 px-2 py-1 bg-gray-900 border border-gray-800 rounded text-xs text-gray-400 z-10 whitespace-nowrap shadow-lg">
+                    <div className="absolute top-full left-0 mt-1 px-2 py-1 bg-gray-900 border border-gray-700 rounded text-xs text-gray-300 z-10 whitespace-nowrap shadow-lg">
                       Months: {getFinancialYearMonths(countryCode, selectedTrackerFY).slice(0, 4).join(', ')}...
                     </div>
                   )}
@@ -7403,21 +7413,21 @@ function DataRoomPageInner() {
                       className="fixed inset-0 z-10"
                       onClick={() => setIsMonthDropdownOpen(false)}
                     />
-                    <div className="absolute top-full left-0 mt-2 bg-gray-900 border border-gray-800 rounded-lg shadow-2xl z-20 min-w-[200px] max-h-64 overflow-y-auto">
+                    <div className="absolute top-full left-0 mt-2 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-20 min-w-[200px] max-h-64 overflow-y-auto">
                       {/* All Months option */}
                       <button
                         onClick={() => {
                           setSelectedMonth(null)
                           setIsMonthDropdownOpen(false)
                         }}
-                        className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${selectedMonth === null
-                            ? 'bg-white/10 text-white'
-                            : 'text-gray-300'
+                        className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors text-sm ${selectedMonth === null
+                            ? 'bg-white/10 text-white font-medium'
+                            : 'text-gray-200'
                           }`}
                       >
                         All Months
                       </button>
-                      <div className="border-t border-gray-800" />
+                      <div className="border-t border-gray-700" />
                       {months.map((month) => (
                         <button
                           key={month}
@@ -7426,9 +7436,9 @@ function DataRoomPageInner() {
                             setIsMonthDropdownOpen(false)
                             setSelectedQuarter(null) // Clear quarter when month is selected
                           }}
-                          className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${selectedMonth === month
-                              ? 'bg-white/10 text-white'
-                              : 'text-gray-300'
+                          className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors text-sm ${selectedMonth === month
+                              ? 'bg-white/10 text-white font-medium'
+                              : 'text-gray-200'
                             }`}
                         >
                           {month}
@@ -7472,21 +7482,21 @@ function DataRoomPageInner() {
                       className="fixed inset-0 z-10"
                       onClick={() => setIsQuarterDropdownOpen(false)}
                     />
-                    <div className="absolute top-full left-0 mt-2 bg-gray-900 border border-gray-800 rounded-lg shadow-2xl z-20 min-w-[200px]">
+                    <div className="absolute top-full left-0 mt-2 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-20 min-w-[200px]">
                       {/* All Quarters option */}
                       <button
                         onClick={() => {
                           setSelectedQuarter(null)
                           setIsQuarterDropdownOpen(false)
                         }}
-                        className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${selectedQuarter === null
-                            ? 'bg-white/10 text-white'
-                            : 'text-gray-300'
+                        className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors text-sm ${selectedQuarter === null
+                            ? 'bg-white/10 text-white font-medium'
+                            : 'text-gray-200'
                           }`}
                       >
                         All Quarters
                       </button>
-                      <div className="border-t border-gray-800" />
+                      <div className="border-t border-gray-700" />
                       {quarters.map((quarter) => (
                         <button
                           key={quarter.value}
@@ -7495,14 +7505,92 @@ function DataRoomPageInner() {
                             setIsQuarterDropdownOpen(false)
                             setSelectedMonth(null) // Clear month when quarter is selected
                           }}
-                          className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors ${selectedQuarter === quarter.value
-                              ? 'bg-white/10 text-white'
-                              : 'text-gray-300'
+                          className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors text-sm ${selectedQuarter === quarter.value
+                              ? 'bg-white/10 text-white font-medium'
+                              : 'text-gray-200'
                             }`}
                         >
                           {quarter.label}
                         </button>
                       ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Category Dropdown */}
+              <div className="relative flex-1 sm:flex-initial">
+                <button
+                  onClick={() => {
+                    setIsCategoryDropdownOpen(!isCategoryDropdownOpen)
+                    setIsMonthDropdownOpen(false)
+                    setIsQuarterDropdownOpen(false)
+                  }}
+                  className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors flex items-center justify-between sm:justify-start gap-2 text-sm sm:text-base ${selectedCategory !== 'all'
+                      ? 'border-white/40 bg-white/10 text-white'
+                      : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
+                    }`}
+                >
+                  <span>{selectedCategory === 'all' ? 'All Categories' : selectedCategory}</span>
+                  <svg
+                    width="14"
+                    height="14"
+                    className={`sm:w-4 sm:h-4 flex-shrink-0 transition-transform ${isCategoryDropdownOpen ? 'rotate-180' : ''}`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+                {isCategoryDropdownOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setIsCategoryDropdownOpen(false)}
+                    />
+                    <div className="absolute top-full left-0 mt-2 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-20 min-w-[200px] max-h-64 overflow-y-auto">
+                      {/* All Categories option */}
+                      <button
+                        onClick={() => {
+                          setSelectedCategory('all')
+                          setIsCategoryDropdownOpen(false)
+                        }}
+                        className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors text-sm ${selectedCategory === 'all'
+                            ? 'bg-white/10 text-white font-medium'
+                            : 'text-gray-200'
+                          }`}
+                      >
+                        All Categories
+                      </button>
+                      <div className="border-t border-gray-700" />
+                      {/* Get unique categories from requirements */}
+                      {(() => {
+                        const allCategories = Array.from(new Set((regulatoryRequirements || []).map(req => req.category).filter(Boolean)))
+                        const preferredOrder = complianceCategories.length > 0 ? complianceCategories : ['Income Tax', 'GST', 'Payroll', 'RoC', 'Renewals', 'Prof.Tax', 'Other', 'Others']
+                        const categoryOrder = [
+                          ...preferredOrder.filter(cat => allCategories.includes(cat)),
+                          ...allCategories.filter(cat => !preferredOrder.includes(cat) && cat).sort()
+                        ]
+                        return categoryOrder.map((category) => (
+                          <button
+                            key={category}
+                            onClick={() => {
+                              setSelectedCategory(category)
+                              setIsCategoryDropdownOpen(false)
+                            }}
+                            className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors text-sm ${selectedCategory === category
+                                ? 'bg-white/10 text-white font-medium'
+                                : 'text-gray-200'
+                              }`}
+                          >
+                            {category}
+                          </button>
+                        ))
+                      })()}
                     </div>
                   </>
                 )}
@@ -7635,7 +7723,7 @@ function DataRoomPageInner() {
                       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                     </svg>
                   </div>
-                  {trackerSearchQuery || selectedTrackerFY || selectedMonth || selectedQuarter || categoryFilter !== 'all' ? (
+                  {trackerSearchQuery || selectedTrackerFY || selectedMonth || selectedQuarter || categoryFilter !== 'all' || selectedCategory !== 'all' ? (
                     <>
                       <p className="text-gray-400 text-sm sm:text-base font-medium mb-2">No requirements match your filters</p>
                       <p className="text-gray-500 text-xs sm:text-sm mb-4 text-center px-4">
@@ -7648,6 +7736,7 @@ function DataRoomPageInner() {
                           setSelectedMonth(null)
                           setSelectedQuarter(null)
                           setCategoryFilter('all')
+                          setSelectedCategory('all')
                         }}
                         className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
                       >
