@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import EmbeddedPricing from '@/components/EmbeddedPricing'
-import PublicHeader from '@/components/PublicHeader'
+import EmbeddedPricing from '@/components/features/EmbeddedPricing'
+import PublicHeader from '@/components/layout/PublicHeader'
 import { trackProductInteraction, trackButtonClick, trackLinkClick } from '@/lib/analytics'
 
 export default function HomePage() {
@@ -1650,7 +1650,9 @@ export default function HomePage() {
                 <span className="text-gray-500 ml-1">- Global</span>
               </p>
               <p className="text-gray-400 text-xs sm:text-sm font-light">
-                <span>+91</span>
+                <a href="tel:+918790622663" className="hover:text-white transition-colors">
+                  +91 8790622663
+                </a>
                 <span className="text-gray-500 ml-1">- India</span>
               </p>
             </div>

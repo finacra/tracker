@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import PublicHeader from '@/components/PublicHeader'
+import PublicHeader from '@/components/layout/PublicHeader'
 import { submitContactForm } from './actions'
 
 // This page is public and accessible to unauthenticated users
@@ -298,7 +298,12 @@ function ContactPageContent() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                       </svg>
                       <div>
-                        <span className="text-white font-light">+91</span>
+                        <a
+                          href="tel:+918790622663"
+                          className="text-white hover:text-gray-300 transition-colors font-light"
+                        >
+                          +91 8790622663
+                        </a>
                         <span className="text-gray-500 font-light ml-2 text-sm">- India</span>
                       </div>
                     </div>
