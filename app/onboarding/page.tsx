@@ -16,8 +16,8 @@ import { INDUSTRIES } from '@/lib/compliance/csv-template'
 import { useCountryConfig } from '@/hooks/useCountryConfig'
 import { useCountryAPISupport } from '@/hooks/useCountryValidator'
 import { useCountryValidator } from '@/hooks/useCountryValidator'
-import CountrySelector from '@/components/CountrySelector'
-import { ManualVerificationNotice } from '@/components/ManualVerificationNotice'
+import CountrySelector from '@/components/features/CountrySelector'
+import { ManualVerificationNotice } from '@/components/features/ManualVerificationNotice'
 
 interface Director {
   id: string

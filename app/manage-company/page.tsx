@@ -2,8 +2,8 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import CircuitBackground from '@/components/CircuitBackground'
-import Header from '@/components/Header'
+import CircuitBackground from '@/components/ui/CircuitBackground'
+import Header from '@/components/layout/Header'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/utils/supabase/client'
 import { updateCompany, getCompanyDirectors } from '@/app/onboarding/actions'
@@ -11,7 +11,7 @@ import { verifyDIN, type DINDirectorData } from '@/lib/api/cin-din'
 import { trackCompanyEdit } from '@/lib/tracking/kpi-tracker'
 import { useCompanyCountry } from '@/hooks/useCompanyCountry'
 import { useCountryValidator } from '@/hooks/useCountryValidator'
-import { ManualVerificationNotice } from '@/components/ManualVerificationNotice'
+import { ManualVerificationNotice } from '@/components/features/ManualVerificationNotice'
 
 const INDUSTRY_CATEGORIES = [
   'Startups & MSMEs',

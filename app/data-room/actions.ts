@@ -44,6 +44,12 @@ export interface UserRole {
   updated_at: string
 }
 
+function hasPlatformSuperadminRole(
+  roles: Array<Pick<UserRole, 'company_id'>> | null | undefined
+): boolean {
+  return Boolean(roles?.some((role: Pick<UserRole, 'company_id'>) => role.company_id === null))
+}
+
 export interface ComplianceTemplate {
   id: string
   category: string
@@ -90,7 +96,7 @@ export async function getUserRole(companyId: string | null): Promise<{ success: 
       return { success: false, role: null, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // First check if user is superadmin (platform-level, company_id IS NULL)
     // Query all superadmin roles for this user and check if any have NULL company_id
@@ -101,7 +107,7 @@ export async function getUserRole(companyId: string | null): Promise<{ success: 
       .eq('role', 'superadmin')
 
     // Check if any superadmin role has company_id = null (platform-level)
-    if (superadminRoles && superadminRoles.some(role => role.company_id === null)) {
+    if (hasPlatformSuperadminRole(superadminRoles)) {
       return { success: true, role: 'superadmin' }
     }
 
@@ -166,7 +172,10 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
   error?: string
 }> {
   const startTime = Date.now()
-  console.log('[getRegulatoryRequirements] START - companyId:', companyId)
+  const isDev = process.env.NODE_ENV === 'development'
+  if (isDev) {
+    console.log('[getRegulatoryRequirements] START - companyId:', companyId)
+  }
 
   try {
     // SECURITY: Validate companyId if provided
@@ -176,25 +185,32 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    console.log('[getRegulatoryRequirements] Auth check:', Date.now() - startTime, 'ms')
+    if (isDev) {
+      console.log('[getRegulatoryRequirements] Auth check:', Date.now() - startTime, 'ms')
+    }
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
+    let isSuperadmin = false
 
-    // Check if user is superadmin (platform-level, company_id = NULL)
-    // Fetch all superadmin roles and check if any have NULL company_id
-    const { data: superadminRoles } = await adminSupabase
-      .from('user_roles')
-      .select('role, company_id')
-      .eq('user_id', user.id)
-      .eq('role', 'superadmin')
+    // The company-specific path is the hot path for data-room startup and doesn't need
+    // a superadmin lookup because the query is already scoped to that company.
+    if (!companyId) {
+      const { data: superadminRoles } = await adminSupabase
+        .from('user_roles')
+        .select('role, company_id')
+        .eq('user_id', user.id)
+        .eq('role', 'superadmin')
 
-    console.log('[getRegulatoryRequirements] Superadmin check:', Date.now() - startTime, 'ms')
+      isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
 
-    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+      if (isDev) {
+        console.log('[getRegulatoryRequirements] Superadmin check:', Date.now() - startTime, 'ms')
+      }
+    }
 
     // Update overdue statuses before fetching to ensure data consistency
     // This MUST complete before fetching to avoid race conditions
@@ -233,15 +249,19 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
     }
 
     const { data, error } = await query.order('due_date', { ascending: true })
-    console.log('[getRegulatoryRequirements] Query completed:', Date.now() - startTime, 'ms')
+    if (isDev) {
+      console.log('[getRegulatoryRequirements] Query completed:', Date.now() - startTime, 'ms')
+    }
 
     if (error) {
       console.error('[getRegulatoryRequirements] Error fetching requirements:', error)
       return { success: false, error: error.message }
     }
 
-    console.log(`[getRegulatoryRequirements] Fetched ${data?.length || 0} requirements for company ${companyId || 'all'} in ${Date.now() - startTime}ms`)
-    if (data && data.length > 0) {
+    if (isDev) {
+      console.log(`[getRegulatoryRequirements] Fetched ${data?.length || 0} requirements for company ${companyId || 'all'} in ${Date.now() - startTime}ms`)
+    }
+    if (isDev && data && data.length > 0) {
       console.log('[getRegulatoryRequirements] Sample requirement:', {
         id: data[0].id,
         requirement: data[0].requirement,
@@ -316,7 +336,7 @@ export async function updateRequirement(
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin (platform-level, company_id = NULL)
     // Fetch all superadmin roles and check if any have NULL company_id
@@ -326,7 +346,7 @@ export async function updateRequirement(
       .eq('user_id', user.id)
       .eq('role', 'superadmin')
 
-    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
 
     // Check permissions (superadmin bypasses company check)
     if (!isSuperadmin) {
@@ -487,7 +507,7 @@ export async function updateRequirementStatus(
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin (platform-level, company_id = NULL)
     const { data: superadminRoles } = await adminSupabase
@@ -496,7 +516,7 @@ export async function updateRequirementStatus(
       .eq('user_id', user.id)
       .eq('role', 'superadmin')
 
-    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
 
     // Check permissions (superadmin bypasses company check)
     if (!isSuperadmin) {
@@ -594,7 +614,7 @@ export async function updateRequirementStatus(
         // Match by normalized document type and period key (if period_key exists on doc)
         const uploadedDocsNormalized = new Map<string, boolean>()
 
-          ; (uploadedDocs || []).forEach(doc => {
+          ; (uploadedDocs || []).forEach((doc: { document_type?: string | null; period_key?: string | null }) => {
             const normalizedDocType = normalizeDocName(doc.document_type || '')
 
             // If document has period_key, it must match. If no period_key, it's a one-time doc that matches any period
@@ -766,7 +786,7 @@ export async function updateRequirementStatus(
  * Helper: Notify all company admins
  */
 async function notifyCompanyAdmins(
-  adminSupabase: ReturnType<typeof createAdminClient>,
+  adminSupabase: any,
   companyId: string,
   type: 'status_change' | 'missing_docs' | 'upcoming_deadline' | 'overdue' | 'document_uploaded' | 'team_update',
   title: string,
@@ -788,7 +808,7 @@ async function notifyCompanyAdmins(
     }
 
     // Create notifications for each admin
-    const notifications = adminUsers.map(admin => ({
+    const notifications = adminUsers.map((admin: { user_id: string }) => ({
       company_id: companyId,
       user_id: admin.user_id,
       type,
@@ -818,7 +838,7 @@ type CompanyAdminRecipient = {
 }
 
 async function getCompanyAdminRecipients(
-  adminSupabase: ReturnType<typeof createAdminClient>,
+  adminSupabase: any,
   companyId: string
 ): Promise<CompanyAdminRecipient[]> {
   const { data: adminUsers, error: adminError } = await adminSupabase
@@ -855,7 +875,7 @@ async function getCompanyAdminRecipients(
  * Emails are batched and sent every 5 minutes by the flush-email-queue Edge Function
  */
 async function queueStatusChangeEmails(
-  adminSupabase: ReturnType<typeof createAdminClient>,
+  adminSupabase: any,
   recipients: CompanyAdminRecipient[],
   data: {
     companyId: string
@@ -868,7 +888,7 @@ async function queueStatusChangeEmails(
   }
 ) {
   try {
-    const queueEntries = recipients.map((recipient) => ({
+    const queueEntries = recipients.map((recipient: CompanyAdminRecipient) => ({
       user_id: recipient.userId,
       user_email: recipient.email,
       company_id: data.companyId,
@@ -921,7 +941,7 @@ export async function createRequirement(
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin (platform-level, company_id = NULL)
     // Fetch all superadmin roles and check if any have NULL company_id
@@ -931,7 +951,7 @@ export async function createRequirement(
       .eq('user_id', user.id)
       .eq('role', 'superadmin')
 
-    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
 
     // Check permissions (superadmin bypasses company check)
     if (!isSuperadmin) {
@@ -1020,7 +1040,7 @@ export async function deleteRequirement(
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin (platform-level, company_id = NULL)
     // Fetch all superadmin roles and check if any have NULL company_id
@@ -1030,7 +1050,7 @@ export async function deleteRequirement(
       .eq('user_id', user.id)
       .eq('role', 'superadmin')
 
-    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
 
     // Check permissions (superadmin bypasses company check)
     if (!isSuperadmin) {
@@ -1090,7 +1110,7 @@ export async function getCompanyUserRoles(companyId: string | null = null): Prom
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin (platform-level, company_id = NULL)
     // Fetch all superadmin roles and check if any have NULL company_id
@@ -1100,7 +1120,7 @@ export async function getCompanyUserRoles(companyId: string | null = null): Prom
       .eq('user_id', user.id)
       .eq('role', 'superadmin')
 
-    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
 
     // Check permissions (superadmin can view all, others need company)
     if (!isSuperadmin) {
@@ -1146,7 +1166,7 @@ export async function getCompanyUserRoles(companyId: string | null = null): Prom
         .single()
 
       if (company?.user_id) {
-        const ownerHasRole = allRoles.some(r => r.user_id === company.user_id)
+        const ownerHasRole = allRoles.some((r: { user_id: string }) => r.user_id === company.user_id)
         if (!ownerHasRole) {
           console.log('[getCompanyUserRoles] Adding company owner as implicit admin:', company.user_id)
           // Add owner as implicit admin (they own the company via companies.user_id)
@@ -1167,7 +1187,7 @@ export async function getCompanyUserRoles(companyId: string | null = null): Prom
 
     // Fetch user details for each role
     const rolesWithUserInfo = await Promise.all(
-      allRoles.map(async (role) => {
+      allRoles.map(async (role: UserRole & { is_owner?: boolean }) => {
         try {
           const { data: userData } = await adminSupabase.auth.admin.getUserById(role.user_id)
           return {
@@ -1223,7 +1243,7 @@ export async function addTeamMember(
       return { success: false, error: 'You do not have permission to add team members' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // Find user by email
     console.log('[addTeamMember] Searching for user with email:', userEmail)
@@ -1235,7 +1255,7 @@ export async function addTeamMember(
     }
 
     console.log('[addTeamMember] Found', users?.users?.length || 0, 'total users')
-    const existingUser = users.users.find(u => u.email?.toLowerCase() === userEmail.toLowerCase())
+    const existingUser = users.users.find((u: { email?: string | null }) => u.email?.toLowerCase() === userEmail.toLowerCase())
 
     if (!existingUser) {
       console.error('[addTeamMember] FAILED - User not found with email:', userEmail)
@@ -1347,7 +1367,7 @@ export async function createTeamInvitation(
       return { success: false, error: 'You do not have permission to invite team members' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     const { data: company, error: companyError } = await adminSupabase
       .from('companies')
@@ -1389,7 +1409,7 @@ export async function createTeamInvitation(
     // Check if user already exists in the system
     const { data: existingUsers } = await adminSupabase.auth.admin.listUsers()
     const existingUser = existingUsers?.users?.find(
-      (u) => u.email?.toLowerCase() === normalizedEmail
+      (u: { email?: string | null }) => u.email?.toLowerCase() === normalizedEmail
     )
 
     let actionUrl: string
@@ -1471,7 +1491,7 @@ export async function acceptTeamInvitation(
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     const { data: invite, error: inviteError } = await adminSupabase
       .from('team_invitations')
@@ -1560,14 +1580,14 @@ export async function removeTeamMember(
     if (memberUserId === user.id) {
       const { roles } = await getCompanyUserRoles(companyId)
       if (roles) {
-        const adminCount = roles.filter(r => r.role === 'admin' || r.role === 'superadmin').length
+        const adminCount = roles.filter((r: { role: string }) => r.role === 'admin' || r.role === 'superadmin').length
         if (adminCount <= 1) {
           return { success: false, error: 'You cannot remove your own access as you are the only admin' }
         }
       }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
     const { error } = await adminSupabase
       .from('user_roles')
       .delete()
@@ -1607,7 +1627,7 @@ export async function updateTeamMemberRole(
       return { success: false, error: 'You do not have permission to change roles' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
     const { error } = await adminSupabase
       .from('user_roles')
       .update({ role: newRole })
@@ -1651,7 +1671,7 @@ export async function generateRecurringCompliances(
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin (platform-level, company_id = NULL)
     const { data: superadminRoles } = await adminSupabase
@@ -1660,7 +1680,7 @@ export async function generateRecurringCompliances(
       .eq('user_id', user.id)
       .eq('role', 'superadmin')
 
-    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
 
     // Check permissions (superadmin can generate for all, others need company access)
     if (!isSuperadmin) {
@@ -1720,7 +1740,7 @@ export async function getComplianceTemplates(): Promise<{ success: boolean; temp
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin
     const { data: superadminRoles } = await adminSupabase
@@ -1729,7 +1749,7 @@ export async function getComplianceTemplates(): Promise<{ success: boolean; temp
       .eq('user_id', user.id)
       .eq('role', 'superadmin')
 
-    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
 
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can view templates' }
@@ -1755,7 +1775,7 @@ export async function getComplianceTemplates(): Promise<{ success: boolean; temp
     for (let i = 0; i < templatesArray.length; i += batchSize) {
       const batch = templatesArray.slice(i, i + batchSize)
       const batchResults = await Promise.all(
-        batch.map(async (template) => {
+        batch.map(async (template: ComplianceTemplate) => {
           try {
             const { data: matchingCompanies, error: matchError } = await adminSupabase.rpc('match_companies_to_template', {
               p_template_id: template.id
@@ -1821,7 +1841,7 @@ export async function createComplianceTemplate(
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin
     const { data: superadminRoles } = await adminSupabase
@@ -1830,7 +1850,7 @@ export async function createComplianceTemplate(
       .eq('user_id', user.id)
       .eq('role', 'superadmin')
 
-    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
 
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can create templates' }
@@ -1976,7 +1996,7 @@ export async function updateComplianceTemplate(
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin
     const { data: superadminRoles } = await adminSupabase
@@ -1985,7 +2005,7 @@ export async function updateComplianceTemplate(
       .eq('user_id', user.id)
       .eq('role', 'superadmin')
 
-    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
 
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can update templates' }
@@ -2113,7 +2133,7 @@ export async function deleteComplianceTemplate(
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin
     const { data: superadminRoles } = await adminSupabase
@@ -2122,7 +2142,7 @@ export async function deleteComplianceTemplate(
       .eq('user_id', user.id)
       .eq('role', 'superadmin')
 
-    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
 
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can delete templates' }
@@ -2177,7 +2197,7 @@ export async function getTemplateDetails(templateId: string): Promise<{ success:
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin
     const { data: superadminRoles } = await adminSupabase
@@ -2186,7 +2206,7 @@ export async function getTemplateDetails(templateId: string): Promise<{ success:
       .eq('user_id', user.id)
       .eq('role', 'superadmin')
 
-    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
 
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can view template details' }
@@ -2251,7 +2271,7 @@ export async function applyAllTemplates(): Promise<{ success: boolean; applied_c
       return { success: false, applied_count: 0, template_count: 0, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin
     const { data: superadminRoles } = await adminSupabase
@@ -2260,7 +2280,7 @@ export async function applyAllTemplates(): Promise<{ success: boolean; applied_c
       .eq('user_id', user.id)
       .eq('role', 'superadmin')
 
-    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
 
     if (!isSuperadmin) {
       return { success: false, applied_count: 0, template_count: 0, error: 'Only superadmins can apply templates' }
@@ -2356,7 +2376,7 @@ export async function getNotifications(
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     let query = adminSupabase
       .from('company_notifications')
@@ -2411,7 +2431,7 @@ export async function markNotificationsRead(
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
     const ids = Array.isArray(notificationIds) ? notificationIds : [notificationIds]
 
     const { error } = await adminSupabase
@@ -2447,7 +2467,7 @@ export async function markAllNotificationsRead(): Promise<{ success: boolean; er
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     const { error } = await adminSupabase
       .from('company_notifications')
@@ -2500,7 +2520,7 @@ export async function getCompanyFinancials(
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     let query = adminSupabase
       .from('company_financials')
@@ -2552,7 +2572,7 @@ export async function upsertCompanyFinancials(
       return { success: false, error: 'You do not have permission to edit company financials' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     const { error } = await adminSupabase
       .from('company_financials')
@@ -2596,7 +2616,7 @@ export async function updateRequirementBaseAmount(
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin
     const { data: superadminRoles } = await adminSupabase
@@ -2605,7 +2625,7 @@ export async function updateRequirementBaseAmount(
       .eq('user_id', user.id)
       .eq('role', 'superadmin')
 
-    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
 
     // Check permissions
     if (!isSuperadmin) {
@@ -2680,7 +2700,7 @@ export async function bulkCreateComplianceTemplates(
       return { success: false, created: 0, errors: ['Not authenticated'] }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin
     const { data: superadminRoles } = await adminSupabase
@@ -2689,7 +2709,7 @@ export async function bulkCreateComplianceTemplates(
       .eq('user_id', user.id)
       .eq('role', 'superadmin')
 
-    const isSuperadmin = superadminRoles && superadminRoles.some(role => role.company_id === null)
+    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
 
     if (!isSuperadmin) {
       return { success: false, created: 0, errors: ['Only superadmins can create templates'] }
@@ -2704,7 +2724,7 @@ export async function bulkCreateComplianceTemplates(
       const batch = templates.slice(i, i + batchSize)
 
       // Prepare batch for insertion
-      const insertData = batch.map((template, batchIndex) => {
+      const insertData = batch.map((template: any, batchIndex: number) => {
         const rowNum = i + batchIndex + 1
 
         // Validate required fields
@@ -2887,11 +2907,11 @@ export async function getDirectors(companyId: string): Promise<{
       return { success: false, error: 'No access to this company' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     const { data: directors, error } = await adminSupabase
       .from('directors')
-      .select('*')
+      .select('id, first_name, last_name, middle_name, director_id, designation, dob, tax_id, email, mobile, is_verified')
       .eq('company_id', companyId)
       .order('created_at', { ascending: true })
 
@@ -2901,7 +2921,19 @@ export async function getDirectors(companyId: string): Promise<{
     }
 
     // Transform to match frontend Director interface
-    const transformedDirectors = (directors || []).map(dir => ({
+    const transformedDirectors = (directors || []).map((dir: {
+      id: string
+      first_name?: string | null
+      last_name?: string | null
+      middle_name?: string | null
+      director_id?: string | null
+      designation?: string | null
+      dob?: string | null
+      tax_id?: string | null
+      email?: string | null
+      mobile?: string | null
+      is_verified?: boolean | null
+    }) => ({
       id: dir.id,
       firstName: dir.first_name || '',
       lastName: dir.last_name || '',
@@ -2931,7 +2963,7 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
 
   try {
     const supabase = await createClient()
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
@@ -2964,7 +2996,13 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
 
     // Generate signed URLs for documents (7 days expiry = 604800 seconds)
     const documentsWithUrls = await Promise.all(
-      documents.map(async (doc) => {
+      documents.map(async (doc: {
+        file_path: string
+        document_type?: string | null
+        name?: string | null
+        category?: string | null
+        period?: string | null
+      }) => {
         const { data: signedData, error: signError } = await adminSupabase.storage
           .from('company-documents')
           .createSignedUrl(doc.file_path, 604800) // 7 days
@@ -2988,7 +3026,7 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
 
     // Send email to each recipient
     const results = await Promise.allSettled(
-      params.recipients.map(async (recipientEmail) => {
+      params.recipients.map(async (recipientEmail: string) => {
         console.log('[sendDocumentsEmail] Sending to:', recipientEmail.trim())
 
         const emailHtml = documentShareEmail({
@@ -3012,8 +3050,8 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
     )
 
     // Count successes and failures
-    const succeeded = results.filter(r => r.status === 'fulfilled').length
-    const failed = results.filter(r => r.status === 'rejected').length
+    const succeeded = results.filter((r: PromiseSettledResult<unknown>) => r.status === 'fulfilled').length
+    const failed = results.filter((r: PromiseSettledResult<unknown>) => r.status === 'rejected').length
 
     console.log('[sendDocumentsEmail] Results - Succeeded:', succeeded, 'Failed:', failed)
 
@@ -3021,7 +3059,7 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
       // Get error details from rejected results
       const errors = results
         .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-        .map(r => r.reason?.message || 'Unknown error')
+        .map((r: PromiseRejectedResult) => r.reason?.message || 'Unknown error')
       console.error('[sendDocumentsEmail] All emails failed:', errors)
       return { success: false, error: `Failed to send emails: ${errors.join(', ')}` }
     }
@@ -3067,7 +3105,7 @@ export async function hideDocumentTemplateForCompany(
       return { success: false, error: 'No permission to modify this company' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // Check if exclusion already exists
     const { data: existing, error: checkError } = await adminSupabase
@@ -3139,7 +3177,7 @@ export async function getHiddenDocumentTemplates(
       return { success: false, error: 'No access to this company' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     const { data: exclusions, error } = await adminSupabase
       .from('company_document_template_exclusions')
@@ -3188,7 +3226,7 @@ export async function hideComplianceForCompany(
       return { success: false, error: 'Only admins and editors can hide compliances' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // Insert exclusion (using upsert to handle duplicates)
     const { error: insertError } = await adminSupabase
@@ -3243,7 +3281,7 @@ export async function showComplianceForCompany(
       return { success: false, error: 'Only admins and editors can manage compliances' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     // Delete exclusion
     const { error: deleteError } = await adminSupabase
@@ -3288,7 +3326,7 @@ export async function getHiddenCompliances(
       return { success: false, error: 'No access to this company' }
     }
 
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     const { data: exclusions, error } = await adminSupabase
       .from('company_compliance_exclusions')
@@ -3305,7 +3343,7 @@ export async function getHiddenCompliances(
       return { success: false, error: error.message }
     }
 
-    const hiddenIds = (exclusions || []).map(ex => ex.requirement_id)
+    const hiddenIds = (exclusions || []).map((ex: { requirement_id: string }) => ex.requirement_id)
     return { success: true, hiddenComplianceIds: hiddenIds }
   } catch (err) {
     console.error('Error in getHiddenCompliances:', err)

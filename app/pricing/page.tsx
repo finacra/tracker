@@ -1,9 +1,9 @@
 'use client'
 
 import { Suspense } from 'react'
-import PricingTiers from '@/components/PricingTiers'
-import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
-import PublicHeader from '@/components/PublicHeader'
+import PricingTiers from '@/components/features/PricingTiers'
+import SubtleCircuitBackground from '@/components/ui/SubtleCircuitBackground'
+import PublicHeader from '@/components/layout/PublicHeader'
 
 function PricingContent() {
   return (

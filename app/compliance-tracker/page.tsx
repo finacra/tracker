@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import PublicHeader from '@/components/PublicHeader'
-import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
+import PublicHeader from '@/components/layout/PublicHeader'
+import SubtleCircuitBackground from '@/components/ui/SubtleCircuitBackground'
 
 export default function ComplianceTrackerPage() {
   const [trackerIndex, setTrackerIndex] = useState(0)

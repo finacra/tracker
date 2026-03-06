@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import { Poppins } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
-import Analytics from '@/components/Analytics'
-import AnalyticsWrapper from '@/components/AnalyticsWrapper'
+import Analytics from '@/components/features/Analytics'
+import AnalyticsWrapper from '@/components/features/AnalyticsWrapper'
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -25,9 +25,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={poppins.className} suppressHydrationWarning>
         <Analytics />
-        <AnalyticsWrapper>
-          <Providers>{children}</Providers>
-        </AnalyticsWrapper>
+        <Providers>
+          <AnalyticsWrapper>{children}</AnalyticsWrapper>
+        </Providers>
       </body>
     </html>
   )

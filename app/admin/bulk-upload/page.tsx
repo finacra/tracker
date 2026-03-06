@@ -25,7 +25,7 @@ import {
 import { bulkCreateComplianceTemplates } from '@/app/data-room/actions'
 import { resolveErrorsWithAI } from './actions'
 import { createClient } from '@/utils/supabase/client'
-import CountrySelector from '@/components/CountrySelector'
+import CountrySelector from '@/components/features/CountrySelector'
 import { getCountryConfig } from '@/lib/config/countries'
 
 const STORAGE_KEY_PREFIX = 'bulk_upload_spreadsheet_data'

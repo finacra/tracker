@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const supabase = createAdminClient()
+    const supabase: any = createAdminClient()
 
     // Upsert email preferences
     const updateData: Record<string, boolean> = {}

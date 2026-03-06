@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/utils/supabase/client'
-import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
+import SubtleCircuitBackground from '@/components/ui/SubtleCircuitBackground'
 
 interface Company {
   id: string

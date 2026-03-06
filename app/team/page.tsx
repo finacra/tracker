@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Header from '@/components/Header'
-import CompanySelector from '@/components/CompanySelector'
-import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
+import Header from '@/components/layout/Header'
+import CompanySelector from '@/components/features/CompanySelector'
+import SubtleCircuitBackground from '@/components/ui/SubtleCircuitBackground'
 import { createClient } from '@/utils/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { getCompanyUserRoles, createTeamInvitation, removeTeamMember, updateTeamMemberRole } from '@/app/data-room/actions'

@@ -1,0 +1,59 @@
+-- Quick fix: Create company_compliance_exclusions table
+-- Run this in Supabase SQL Editor if the table doesn't exist
+
+-- Create table
+CREATE TABLE IF NOT EXISTS public.company_compliance_exclusions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  company_id UUID NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
+  requirement_id UUID NOT NULL REFERENCES public.regulatory_requirements(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  created_by UUID REFERENCES auth.users(id),
+  UNIQUE(company_id, requirement_id)
+);
+
+-- Add indexes
+CREATE INDEX IF NOT EXISTS idx_company_compliance_exclusions_company_id 
+  ON public.company_compliance_exclusions(company_id);
+  
+CREATE INDEX IF NOT EXISTS idx_company_compliance_exclusions_requirement_id 
+  ON public.company_compliance_exclusions(requirement_id);
+
+-- Enable RLS
+ALTER TABLE public.company_compliance_exclusions ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Company users can view their hidden compliances" 
+  ON public.company_compliance_exclusions;
+  
+DROP POLICY IF EXISTS "Company admins and editors can manage their hidden compliances" 
+  ON public.company_compliance_exclusions;
+
+-- Create SELECT policy
+CREATE POLICY "Company users can view their hidden compliances"
+  ON public.company_compliance_exclusions FOR SELECT
+  USING (
+    company_id IN (
+      SELECT ur.company_id FROM public.user_roles ur
+      WHERE ur.user_id = auth.uid() AND ur.company_id IS NOT NULL
+    )
+    OR public.is_superadmin(auth.uid())
+  );
+
+-- Create ALL (INSERT/UPDATE/DELETE) policy
+CREATE POLICY "Company admins and editors can manage their hidden compliances"
+  ON public.company_compliance_exclusions FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.user_roles ur
+      WHERE ur.user_id = auth.uid()
+      AND ur.company_id = company_compliance_exclusions.company_id
+      AND ur.role IN ('admin', 'editor', 'superadmin')
+    )
+    OR public.is_superadmin(auth.uid())
+  );
+
+-- Verify table was created
+SELECT 
+  'Table created successfully!' as status,
+  COUNT(*) as existing_records
+FROM public.company_compliance_exclusions;

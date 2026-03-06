@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     const event = JSON.parse(body)
     const supabase = await createClient()
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     console.log(`[Webhook] Received event: ${event.event}, Event ID: ${request.headers.get('x-razorpay-event-id')}`)
 

@@ -1,6 +1,6 @@
 'use client'
 
-import CircuitBackground from '@/components/CircuitBackground'
+import CircuitBackground from '@/components/ui/CircuitBackground'
 
 export default function DashboardPage() {
   return (

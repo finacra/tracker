@@ -10,7 +10,7 @@ import { generateEmbedding } from './embeddings';
  * We bypass this by requiring the core logic directly.
  */
 export async function processDocumentContent(documentId: string, companyId: string, filePath: string) {
-  const adminSupabase = createAdminClient();
+  const adminSupabase: any = createAdminClient();
   const LOG_PREFIX = `[AI-Processor][Doc:${documentId.slice(0, 8)}]`;
   
   console.log(`${LOG_PREFIX} 🚀 Starting high-priority processing...`);

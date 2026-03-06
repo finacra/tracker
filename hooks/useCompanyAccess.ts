@@ -5,6 +5,8 @@ import { useAuth } from './useAuth'
 import { createClient } from '@/utils/supabase/client'
 import type { CompanyAccessType } from '@/lib/subscriptions/subscription'
 
+type SupabaseClientType = ReturnType<typeof createClient>
+
 interface SubscriptionInfo {
   hasSubscription: boolean
   tier: string
@@ -22,6 +24,93 @@ interface SubscriptionRPCResponse {
   trial_days_remaining: number
   company_limit: number
   user_limit: number
+}
+
+const superadminStatusCache = new Map<string, boolean>()
+const superadminStatusPromiseCache = new Map<string, Promise<boolean>>()
+const userSubscriptionCache = new Map<string, SubscriptionRPCResponse | null>()
+const userSubscriptionPromiseCache = new Map<
+  string,
+  Promise<SubscriptionRPCResponse | null>
+>()
+
+async function resolveSuperadminStatus(
+  supabase: SupabaseClientType,
+  userId: string
+): Promise<boolean> {
+  if (superadminStatusCache.has(userId)) {
+    return superadminStatusCache.get(userId) ?? false
+  }
+
+  const inFlight = superadminStatusPromiseCache.get(userId)
+  if (inFlight) {
+    return inFlight
+  }
+
+  const request = (async () => {
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('is_superadmin', {
+        p_user_id: userId,
+      })
+
+      if (!rpcError && rpcData !== null) {
+        const isSuperadmin = !!rpcData
+        superadminStatusCache.set(userId, isSuperadmin)
+        return isSuperadmin
+      }
+
+      const { data: superadminRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('role, company_id')
+        .eq('user_id', userId)
+        .eq('role', 'superadmin')
+
+      const isSuperadmin = Boolean(
+        !rolesError && superadminRoles?.some(role => role.company_id === null)
+      )
+      superadminStatusCache.set(userId, isSuperadmin)
+      return isSuperadmin
+    } finally {
+      superadminStatusPromiseCache.delete(userId)
+    }
+  })()
+
+  superadminStatusPromiseCache.set(userId, request)
+  return request
+}
+
+async function resolveUserSubscription(
+  supabase: SupabaseClientType,
+  userId: string
+): Promise<SubscriptionRPCResponse | null> {
+  if (userSubscriptionCache.has(userId)) {
+    return userSubscriptionCache.get(userId) ?? null
+  }
+
+  const inFlight = userSubscriptionPromiseCache.get(userId)
+  if (inFlight) {
+    return inFlight
+  }
+
+  const request = (async () => {
+    try {
+      const { data, error } = await supabase
+        .rpc('check_user_subscription', { target_user_id: userId })
+        .single()
+
+      const subscription = !error && data
+        ? (data as SubscriptionRPCResponse)
+        : null
+
+      userSubscriptionCache.set(userId, subscription)
+      return subscription
+    } finally {
+      userSubscriptionPromiseCache.delete(userId)
+    }
+  })()
+
+  userSubscriptionPromiseCache.set(userId, request)
+  return request
 }
 
 interface CompanyAccessResult {
@@ -93,32 +182,7 @@ export function useCompanyAccess(companyId: string | null): CompanyAccessResult 
 
       try {
         // 1. Check if user is superadmin (platform-level, company_id IS NULL)
-        // Try RPC function first (most reliable)
-        let isSuperadmin = false
-        try {
-          const { data: rpcData, error: rpcError } = await supabase.rpc('is_superadmin', {
-            p_user_id: user.id
-          })
-          if (!rpcError && rpcData !== null) {
-            isSuperadmin = !!rpcData
-          }
-        } catch (rpcErr) {
-          // RPC failed, fallback to direct query
-          console.log('[useCompanyAccess] RPC failed, falling back to direct query')
-        }
-
-        // Fallback: Query all superadmin roles and check if any have company_id = null
-        if (!isSuperadmin) {
-          const { data: superadminRoles, error: rolesError } = await supabase
-          .from('user_roles')
-            .select('role, company_id')
-          .eq('user_id', user.id)
-          .eq('role', 'superadmin')
-
-          if (!rolesError && superadminRoles) {
-            isSuperadmin = superadminRoles.some(role => role.company_id === null)
-          }
-        }
+        const isSuperadmin = await resolveSuperadminStatus(supabase, user.id)
 
         if (isSuperadmin) {
           console.log('[useCompanyAccess] User is superadmin, granting access')
@@ -249,11 +313,7 @@ export function useCompanyAccess(companyId: string | null): CompanyAccessResult 
               }
 
               // Then check user subscription (Enterprise)
-              const { data: ownerSubData } = await supabase
-                .rpc('check_user_subscription', { target_user_id: ownerId })
-                .single()
-              
-              const ownerSub = ownerSubData as SubscriptionRPCResponse | null
+              const ownerSub = await resolveUserSubscription(supabase, ownerId)
               
               if (ownerSub?.has_subscription) {
                 console.log('[useCompanyAccess] Owner has user subscription, granting access')
@@ -318,13 +378,9 @@ export function useCompanyAccess(companyId: string | null): CompanyAccessResult 
 
           // Then check if user has Enterprise subscription (user-first)
           try {
-            const { data, error: rpcError } = await supabase
-              .rpc('check_user_subscription', { target_user_id: user.id })
-              .single()
+            const subInfo = await resolveUserSubscription(supabase, user.id)
 
-            const subInfo = data as SubscriptionRPCResponse | null
-
-            if (!rpcError && subInfo && subInfo.has_subscription) {
+            if (subInfo && subInfo.has_subscription) {
               console.log('[useCompanyAccess] User has Enterprise subscription:', subInfo.tier)
               
               setSubscriptionInfo({
@@ -513,33 +569,7 @@ export function useAnyCompanyAccess(): {
       setIsLoading(true)
 
       try {
-        // Check if user is superadmin (has access to all)
-        // Try RPC function first (most reliable)
-        let isSuperadmin = false
-        try {
-          const { data: rpcData, error: rpcError } = await supabase.rpc('is_superadmin', {
-            p_user_id: user.id
-          })
-          if (!rpcError && rpcData !== null) {
-            isSuperadmin = !!rpcData
-          }
-        } catch (rpcErr) {
-          // RPC failed, fallback to direct query
-          console.log('[useAnyCompanyAccess] RPC failed, falling back to direct query')
-        }
-
-        // Fallback: Query all superadmin roles and check if any have company_id = null
-        if (!isSuperadmin) {
-          const { data: superadminRoles, error: rolesError } = await supabase
-          .from('user_roles')
-            .select('role, company_id')
-          .eq('user_id', user.id)
-          .eq('role', 'superadmin')
-
-          if (!rolesError && superadminRoles) {
-            isSuperadmin = superadminRoles.some(role => role.company_id === null)
-          }
-        }
+        const isSuperadmin = await resolveSuperadminStatus(supabase, user.id)
 
         if (isSuperadmin) {
           // Superadmin has access to all companies
@@ -562,37 +592,32 @@ export function useAnyCompanyAccess(): {
           .eq('user_id', user.id)
           .not('company_id', 'is', null)
 
-        if (invitedRoles) {
-          for (const role of invitedRoles) {
-            if (role.company_id) {
-              const { data: company } = await supabase
-                .from('companies')
-                .select('user_id')
-                .eq('id', role.company_id)
-                .single()
-              
-              // If not owner, they're invited and have access
-              if (company && company.user_id !== user.id) {
-                accessibleIds.push(role.company_id)
-              }
+        const invitedCompanyIds = (invitedRoles || [])
+          .map(role => role.company_id)
+          .filter((companyId): companyId is string => Boolean(companyId))
+
+        if (invitedCompanyIds.length > 0) {
+          const { data: invitedCompanies } = await supabase
+            .from('companies')
+            .select('id, user_id')
+            .in('id', invitedCompanyIds)
+
+          invitedCompanies?.forEach(company => {
+            if (company.user_id !== user.id) {
+              accessibleIds.push(company.id)
             }
-          }
+          })
         }
 
-        // Check if user has Enterprise subscription (user-level)
-        const { data: subData } = await supabase
-          .rpc('check_user_subscription', { target_user_id: user.id })
-          .single()
+        const { data: ownedCompanies } = await supabase
+          .from('companies')
+          .select('id')
+          .eq('user_id', user.id)
 
-        const subInfo = subData as SubscriptionRPCResponse | null
+        const subInfo = await resolveUserSubscription(supabase, user.id)
 
         if (subInfo?.has_subscription) {
           // User has Enterprise subscription, all their owned companies are accessible
-          const { data: ownedCompanies } = await supabase
-            .from('companies')
-            .select('id')
-            .eq('user_id', user.id)
-
           if (ownedCompanies) {
             for (const company of ownedCompanies) {
               if (!accessibleIds.includes(company.id)) {
@@ -602,24 +627,27 @@ export function useAnyCompanyAccess(): {
           }
         } else {
           // Check for company-level subscriptions (Starter/Professional)
-          const { data: ownedCompanies } = await supabase
-            .from('companies')
-            .select('id')
-            .eq('user_id', user.id)
-
           if (ownedCompanies) {
-            for (const company of ownedCompanies) {
-              // Check if this specific company has a subscription
-              const { data: companySubData } = await supabase
+            const companySubscriptionResults = await Promise.all(
+              ownedCompanies.map(async company => {
+                const { data: companySubData } = await supabase
                 .rpc('check_company_subscription', { p_company_id: company.id })
                 .single()
-              
-              if (companySubData && (companySubData as any).has_subscription) {
-                if (!accessibleIds.includes(company.id)) {
-                  accessibleIds.push(company.id)
+
+                return {
+                  companyId: company.id,
+                  hasSubscription: Boolean(
+                    companySubData && (companySubData as { has_subscription?: boolean }).has_subscription
+                  ),
                 }
+              })
+            )
+
+            companySubscriptionResults.forEach(result => {
+              if (result.hasSubscription && !accessibleIds.includes(result.companyId)) {
+                accessibleIds.push(result.companyId)
               }
-            }
+            })
           }
         }
 

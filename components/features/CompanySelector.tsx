@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 
@@ -21,6 +21,13 @@ interface CompanySubscriptionStatus {
   tier?: string
 }
 
+interface SubscriptionRpcResult {
+  has_subscription: boolean
+  is_trial: boolean
+  trial_days_remaining: number
+  tier: string
+}
+
 interface CompanySelectorProps {
   companies: Company[]
   currentCompany: Company | null
@@ -32,126 +39,114 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
   const [isOpen, setIsOpen] = useState(false)
   const [subscriptionStatuses, setSubscriptionStatuses] = useState<Map<string, CompanySubscriptionStatus>>(new Map())
   const [isLoadingStatuses, setIsLoadingStatuses] = useState(false)
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
+  const fetchedStatusIdsRef = useRef<Set<string>>(new Set())
 
-  // Fetch subscription status for all companies
+  // Fetch the selected company's status first, then fetch the rest when the dropdown is opened.
   useEffect(() => {
     async function fetchSubscriptionStatuses() {
-      if (companies.length === 0) return
+      const targetCompanies = isOpen
+        ? companies
+        : currentCompany
+          ? [currentCompany]
+          : []
+
+      const companiesToCheck = targetCompanies.filter(
+        (company: Company) => !fetchedStatusIdsRef.current.has(company.id)
+      )
+
+      if (companiesToCheck.length === 0) return
 
       setIsLoadingStatuses(true)
-      const statusMap = new Map<string, CompanySubscriptionStatus>()
 
       try {
-        // Get current user for user-level subscription check
         const { data: { user } } = await supabase.auth.getUser()
-        
-        // Fetch status for all companies in parallel
-        const statusPromises = companies.map(async (company) => {
+        let userSubscription: SubscriptionRpcResult | null = null
+
+        if (user) {
+          const { data: userData, error: userError } = await supabase
+            .rpc('check_user_subscription', { target_user_id: user.id })
+            .single()
+
+          if (!userError && userData) {
+            userSubscription = userData as SubscriptionRpcResult
+          }
+        }
+
+        const statusPromises = companiesToCheck.map(async (company: Company) => {
           try {
-            // First check company-level subscription (Starter/Professional)
             const { data: companyData, error: companyError } = await supabase
               .rpc('check_company_subscription', { p_company_id: company.id })
               .single()
 
-            // #region agent log
-            console.log(`[CompanySelector] Company subscription RPC result for ${company.id}:`, { data: companyData, error: companyError, companyName: company.name });
-            // #endregion
+            const companySubscription = companyData as SubscriptionRpcResult | null
+            const hasCompanyAccess =
+              companySubscription?.has_subscription === true ||
+              (companySubscription?.is_trial === true &&
+                (companySubscription?.trial_days_remaining ?? 0) > 0)
 
-            if (!companyError && companyData && (companyData as any).has_subscription) {
-              const subscriptionData = companyData as {
-                has_subscription: boolean
-                tier: string
-                is_trial: boolean
-                trial_days_remaining: number
-                user_limit: number
-              }
-              
-              // #region agent log
-              console.log(`[CompanySelector] Company-level subscription found for ${company.id}:`, {
-                has_subscription: subscriptionData.has_subscription,
-                is_trial: subscriptionData.is_trial,
-                trial_days_remaining: subscriptionData.trial_days_remaining,
-                tier: subscriptionData.tier
-              });
-              // #endregion
-              
-              statusMap.set(company.id, {
+            if (!companyError && companySubscription && hasCompanyAccess) {
+              return {
                 companyId: company.id,
-                hasSubscription: subscriptionData.has_subscription,
-                isTrial: subscriptionData.is_trial,
-                trialDaysRemaining: subscriptionData.trial_days_remaining,
-                tier: subscriptionData.tier,
-              })
-              return // Company has subscription, no need to check user-level
-            }
-
-            // If no company-level subscription, check user-level (Enterprise)
-            if (user) {
-              try {
-                const { data: userData, error: userError } = await supabase
-                  .rpc('check_user_subscription', { target_user_id: user.id })
-                  .single()
-
-                // #region agent log
-                console.log(`[CompanySelector] User subscription RPC result for ${company.id}:`, { data: userData, error: userError });
-                // #endregion
-
-                if (!userError && userData && (userData as any).has_subscription) {
-                  const userSubData = userData as {
-                    has_subscription: boolean
-                    tier: string
-                    is_trial: boolean
-                    trial_days_remaining: number
-                    company_limit: number
-                    user_limit: number
-                  }
-                  
-                  // #region agent log
-                  console.log(`[CompanySelector] User-level subscription found for ${company.id}:`, {
-                    has_subscription: userSubData.has_subscription,
-                    is_trial: userSubData.is_trial,
-                    trial_days_remaining: userSubData.trial_days_remaining,
-                    tier: userSubData.tier
-                  });
-                  // #endregion
-                  
-                  // Enterprise tier covers all companies
-                  statusMap.set(company.id, {
-                    companyId: company.id,
-                    hasSubscription: userSubData.has_subscription,
-                    isTrial: userSubData.is_trial,
-                    trialDaysRemaining: userSubData.trial_days_remaining,
-                    tier: userSubData.tier,
-                  })
-                  return
-                }
-              } catch (userErr) {
-                console.log(`[CompanySelector] User subscription check failed for ${company.id}:`, userErr)
+                status: {
+                  companyId: company.id,
+                  hasSubscription: companySubscription.has_subscription,
+                  isTrial: companySubscription.is_trial,
+                  trialDaysRemaining: companySubscription.trial_days_remaining,
+                  tier: companySubscription.tier,
+                },
               }
             }
 
-            // #region agent log
-            console.log(`[CompanySelector] No subscription found for ${company.id}`);
-            // #endregion
-            // No subscription found at either level
-            statusMap.set(company.id, {
+            const hasUserAccess =
+              userSubscription?.has_subscription === true ||
+              (userSubscription?.is_trial === true &&
+                (userSubscription?.trial_days_remaining ?? 0) > 0)
+
+            if (hasUserAccess && userSubscription) {
+              return {
+                    companyId: company.id,
+                status: {
+                  companyId: company.id,
+                  hasSubscription: userSubscription.has_subscription,
+                  isTrial: userSubscription.is_trial,
+                  trialDaysRemaining: userSubscription.trial_days_remaining,
+                  tier: userSubscription.tier,
+                },
+              }
+            }
+
+            return {
               companyId: company.id,
-              hasSubscription: false,
-              isTrial: false,
-            })
+              status: {
+                companyId: company.id,
+                hasSubscription: false,
+                isTrial: false,
+              },
+            }
           } catch (err) {
             console.error(`Error checking subscription for company ${company.id}:`, err)
-            statusMap.set(company.id, {
+            return {
               companyId: company.id,
-              hasSubscription: false,
-              isTrial: false,
-            })
+              status: {
+                companyId: company.id,
+                hasSubscription: false,
+                isTrial: false,
+              },
+            }
           }
         })
 
-        await Promise.all(statusPromises)
-        setSubscriptionStatuses(statusMap)
+        const statuses = await Promise.all(statusPromises)
+
+        setSubscriptionStatuses((prev: Map<string, CompanySubscriptionStatus>) => {
+          const next = new Map(prev)
+          statuses.forEach(({ companyId, status }) => {
+            next.set(companyId, status)
+            fetchedStatusIdsRef.current.add(companyId)
+          })
+          return next
+        })
       } catch (err) {
         console.error('Error fetching subscription statuses:', err)
       } finally {
@@ -160,7 +155,7 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
     }
 
     fetchSubscriptionStatuses()
-  }, [companies, supabase])
+  }, [companies, currentCompany, isOpen, supabase])
 
   const getSubscriptionStatus = (companyId: string): CompanySubscriptionStatus | null => {
     return subscriptionStatuses.get(companyId) || null
@@ -174,15 +169,6 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
         </span>
       )
     }
-
-    // #region agent log
-    console.log('[CompanySelector] getStatusBadge called with status:', {
-      companyId: status.companyId,
-      hasSubscription: status.hasSubscription,
-      isTrial: status.isTrial,
-      trialDaysRemaining: status.trialDaysRemaining
-    });
-    // #endregion
 
     // Check for trial first, as trials are a form of subscription
     if (status.isTrial && status.trialDaysRemaining !== undefined && status.trialDaysRemaining > 0) {

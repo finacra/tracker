@@ -1,12 +1,64 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { getNotifications, markNotificationsRead, markAllNotificationsRead, type Notification } from '@/app/data-room/actions'
 import { trackNotificationClick } from '@/lib/tracking/kpi-tracker'
+
+const superadminStatusCache = new Map<string, boolean>()
+const superadminStatusPromiseCache = new Map<string, Promise<boolean>>()
+
+async function resolveSuperadminStatus(
+  supabase: ReturnType<typeof createClient>,
+  userId: string
+): Promise<boolean> {
+  if (superadminStatusCache.has(userId)) {
+    return superadminStatusCache.get(userId) ?? false
+  }
+
+  const inFlight = superadminStatusPromiseCache.get(userId)
+  if (inFlight) {
+    return inFlight
+  }
+
+  const request = (async () => {
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('is_superadmin', {
+        p_user_id: userId
+      })
+
+      if (!rpcError && rpcData !== null) {
+        const isSuperadmin = !!rpcData
+        superadminStatusCache.set(userId, isSuperadmin)
+        return isSuperadmin
+      }
+
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role, company_id')
+        .eq('user_id', userId)
+        .eq('role', 'superadmin')
+
+      if (error) {
+        throw error
+      }
+
+      const isPlatformSuperadmin = Boolean(
+        data && data.some(role => role.company_id === null)
+      )
+      superadminStatusCache.set(userId, isPlatformSuperadmin)
+      return isPlatformSuperadmin
+    } finally {
+      superadminStatusPromiseCache.delete(userId)
+    }
+  })()
+
+  superadminStatusPromiseCache.set(userId, request)
+  return request
+}
 
 export default function Header() {
   const [showNotifications, setShowNotifications] = useState(false)
@@ -21,7 +73,20 @@ export default function Header() {
   const { user, signOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
+
+  const fetchUnreadCount = useCallback(async () => {
+    if (!user) return
+
+    try {
+      const result = await getNotifications({ limit: 1 })
+      if (result.success) {
+        setUnreadCount(result.unreadCount || 0)
+      }
+    } catch (err) {
+      console.error('[Header] Error fetching unread notification count:', err)
+    }
+  }, [user])
 
   // Fetch notifications
   const fetchNotifications = useCallback(async () => {
@@ -41,15 +106,21 @@ export default function Header() {
     }
   }, [user])
 
-  // Fetch notifications on mount and periodically
+  // Fetch only the unread badge count on initial load.
   useEffect(() => {
     if (user) {
+      fetchUnreadCount()
+    }
+  }, [user, fetchUnreadCount])
+
+  // Fetch notifications only when the panel is open, and poll while it stays open.
+  useEffect(() => {
+    if (user && showNotifications) {
       fetchNotifications()
-      // Poll every 30 seconds
       const interval = setInterval(fetchNotifications, 30000)
       return () => clearInterval(interval)
     }
-  }, [user, fetchNotifications])
+  }, [user, showNotifications, fetchNotifications])
 
   // Mark notification as read
   const handleMarkRead = async (notificationId: string) => {
@@ -76,60 +147,26 @@ export default function Header() {
   // Check if user is superadmin with retry logic and comprehensive logging
   useEffect(() => {
     let isMounted = true
-    let retryCount = 0
     const maxRetries = 3
     const retryDelay = 1000 // 1 second
 
     async function checkSuperadmin() {
       if (!user) {
-        console.log('[Header] No user, setting superadmin to false')
         if (isMounted) setIsSuperadmin(false)
         return
       }
 
       const attemptCheck = async (attempt: number): Promise<void> => {
         try {
-          console.log(`[Header] Checking superadmin status (attempt ${attempt + 1}/${maxRetries + 1}) for user:`, user.id)
-          
-          // Use RPC function if available, otherwise fallback to direct query
-          // First try using the helper function via RPC
-          const { data: rpcData, error: rpcError } = await supabase.rpc('is_superadmin', {
-            p_user_id: user.id
-          })
-
-          if (!rpcError && rpcData !== null) {
-            console.log('[Header] RPC result:', rpcData)
-            if (isMounted) setIsSuperadmin(!!rpcData)
-            return
-          }
-
-          // Fallback: Query user_roles directly (should work with "Users can view their own roles" policy)
-          console.log('[Header] RPC failed, falling back to direct query. Error:', rpcError)
-          const { data, error } = await supabase
-            .from('user_roles')
-            .select('role, company_id')
-            .eq('user_id', user.id)
-            .eq('role', 'superadmin')
-
-          if (error) {
-            console.error(`[Header] Query error (attempt ${attempt + 1}):`, error)
-            throw error
-          }
-
-          console.log('[Header] Query result:', data)
-          const isPlatformSuperadmin = data && data.some(role => role.company_id === null)
-          console.log('[Header] Is platform superadmin:', isPlatformSuperadmin)
-          
-          if (isMounted) setIsSuperadmin(!!isPlatformSuperadmin)
+          const nextValue = await resolveSuperadminStatus(supabase, user.id)
+          if (isMounted) setIsSuperadmin(nextValue)
         } catch (error: any) {
           console.error(`[Header] Error checking superadmin (attempt ${attempt + 1}):`, error)
           
           if (attempt < maxRetries && isMounted) {
-            console.log(`[Header] Retrying in ${retryDelay}ms...`)
             await new Promise(resolve => setTimeout(resolve, retryDelay))
             return attemptCheck(attempt + 1)
           } else {
-            console.error('[Header] Max retries reached, setting superadmin to false')
             if (isMounted) setIsSuperadmin(false)
           }
         }

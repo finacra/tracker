@@ -57,7 +57,7 @@ export async function getFolders(): Promise<{ success: boolean; folders?: Folder
     console.log('[VAULT ACTIONS] Creating supabase client...')
     const supabase = await createClient()
     console.log('[VAULT ACTIONS] Supabase client created, creating admin client...')
-    const adminSupabase = createAdminClient() // Use admin client to bypass RLS
+    const adminSupabase: any = createAdminClient() // Use admin client to bypass RLS
     console.log('[VAULT ACTIONS] Admin client created, getting user...')
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
@@ -79,7 +79,7 @@ export async function getFolders(): Promise<{ success: boolean; folders?: Folder
     let rpcError = null
     
     try {
-      const rpcPromise = adminSupabase.rpc('is_superadmin', { p_user_id: user.id })
+      const rpcPromise = (adminSupabase as any).rpc('is_superadmin', { p_user_id: user.id })
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('RPC timeout after 10 seconds')), 10000)
       })
@@ -294,7 +294,7 @@ export async function createFolder(
 ): Promise<{ success: boolean; folder?: FolderInfo; error?: string }> {
   try {
     const supabase = await createClient()
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) {
@@ -303,7 +303,7 @@ export async function createFolder(
 
     // Check if superadmin
     const { data: isSuperadmin } = await adminSupabase
-      .rpc('is_superadmin', { p_user_id: user.id })
+      .rpc('is_superadmin' as any, { p_user_id: user.id } as any)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can manage vault' }
@@ -379,7 +379,7 @@ export async function updateFolder(
 ): Promise<{ success: boolean; updatedCount?: number; error?: string }> {
   try {
     const supabase = await createClient()
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) {
@@ -388,7 +388,7 @@ export async function updateFolder(
 
     // Check if superadmin
     const { data: isSuperadmin } = await adminSupabase
-      .rpc('is_superadmin', { p_user_id: user.id })
+      .rpc('is_superadmin' as any, { p_user_id: user.id } as any)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can manage vault' }
@@ -459,7 +459,7 @@ export async function updateFolder(
 export async function deleteFolder(path: string): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient()
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) {
@@ -468,7 +468,7 @@ export async function deleteFolder(path: string): Promise<{ success: boolean; er
 
     // Check if superadmin
     const { data: isSuperadmin } = await adminSupabase
-      .rpc('is_superadmin', { p_user_id: user.id })
+      .rpc('is_superadmin' as any, { p_user_id: user.id } as any)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can manage vault' }
@@ -552,7 +552,7 @@ export async function getDocumentTemplates(
     console.log('[VAULT ACTIONS] Creating supabase client...')
     const supabase = await createClient()
     console.log('[VAULT ACTIONS] Supabase client created, creating admin client...')
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
     console.log('[VAULT ACTIONS] Admin client created, getting user...')
     const { data: { user } } = await supabase.auth.getUser()
     
@@ -562,7 +562,7 @@ export async function getDocumentTemplates(
 
     // Check if superadmin
     const { data: isSuperadmin } = await adminSupabase
-      .rpc('is_superadmin', { p_user_id: user.id })
+      .rpc('is_superadmin' as any, { p_user_id: user.id } as any)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can access vault' }
@@ -610,8 +610,8 @@ export async function getDocumentTemplates(
 
     // Filter out placeholder documents
     const realTemplates = (templates || []).filter(
-      t => !t.document_name?.startsWith('__FOLDER_PLACEHOLDER__')
-    )
+      (t: DocumentTemplate) => !t.document_name?.startsWith('__FOLDER_PLACEHOLDER__')
+    ) as DocumentTemplate[]
 
     console.log('[VAULT ACTIONS] After filtering placeholders - SERVER SIDE:', {
       originalCount: templates?.length || 0,
@@ -619,14 +619,14 @@ export async function getDocumentTemplates(
     })
 
     // Normalize frequency values (annually -> yearly)
-    const normalizedTemplates = realTemplates.map(t => ({
+    const normalizedTemplates: DocumentTemplate[] = realTemplates.map((t: DocumentTemplate) => ({
       ...t,
       default_frequency: (t.default_frequency === 'annually' ? 'yearly' : t.default_frequency) as 'one-time' | 'monthly' | 'quarterly' | 'yearly',
     }))
 
     console.log('[VAULT ACTIONS] Returning templates - SERVER SIDE:', {
       count: normalizedTemplates.length,
-      sample: normalizedTemplates.slice(0, 3).map(t => ({
+      sample: normalizedTemplates.slice(0, 3).map((t: DocumentTemplate) => ({
         name: t.document_name,
         folder: t.folder_name,
         frequency: t.default_frequency,
@@ -651,7 +651,7 @@ export async function createDocumentTemplate(
 ): Promise<{ success: boolean; template?: DocumentTemplate; error?: string }> {
   try {
     const supabase = await createClient()
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) {
@@ -660,7 +660,7 @@ export async function createDocumentTemplate(
 
     // Check if superadmin
     const { data: isSuperadmin } = await adminSupabase
-      .rpc('is_superadmin', { p_user_id: user.id })
+      .rpc('is_superadmin' as any, { p_user_id: user.id } as any)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can manage vault' }
@@ -728,7 +728,7 @@ export async function updateDocumentTemplate(
 ): Promise<{ success: boolean; template?: DocumentTemplate; error?: string }> {
   try {
     const supabase = await createClient()
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) {
@@ -737,7 +737,7 @@ export async function updateDocumentTemplate(
 
     // Check if superadmin
     const { data: isSuperadmin } = await adminSupabase
-      .rpc('is_superadmin', { p_user_id: user.id })
+      .rpc('is_superadmin' as any, { p_user_id: user.id } as any)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can manage vault' }
@@ -858,7 +858,7 @@ export async function updateDocumentTemplate(
 export async function deleteDocumentTemplate(id: string): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient()
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) {
@@ -867,7 +867,7 @@ export async function deleteDocumentTemplate(id: string): Promise<{ success: boo
 
     // Check if superadmin
     const { data: isSuperadmin } = await adminSupabase
-      .rpc('is_superadmin', { p_user_id: user.id })
+      .rpc('is_superadmin' as any, { p_user_id: user.id } as any)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can manage vault' }

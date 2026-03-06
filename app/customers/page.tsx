@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import PublicHeader from '@/components/PublicHeader'
-import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
+import PublicHeader from '@/components/layout/PublicHeader'
+import SubtleCircuitBackground from '@/components/ui/SubtleCircuitBackground'
 
 const clients = [
   'CA Muneer & Associates',

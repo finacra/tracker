@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Header from '@/components/Header'
-import SubtleCircuitBackground from '@/components/SubtleCircuitBackground'
+import Header from '@/components/layout/Header'
+import SubtleCircuitBackground from '@/components/ui/SubtleCircuitBackground'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import {

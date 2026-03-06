@@ -34,7 +34,7 @@ export async function completeOnboarding(
   directors: any[]
 ) {
   const supabase = await createClient()
-  const adminSupabase = createAdminClient()
+  const adminSupabase: any = createAdminClient()
 
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
@@ -54,8 +54,8 @@ export async function completeOnboarding(
   const exDirectorsArray = formData.exDirectors
     ? formData.exDirectors
       .split(/[,\n]/)
-      .map(name => name.trim())
-      .filter(name => name.length > 0)
+      .map((name: string) => name.trim())
+      .filter((name: string) => name.length > 0)
     : null
 
   const { data: company, error: companyError } = await adminSupabase
@@ -110,7 +110,7 @@ export async function completeOnboarding(
 
   // 2. Insert Directors into public schema
   if (directors.length > 0) {
-    const directorsToInsert = directors.map(dir => ({
+    const directorsToInsert = directors.map((dir: any) => ({
       company_id: company.id,
       first_name: dir.firstName,
       last_name: dir.lastName,
@@ -146,8 +146,8 @@ export async function completeOnboarding(
     const { data: insertedDocs, error: internalError } = await adminSupabase
       .from('company_documents_internal')
       .insert(
-        await Promise.all(formData.documents.map(async (doc) => {
-          const template = templates?.find(t => t.document_name === doc.type)
+        await Promise.all(formData.documents.map(async (doc: { type: string; path: string; name: string }) => {
+          const template = templates?.find((t: { document_name: string; folder_name?: string | null; default_frequency?: string | null }) => t.document_name === doc.type)
           const embedding = await generateEmbedding(`${doc.type} ${doc.name}`)
 
           return {
@@ -276,7 +276,7 @@ export async function updateCompany(
   }
 
   const supabase = await createClient()
-  const adminSupabase = createAdminClient()
+  const adminSupabase: any = createAdminClient()
 
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
@@ -310,8 +310,8 @@ export async function updateCompany(
     const exDirectorsArray = formData.exDirectors
       ? formData.exDirectors
         .split(/[,\n]/)
-        .map(name => name.trim())
-        .filter(name => name.length > 0)
+        .map((name: string) => name.trim())
+        .filter((name: string) => name.length > 0)
       : null
     updateData.ex_directors = exDirectorsArray
   }
@@ -342,7 +342,7 @@ export async function updateCompany(
 
     // Then insert the new directors
     if (formData.directors.length > 0) {
-      const directorsToInsert = formData.directors.map(dir => ({
+      const directorsToInsert = formData.directors.map((dir: any) => ({
         company_id: companyId,
         first_name: dir.firstName,
         last_name: dir.lastName,
@@ -379,7 +379,7 @@ export async function getCompanyDirectors(companyId: string) {
   }
 
   const supabase = await createClient()
-  const adminSupabase = createAdminClient()
+  const adminSupabase: any = createAdminClient()
 
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
@@ -398,7 +398,7 @@ export async function getCompanyDirectors(companyId: string) {
   }
 
   // Transform to match frontend Director interface
-  const transformedDirectors = (directors || []).map(dir => ({
+  const transformedDirectors = (directors || []).map((dir: any) => ({
     id: dir.id,
     firstName: dir.first_name || '',
     lastName: dir.last_name || '',
@@ -453,7 +453,7 @@ export async function uploadDocument(
   }
 
   const supabase = await createClient()
-  const adminSupabase = createAdminClient()
+  const adminSupabase: any = createAdminClient()
 
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
@@ -538,7 +538,7 @@ export async function deleteDocument(documentId: string, filePath: string) {
     }
 
     const supabase = await createClient()
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
@@ -572,7 +572,7 @@ export async function deleteDocument(documentId: string, filePath: string) {
 
 export async function getDocumentTemplates() {
   try {
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     const { data, error } = await adminSupabase
       .from('document_templates_internal')
@@ -601,7 +601,7 @@ export async function getCompanyDocuments(companyId: string) {
     }
 
     const supabase = await createClient()
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {

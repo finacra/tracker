@@ -332,7 +332,7 @@ export async function enrichComplianceItemsOptimized(
 
   if (!requirements || requirements.length === 0) return []
 
-  const adminSupabase = createAdminClient()
+  const adminSupabase: any = createAdminClient()
 
   // Build unique keys map
   const keyToReqs = new Map<string, { key: UniqueComplianceKey; items: RegulatoryRequirement[] }>()
