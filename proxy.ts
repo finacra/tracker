@@ -6,19 +6,24 @@ export default async function proxy(request: NextRequest) {
     request,
   })
 
-  // Skip auth check for static files, API routes, and auth routes
   const pathname = request.nextUrl.pathname
-  
+  const isServerAction = request.method === 'POST' && request.headers.has('next-action')
+
+  // Only log in development mode
+  const isDev = process.env.NODE_ENV === 'development'
+  if (isDev) {
   console.log('[PROXY] Processing request:', {
     pathname,
     method: request.method,
-    url: request.url,
   })
+  }
   
   // Public routes that should be accessible without authentication
   const publicRoutes = ['/home', '/privacy-policy', '/terms-of-service', '/pricing', '/contact', '/login', '/compliance-tracker', '/company-onboarding', '/customers', '/auth/reset-password']
   
   if (
+    pathname === '/' ||
+    isServerAction ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
     pathname.startsWith('/auth') ||
@@ -26,7 +31,7 @@ export default async function proxy(request: NextRequest) {
     pathname.match(/\.(svg|png|jpg|jpeg|gif|webp)$/) ||
     publicRoutes.includes(pathname)
   ) {
-    console.log('[PROXY] Skipping auth check for:', pathname)
+    // Server actions perform their own auth checks, so avoid duplicate middleware auth.
     return response
   }
 
@@ -65,29 +70,26 @@ export default async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Only log auth failures or in development
+  if (isDev && user) {
   console.log('[PROXY] Auth check result:', {
     pathname,
-    hasUser: !!user,
+      hasUser: true,
     userId: user?.id,
   })
-
-  // Allow root path to pass through (it will redirect to /home on client side)
-  if (pathname === '/') {
-    console.log('[PROXY] Root path, allowing through for client-side redirect')
-    return response
   }
 
   // Protect routes that require authentication
   if (!user) {
     // For subscribe page, redirect to login
     if (pathname === '/subscribe') {
-      console.log('[PROXY] No user, redirecting /subscribe to /login')
+      if (isDev) console.log('[PROXY] No user, redirecting /subscribe to /login')
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       return NextResponse.redirect(url)
     }
     // For other protected routes, redirect to /home
-    console.log('[PROXY] No user, redirecting to /home')
+    if (isDev) console.log('[PROXY] No user, redirecting to /home')
     const url = request.nextUrl.clone()
     url.pathname = '/home'
     return NextResponse.redirect(url)
@@ -95,11 +97,9 @@ export default async function proxy(request: NextRequest) {
 
   // Don't redirect /admin routes - allow them through
   if (user && pathname.startsWith('/admin')) {
-    console.log('[PROXY] Admin route detected, allowing through:', pathname)
     return response
   }
 
-  console.log('[PROXY] Allowing request through:', pathname)
   return response
 }
 
