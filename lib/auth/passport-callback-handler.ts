@@ -67,7 +67,17 @@ export async function handlePassportCallback(
     // Exchange code for user info
     const clientId = process.env.GOOGLE_CLIENT_ID
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-    const callbackUrl = process.env.NEXT_PUBLIC_PASSPORT_CALLBACK_URL || 'http://localhost:3000/auth/callback'
+    let callbackUrl = process.env.NEXT_PUBLIC_PASSPORT_CALLBACK_URL || 'http://localhost:3000/auth/callback'
+    
+    // Normalize origin and callback URL: remove www. prefix to ensure consistent redirect URI
+    // This prevents www vs non-www mismatch with Google OAuth redirect URIs
+    if (origin.includes('://www.')) {
+      origin = origin.replace('://www.', '://')
+    }
+    if (callbackUrl.includes('://www.')) {
+      callbackUrl = callbackUrl.replace('://www.', '://')
+    }
+    
     const fullCallbackUrl = `${origin}${callbackUrl.replace(/^https?:\/\/[^/]+/, '')}`
 
     // Exchange authorization code for tokens
