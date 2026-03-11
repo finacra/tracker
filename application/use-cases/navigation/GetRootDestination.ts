@@ -20,12 +20,16 @@ export class GetRootDestination {
   }
 
   async executeForUser(userId: string): Promise<string> {
-    if (await this.companyRepository.hasAnyAccessibleCompany(userId)) {
+    // OPTIMIZATION: Check both in parallel since they're independent
+    const [hasAccessibleCompany, hasActiveSubscription] = await Promise.all([
+      this.companyRepository.hasAnyAccessibleCompany(userId),
+      this.subscriptionService.hasActiveSubscription(userId)
+    ])
+    
+    if (hasAccessibleCompany) {
       return '/data-room'
     }
 
-    return (await this.subscriptionService.hasActiveSubscription(userId))
-      ? '/onboarding'
-      : '/subscribe'
+    return hasActiveSubscription ? '/onboarding' : '/subscribe'
   }
 }

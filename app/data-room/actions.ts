@@ -3434,46 +3434,81 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
       currentCompanyId = accessibleCompanyIds[0] || null
     }
     
-    // FAST-PATH: Check subscription status FIRST before loading heavy data
-    // This allows immediate redirect if subscription is expired
+    // ULTRA-FAST-PATH: Lightweight subscription check FIRST (before full access snapshot)
+    // This is much faster than GetCompanyAccessSnapshot because it only checks subscription, not roles/permissions
+    if (currentCompanyId) {
+      const ultraFastCheckStart = performance.now()
+      
+      // Get company to find owner (lightweight query)
+      const company = await companyRepository.getById(currentCompanyId)
+      if (!company) {
+        // Company doesn't exist, skip fast-path
+      } else {
+        const isOwner = company.ownerUserId === user.id || company.ownerAppUserId === user.id
+        
+        // For owners: check their subscription (company or user)
+        // For invited members: check owner's subscription
+        const ownerId = company.ownerAppUserId || company.ownerUserId
+        
+        if (ownerId) {
+          // Parallel: Check both company subscription and owner's user subscription
+          const [companySub, ownerUserSub] = await Promise.all([
+            subscriptionRepository.getCompanySubscriptionState(currentCompanyId),
+            subscriptionRepository.getUserSubscriptionState(ownerId)
+          ])
+          
+          const hasActiveSubscription = Boolean(
+            (companySub && companySub.hasSubscription) ||
+            (ownerUserSub && ownerUserSub.hasSubscription)
+          )
+          
+          console.log(`[InitAction] Ultra-fast subscription check took ${(performance.now() - ultraFastCheckStart).toFixed(2)}ms`, {
+            hasActiveSubscription,
+            isOwner,
+            companySub: companySub?.hasSubscription,
+            ownerUserSub: ownerUserSub?.hasSubscription
+          })
+          
+          // If NO active subscription, redirect immediately (skip all other data loading)
+          if (!hasActiveSubscription) {
+            return {
+              success: true,
+              data: {
+                user: { id: user.id, email: user.email || '', fullName: user.fullName || null },
+                companies: [],
+                accessibleCompanyIds: [],
+                currentCompanyId: null,
+                companyAccess: null,
+                userSubscription: {
+                  hasSubscription: false,
+                  tier: 'none',
+                  isTrial: false,
+                  trialDaysRemaining: 0,
+                  companyLimit: 0,
+                  currentCompanyCount: 0,
+                  canCreateCompany: false,
+                },
+                hiddenTemplates: [],
+                hiddenCompliances: [],
+                userRole: 'viewer',
+                initialRequirements: [],
+                redirectTo: isOwner 
+                  ? `/subscription-required?company_id=${currentCompanyId}`
+                  : `/owner-subscription-expired?company_id=${currentCompanyId}`,
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // FAST-PATH: Full access snapshot (only if subscription is active)
+    // This is still needed for proper access type determination, but subscription check already passed
     let fastAccessSnapshot: import('@/domain/types/CompanyAccess').CompanyAccessSnapshot | null = null
     if (currentCompanyId) {
       const fastAccessCheckStart = performance.now()
       fastAccessSnapshot = await (new GetCompanyAccessSnapshot(accessService)).execute(user.id, currentCompanyId)
-      console.log(`[InitAction] Fast access check took ${(performance.now() - fastAccessCheckStart).toFixed(2)}ms`)
-      
-      // If subscription expired, return early with redirect flag (skip loading all data)
-      if (fastAccessSnapshot.ownerSubscriptionExpired) {
-        const company = await companyRepository.getById(currentCompanyId)
-        const isOwner = company && (company.ownerUserId === user.id || company.ownerAppUserId === user.id)
-        
-        return {
-          success: true,
-          data: {
-            user: { id: user.id, email: user.email || '', fullName: user.fullName || null },
-            companies: [],
-            accessibleCompanyIds: [],
-            currentCompanyId: null,
-            companyAccess: fastAccessSnapshot,
-            userSubscription: {
-              hasSubscription: false,
-              tier: 'none',
-              isTrial: false,
-              trialDaysRemaining: 0,
-              companyLimit: 0,
-              currentCompanyCount: 0,
-              canCreateCompany: false,
-            },
-            hiddenTemplates: [],
-            hiddenCompliances: [],
-            userRole: 'viewer',
-            initialRequirements: [],
-            redirectTo: isOwner 
-              ? `/subscription-required?company_id=${currentCompanyId}`
-              : `/owner-subscription-expired?company_id=${currentCompanyId}`,
-          }
-        }
-      }
+      console.log(`[InitAction] Full access check took ${(performance.now() - fastAccessCheckStart).toFixed(2)}ms`)
     }
     // 3. Fetch all components in parallel
     const { createAdminClient } = await import('@/utils/supabase/admin')
