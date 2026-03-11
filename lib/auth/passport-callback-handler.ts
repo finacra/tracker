@@ -18,7 +18,7 @@ export async function handlePassportCallback(
   redirectTo?: string | null
 ): Promise<NextResponse> {
   try {
-    const { origin, searchParams } = new URL(request.url)
+    let { origin, searchParams } = new URL(request.url)
     const state = searchParams.get('state')
     const error = searchParams.get('error')
 
