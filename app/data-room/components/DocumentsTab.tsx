@@ -533,11 +533,11 @@ export default function DocumentsTab({
       if (result.success && result.url) {
         window.open(result.url, '_blank')
       } else {
-        showToast('Failed to get document view URL', 'error')
+        showToast?.('Failed to get document view URL', 'error')
       }
     } catch (err) {
       console.error('View error:', err)
-      showToast('Error opening document', 'error')
+      showToast?.('Error opening document', 'error')
     }
   }
 
@@ -551,11 +551,11 @@ export default function DocumentsTab({
         setIsPreviewModalOpen(true)
       } else {
         console.error('[handlePreview] Failed to get preview URL:', result.error)
-        showToast(`Failed to get document preview URL: ${result.error || 'Unknown error'}`, 'error')
+        showToast?.(`Failed to get document preview URL: ${result.error || 'Unknown error'}`, 'error')
       }
     } catch (err: any) {
       console.error('[handlePreview] Preview error:', err)
-      showToast(`Error loading document preview: ${err.message || 'Unknown error'}`, 'error')
+      showToast?.(`Error loading document preview: ${err.message || 'Unknown error'}`, 'error')
     }
   }
 
@@ -574,13 +574,13 @@ export default function DocumentsTab({
         if (user?.id && currentCompany?.id) {
           trackVaultFileExport(user.id, currentCompany.id, 1)
         }
-        showToast('Document downloaded successfully', 'success')
+        showToast?.('Document downloaded successfully', 'success')
       } else {
-        showToast('Failed to download document', 'error')
+        showToast?.('Failed to download document', 'error')
       }
     } catch (err) {
       console.error('Export error:', err)
-      showToast('Error downloading document', 'error')
+      showToast?.('Error downloading document', 'error')
     }
   }
 
@@ -591,19 +591,19 @@ export default function DocumentsTab({
       const result = await deleteDocument(docId, filePath)
       if (result.success) {
         await fetchVaultDocuments()
-        showToast('Document removed successfully', 'success')
+        showToast?.('Document removed successfully', 'success')
       } else {
-        showToast('Failed to remove document: ' + result.error, 'error')
+        showToast?.('Failed to remove document: ' + result.error, 'error')
       }
     } catch (err) {
       console.error('Remove error:', err)
-      showToast('Error removing document', 'error')
+      showToast?.('Error removing document', 'error')
     }
   }
 
   const handleUpload = async () => {
     if (!uploadFormData.file || !uploadFormData.folder || !uploadFormData.documentName || !currentCompany) {
-      showToast('Please fill all required fields and select a file.', 'warning')
+      showToast?.('Please fill all required fields and select a file.', 'warning')
       return
     }
 
@@ -670,13 +670,13 @@ export default function DocumentsTab({
         })
         // Refresh documents list
         await fetchVaultDocuments()
-        showToast('Document uploaded successfully!', 'success')
+        showToast?.('Document uploaded successfully!', 'success')
       } else {
-        showToast('Upload failed: Unknown error', 'error')
+        showToast?.('Upload failed: Unknown error', 'error')
       }
     } catch (error: any) {
       console.error('Upload failed:', error)
-      showToast('Upload failed: ' + error.message, 'error')
+      showToast?.('Upload failed: ' + error.message, 'error')
     } finally {
       setIsUploading(false)
     }
@@ -1748,13 +1748,13 @@ export default function DocumentsTab({
                                             newSet.add(`${folderName}:${doc.document_type}`)
                                             return newSet
                                           })
-                                          showToast(`"${doc.document_type}" removed from vault`, 'success')
+                                          showToast?.(`"${doc.document_type}" removed from vault`, 'success')
                                         } else {
-                                          showToast(result.error || 'Failed to remove document', 'error')
+                                          showToast?.(result.error || 'Failed to remove document', 'error')
                                         }
                                       } catch (error) {
                                         console.error('Error hiding template:', error)
-                                        showToast('Failed to remove document', 'error')
+                                        showToast?.('Failed to remove document', 'error')
                                       }
                                     }
                                   }}
@@ -2915,7 +2915,7 @@ export default function DocumentsTab({
                   <button
                     onClick={async () => {
                       if (!uploadFormData.folder || bulkUploadFiles.length === 0 || !currentCompany) {
-                        showToast('Please select a folder and at least one file.', 'warning')
+                        showToast?.('Please select a folder and at least one file.', 'warning')
                         return
                       }
     
@@ -2926,7 +2926,7 @@ export default function DocumentsTab({
                       })
     
                       if (filesWithoutNames.length > 0) {
-                        showToast(`Please provide document names for all files. ${filesWithoutNames.length} file(s) missing document name.`, 'warning')
+                        showToast?.(`Please provide document names for all files. ${filesWithoutNames.length} file(s) missing document name.`, 'warning')
                         // Expand files without names
                         const newExpanded = new Set(expandedBulkFileOptions)
                         filesWithoutNames.forEach(file => newExpanded.add(file.name))
@@ -3002,9 +3002,9 @@ export default function DocumentsTab({
                         await fetchVaultDocuments()
     
                         if (successCount > 0) {
-                          showToast(`Successfully uploaded ${successCount} file(s)${failCount > 0 ? `. ${failCount} failed.` : ''}`, successCount === bulkUploadFiles.length ? 'success' : 'warning')
+                          showToast?.(`Successfully uploaded ${successCount} file(s)${failCount > 0 ? `. ${failCount} failed.` : ''}`, successCount === bulkUploadFiles.length ? 'success' : 'warning')
                         } else {
-                          showToast('Failed to upload files. Please try again.', 'error')
+                          showToast?.('Failed to upload files. Please try again.', 'error')
                         }
     
                         setIsBulkUploadModalOpen(false)
@@ -3015,7 +3015,7 @@ export default function DocumentsTab({
                         setOpenDocumentNameDropdown(null)
                       } catch (error: any) {
                         console.error('Bulk upload failed:', error)
-                        showToast('Bulk upload failed: ' + error.message, 'error')
+                        showToast?.('Bulk upload failed: ' + error.message, 'error')
                       } finally {
                         setIsUploading(false)
                       }
@@ -3165,7 +3165,7 @@ export default function DocumentsTab({
                           )
     
                           if (selectedDocsWithPaths.length === 0) {
-                            showToast('No documents found to export. Please check your selection and financial year filter.', 'warning')
+                            showToast?.('No documents found to export. Please check your selection and financial year filter.', 'warning')
                             return
                           }
     
@@ -3242,19 +3242,19 @@ export default function DocumentsTab({
                           // Show result
                           if (successCount > 0) {
                             if (failCount > 0) {
-                              showToast(`Downloaded ${successCount} file(s) successfully. ${failCount} file(s) failed.`, 'warning')
+                              showToast?.(`Downloaded ${successCount} file(s) successfully. ${failCount} file(s) failed.`, 'warning')
                             } else {
-                              showToast(`Successfully downloaded ${successCount} file(s)`, 'success')
+                              showToast?.(`Successfully downloaded ${successCount} file(s)`, 'success')
                             }
                           } else {
-                            showToast('Failed to download files. Please try again or check your browser settings.', 'error')
+                            showToast?.('Failed to download files. Please try again or check your browser settings.', 'error')
                           }
     
                           setIsExportModalOpen(false)
                           setSelectedDocuments(new Set())
                         } catch (error: any) {
                           console.error('Export failed:', error)
-                          showToast('Export failed: ' + (error.message || 'Unknown error'), 'error')
+                          showToast?.('Export failed: ' + (error.message || 'Unknown error'), 'error')
                         }
                       }
                     }}
@@ -3531,7 +3531,7 @@ export default function DocumentsTab({
                         return
                       }
                       if (!currentCompany) {
-                        showToast('No company selected', 'error')
+                        showToast?.('No company selected', 'error')
                         return
                       }
     
@@ -3544,7 +3544,7 @@ export default function DocumentsTab({
                           .filter(e => e.includes('@'))
     
                         if (recipients.length === 0) {
-                          showToast('Please enter valid email addresses', 'warning')
+                          showToast?.('Please enter valid email addresses', 'warning')
                           return
                         }
     
@@ -3558,7 +3558,7 @@ export default function DocumentsTab({
                         })
     
                         if (result.success) {
-                          showToast(result.message || 'Documents sent successfully!', 'success')
+                          showToast?.(result.message || 'Documents sent successfully!', 'success')
                           setIsEmailTemplateOpen(false)
                           setSelectedDocumentsToSend(new Set())
                           setEmailData({
@@ -3569,11 +3569,11 @@ export default function DocumentsTab({
                         includeAttachments: false,
                           })
                         } else {
-                          showToast('Failed to send: ' + (result.error || 'Unknown error'), 'error')
+                          showToast?.('Failed to send: ' + (result.error || 'Unknown error'), 'error')
                         }
                       } catch (error: any) {
                         console.error('Error sending documents:', error)
-                        showToast('Error sending documents: ' + error.message, 'error')
+                        showToast?.('Error sending documents: ' + error.message, 'error')
                       } finally {
                         setIsSendingEmail(false)
                       }
@@ -3994,13 +3994,13 @@ export default function DocumentsTab({
                       handleTrackerDocumentUpload().catch((err) => {
                         console.error('Upload error:', err)
                         if (showToast) {
-                          showToast('Upload failed: ' + (err.message || 'Unknown error'), 'error')
+                          showToast?.('Upload failed: ' + (err.message || 'Unknown error'), 'error')
                         }
                       })
                     } else {
                       console.error('handleTrackerDocumentUpload is not available')
                       if (showToast) {
-                        showToast('Upload handler is not available', 'error')
+                        showToast?.('Upload handler is not available', 'error')
                       }
                     }
                   }}

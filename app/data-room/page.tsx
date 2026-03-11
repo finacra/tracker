@@ -416,7 +416,7 @@ function DataRoomPageInner() {
         // 4. Update hidden states and role
         if (data.hiddenTemplates) setHiddenTemplates(new Set(data.hiddenTemplates));
         if (data.hiddenCompliances) setHiddenCompliances(new Set(data.hiddenCompliances));
-        if (data.userRole) setRole(data.userRole);
+        // Note: setRole is no longer used - React Query manages role state
         
         updateLoadingMessage("⚖️ Loading compliance requirements...");
         

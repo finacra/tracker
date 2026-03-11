@@ -2325,6 +2325,8 @@ export default function AdminPage() {
                         due_date: '',
                         year_type: 'FY',
                         is_active: true,
+                        country_code: 'IN',
+                        applicable_regions: [],
                         required_documents: [],
                         possible_legal_action: '',
                         required_documents_input: ''
