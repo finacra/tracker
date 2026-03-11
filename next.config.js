@@ -38,11 +38,6 @@ const nextConfig = {
       },
     ]
   },
-  // Increase header size limit to prevent HTTP 431 errors
-  // This allows larger cookies/headers (default is usually 8KB)
-  serverRuntimeConfig: {
-    maxHeaderSize: 16384, // 16KB (increase if needed)
-  },
 }
 
 module.exports = nextConfig
