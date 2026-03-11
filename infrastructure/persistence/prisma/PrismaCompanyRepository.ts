@@ -100,63 +100,37 @@ export class PrismaCompanyRepository implements CompanyRepository {
   }
 
   async hasAnyAccessibleCompany(userId: string): Promise<boolean> {
-    // First, check if userId is an app_users.id (Passport user) or auth.users.id (Supabase user)
-    // Check if it exists in app_users table
-    // Use Prisma.sql with explicit UUID cast
-    const appUser = await prisma.$queryRaw<{ id: string }[]>(
-      Prisma.sql`SELECT id FROM app_users WHERE id = ${userId}::uuid LIMIT 1`
-    )
-    const isAppUserId = appUser.length > 0
-
-    if (isAppUserId) {
-      // Passport user - check app_user_id in companies
-      const owned = await prisma.company.findFirst({
-        where: { app_user_id: userId },
-        select: { id: true },
-      })
-      if (owned) return true
-
-      // Check user_roles with app_user_id (if column exists)
-      // Try app_user_id first, fallback to resolving Supabase identity
-      try {
-        const roles = await prisma.$queryRaw<{ count: bigint }[]>(
-          Prisma.sql`SELECT COUNT(*) as count FROM user_roles 
-           WHERE (app_user_id = ${userId}::uuid OR user_id IN (
-             SELECT legacy_auth_id FROM auth_identities 
-             WHERE app_user_id = ${userId}::uuid AND provider = 'supabase'
-           )) AND company_id IS NOT NULL LIMIT 1`
-        )
-        return roles.length > 0 && Number(roles[0].count) > 0
-      } catch (error) {
-        // If app_user_id column doesn't exist in user_roles, try resolving Supabase identity
-        const supabaseIdentity = await prisma.$queryRaw<{ legacy_auth_id: string }[]>(
-          Prisma.sql`SELECT legacy_auth_id FROM auth_identities 
-           WHERE app_user_id = ${userId}::uuid AND provider = 'supabase' LIMIT 1`
-        )
-        if (supabaseIdentity.length > 0) {
-          const roles = await prisma.$queryRaw<{ count: bigint }[]>(
-            Prisma.sql`SELECT COUNT(*) as count FROM user_roles 
-             WHERE user_id = ${supabaseIdentity[0].legacy_auth_id}::uuid AND company_id IS NOT NULL LIMIT 1`
-          )
-          return roles.length > 0 && Number(roles[0].count) > 0
-        }
-        return false
-      }
-    } else {
-      // Supabase user - check user_id in companies (existing logic)
-      const owned = await prisma.company.findFirst({
-        where: { user_id: userId },
-        select: { id: true },
-      })
-      if (owned) return true
-
-      // Check user_roles (raw query since user_roles isn't in Prisma schema yet)
-      // Use Prisma.sql with explicit UUID cast
-      const roles = await prisma.$queryRaw<{ count: bigint }[]>(
-        Prisma.sql`SELECT COUNT(*) as count FROM user_roles WHERE user_id = ${userId}::uuid AND company_id IS NOT NULL LIMIT 1`
-      )
-      return roles.length > 0 && Number(roles[0].count) > 0
-    }
+    // OPTIMIZED: Single UNION query to check all possibilities at once
+    // This avoids sequential queries and is much faster
+    const result = await prisma.$queryRaw<{ count: bigint }[]>`
+      SELECT COUNT(*) as count FROM (
+        -- Check if user owns any companies (Passport)
+        SELECT 1 FROM companies WHERE app_user_id::uuid = ${userId}::uuid
+        UNION
+        -- Check if user owns any companies (Supabase)
+        SELECT 1 FROM companies c
+        WHERE c.user_id::uuid = ${userId}::uuid
+        AND NOT EXISTS (SELECT 1 FROM app_users WHERE id::uuid = ${userId}::uuid)
+        UNION
+        -- Check if user has roles in any companies (Passport)
+        SELECT 1 FROM user_roles WHERE app_user_id::uuid = ${userId}::uuid AND company_id IS NOT NULL
+        UNION
+        -- Check if user has roles via linked Supabase identity
+        SELECT 1 FROM user_roles ur
+        INNER JOIN auth_identities ai ON ai.legacy_auth_id::uuid = ur.user_id::uuid
+        WHERE ai.app_user_id::uuid = ${userId}::uuid 
+        AND ai.provider = 'supabase'
+        AND ur.company_id IS NOT NULL
+        UNION
+        -- Check if user has roles directly (Supabase, no Passport link)
+        SELECT 1 FROM user_roles ur
+        WHERE ur.user_id::uuid = ${userId}::uuid
+        AND ur.company_id IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM app_users WHERE id::uuid = ${userId}::uuid)
+      ) AS accessible
+      LIMIT 1
+    `
+    return result.length > 0 && Number(result[0].count) > 0
   }
 
   async create(input: import('@/application/interfaces/CompanyRepository').CreateCompanyInput): Promise<CompanyRecord> {
