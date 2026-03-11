@@ -11,7 +11,7 @@ import {
 import { useAuth } from '@/hooks/useAuth'
 import { useUserSubscription } from '@/hooks/useCompanyAccess'
 import { createClient } from '@/utils/supabase/client'
-import { completeOnboarding } from './actions'
+import { completeOnboarding, uploadFileToStorage } from './actions'
 import { INDUSTRIES } from '@/lib/compliance/csv-template'
 import { useCountryConfig } from '@/hooks/useCountryConfig'
 import { useCountryAPISupport } from '@/hooks/useCountryValidator'
@@ -265,13 +265,32 @@ export default function OnboardingPage() {
                        (companyData as any).contactNumber || 
                        ''
     
+    // Determine industry selection:
+    // If the detected industry is in our INDUSTRIES list, select it
+    // Otherwise, select 'Other' and put the specific industry name in the text field
+    const isKnownIndustry = detection.industryPrimary && INDUSTRIES.includes(detection.industryPrimary as any)
+    const selectedIndustries = isKnownIndustry
+      ? [detection.industryPrimary as any]
+      : detection.industryPrimary && detection.industryPrimary !== 'Other'
+        ? ['Other' as any] // Select 'Other' checkbox when industry doesn't match our list
+        : []
+    
+    // Determine industry category "Other" text:
+    // If formCategories includes 'Other', auto-fill the text field with the raw API industry
+    const needsOtherCategoryText = formCategories.includes('Other')
+    // Use the raw API company activity/description or the detected industry name
+    const rawApiDescription = (companyData as any).principalBusinessActivity || 
+                              (companyData as any).industrialClass || 
+                              (companyData as any).mainDivision ||
+                              detection.industryPrimary || ''
+    
     setFormData((prev) => ({
       ...prev,
       companyName: companyData.company || prev.companyName,
       companyType: formCompanyType || prev.companyType,
-      // Use industryPrimary directly since it already returns correct industry names
-      industries: detection.industryPrimary && INDUSTRIES.includes(detection.industryPrimary as any)
-        ? [detection.industryPrimary as any]
+      // Set industries — select matching or 'Other' with specific name
+      industries: selectedIndustries.length > 0
+        ? selectedIndustries
         : prev.industries,
       dateOfIncorporation: formatDate(companyData.dateOfIncorporation) || prev.dateOfIncorporation,
       address: address || prev.address,
@@ -285,6 +304,10 @@ export default function OnboardingPage() {
       industryCategories: formCategories.length > 0 
         ? formCategories
         : prev.industryCategories,
+      // Auto-fill "Other" industry category text if needed
+      otherIndustryCategory: needsOtherCategoryText
+        ? rawApiDescription
+        : prev.otherIndustryCategory,
     }))
 
     // Add directors from CIN response
@@ -746,11 +769,13 @@ export default function OnboardingPage() {
           // Best practice is user_id/timestamp/filename
           const filePath = `${user?.id}/${Date.now()}/${fileName}`
 
-          const { error: uploadError } = await supabase.storage
-            .from('company-documents')
-            .upload(filePath, fileObj)
+          // Upload via server action (works for both Supabase and Passport users)
+          const fileArrayBuffer = await fileObj.arrayBuffer()
+          const uploadResult = await uploadFileToStorage(filePath, fileArrayBuffer, fileObj.type)
 
-          if (uploadError) throw uploadError
+          if (!uploadResult.success) {
+            throw new Error(uploadResult.error || 'Upload failed')
+          }
           
           uploadedDocuments.push({
             type: docType,

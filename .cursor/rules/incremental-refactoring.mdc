@@ -1,0 +1,306 @@
+---
+alwaysApply: true
+description: Enforces incremental refactoring with user approval after each step
+globs: *.tsx,*.ts
+---
+
+# Incremental Refactoring Rule (CRITICAL)
+
+## ⚠️ NEVER Refactor Everything at Once
+
+**When user says "make all components SOLID/SRP compliant":**
+- ❌ DO NOT start refactoring all components simultaneously
+- ❌ DO NOT make multiple changes in one go
+- ❌ DO NOT proceed without user approval
+- ✅ DO refactor ONE component at a time
+- ✅ DO make small, incremental changes
+- ✅ DO ask for user approval after each step
+- ✅ DO wait for user to test before proceeding
+
+## Incremental Refactoring Workflow
+
+### Step 1: Identify ONE Component to Refactor
+
+**When user requests refactoring:**
+1. **List all components that need refactoring**
+2. **Ask user which component to start with** (or suggest the smallest/easiest)
+3. **Wait for user confirmation** before proceeding
+4. **Only refactor ONE component at a time**
+
+### Step 2: Make Small, Focused Changes
+
+**For each component:**
+1. **Extract ONE responsibility at a time**
+   - Example: Extract business logic to hook first
+   - NOT: Extract business logic + UI + services all at once
+
+2. **Make changes in phases:**
+   - Phase 1: Extract business logic → Test → User approval
+   - Phase 2: Extract UI components → Test → User approval
+   - Phase 3: Extract services → Test → User approval
+   - Phase 4: Final cleanup → Test → User approval
+
+3. **Each phase should be:**
+   - Small (50-200 lines max)
+   - Testable independently
+   - Reversible if needed
+   - Clear purpose
+
+### Step 3: Stop and Ask for Approval
+
+**After each small change:**
+1. **Stop immediately** - Do not continue
+2. **Summarize what was changed:**
+   ```
+   "I've extracted the business logic from ComponentX to useComponentX hook.
+   Changes:
+   - Created hooks/useComponentX.ts
+   - Moved state management logic
+   - Updated ComponentX to use the hook
+   
+   Please test this change and let me know if it works correctly."
+   ```
+
+3. **Wait for user response:**
+   - User tests the change
+   - User confirms it works
+   - User approves proceeding
+
+4. **Only proceed after explicit approval:**
+   - ✅ "yes", "approved", "works", "continue", "proceed"
+   - ❌ Do NOT proceed on silence or ambiguous responses
+
+### Step 4: Validation Before Proceeding
+
+**Before moving to next component:**
+1. **Verify current change works:**
+   - Build succeeds
+   - No runtime errors
+   - User confirmed it works
+
+2. **Ask user:**
+   ```
+   "ComponentX refactoring is complete and tested.
+   Should I proceed with ComponentY next?"
+   ```
+
+3. **Wait for explicit approval**
+
+## Example Workflow
+
+### ❌ WRONG Approach (Do NOT do this):
+
+```
+User: "Make all components SOLID compliant"
+
+AI: *Starts refactoring DocumentsTab, ReportsTab, OverviewTab, 
+     NoticesTab, GSTTab, DscDinTab all at once*
+     *Makes 50+ changes*
+     *Breaks everything*
+```
+
+### ✅ CORRECT Approach (Do this):
+
+```
+User: "Make all components SOLID compliant"
+
+AI: "I found 6 components that need refactoring:
+     1. DocumentsTab (3500 lines) - needs business logic extraction
+     2. ReportsTab (1800 lines) - needs service extraction
+     3. OverviewTab (300 lines) - needs minor cleanup
+     4. NoticesTab (800 lines) - needs hook extraction
+     5. GSTTab (600 lines) - needs service extraction
+     6. DscDinTab (400 lines) - needs hook extraction
+     
+     Which component should I start with? I recommend starting 
+     with DscDinTab (smallest) or OverviewTab (simplest)."
+
+User: "Start with DscDinTab"
+
+AI: *Refactors DscDinTab - extracts business logic to hook*
+     "I've extracted the business logic from DscDinTab to 
+     useDscDinManagement hook. Please test this change and 
+     confirm it works."
+
+User: "Works, continue"
+
+AI: *Extracts UI components from DscDinTab*
+     "I've extracted the DSC/DIN form components. Please test 
+     this change."
+
+User: "Good, proceed"
+
+AI: "DscDinTab refactoring is complete. Should I proceed with 
+     the next component (GSTTab)?"
+
+User: "Yes"
+
+AI: *Starts refactoring GSTTab - ONE phase at a time*
+```
+
+## Refactoring Phases (One at a Time)
+
+### Phase 1: Extract Business Logic
+**What to do:**
+- Extract state management to custom hook
+- Extract calculations to useMemo/hook
+- Extract validation logic to utilities
+
+**Stop after this phase:**
+- Ask user to test
+- Wait for approval
+- Do NOT proceed to Phase 2 yet
+
+### Phase 2: Extract Services
+**What to do:**
+- Extract API calls to services
+- Create service interfaces (DIP)
+- Inject services via props
+
+**Stop after this phase:**
+- Ask user to test
+- Wait for approval
+- Do NOT proceed to Phase 3 yet
+
+### Phase 3: Extract UI Components
+**What to do:**
+- Extract presentational components
+- Split large UI into smaller components
+- Extract modals/forms
+
+**Stop after this phase:**
+- Ask user to test
+- Wait for approval
+- Do NOT proceed to Phase 4 yet
+
+### Phase 4: Final Cleanup
+**What to do:**
+- Remove unused code
+- Update imports
+- Final validation
+
+**Stop after this phase:**
+- Ask user to test
+- Confirm component is complete
+- Ask if should proceed to next component
+
+## Approval Phrases
+
+**Proceed only on these responses:**
+- ✅ "yes"
+- ✅ "approved"
+- ✅ "works"
+- ✅ "continue"
+- ✅ "proceed"
+- ✅ "good"
+- ✅ "ok"
+- ✅ "next"
+- ✅ "go ahead"
+
+**Do NOT proceed on:**
+- ❌ Silence (wait for response)
+- ❌ "maybe"
+- ❌ "I think so"
+- ❌ Ambiguous responses
+- ❌ Error reports (fix first, then ask again)
+
+## Checklist Before Each Change
+
+- [ ] Identified ONE component to refactor
+- [ ] Identified ONE phase/change to make
+- [ ] Change is small and focused
+- [ ] Change is testable independently
+- [ ] User has approved this specific change
+- [ ] Ready to stop and ask for approval after change
+
+## Checklist After Each Change
+
+- [ ] Made the small, focused change
+- [ ] Build succeeds
+- [ ] Summarized what was changed
+- [ ] Asked user to test
+- [ ] Waiting for user approval
+- [ ] Will NOT proceed until user approves
+
+## Anti-Pattern: Refactoring Everything at Once
+
+**❌ NEVER do this:**
+```
+User: "Make all components SOLID compliant"
+
+AI: *Refactors 6 components simultaneously*
+     *Makes 100+ changes*
+     *Breaks multiple things*
+     *User can't test incrementally*
+```
+
+**✅ ALWAYS do this:**
+```
+User: "Make all components SOLID compliant"
+
+AI: "Which component should I start with?"
+     *Refactors ONE component, ONE phase at a time*
+     *Stops after each phase*
+     *Asks for approval*
+     *Waits for user response*
+     *Only proceeds after approval*
+```
+
+## Communication Template
+
+**After each change, use this template:**
+
+```
+"I've completed [PHASE] for [COMPONENT].
+
+Changes made:
+- [Specific change 1]
+- [Specific change 2]
+- [Specific change 3]
+
+Files modified:
+- [File 1]
+- [File 2]
+
+Please test this change and let me know:
+1. Does it build successfully?
+2. Does it work correctly?
+3. Any errors or issues?
+
+Once you confirm it works, I'll proceed with the next phase."
+```
+
+## Critical Rules
+
+1. **ONE component at a time** - Never refactor multiple components simultaneously
+2. **ONE phase at a time** - Never do multiple phases in one go
+3. **Stop after each change** - Always stop and ask for approval
+4. **Wait for explicit approval** - Never proceed on silence or ambiguity
+5. **Test after each change** - User must test before proceeding
+6. **Small, focused changes** - Each change should be independently testable
+7. **Reversible changes** - Each change should be easy to revert if needed
+
+## When User Says "Make All Components SOLID Compliant"
+
+**Your response should be:**
+
+```
+"I'll help you refactor all components to be SOLID compliant, but I'll do it 
+incrementally - one component at a time, with your approval after each step.
+
+I've identified [N] components that need refactoring:
+1. [Component1] - [Issue]
+2. [Component2] - [Issue]
+...
+
+Which component should I start with? I recommend starting with [suggestion] 
+because [reason]."
+```
+
+**Then:**
+- Refactor ONE component
+- ONE phase at a time
+- Stop after each phase
+- Ask for approval
+- Wait for user response
+- Only proceed after explicit approval

@@ -1,0 +1,62 @@
+---
+alwaysApply: true
+description: Enforces SOLID principles in all React component refactoring
+---
+
+# SOLID Principles Enforcement
+
+## Single Responsibility Principle (SRP)
+**CRITICAL:** Each component/function/hook must have ONE reason to change.
+
+### Component Responsibilities Checklist:
+- [ ] Does this component handle ONLY UI rendering?
+- [ ] Is business logic extracted to hooks/services?
+- [ ] Is state management separated from UI?
+- [ ] Are data transformations in separate utilities?
+
+### Violations to Avoid:
+❌ Components that handle: UI + State + Business Logic + API calls
+✅ Split into: UI Component + Custom Hook + Service + API Client
+
+### Maximum Responsibilities Per Component:
+- **UI Component**: Rendering only (max 1 responsibility)
+- **Custom Hook**: State + Business logic (max 2 related responsibilities)
+- **Service/Utility**: Single operation (max 1 responsibility)
+
+## Open/Closed Principle (OCP)
+- Components should be open for extension, closed for modification
+- Use composition over modification
+- Prefer props/children over hardcoded behavior
+
+## Liskov Substitution Principle (LSP)
+- If using inheritance, subtypes must be substitutable
+- In React: Ensure component variants follow same interface contract
+
+## Interface Segregation Principle (ISP)
+- Components should not depend on props they don't use
+- Split large prop interfaces into smaller, focused ones
+- Maximum props per component: **10 props** (use Context or composition if exceeded)
+
+## Dependency Inversion Principle (DIP)
+- Depend on abstractions, not concretions
+- Inject dependencies via props/context
+- Avoid direct imports of services in components
+
+### Example:
+```typescript
+// ❌ BAD: Direct dependency
+import { uploadDocument } from '@/app/onboarding/actions'
+
+// ✅ GOOD: Dependency injection
+interface DocumentService {
+  uploadDocument: (file: File) => Promise<void>
+}
+```
+
+## Component Size Limits:
+- **UI Component**: Max 200 lines
+- **Container Component**: Max 300 lines
+- **Custom Hook**: Max 150 lines
+- **Service/Utility**: Max 100 lines
+
+If exceeding limits, split immediately.

@@ -1,0 +1,209 @@
+---
+description: Systematic dependency discovery process following SOLID principles
+globs: *.tsx,*.ts
+---
+
+# Dependency Discovery Process (SOLID-Compliant)
+
+## Step 1: Static Analysis
+
+**Use grep/search to find all dependencies:**
+
+```bash
+# Find all variable usages
+grep -n "variableName" path/to/component.tsx
+
+# Find all function calls
+grep -n "functionName(" path/to/component.tsx
+
+# Find all imports
+grep -n "^import" path/to/component.tsx
+
+# Find all useState/useMemo/useCallback
+grep -n "useState\|useMemo\|useCallback" path/to/component.tsx
+```
+
+## Step 2: Manual Code Review
+
+**Read through the entire section to be extracted:**
+
+1. **Start from the beginning** of the JSX block
+2. **Note every variable** that's referenced
+3. **Note every function** that's called
+4. **Note every import** that might be needed
+5. **Note every inline definition** (functions, arrays, constants)
+6. **Identify ownership** for each dependency (SRP)
+
+## Step 3: Create Dependency Matrix (DIP Preparation)
+
+**Document all dependencies in structured format with SOLID annotations:**
+
+```typescript
+// Example Dependency Matrix (SOLID-compliant)
+const TabDependencies = {
+  state: {
+    // owner: 'parent' | 'local' | 'shared'
+    // type: 'boolean' | 'string' | 'object' | 'array'
+    'isGeneratingEnhancedPDF': { 
+      owner: 'parent', 
+      type: 'boolean',
+      srp: 'parent-responsibility' // Parent manages PDF generation state
+    },
+    'pdfGenerationProgress': { 
+      owner: 'parent', 
+      type: 'object',
+      srp: 'parent-responsibility'
+    },
+  },
+  functions: {
+    // owner: 'parent' | 'local'
+    // inject: true/false (DIP)
+    'calculateDelayMemoized': { 
+      owner: 'parent', 
+      inject: true, // Should be injected (DIP)
+      type: 'callback',
+      srp: 'calculation-logic' // Could be extracted to service
+    },
+    'normalizeDate': { 
+      owner: 'parent', 
+      inject: true, // Should be injected (DIP)
+      type: 'function',
+      srp: 'utility' // Should be in utility service
+    },
+  },
+  services: { // DIP: Services should be injected
+    'getRegulatoryRequirements': { 
+      type: 'api', 
+      inject: true,
+      srp: 'data-fetching' // Service responsibility
+    },
+    'updateRequirementStatus': { 
+      type: 'api', 
+      inject: true,
+      srp: 'data-mutation' // Service responsibility
+    },
+  },
+  data: {
+    // owner: 'parent' | 'computed'
+    'displayRequirements': { 
+      owner: 'parent', 
+      type: 'computed',
+      srp: 'parent-computation'
+    },
+    'currentCompany': { 
+      owner: 'parent', 
+      type: 'object',
+      srp: 'parent-data'
+    },
+  },
+  helpers: {
+    // action: 'move' | 'keep' | 'share'
+    // srp: responsibility classification
+    'parseDateForReports': { 
+      owner: 'local', 
+      action: 'move',
+      srp: 'utility' // Should be in utility file
+    },
+    'calculateDelay': { 
+      owner: 'local', 
+      action: 'move',
+      srp: 'business-logic' // Should be in hook or service
+    },
+  },
+  calculations: {
+    // uses: ['dependency1', 'dependency2']
+    'statistics': { 
+      owner: 'local', 
+      action: 'move', 
+      uses: ['displayRequirements'],
+      srp: 'computation' // Should be in useMemo or hook
+    },
+  },
+  exports: {
+    'exportComplianceReport': { 
+      owner: 'local', 
+      action: 'move',
+      srp: 'export-logic' // Should be in service
+    },
+  }
+}
+```
+
+## Step 4: Identify Missing Dependencies
+
+**Common missing dependencies to check (SOLID violations):**
+
+- ✅ Functions defined in parent but used in child (should be injected - DIP)
+- ✅ Constants/arrays defined inline (should be moved or injected)
+- ✅ State variables accessed but not passed as props (SRP violation)
+- ✅ Utility functions imported in parent but needed in child (should be service - DIP)
+- ✅ Context values (if using Context API)
+- ✅ Custom hooks used in parent
+- ✅ **Modal ownership** - Which modals belong to this tab vs. other tabs? (SRP)
+- ✅ **Data structure consistency** - Do state types match between parent and child?
+- ✅ **Tracker-specific code** - Are there any tracker modals/state mixed in? (SRP)
+
+## Step 5: Classify by Responsibility (SRP)
+
+**Classify each dependency by responsibility:**
+
+```typescript
+const responsibilityClassification = {
+  ui: [
+    'renderComponent',
+    'handleClick',
+    'formatDisplay',
+  ],
+  businessLogic: [
+    'calculateStatistics',
+    'validateData',
+    'transformData',
+  ],
+  dataFetching: [
+    'fetchRequirements',
+    'getCompanyData',
+  ],
+  stateManagement: [
+    'useState',
+    'useReducer',
+    'useContext',
+  ],
+  utilities: [
+    'formatDate',
+    'formatCurrency',
+    'normalizeDate',
+  ],
+}
+```
+
+## Step 6: Plan Dependency Injection (DIP)
+
+**Mark dependencies for injection:**
+
+```typescript
+// DIP: Depend on abstractions, not concretions
+interface ComponentServices {
+  documentService: DocumentService // Interface, not concrete class
+  toastService: ToastService
+  apiService: ApiService
+}
+
+// Mark in dependency matrix:
+const servicesToInject = {
+  'uploadDocument': { type: 'service', interface: 'DocumentService' },
+  'showToast': { type: 'service', interface: 'ToastService' },
+}
+```
+
+## Dependency Discovery Checklist
+
+- [ ] Static analysis completed (grep/search)
+- [ ] Manual code review completed
+- [ ] Dependency matrix created
+- [ ] All dependencies classified by responsibility (SRP)
+- [ ] Modal ownership identified (SRP)
+- [ ] Services marked for injection (DIP)
+- [ ] Props count verified (< 10 for ISP)
+- [ ] Missing dependencies identified
+- [ ] Data structure consistency verified
+- [ ] No tracker-specific code mixed in (SRP)

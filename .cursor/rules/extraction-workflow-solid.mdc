@@ -1,0 +1,324 @@
+---
+description: Step-by-step extraction workflow strictly following SOLID principles
+globs: *.tsx,*.ts
+---
+
+# Extraction Workflow (SOLID-Compliant)
+
+## Phase 1: Preparation (Do NOT extract yet)
+
+       ### 1.1 Create the New Component File (SRP: Single Responsibility)
+
+       **⚠️ MANDATORY: For files 250+ lines, use incremental creation:**
+
+       **BEFORE WRITING ANY CODE:**
+       1. **Estimate file size** - If > 250 lines, MUST use incremental workflow
+       2. **Create empty file first** - Create the file with minimal skeleton:
+          ```typescript
+          // app/data-room/components/LargeComponent.tsx
+          'use client'
+          
+          export default function LargeComponent() {
+            return null
+          }
+          ```
+       3. **✅ SAVE IMMEDIATELY** - This creates the file handle and prevents data loss
+
+       **THEN add code incrementally (MAX 100 lines per chunk):**
+       - Chunk 1: Imports and interface (20-30 lines) → **SAVE**
+       - Chunk 2: State declarations (30-50 lines) → **SAVE**
+       - Chunk 3: Helper functions (40-50 lines each) → **SAVE after each**
+       - Chunk 4: JSX sections (50-100 lines each) → **SAVE after each**
+       - Validate after each chunk
+
+       **❌ NEVER write > 100 lines in a single operation!**
+       **❌ NEVER write 250+ lines at once!**
+       **✅ ALWAYS save after each chunk!**
+
+### 1.2 Create Props Interface (ISP: Interface Segregation)
+
+**Based on your dependency map, create focused interfaces:**
+
+```typescript
+// ❌ BAD: Large interface (violates ISP)
+interface NewComponentProps {
+  // 20+ props - components forced to depend on unused props
+  stateVar1: string
+  stateVar2: string
+  // ... 18 more props
+}
+
+// ✅ GOOD: Segregated interfaces (follows ISP)
+interface NewComponentContainerProps {
+  // Container props (max 10)
+  company: Company
+  user: User
+}
+
+interface NewComponentListProps {
+  // List component props (focused)
+  items: Item[]
+  onSelect: (id: string) => void
+}
+
+interface NewComponentFormProps {
+  // Form component props (focused)
+  onSubmit: (data: FormData) => void
+  onCancel: () => void
+}
+```
+
+### 1.3 Plan Service Injection (DIP: Dependency Inversion)
+
+**Before extraction, plan service interfaces:**
+
+```typescript
+// DIP: Define service interfaces
+interface DocumentService {
+  uploadDocument: (file: File) => Promise<void>
+  deleteDocument: (id: string) => Promise<void>
+}
+
+interface ToastService {
+  show: (message: string, type: 'success' | 'error') => void
+}
+
+// Component will receive services via props
+interface NewComponentProps {
+  documentService: DocumentService // Injected, not imported
+  toastService: ToastService // Injected, not imported
+}
+```
+
+### 1.4 Update Parent to Use New Component
+
+```typescript
+// In parent component
+import { lazy, Suspense } from 'react'
+const NewComponent = lazy(() => import('./components/NewComponent'))
+
+// Create service instances (DIP)
+const documentService = new DocumentServiceImpl()
+const toastService = new ToastServiceImpl()
+
+// In JSX
+{activeTab === 'target' && (
+  <Suspense fallback={<LoadingSpinner />}>
+    <NewComponent
+      documentService={documentService} // Inject services (DIP)
+      toastService={toastService}
+      // ... pass other props (max 10 total - ISP)
+    />
+  </Suspense>
+)}
+```
+
+## Phase 2: Extraction (SRP: Extract by Responsibility)
+
+### 2.1 Extract Business Logic First (SRP)
+
+**Extract to custom hooks or services:**
+
+```typescript
+// Extract to hook: hooks/useFeatureName.ts
+export function useFeatureName(data: DataType) {
+  const [state, setState] = useState()
+  
+  // Business logic calculations
+  const statistics = useMemo(() => {
+    // Calculations here
+  }, [data])
+  
+  return { state, statistics, setState }
+}
+
+// Extract to service: services/featureNameService.ts
+export class FeatureNameService {
+  async fetchData(id: string): Promise<DataType> {
+    // API calls here
+  }
+}
+```
+
+### 2.2 Extract UI Components (SRP: Rendering Only)
+
+**Extract presentational components:**
+
+```typescript
+// components/FeatureNameList.tsx (Presentational - max 200 lines)
+export function FeatureNameList({ 
+  items, 
+  onSelect 
+}: FeatureNameListProps) {
+  // Only rendering logic
+  return <div>{/* UI only */}</div>
+}
+
+// components/FeatureNameForm.tsx (Presentational - max 200 lines)
+export function FeatureNameForm({ 
+  onSubmit, 
+  onCancel 
+}: FeatureNameFormProps) {
+  // Only rendering logic
+  return <form>{/* UI only */}</form>
+}
+```
+
+### 2.3 Extract Container Component (SRP: Orchestration)
+
+**Container orchestrates, doesn't do everything:**
+
+```typescript
+// components/FeatureNameTab.tsx (Container - max 300 lines)
+export default function FeatureNameTab(props: FeatureNameTabProps) {
+  // Use extracted hook (SRP)
+  const { state, statistics } = useFeatureName(props.data)
+  
+  // Use injected services (DIP)
+  const handleAction = async () => {
+    await props.documentService.upload(file)
+    props.toastService.show('Success', 'success')
+  }
+  
+  // Compose presentational components (SRP)
+  return (
+    <div>
+      <FeatureNameList items={state.items} onSelect={handleSelect} />
+      <FeatureNameForm onSubmit={handleSubmit} onCancel={handleCancel} />
+    </div>
+  )
+}
+```
+
+### 2.4 Add All Imports (DIP: Services, not direct imports)
+
+**Add imports, but prefer services:**
+
+```typescript
+// ❌ BAD: Direct imports (violates DIP)
+import { uploadDocument } from '@/app/onboarding/actions'
+import { showToast } from '@/components/ui/Toast'
+
+// ✅ GOOD: Service interfaces (follows DIP)
+import { DocumentService } from '@/services/DocumentService'
+import { ToastService } from '@/services/ToastService'
+```
+
+### 2.5 Move Inline Definitions (SRP: Extract to appropriate layer)
+
+**Move functions/constants to correct location:**
+
+```typescript
+// If parent has:
+const months = ['Jan', 'Feb', ...]
+
+// Move to appropriate location:
+// - Constants → utility file or component constant
+// - Functions → hook, service, or utility based on responsibility
+```
+
+## Phase 3: Validation (SOLID Compliance Check)
+
+### 3.0 Parent Structure Validation (DO THIS FIRST!)
+
+**⚠️ CRITICAL: After removing large JSX blocks, validate parent structure IMMEDIATELY**
+
+```bash
+# After removing JSX from parent:
+# 1. Count opening and closing divs in parent
+grep -c "<div" parent.tsx
+grep -c "</div>" parent.tsx
+# Should be equal
+
+# 2. Check for orphaned closing tags
+# 3. Verify all containers are properly closed
+# 4. Check for missing wrapper divs
+```
+
+### 3.1 SRP Validation
+
+**Check component responsibilities:**
+
+- [ ] Component has single, clear responsibility
+- [ ] Business logic extracted to hooks/services
+- [ ] UI rendering separated from logic
+- [ ] Component under size limits (200/300 lines)
+- [ ] No "God Component" anti-pattern
+
+### 3.2 DIP Validation
+
+**Check dependency injection:**
+
+- [ ] Dependencies injected, not imported directly
+- [ ] Services use interfaces, not concrete classes
+- [ ] Easy to mock for testing
+- [ ] No direct imports of services in components
+
+### 3.3 ISP Validation
+
+**Check interface segregation:**
+
+- [ ] Component props < 10
+- [ ] Props are focused and necessary
+- [ ] No unused props passed down
+- [ ] Large interfaces split into smaller ones
+
+### 3.4 JSX Structure Check
+
+**Verify balanced tags:**
+
+```bash
+# Count opening and closing divs
+grep -c "<div" component.tsx
+grep -c "</div>" component.tsx
+# Should be equal
+```
+
+### 3.5 TypeScript Check
+
+**⚠️ Do comprehensive type audit, not iterative fixes:**
+
+```bash
+# Find ALL potential implicit any issues:
+grep -n "\.map(" component.tsx | grep -v ":"
+grep -n "\.filter(" component.tsx | grep -v ":"
+grep -n "prev =>" component.tsx
+
+# Fix ALL at once:
+# 1. Add type annotations to all callback parameters
+# 2. Add type annotations to all map/filter/some callbacks
+# 3. Fix all state type definitions
+# 4. Verify all props types
+```
+
+## Extraction Checklist (SOLID-Compliant)
+
+### Before Extraction
+- [ ] Read the ENTIRE block to be extracted (all lines)
+- [ ] Created complete dependency map/matrix
+- [ ] Identified modal ownership (SRP)
+- [ ] Planned service interfaces (DIP)
+- [ ] Designed props interface (max 10 props - ISP)
+- [ ] Planned component split by responsibility (SRP)
+
+### During Extraction
+- [ ] **Created file first (empty skeleton if 250+ lines)**
+- [ ] **Saved incrementally (50-100 line chunks for large files)**
+- [ ] Phase 1: Extracted business logic to hooks/services (SRP)
+- [ ] Phase 2: Extracted UI components (SRP)
+- [ ] Phase 3: Created container component (SRP)
+- [ ] Injected services via props (DIP)
+- [ ] Used focused interfaces (ISP)
+- [ ] Removed IIFE wrapper (if applicable)
+- [ ] Used scripts for large block removal (if >1000 lines)
+
+### After Extraction
+- [ ] **IMMEDIATELY validated parent structure** (count tags, check nesting)
+- [ ] Fixed parent structure issues FIRST
+- [ ] Verified JSX structure in new component (balanced tags)
+- [ ] Validated SRP compliance (single responsibility)
+- [ ] Validated DIP compliance (services injected)
+- [ ] Validated ISP compliance (props < 10, focused)
+- [ ] Fixed all TypeScript errors (comprehensive audit)
+- [ ] Tested component renders
+- [ ] Verified lazy loading works

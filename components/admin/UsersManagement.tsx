@@ -2,12 +2,23 @@
 
 import { useState, useEffect } from 'react'
 import { SupabaseClient } from '@supabase/supabase-js'
+import { 
+  getUsersManagementData, 
+  extendSubscriptionTrialAction, 
+  revokeSubscriptionAction, 
+  grantEnterpriseTrialAction, 
+  grantCompanyTrialAction, 
+  changeSubscriptionTierAction 
+} from '@/app/admin/actions'
 
 interface Company {
   id: string
   name: string
   type: string
-  incorporation_date: string
+  incorporation_date: string | null
+  country_code: string | null
+  region: null
+  created_at: null
   user_id: string
 }
 
@@ -44,6 +55,7 @@ interface CompanySubscription {
 interface CompanyWithTeam extends Company {
   team_members: TeamMember[]
   subscription: CompanySubscription | null
+  has_used_trial: boolean
 }
 
 interface UserWithDetails {
@@ -54,14 +66,14 @@ interface UserWithDetails {
   companies_owned: CompanyWithTeam[]
   subscription: UserSubscription | null
   invited_to: { company_id: string; company_name: string; role: string }[]
+  has_used_enterprise_trial: boolean
 }
 
 interface UsersManagementProps {
-  supabase: SupabaseClient
   companies: Company[]
 }
 
-export default function UsersManagement({ supabase, companies }: UsersManagementProps) {
+export default function UsersManagement({ companies }: UsersManagementProps) {
   const [users, setUsers] = useState<UserWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -83,188 +95,15 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
   const [isChangingTier, setIsChangingTier] = useState<{ [key: string]: boolean }>({})
   const [isExtendingCompany, setIsExtendingCompany] = useState<{ [key: string]: boolean }>({})
   
-  // Email cache for team members
-  const [emailCache, setEmailCache] = useState<{ [key: string]: string }>({})
-
   useEffect(() => {
     loadUsers()
-  }, [])
+  }, [companies])
 
   const loadUsers = async () => {
     setIsLoading(true)
     try {
-      // Get all subscriptions
-      const { data: subscriptions, error: subError } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (subError) {
-        console.error('Error loading subscriptions:', subError)
-      }
-
-      // Get all user roles
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, company_id, role')
-
-      if (rolesError) {
-        console.error('Error loading user roles:', rolesError)
-      }
-
-      // Get unique user IDs from subscriptions (these are subscribers/trial users)
-      const subscriberUserIds = new Set<string>()
-      subscriptions?.forEach(s => subscriberUserIds.add(s.user_id))
-      
-      // Also include company owners who might not have subscriptions yet
-      companies.forEach(c => subscriberUserIds.add(c.user_id))
-
-      // Build user details for subscribers
-      const usersWithDetails: UserWithDetails[] = []
-      
-      for (const userId of subscriberUserIds) {
-        // Get user's subscription (latest one)
-        const userSub = subscriptions?.find(s => s.user_id === userId) || null
-        
-        // Get companies owned by this user with team members and subscriptions
-        const ownedCompanies: CompanyWithTeam[] = companies
-          .filter(c => c.user_id === userId)
-          .map(c => {
-            // Get team members for this company
-            const teamRoles = userRoles?.filter(r => r.company_id === c.id) || []
-            const teamMembers: TeamMember[] = teamRoles.map(r => ({
-              user_id: r.user_id,
-              email: 'Loading...', // Will be populated later
-              role: r.role
-            }))
-            
-            // Get company subscription (company-first: Starter/Professional)
-            const companySub = subscriptions?.find(
-              s => s.company_id === c.id && s.subscription_type === 'company'
-            ) || null
-            
-            return {
-              ...c,
-              team_members: teamMembers,
-              subscription: companySub ? {
-                id: companySub.id,
-                company_id: companySub.company_id,
-                status: companySub.status,
-                tier: companySub.tier,
-                is_trial: companySub.is_trial || false,
-                trial_ends_at: companySub.trial_ends_at,
-                end_date: companySub.end_date,
-                subscription_type: companySub.subscription_type || 'company'
-              } : null
-            }
-          })
-        
-        // Get companies user is invited to (not owned)
-        const invitedTo = userRoles
-          ?.filter(r => r.user_id === userId && r.company_id && !ownedCompanies.some(c => c.id === r.company_id))
-          .map(r => ({
-            company_id: r.company_id,
-            company_name: companies.find(c => c.id === r.company_id)?.name || 'Unknown',
-            role: r.role
-          })) || []
-
-        usersWithDetails.push({
-          id: userId,
-          email: 'Loading...',
-          created_at: userSub?.created_at || '',
-          last_sign_in_at: null,
-          companies_owned: ownedCompanies,
-          subscription: userSub,
-          invited_to: invitedTo
-        })
-      }
-
-      // Collect all user IDs that need email lookup (subscribers + team members)
-      const allUserIds = new Set<string>(subscriberUserIds)
-      usersWithDetails.forEach(user => {
-        user.companies_owned.forEach(company => {
-          company.team_members.forEach(member => {
-            allUserIds.add(member.user_id)
-          })
-        })
-      })
-
-      // Try to get user emails from auth.users via RPC
-      try {
-        const { data: authUsers, error: authError } = await supabase
-          .rpc('get_users_by_ids', { user_ids: Array.from(allUserIds) })
-        
-        if (!authError && authUsers) {
-          const newEmailCache: { [key: string]: string } = {}
-          authUsers.forEach((authUser: any) => {
-            newEmailCache[authUser.id] = authUser.email || authUser.id.substring(0, 8) + '...'
-            
-            // Update user email
-            const user = usersWithDetails.find(u => u.id === authUser.id)
-            if (user) {
-              user.email = authUser.email || user.id.substring(0, 8) + '...'
-              user.created_at = authUser.created_at || user.created_at
-              user.last_sign_in_at = authUser.last_sign_in_at
-            }
-            
-            // Update team member emails
-            usersWithDetails.forEach(u => {
-              u.companies_owned.forEach(c => {
-                c.team_members.forEach(m => {
-                  if (m.user_id === authUser.id) {
-                    m.email = authUser.email || authUser.id.substring(0, 8) + '...'
-                  }
-                })
-              })
-            })
-          })
-          setEmailCache(newEmailCache)
-        } else {
-          // RPC failed, use fallback
-          usersWithDetails.forEach(user => {
-            if (user.email === 'Loading...') {
-              user.email = user.id.substring(0, 8) + '...'
-            }
-            user.companies_owned.forEach(c => {
-              c.team_members.forEach(m => {
-                if (m.email === 'Loading...') {
-                  m.email = m.user_id.substring(0, 8) + '...'
-                }
-              })
-            })
-          })
-        }
-      } catch (rpcError) {
-        console.log('RPC not available for user emails, using fallback')
-        usersWithDetails.forEach(user => {
-          if (user.email === 'Loading...') {
-            user.email = user.id.substring(0, 8) + '...'
-          }
-          user.companies_owned.forEach(c => {
-            c.team_members.forEach(m => {
-              if (m.email === 'Loading...') {
-                m.email = m.user_id.substring(0, 8) + '...'
-              }
-            })
-          })
-        })
-      }
-
-      // Sort by subscription status (trial/active first, then by created_at)
-      usersWithDetails.sort((a, b) => {
-        const statusA = getSubscriptionStatus(a.subscription)
-        const statusB = getSubscriptionStatus(b.subscription)
-        
-        // Trial > Active > Expired > None
-        const statusOrder = { 'Trial': 0, 'Active': 1, 'Expired': 2, 'No Subscription': 3 }
-        const orderA = statusA.label.includes('Trial') ? 0 : statusOrder[statusA.label as keyof typeof statusOrder] ?? 3
-        const orderB = statusB.label.includes('Trial') ? 0 : statusOrder[statusB.label as keyof typeof statusOrder] ?? 3
-        
-        if (orderA !== orderB) return orderA - orderB
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      })
-
-      setUsers(usersWithDetails)
+      const result = await getUsersManagementData(companies)
+      setUsers(result.users as UserWithDetails[])
     } catch (error) {
       console.error('Error loading users:', error)
     } finally {
@@ -281,39 +120,9 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
 
     setIsExtending(prev => ({ ...prev, [userId]: true }))
     try {
-      // Get current subscription
-      const { data: currentSub } = await supabase
-        .from('subscriptions')
-        .select('trial_ends_at')
-        .eq('id', subscriptionId)
-        .single()
-
-      const currentEndDate = currentSub?.trial_ends_at 
-        ? new Date(currentSub.trial_ends_at) 
-        : new Date()
-      
-      // If trial is expired, extend from today
-      const baseDate = currentEndDate < new Date() ? new Date() : currentEndDate
-      const newEndDate = new Date(baseDate)
-      newEndDate.setDate(newEndDate.getDate() + days)
-
-      const { error } = await supabase
-        .from('subscriptions')
-        .update({
-          status: 'trial',
-          is_trial: true,
-          trial_ends_at: newEndDate.toISOString(),
-          end_date: newEndDate.toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', subscriptionId)
-
-      if (error) {
-        alert(`Failed to extend trial: ${error.message}`)
-      } else {
-        alert(`Trial extended by ${days} days. New end date: ${newEndDate.toLocaleDateString()}\n\nThis affects the owner and all team members of their companies.`)
-        await loadUsers()
-      }
+      await extendSubscriptionTrialAction(subscriptionId, days)
+      alert(`Trial extended by ${days} days.\n\nThis affects the owner and all team members of their companies.`)
+      await loadUsers()
     } catch (err: any) {
       alert(`Failed to extend trial: ${err.message}`)
     } finally {
@@ -322,7 +131,6 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
   }
 
   const handleRevokeTrial = async (userId: string, subscriptionId: string) => {
-    // Get user's companies and team member count
     const user = users.find(u => u.id === userId)
     const teamMemberCount = user?.companies_owned.reduce((sum, c) => sum + c.team_members.length, 0) || 0
     
@@ -332,22 +140,9 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
 
     setIsRevoking(prev => ({ ...prev, [userId]: true }))
     try {
-      const { error } = await supabase
-        .from('subscriptions')
-        .update({
-          status: 'expired',
-          trial_ends_at: new Date().toISOString(),
-          end_date: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', subscriptionId)
-
-      if (error) {
-        alert(`Failed to revoke trial: ${error.message}`)
-      } else {
-        alert('Trial revoked successfully. The owner and all team members have lost access.')
-        await loadUsers()
-      }
+      await revokeSubscriptionAction(subscriptionId)
+      alert('Trial revoked successfully. The owner and all team members have lost access.')
+      await loadUsers()
     } catch (err: any) {
       alert(`Failed to revoke trial: ${err.message}`)
     } finally {
@@ -356,7 +151,6 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
   }
 
   const handleRevokeCompanySubscription = async (companyId: string, subscriptionId: string, companyName: string) => {
-    // Find the company to get team member count
     let teamMemberCount = 0
     users.forEach(u => {
       const company = u.companies_owned.find(c => c.id === companyId)
@@ -371,22 +165,9 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
 
     setIsRevokingCompany(prev => ({ ...prev, [companyId]: true }))
     try {
-      const { error } = await supabase
-        .from('subscriptions')
-        .update({
-          status: 'expired',
-          trial_ends_at: new Date().toISOString(),
-          end_date: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', subscriptionId)
-
-      if (error) {
-        alert(`Failed to revoke company subscription: ${error.message}`)
-      } else {
-        alert(`Subscription revoked successfully for "${companyName}". The company owner and all team members have lost access to this company.`)
-        await loadUsers()
-      }
+      await revokeSubscriptionAction(subscriptionId)
+      alert(`Subscription revoked successfully for "${companyName}". The company owner and all team members have lost access to this company.`)
+      await loadUsers()
     } catch (err: any) {
       alert(`Failed to revoke company subscription: ${err.message}`)
     } finally {
@@ -403,53 +184,16 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
 
     setIsGranting(prev => ({ ...prev, [userId]: true }))
     try {
-      // Enterprise: user-first trial
       if (tier === 'enterprise') {
-        // Check if user already has active subscription
-        const { data: existingSub } = await supabase
-          .from('subscriptions')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('subscription_type', 'user')
-          .or('status.eq.active,is_trial.eq.true')
-          .gt('end_date', new Date().toISOString())
-          .maybeSingle()
-
-        if (existingSub) {
-          throw new Error('User already has an active Enterprise subscription or trial')
+        const user = users.find(u => u.id === userId)
+        if (user?.has_used_enterprise_trial) {
+          throw new Error('This user has already used an Enterprise trial')
         }
-
-        const trialEndDate = new Date()
-        trialEndDate.setDate(trialEndDate.getDate() + days)
-
-        const { error } = await supabase
-          .from('subscriptions')
-          .insert({
-            user_id: userId,
-            company_id: null,
-            subscription_type: 'user',
-            status: 'trial',
-            tier: 'enterprise',
-            billing_cycle: 'monthly',
-            amount: 0,
-            currency: 'INR',
-            is_trial: true,
-            trial_started_at: new Date().toISOString(),
-            trial_ends_at: trialEndDate.toISOString(),
-            start_date: new Date().toISOString(),
-            end_date: trialEndDate.toISOString(),
-          })
-
-        if (error) {
-          throw new Error(error.message || 'Failed to create user trial')
-        }
-
+        await grantEnterpriseTrialAction(userId, days)
         alert(`Enterprise trial granted for ${days} days.\n\nThis gives access to the owner and all team members across all their companies (up to 100 companies).`)
       } else {
-        // This shouldn't happen for user-level, but handle it
         throw new Error('User-level trials are only available for Enterprise tier')
       }
-
       await loadUsers()
     } catch (err: any) {
       alert(`Failed to grant trial: ${err.message}`)
@@ -467,48 +211,17 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
 
     setIsGrantingCompany(prev => ({ ...prev, [companyId]: true }))
     try {
-      // Check if company already has active subscription (not expired)
-      const { data: existingSub } = await supabase
-        .from('subscriptions')
-        .select('id')
-        .eq('company_id', companyId)
-        .eq('subscription_type', 'company')
-        .or('status.eq.active,is_trial.eq.true')
-        .gt('end_date', new Date().toISOString())
-        .maybeSingle()
+      const owner = users.find(user => user.id === userId)
+      const company = owner?.companies_owned.find(ownedCompany => ownedCompany.id === companyId)
 
-      if (existingSub) {
-        throw new Error('Company already has an active subscription or trial')
+      if (owner?.has_used_enterprise_trial) {
+        throw new Error('This user has already used an Enterprise trial, so company trials are not allowed')
+      }
+      if (company?.has_used_trial) {
+        throw new Error('This company has already used its trial')
       }
 
-      // If there's an expired subscription, we can still create a new one
-      // (The expired one won't block access, so we allow creating a new trial)
-
-      const trialEndDate = new Date()
-      trialEndDate.setDate(trialEndDate.getDate() + days)
-
-      const { error } = await supabase
-        .from('subscriptions')
-        .insert({
-          user_id: userId,
-          company_id: companyId,
-          subscription_type: 'company',
-          status: 'trial',
-          tier: tier,
-          billing_cycle: 'monthly',
-          amount: 0,
-          currency: 'INR',
-          is_trial: true,
-          trial_started_at: new Date().toISOString(),
-          trial_ends_at: trialEndDate.toISOString(),
-          start_date: new Date().toISOString(),
-          end_date: trialEndDate.toISOString(),
-        })
-
-      if (error) {
-        throw new Error(error.message || 'Failed to create company trial')
-      }
-
+      await grantCompanyTrialAction(userId, companyId, tier, days)
       alert(`${tier.charAt(0).toUpperCase() + tier.slice(1)} trial granted for "${companyName}" for ${days} days.\n\nThis gives access to the company owner and all team members of this company.`)
       await loadUsers()
     } catch (err: any) {
@@ -525,18 +238,7 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
 
     setIsChangingTier(prev => ({ ...prev, [companyId]: true }))
     try {
-      const { error } = await supabase
-        .from('subscriptions')
-        .update({
-          tier: newTier,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', subscriptionId)
-
-      if (error) {
-        throw new Error(error.message || 'Failed to change tier')
-      }
-
+      await changeSubscriptionTierAction(subscriptionId, newTier)
       alert(`Subscription tier changed to ${newTier.charAt(0).toUpperCase() + newTier.slice(1)} for "${companyName}".`)
       await loadUsers()
     } catch (err: any) {
@@ -555,39 +257,9 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
 
     setIsExtendingCompany(prev => ({ ...prev, [companyId]: true }))
     try {
-      // Get current subscription
-      const { data: currentSub } = await supabase
-        .from('subscriptions')
-        .select('trial_ends_at, end_date')
-        .eq('id', subscriptionId)
-        .single()
-
-      const currentEndDate = currentSub?.trial_ends_at 
-        ? new Date(currentSub.trial_ends_at) 
-        : (currentSub?.end_date ? new Date(currentSub.end_date) : new Date())
-      
-      // If subscription is expired, extend from today
-      const baseDate = currentEndDate < new Date() ? new Date() : currentEndDate
-      const newEndDate = new Date(baseDate)
-      newEndDate.setDate(newEndDate.getDate() + days)
-
-      const { error } = await supabase
-        .from('subscriptions')
-        .update({
-          status: 'trial',
-          is_trial: true,
-          trial_ends_at: newEndDate.toISOString(),
-          end_date: newEndDate.toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', subscriptionId)
-
-      if (error) {
-        alert(`Failed to extend trial: ${error.message}`)
-      } else {
-        alert(`Trial extended by ${days} days for "${companyName}". New end date: ${newEndDate.toLocaleDateString()}`)
-        await loadUsers()
-      }
+      await extendSubscriptionTrialAction(subscriptionId, days)
+      alert(`Trial extended by ${days} days for "${companyName}".`)
+      await loadUsers()
     } catch (err: any) {
       alert(`Failed to extend trial: ${err.message}`)
     } finally {
@@ -924,6 +596,8 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
                         <div className="divide-y divide-gray-800/50">
                           {user.companies_owned.map((company) => {
                             const isCompanyExpanded = expandedCompany === company.id
+                            const companyTrialBlocked =
+                              user.has_used_enterprise_trial || company.has_used_trial
                             
                             return (
                               <div key={company.id}>
@@ -1027,29 +701,39 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
                                           {/* Expired Subscription: Show grant new trial OR extend (not both) */}
                                           {company.subscription.status === 'expired' && (
                                             <>
-                                              <select
-                                                value={companyTier[company.id] || company.subscription.tier}
-                                                onChange={(e) => setCompanyTier(prev => ({ ...prev, [company.id]: e.target.value as 'starter' | 'professional' }))}
-                                                className="px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white text-xs focus:outline-none focus:border-primary-orange"
-                                              >
-                                                <option value="starter">Starter</option>
-                                                <option value="professional">Professional</option>
-                                              </select>
-                                              <input
-                                                type="number"
-                                                min="1"
-                                                max="365"
-                                                value={companyExtendDays[company.id] || 15}
-                                                onChange={(e) => setCompanyExtendDays(prev => ({ ...prev, [company.id]: parseInt(e.target.value) || 15 }))}
-                                                className="w-12 px-1 py-0.5 bg-gray-900 border border-gray-700 rounded text-white text-xs text-center focus:outline-none focus:border-primary-orange"
-                                              />
-                                              <button
-                                                onClick={() => handleGrantCompanyTrial(company.id, user.id, companyTier[company.id] || (company.subscription?.tier as 'starter' | 'professional') || 'starter', company.name)}
-                                                disabled={isGrantingCompany[company.id]}
-                                                className="px-2 py-1 bg-primary-orange text-white rounded text-xs font-medium hover:bg-primary-orange/90 transition-colors disabled:opacity-50"
-                                              >
-                                                {isGrantingCompany[company.id] ? '...' : 'Grant Trial'}
-                                              </button>
+                                              {companyTrialBlocked ? (
+                                                <span className="text-red-400 text-xs">
+                                                  {user.has_used_enterprise_trial
+                                                    ? 'Enterprise trial already used'
+                                                    : 'Company trial already used'}
+                                                </span>
+                                              ) : (
+                                                <>
+                                                  <select
+                                                    value={companyTier[company.id] || company.subscription.tier}
+                                                    onChange={(e) => setCompanyTier(prev => ({ ...prev, [company.id]: e.target.value as 'starter' | 'professional' }))}
+                                                    className="px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white text-xs focus:outline-none focus:border-primary-orange"
+                                                  >
+                                                    <option value="starter">Starter</option>
+                                                    <option value="professional">Professional</option>
+                                                  </select>
+                                                  <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="365"
+                                                    value={companyExtendDays[company.id] || 15}
+                                                    onChange={(e) => setCompanyExtendDays(prev => ({ ...prev, [company.id]: parseInt(e.target.value) || 15 }))}
+                                                    className="w-12 px-1 py-0.5 bg-gray-900 border border-gray-700 rounded text-white text-xs text-center focus:outline-none focus:border-primary-orange"
+                                                  />
+                                                  <button
+                                                    onClick={() => handleGrantCompanyTrial(company.id, user.id, companyTier[company.id] || (company.subscription?.tier as 'starter' | 'professional') || 'starter', company.name)}
+                                                    disabled={isGrantingCompany[company.id]}
+                                                    className="px-2 py-1 bg-primary-orange text-white rounded text-xs font-medium hover:bg-primary-orange/90 transition-colors disabled:opacity-50"
+                                                  >
+                                                    {isGrantingCompany[company.id] ? '...' : 'Grant Trial'}
+                                                  </button>
+                                                </>
+                                              )}
                                             </>
                                           )}
                                         </>
@@ -1057,31 +741,41 @@ export default function UsersManagement({ supabase, companies }: UsersManagement
                                         <>
                                           <span className="text-gray-500 text-xs">No subscription</span>
                                           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                            <select
-                                              value={companyTier[company.id] || 'starter'}
-                                              onChange={(e) => setCompanyTier(prev => ({ ...prev, [company.id]: e.target.value as 'starter' | 'professional' }))}
-                                              className="px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white text-xs focus:outline-none focus:border-primary-orange"
-                                            >
-                                              <option value="starter">Starter</option>
-                                              <option value="professional">Professional</option>
-                                            </select>
-                                            <input
-                                              type="number"
-                                              min="1"
-                                              max="365"
-                                              value={companyExtendDays[company.id] || 15}
-                                              onChange={(e) => setCompanyExtendDays(prev => ({ ...prev, [company.id]: parseInt(e.target.value) || 15 }))}
-                                              className="w-12 px-1 py-0.5 bg-gray-900 border border-gray-700 rounded text-white text-xs text-center focus:outline-none focus:border-primary-orange"
-                                            />
-                                            <button
-                                              onClick={() => {
-                                                handleGrantCompanyTrial(company.id, user.id, companyTier[company.id] || 'starter', company.name)
-                                              }}
-                                              disabled={isGrantingCompany[company.id]}
-                                              className="px-2 py-1 bg-primary-orange text-white rounded text-xs font-medium hover:bg-primary-orange/90 transition-colors disabled:opacity-50"
-                                            >
-                                              {isGrantingCompany[company.id] ? '...' : 'Grant Trial'}
-                                            </button>
+                                            {companyTrialBlocked ? (
+                                              <span className="text-red-400 text-xs">
+                                                {user.has_used_enterprise_trial
+                                                  ? 'Enterprise trial already used'
+                                                  : 'Company trial already used'}
+                                              </span>
+                                            ) : (
+                                              <>
+                                                <select
+                                                  value={companyTier[company.id] || 'starter'}
+                                                  onChange={(e) => setCompanyTier(prev => ({ ...prev, [company.id]: e.target.value as 'starter' | 'professional' }))}
+                                                  className="px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white text-xs focus:outline-none focus:border-primary-orange"
+                                                >
+                                                  <option value="starter">Starter</option>
+                                                  <option value="professional">Professional</option>
+                                                </select>
+                                                <input
+                                                  type="number"
+                                                  min="1"
+                                                  max="365"
+                                                  value={companyExtendDays[company.id] || 15}
+                                                  onChange={(e) => setCompanyExtendDays(prev => ({ ...prev, [company.id]: parseInt(e.target.value) || 15 }))}
+                                                  className="w-12 px-1 py-0.5 bg-gray-900 border border-gray-700 rounded text-white text-xs text-center focus:outline-none focus:border-primary-orange"
+                                                />
+                                                <button
+                                                  onClick={() => {
+                                                    handleGrantCompanyTrial(company.id, user.id, companyTier[company.id] || 'starter', company.name)
+                                                  }}
+                                                  disabled={isGrantingCompany[company.id]}
+                                                  className="px-2 py-1 bg-primary-orange text-white rounded text-xs font-medium hover:bg-primary-orange/90 transition-colors disabled:opacity-50"
+                                                >
+                                                  {isGrantingCompany[company.id] ? '...' : 'Grant Trial'}
+                                                </button>
+                                              </>
+                                            )}
                                           </div>
                                         </>
                                       )}

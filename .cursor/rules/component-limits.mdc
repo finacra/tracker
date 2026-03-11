@@ -1,0 +1,66 @@
+---
+alwaysApply: true
+description: Hard limits for component size and complexity to enforce SRP
+---
+
+# Component Size & Complexity Limits
+
+## Hard Limits (Non-Negotiable)
+
+### File Size Limits:
+- **Presentational Component**: 200 lines maximum
+- **Container Component**: 300 lines maximum  
+- **Custom Hook**: 150 lines maximum
+- **Service/Utility File**: 100 lines maximum
+- **Type/Interface File**: 200 lines maximum
+
+### Function Count Limits:
+- **Component**: 5 functions maximum (excluding render)
+- **Custom Hook**: 8 functions maximum
+- **Service Class**: 10 methods maximum
+- **Utility Module**: 10 functions maximum
+
+### State Variable Limits:
+- **Presentational Component**: 3 state variables (UI only)
+- **Container Component**: 10 state variables
+- **Custom Hook**: 8 state variables
+
+### Prop Count Limits:
+- **Any Component**: 10 props maximum
+- If exceeded → Use Context API or composition
+
+### Dependency Limits:
+- **Direct Imports**: 5 imports maximum per file
+- If exceeded → Create service layer or use dependency injection
+
+## Complexity Metrics
+
+### Cyclomatic Complexity:
+- **Component**: Max 10
+- **Function**: Max 5
+- If exceeded → Extract to smaller functions
+
+### Nesting Depth:
+- **JSX**: Max 5 levels
+- **Functions**: Max 4 levels
+- If exceeded → Extract to sub-components/functions
+
+## Automatic Refactoring Triggers
+
+Refactor immediately if:
+- ✅ File exceeds size limit
+- ✅ Function count exceeds limit
+- ✅ State variables exceed limit
+- ✅ Props exceed limit
+- ✅ Cyclomatic complexity > 10
+- ✅ Nesting depth > 5
+
+## Large File Handling
+
+For files > 250 lines:
+1. **Create file skeleton first** (empty component)
+2. **Add code in 50-100 line chunks**
+3. **Save after each chunk**
+4. **Validate after each chunk**
+
+This prevents tool timeouts and data loss.

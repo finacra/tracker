@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Poppins } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
+import { QueryProvider } from '@/lib/react-query/QueryProvider'
 import Analytics from '@/components/features/Analytics'
 import AnalyticsWrapper from '@/components/features/AnalyticsWrapper'
 
@@ -25,9 +26,11 @@ export default function RootLayout({
     <html lang="en">
       <body className={poppins.className} suppressHydrationWarning>
         <Analytics />
-        <Providers>
-          <AnalyticsWrapper>{children}</AnalyticsWrapper>
-        </Providers>
+        <QueryProvider>
+          <Providers>
+            <AnalyticsWrapper>{children}</AnalyticsWrapper>
+          </Providers>
+        </QueryProvider>
       </body>
     </html>
   )

@@ -14,7 +14,7 @@ interface PaymentButtonProps {
 }
 
 export default function PaymentButton({ tier, billingCycle, price, companyId, className }: PaymentButtonProps) {
-  const { user } = useAuth()
+  const { user, displayName, displayEmail } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [isScriptLoaded, setIsScriptLoaded] = useState(false)
 
@@ -52,8 +52,8 @@ export default function PaymentButton({ tier, billingCycle, price, companyId, cl
         description: `${tier.charAt(0).toUpperCase() + tier.slice(1)} Plan - ${billingCycle}`,
         order_id: orderData.orderId,
         prefill: {
-          email: user.email || undefined,
-          name: user.user_metadata?.full_name || undefined,
+          email: displayEmail || undefined,
+          name: displayName || undefined,
         },
         theme: {
           color: '#FF6B35', // Primary orange color

@@ -1,0 +1,43 @@
+/**
+ * API endpoint to track login with proper user_id handling
+ * For Passport users, checks for Supabase identity and uses it if available
+ */
+
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerContainer } from '@/lib/composition/server-container'
+import { trackKPI } from '@/lib/tracking/kpi-tracker'
+
+export async function POST(request: NextRequest) {
+  try {
+    const { appUserId } = await request.json()
+
+    if (!appUserId) {
+      return NextResponse.json({ success: false, error: 'appUserId is required' }, { status: 400 })
+    }
+
+    const { authIdentityRepository } = createServerContainer()
+
+    // Check if user has a Supabase identity linked to this app_user
+    const allIdentities = await authIdentityRepository.findByAppUserId(appUserId)
+    const supabaseIdentity = allIdentities.find((id) => id.provider === 'supabase')
+
+    if (supabaseIdentity && supabaseIdentity.legacyAuthId) {
+      // User has Supabase identity - use it for tracking
+      await trackKPI('Addictiveness', 'General', 1, supabaseIdentity.legacyAuthId, undefined, {
+        action: 'login',
+      })
+    } else {
+      // Track without user_id for Passport-only users (new users without Supabase account)
+      await trackKPI('Addictiveness', 'General', 1, undefined, undefined, {
+        action: 'login',
+        app_user_id: appUserId,
+        provider: 'passport',
+      })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error('[Track Login API] Error:', error)
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+  }
+}

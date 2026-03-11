@@ -3,21 +3,26 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
-import { useUserSubscription } from '@/hooks/useCompanyAccess'
-import { createClient } from '@/utils/supabase/client'
+import { useAnyCompanyAccess, useUserSubscription } from '@/hooks/useCompanyAccess'
+import {
+  createTrialSubscription,
+  getCompanySubscriptionState,
+  getCompanyTrialEligibility,
+  getSubscribeCompanyContext,
+} from '@/app/subscribe/actions'
 import { PRICING_TIERS, getTierPricing, formatPrice, type BillingCycle } from '@/lib/pricing/tiers'
 import PaymentButton from '@/components/features/PaymentButton'
 import SubtleCircuitBackground from '@/components/ui/SubtleCircuitBackground'
 import Link from 'next/link'
 import { loadRazorpayScript, createTrialVerificationOrder, verifyPayment, openRazorpayCheckout, type RazorpayResponse } from '@/lib/razorpay/payment'
-import { trackSubscriptionEvent, trackConversion, trackButtonClick } from '@/lib/analytics'
+import { trackSubscriptionEvent, trackConversion } from '@/lib/analytics'
 
 function SubscribePageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user, loading: authLoading, signOut } = useAuth()
-  const { hasSubscription, isTrial, trialDaysRemaining, companyLimit, currentCompanyCount, isLoading: subLoading } = useUserSubscription()
-  const supabase = createClient()
+  const { user, loading: authLoading, signOut, displayName, displayEmail } = useAuth()
+  const { hasSubscription, isTrial, trialDaysRemaining, currentCompanyCount, isLoading: subLoading } = useUserSubscription()
+  const { accessibleCompanyIds, isLoading: anyAccessLoading } = useAnyCompanyAccess()
   
   const handleSignOut = async () => {
     await signOut()
@@ -33,35 +38,31 @@ function SubscribePageInner() {
   const [isStartingTrial, setIsStartingTrial] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [userCompanies, setUserCompanies] = useState<Array<{ id: string; name: string }>>([])
+  const [accessibleCompanies, setAccessibleCompanies] = useState<Array<{ id: string; name: string }>>([])
   const [selectedCompanyForSubscription, setSelectedCompanyForSubscription] = useState<string | null>(companyId)
   const [companyHasActiveSubscription, setCompanyHasActiveSubscription] = useState<boolean>(false)
   const [isCheckingCompanySubscription, setIsCheckingCompanySubscription] = useState(false)
   const [isRazorpayScriptLoaded, setIsRazorpayScriptLoaded] = useState(false)
   const [companyTrialEligible, setCompanyTrialEligible] = useState<boolean>(true)
   const [isCheckingTrialEligibility, setIsCheckingTrialEligibility] = useState(false)
+  const [trialEligibilityReason, setTrialEligibilityReason] = useState<string | null>(null)
 
   // Check if company has ever used a trial (even expired)
   async function checkCompanyTrialEligibility(companyId: string | null): Promise<boolean> {
-    if (!companyId) return false
-    
     try {
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('id')
-        .eq('company_id', companyId)
-        .eq('is_trial', true)
-        .limit(1)
-        .maybeSingle()
-      
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error checking trial eligibility:', error)
+      const result = await getCompanyTrialEligibility(companyId)
+
+      if (!result.success) {
+        console.error('Error checking trial eligibility:', result.error)
+        setTrialEligibilityReason('unknown')
         return false
       }
-      
-      // Eligible if no trial found (data is null)
-      return !data
+
+      setTrialEligibilityReason(result.reason || null)
+      return result.eligible === true
     } catch (err) {
       console.error('Error checking trial eligibility:', err)
+      setTrialEligibilityReason('unknown')
       return false
     }
   }
@@ -77,22 +78,13 @@ function SubscribePageInner() {
 
       setIsCheckingCompanySubscription(true)
       try {
-        const { data, error: rpcError } = await supabase
-          .rpc('check_company_subscription', { p_company_id: targetCompanyId })
-          .single()
+        const result = await getCompanySubscriptionState(targetCompanyId)
 
-        if (!rpcError && data) {
-          const subscriptionData = data as {
-            has_subscription: boolean
-            tier: string
-            is_trial: boolean
-            trial_days_remaining: number
-            user_limit: number
-          }
-          setCompanyHasActiveSubscription(subscriptionData.has_subscription)
+        if (result.success && result.subscription) {
+          setCompanyHasActiveSubscription(result.subscription.hasSubscription)
           
           // If company has active subscription and user is not explicitly upgrading, redirect to data-room
-          if (subscriptionData.has_subscription && !showUpgrade) {
+          if (result.subscription.hasSubscription && !showUpgrade) {
             router.replace(`/data-room?company_id=${targetCompanyId}`)
           }
         } else {
@@ -107,53 +99,31 @@ function SubscribePageInner() {
     }
 
     checkCompanySubscription()
-  }, [selectedCompanyForSubscription, companyId, user, supabase, showUpgrade, router])
+  }, [selectedCompanyForSubscription, companyId, user, showUpgrade, router])
 
   // Fetch company name if provided, and fetch all user companies for selection
   useEffect(() => {
     async function fetchCompanies() {
       if (!user) return
-      
-      // Fetch company name if companyId provided
-      if (companyId) {
-        const { data } = await supabase
-          .from('companies')
-          .select('name')
-          .eq('id', companyId)
-          .single()
-        
-        if (data) {
-          setCompanyName(data.name)
-        }
-      }
-      
-      // Fetch all companies user owns (for company selection in Starter/Professional)
-      const { data: companies } = await supabase
-        .from('companies')
-        .select('id, name')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-      
-      if (companies) {
-        setUserCompanies(companies)
-        // If companyId not provided but user has companies, select first one
-        if (!companyId && companies.length > 0) {
-          setSelectedCompanyForSubscription(companies[0].id)
-        }
+      const result = await getSubscribeCompanyContext(companyId, accessibleCompanyIds)
+      if (!result.success) return
+
+      setCompanyName(result.companyName || '')
+      setUserCompanies(result.userCompanies || [])
+      setAccessibleCompanies(result.accessibleCompanies || [])
+
+      if (!companyId && (result.userCompanies?.length || 0) > 0) {
+        setSelectedCompanyForSubscription((current) => current || result.userCompanies?.[0]?.id || null)
       }
     }
     
     fetchCompanies()
-  }, [companyId, user, supabase])
+  }, [companyId, user, accessibleCompanyIds])
 
   // Check trial eligibility when company changes
   useEffect(() => {
     async function checkTrialEligibility() {
       const targetCompanyId = selectedCompanyForSubscription || companyId
-      if (!targetCompanyId) {
-        setCompanyTrialEligible(true)
-        return
-      }
 
       setIsCheckingTrialEligibility(true)
       const eligible = await checkCompanyTrialEligibility(targetCompanyId)
@@ -207,8 +177,12 @@ function SubscribePageInner() {
 
     // Check trial eligibility
     const targetCompanyId = selectedCompanyForSubscription || companyId || null
-    if (targetCompanyId && !companyTrialEligible) {
-      setError('This company has already used its trial. Please subscribe to continue.')
+    if (!companyTrialEligible) {
+      setError(
+        trialEligibilityReason === 'enterprise_trial_used'
+          ? 'Your account has already used its Enterprise trial. Please subscribe to continue.'
+          : 'This company has already used its trial. Please subscribe to continue.'
+      )
       return
     }
 
@@ -229,8 +203,8 @@ function SubscribePageInner() {
         description: 'Trial Verification - ₹2 (will be refunded within 24 hours)',
         order_id: orderData.orderId,
         prefill: {
-          email: user.email || undefined,
-          name: user.user_metadata?.full_name || undefined,
+          email: displayEmail || undefined,
+          name: displayName || undefined,
         },
         theme: {
           color: '#9CA3AF', // Gray color (matching the design)
@@ -272,70 +246,16 @@ function SubscribePageInner() {
 
   const createTrialAfterVerification = async (targetCompanyId: string | null) => {
     try {
-      // Always create company-level trial
-      // If user has no companies, create a user-level trial first (allows creating first company)
-      if (currentCompanyCount === 0) {
-        const { data, error: rpcError } = await supabase
-          .rpc('create_user_trial', { target_user_id: user!.id })
-
-        if (rpcError) {
-          throw new Error(rpcError.message || 'Failed to create trial')
-        }
-
-        // Track trial start (use 'starter' as default tier for tracking)
-        trackSubscriptionEvent('trial_start', 'starter', undefined, undefined)
-        trackConversion('trial_start')
-        
-        // Success - redirect to onboarding to create first company
-        router.push('/onboarding')
-        return
-      }
-      
-      // Require company selection if user has companies
-      if (!targetCompanyId && currentCompanyCount > 0) {
-        setError('Please select a company for the trial')
-        setIsStartingTrial(false)
-        return
-      }
-      
-      // If still no company selected but user has companies, select the first one
-      if (!targetCompanyId && userCompanies.length > 0) {
-        const firstCompanyId = userCompanies[0].id
-        const { data, error: rpcError } = await supabase
-          .rpc('create_company_trial', {
-            p_user_id: user!.id,
-            p_company_id: firstCompanyId
-          })
-
-        if (rpcError) {
-          throw new Error(rpcError.message || 'Failed to create trial')
-        }
-
-        // Track trial start (use 'starter' as default tier for tracking)
-        trackSubscriptionEvent('trial_start', 'starter', undefined, undefined)
-        trackConversion('trial_start')
-        
-        router.push(`/data-room?company_id=${firstCompanyId}`)
-        return
+      const result = await createTrialSubscription(targetCompanyId)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create trial')
       }
 
-      if (targetCompanyId) {
-        const { data, error: rpcError } = await supabase
-          .rpc('create_company_trial', {
-            p_user_id: user!.id,
-            p_company_id: targetCompanyId
-          })
+      trackSubscriptionEvent('trial_start', 'starter', undefined, undefined)
+      trackConversion('trial_start')
 
-        if (rpcError) {
-          throw new Error(rpcError.message || 'Failed to create trial')
-        }
-
-        // Track trial start (use 'starter' as default tier for tracking)
-        trackSubscriptionEvent('trial_start', 'starter', undefined, undefined)
-        trackConversion('trial_start')
-        
-        // Success - redirect to the company
-        router.push(`/data-room?company_id=${targetCompanyId}`)
+      if (result.redirectTo) {
+        router.push(result.redirectTo)
       }
     } catch (err: any) {
       console.error('Trial creation error:', err)
@@ -359,6 +279,12 @@ function SubscribePageInner() {
     )
   }
 
+  const backToDataRoomHref = accessibleCompanies.length > 0
+    ? `/data-room?company_id=${accessibleCompanies[0].id}`
+    : currentCompanyCount > 0
+      ? '/data-room'
+      : '/onboarding'
+
   // Show trial upgrade prompt ONLY if user explicitly wants to upgrade during trial
   if (isTrial && trialDaysRemaining > 0 && showUpgrade) {
     return (
@@ -368,7 +294,7 @@ function SubscribePageInner() {
         {/* Back Button and Logout */}
         <div className="relative z-10 px-4 sm:px-6 pt-4 flex items-center justify-between">
           <Link
-            href="/data-room"
+            href={backToDataRoomHref}
             className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors font-light text-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -602,13 +528,13 @@ function SubscribePageInner() {
       {/* Back Button and Logout */}
       <div className="relative z-10 px-4 sm:px-6 pt-4 flex items-center justify-between">
         <Link
-          href={currentCompanyCount > 0 ? "/data-room" : "/onboarding"}
+          href={backToDataRoomHref}
           className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors font-light text-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          {currentCompanyCount > 0 ? "Back to Data Room" : "Back to Onboarding"}
+          {accessibleCompanies.length > 0 || currentCompanyCount > 0 ? "Back to Data Room" : "Back to Onboarding"}
         </Link>
         <button
           onClick={handleSignOut}
@@ -636,6 +562,36 @@ function SubscribePageInner() {
             Starter & Professional: Each company needs its own subscription. Enterprise: One subscription covers all companies (up to 100).
           </p>
         </div>
+
+        {accessibleCompanies.length > 0 && !anyAccessLoading && (
+          <div className="max-w-2xl mx-auto mb-8">
+            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h2 className="text-lg font-light text-white">Companies You Can Still Access</h2>
+              </div>
+              <p className="text-gray-400 text-sm font-light mb-4">
+                Your current company may need a subscription, but these companies still have valid access.
+              </p>
+              <div className="space-y-2">
+                {accessibleCompanies.map((company) => (
+                  <button
+                    key={company.id}
+                    onClick={() => router.push(`/data-room?company_id=${company.id}`)}
+                    className="w-full text-left px-4 py-3 bg-gray-900 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors text-sm font-light flex items-center justify-between group"
+                  >
+                    <span className="truncate flex-1">{company.name}</span>
+                    <svg className="w-4 h-4 text-gray-500 group-hover:text-white transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Company Selector for Starter/Professional */}
         {userCompanies.length > 0 && (
@@ -694,6 +650,21 @@ function SubscribePageInner() {
                   {isStartingTrial ? 'Starting...' : 'Start 15-Day Trial'}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {(!companyHasActiveSubscription && !companyTrialEligible && !isCheckingTrialEligibility && (selectedCompanyForSubscription || companyId || currentCompanyCount === 0)) && (
+          <div className="max-w-2xl mx-auto mb-12">
+            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 text-center">
+              <p className="text-red-400 font-medium">
+                Free trial is not available
+              </p>
+              <p className="text-gray-400 text-sm mt-2">
+                {trialEligibilityReason === 'enterprise_trial_used'
+                  ? 'This account has already used its Enterprise trial, so a company-level Starter or Professional trial is no longer available.'
+                  : 'This company has already used its free trial. Please subscribe to continue.'}
+              </p>
             </div>
           </div>
         )}

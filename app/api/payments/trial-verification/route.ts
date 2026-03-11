@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { createServerContainer } from '@/lib/composition/server-container'
 import { getRazorpayInstance } from '@/lib/razorpay/client'
 
 // Trial verification amount: ₹2 (200 paise)
@@ -8,9 +9,10 @@ const TRIAL_VERIFICATION_AMOUNT = 200
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const { authService, paymentRepository } = createServerContainer()
+    const user = await authService.getCurrentUser()
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -78,26 +80,21 @@ export async function POST(request: NextRequest) {
     // Store payment record in database
     // Note: billing_cycle has CHECK constraint allowing only: 'monthly', 'quarterly', 'half-yearly', 'annual'
     // For trial verification (one-time payment), we use 'monthly' as a placeholder since it's just for verification
-    const { data: paymentData, error: paymentError } = await supabase
-      .from('payments')
-      .insert({
-        user_id: user.id,
-        company_id: companyId || null,
-        provider_order_id: order.id,
-        payment_provider: 'razorpay',
-        amount: 2, // Verification amount
-        currency: currency,
-        status: 'pending',
-        tier: tier || null,
-        billing_cycle: 'monthly', // Use 'monthly' as placeholder (required by CHECK constraint)
-        receipt: order.receipt,
-        notes: order.notes as any,
-        payment_type: 'trial_verification', // Mark as trial verification to distinguish from actual subscriptions
+    try {
+      await paymentRepository.createPending({
+        userId: user.id,
+        companyId: companyId || null,
+        providerOrderId: order.id,
+        paymentProvider: 'razorpay',
+        amount: 2,
+        currency,
+        tier: (tier || 'starter'),
+        billingCycle: 'monthly',
+        receipt: order.receipt ?? null,
+        notes: (order.notes as Record<string, string> | undefined) ?? null,
+        paymentType: 'trial_verification',
       })
-      .select()
-      .single()
-
-    if (paymentError) {
+    } catch (paymentError: any) {
       console.error('[Trial Verification] Error storing payment:', paymentError)
       console.error('[Trial Verification] Payment data:', {
         user_id: user.id,
@@ -121,7 +118,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('[Trial Verification] Payment record created:', paymentData?.id)
+    console.log('[Trial Verification] Payment record created for order:', order.id)
 
     return NextResponse.json({
       orderId: order.id,

@@ -20,6 +20,7 @@ These scripts are used for setup, data generation, synchronization, and other ut
 ### Data Synchronization
 - `sync-required-documents.sql` - Syncs required documents
 - `apply-all-templates.sql` - Applies all templates
+- `backfill-app-identity-from-supabase.sql` - Backfills canonical app users and provider identities from Supabase Auth
 
 ### Data Updates
 - `update-penalties-from-csv.sql` - Updates penalties from CSV

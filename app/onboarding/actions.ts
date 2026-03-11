@@ -2,9 +2,15 @@
 
 import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
+import { createServerContainer } from '@/lib/composition/server-container'
 import { generateEmbedding } from '@/lib/utils/embeddings'
 import { processDocumentContent } from '@/lib/utils/document-processor'
 import { validateCompanyId, sanitizeStringInput, isValidUUID } from '@/lib/utils/input-validation'
+
+async function requireCurrentUser() {
+  const { authService } = createServerContainer()
+  return authService.requireCurrentUser()
+}
 
 export async function completeOnboarding(
   formData: {
@@ -33,20 +39,21 @@ export async function completeOnboarding(
   },
   directors: any[]
 ) {
-  const supabase = await createClient()
-  const adminSupabase: any = createAdminClient()
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
-    throw new Error('Unauthorized')
-  }
+  const {
+    companyRepository,
+    companyMembershipRepository,
+    directorRepository,
+    documentRepository,
+    subscriptionRepository
+  } = createServerContainer()
+  const user = await requireCurrentUser()
 
   // Get region from country code
   const { getCountryConfig } = await import('@/lib/config/countries')
   const countryConfig = getCountryConfig(formData.countryCode || 'IN')
   const region = countryConfig?.region || 'APAC'
 
-  // 1. Insert Company into public schema
+  // 1. Insert Company
   // For backward compatibility, set industry to first industry from industries array
   const firstIndustry = formData.industries.length > 0 ? formData.industries[0] : null
 
@@ -58,122 +65,93 @@ export async function completeOnboarding(
       .filter((name: string) => name.length > 0)
     : null
 
-  const { data: company, error: companyError } = await adminSupabase
-    .from('companies')
-    .insert({
-      user_id: user.id,
-      name: formData.companyName,
-      type: formData.companyType,
-      tax_id: formData.panNumber || null,
-      registration_id: formData.cinNumber,
-      industry: firstIndustry,  // Set for backward compatibility (NOT NULL constraint)
-      industries: formData.industries.length > 0 ? formData.industries : null,  // Store as array
-      industry_categories: formData.industryCategories,
-      other_industry_category: formData.otherIndustryCategory || null,
-      incorporation_date: formData.dateOfIncorporation,
-      address: formData.address,
-      city: formData.city,
-      state: formData.state,
-      pin_code: formData.pinCode,
-      phone_number: formData.phoneNumber || null,
-      email: formData.email || null,
-      landline: formData.landline || null,
-      other_info: formData.other || null,
-      stage: formData.companyStage || null,
-      confidence_score: formData.confidenceScore || null,
-      year_type: formData.yearType || 'FY',  // Default to FY for backward compatibility
-      country_code: formData.countryCode || 'IN',  // Default to India for backward compatibility
-      region: region,
-      ex_directors: exDirectorsArray  // Store as TEXT[] array
-    })
-    .select()
-    .single()
-
-  if (companyError) {
-    console.error('Company insertion error:', companyError)
-    throw new Error('Failed to create company: ' + companyError.message)
-  }
+  const company = await companyRepository.create({
+    userId: user.id,
+    appUserId: user.canonicalId,
+    name: formData.companyName,
+    type: formData.companyType,
+    taxId: formData.panNumber || null,
+    registrationId: formData.cinNumber,
+    industry: firstIndustry,
+    industries: formData.industries.length > 0 ? formData.industries : null,
+    industryCategories: formData.industryCategories,
+    otherIndustryCategory: formData.otherIndustryCategory || null,
+    incorporationDate: formData.dateOfIncorporation,
+    address: formData.address,
+    city: formData.city,
+    state: formData.state,
+    pinCode: formData.pinCode,
+    phoneNumber: formData.phoneNumber || null,
+    email: formData.email || null,
+    landline: formData.landline || null,
+    otherInfo: formData.other || null,
+    stage: formData.companyStage || null,
+    confidenceScore: formData.confidenceScore || null,
+    yearType: formData.yearType || 'FY',
+    countryCode: formData.countryCode || 'IN',
+    region: region,
+    exDirectors: exDirectorsArray
+  })
 
   // 1b. Assign admin role to the company creator
-  const { error: roleError } = await adminSupabase
-    .from('user_roles')
-    .insert({
-      user_id: user.id,
-      company_id: company.id,
-      role: 'admin'
-    })
-
-  if (roleError) {
+  try {
+    await companyMembershipRepository.addRole(
+      user.id,
+      company.id,
+      'admin',
+      user.canonicalId
+    )
+  } catch (roleError) {
     console.error('Role assignment error:', roleError)
     // Don't throw - the company owner can still access via user_id on companies table
   }
 
-  // 2. Insert Directors into public schema
+  // 2. Insert Directors
   if (directors.length > 0) {
-    const directorsToInsert = directors.map((dir: any) => ({
-      company_id: company.id,
-      first_name: dir.firstName,
-      last_name: dir.lastName,
-      middle_name: dir.middleName || null,
-      director_id: dir.din || null,
-      designation: dir.designation || null,
-      dob: dir.dob || null,
-      tax_id: dir.pan || null,
-      email: dir.email || null,
-      mobile: dir.mobile || null,
-      is_verified: dir.verified || false,
-      source: dir.source || 'manual'
-    }))
-
-    const { error: dirError } = await adminSupabase
-      .from('directors')
-      .insert(directorsToInsert)
-
-    if (dirError) {
-      console.error('Director insertion error:', dirError)
-      // We might want to handle this differently, but for now we'll throw
-      throw new Error('Failed to save directors: ' + dirError.message)
-    }
+    await directorRepository.createMany(
+      directors.map((dir: any) => ({
+        companyId: company.id,
+        firstName: dir.firstName,
+        lastName: dir.lastName,
+        middleName: dir.middleName || null,
+        din: dir.din || null,
+        designation: dir.designation || null,
+        dob: dir.dob || null,
+        pan: dir.pan || null,
+        email: dir.email || null,
+        mobile: dir.mobile || null,
+        isVerified: dir.verified || false,
+        source: dir.source || 'manual'
+      }))
+    )
   }
 
   // 3. Insert document metadata into internal table
   if (formData.documents.length > 0) {
-    // Fetch templates to map folders and frequencies
-    const { data: templates } = await adminSupabase
-      .from('document_templates_internal')
-      .select('document_name, folder_name, default_frequency')
+    const templates = await documentRepository.getTemplateMappings()
+    const insertedDocs = await documentRepository.createCompanyDocuments(
+      await Promise.all(formData.documents.map(async (doc: { type: string; path: string; name: string }) => {
+        const template = templates.find(t => t.documentName === doc.type)
+        const embedding = await generateEmbedding(`${doc.type} ${doc.name}`)
 
-    const { data: insertedDocs, error: internalError } = await adminSupabase
-      .from('company_documents_internal')
-      .insert(
-        await Promise.all(formData.documents.map(async (doc: { type: string; path: string; name: string }) => {
-          const template = templates?.find((t: { document_name: string; folder_name?: string | null; default_frequency?: string | null }) => t.document_name === doc.type)
-          const embedding = await generateEmbedding(`${doc.type} ${doc.name}`)
-
-          return {
-            company_id: company.id,
-            document_type: doc.type,
-            file_path: doc.path,
-            file_name: doc.name,
-            folder_name: template?.folder_name || 'Constitutional Documents',
-            registration_date: formData.dateOfIncorporation,
-            frequency: template?.default_frequency || 'annually',
-            embedding: embedding.length > 0 ? embedding : null
-          }
-        }))
-      )
-      .select()
-
-    if (internalError) {
-      console.error('Internal document metadata insertion error:', internalError)
-      throw new Error('Failed to save document metadata: ' + internalError.message)
-    }
+        return {
+          companyId: company.id,
+          documentType: doc.type,
+          filePath: doc.path,
+          fileName: doc.name,
+          folderName: template?.folderName || 'Constitutional Documents',
+          registrationDate: formData.dateOfIncorporation,
+          frequency: template?.defaultFrequency || 'annually',
+          embedding: embedding.length > 0 ? embedding : null,
+        }
+      }))
+    )
 
     // Background process: Extract text content from each PDF for AI understanding
     if (insertedDocs) {
       for (const doc of insertedDocs) {
         // We don't await this so the user doesn't wait for parsing
-        processDocumentContent(doc.id, company.id, doc.file_path).catch(err =>
+        processDocumentContent(doc.id, company.id, doc.filePath).catch(err =>
           console.error(`Async processing failed for ${doc.id}:`, err)
         )
       }
@@ -183,20 +161,14 @@ export async function completeOnboarding(
   // 4. Ensure company has either trial or subscription
   // If user doesn't have a subscription, automatically create a trial for this company
   try {
-    // Check if company already has a subscription or trial (company-level for Starter/Professional)
-    const { data: companySubData } = await adminSupabase
-      .rpc('check_company_subscription', { p_company_id: company.id })
-      .single()
+    const [companySubData, userSubData] = await Promise.all([
+      subscriptionRepository.getCompanySubscriptionState(company.id),
+      subscriptionRepository.getUserSubscriptionState(user.id),
+    ])
 
-    const companyHasSubscription = companySubData && (companySubData as any).has_subscription
-
-    // Check if user has Enterprise subscription (covers all companies)
-    const { data: userSubData } = await adminSupabase
-      .rpc('check_user_subscription', { target_user_id: user.id })
-      .single()
-
-    const userHasSubscription = userSubData && (userSubData as any).has_subscription
-    const userTier = userSubData ? (userSubData as any).tier : null
+    const companyHasSubscription = companySubData?.hasSubscription === true
+    const userHasSubscription = userSubData?.hasSubscription === true
+    const userTier = userSubData?.tier ?? null
     const isEnterprise = userTier === 'enterprise'
 
     // #region agent log
@@ -218,12 +190,15 @@ export async function completeOnboarding(
     if (!companyHasSubscription && !isEnterprise) {
       console.log('[completeOnboarding] Creating company-level trial for new company (not Enterprise):', company.id)
 
-      // Use RPC function to create company trial
-      const { data: trialData, error: trialError } = await adminSupabase
-        .rpc('create_company_trial', {
-          p_user_id: user.id,
-          p_company_id: company.id
-        })
+      let trialError: Error | null = null
+      let trialData: { created?: boolean } | null = null
+
+      try {
+        await subscriptionRepository.createCompanyTrial(user.id, company.id, user.canonicalId)
+        trialData = { created: true }
+      } catch (error: any) {
+        trialError = error
+      }
 
       // #region agent log
       console.log('[completeOnboarding] Trial creation result:', { trialData, trialError });
@@ -275,29 +250,27 @@ export async function updateCompany(
     throw new Error('Invalid company ID format')
   }
 
-  const supabase = await createClient()
-  const adminSupabase: any = createAdminClient()
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
-    throw new Error('Unauthorized')
-  }
+  const {
+    companyRepository,
+    directorRepository
+  } = createServerContainer()
+  const user = await requireCurrentUser()
 
   // Update Company in public schema
-  const updateData: any = {
+  const updateData: import('@/application/interfaces/CompanyRepository').UpdateCompanyInput = {
     name: formData.companyName,
     type: formData.companyType,
-    tax_id: formData.panNumber,
-    industry_categories: formData.industryCategories,
-    other_industry_category: formData.otherIndustryCategory,
+    taxId: formData.panNumber,
+    industryCategories: formData.industryCategories,
+    otherIndustryCategory: formData.otherIndustryCategory,
     address: formData.address,
     city: formData.city,
     state: formData.state,
-    pin_code: formData.pinCode,
-    phone_number: formData.phoneNumber,
+    pinCode: formData.pinCode,
+    phoneNumber: formData.phoneNumber,
     email: formData.email,
     landline: formData.landline,
-    other_info: formData.other
+    otherInfo: formData.other
   }
 
   // Add industries if provided
@@ -313,55 +286,46 @@ export async function updateCompany(
         .map((name: string) => name.trim())
         .filter((name: string) => name.length > 0)
       : null
-    updateData.ex_directors = exDirectorsArray
+    updateData.exDirectors = exDirectorsArray
   }
 
-  const { error: companyError } = await adminSupabase
-    .from('companies')
-    .update(updateData)
-    .eq('id', companyId)
-    .eq('user_id', user.id)
-
-  if (companyError) {
+  try {
+    await companyRepository.update(companyId, updateData)
+  } catch (companyError) {
     console.error('Company update error:', companyError)
-    throw new Error('Failed to update company: ' + companyError.message)
+    throw new Error('Failed to update company')
   }
 
   // Update directors if provided
   if (formData.directors !== undefined) {
     // First, delete all existing directors for this company
-    const { error: deleteError } = await adminSupabase
-      .from('directors')
-      .delete()
-      .eq('company_id', companyId)
-
-    if (deleteError) {
+    try {
+      await directorRepository.deleteByCompanyId(companyId)
+    } catch (deleteError) {
       console.error('Director deletion error:', deleteError)
       // Don't throw - continue with insert
     }
 
     // Then insert the new directors
     if (formData.directors.length > 0) {
-      const directorsToInsert = formData.directors.map((dir: any) => ({
-        company_id: companyId,
-        first_name: dir.firstName,
-        last_name: dir.lastName,
-        middle_name: dir.middleName || null,
-        director_id: dir.din || null,
-        designation: dir.designation || null,
-        dob: dir.dob || null,
-        tax_id: dir.pan || null,
-        email: dir.email || null,
-        mobile: dir.mobile || null,
-        is_verified: dir.verified || false,
-        source: dir.source || 'manual'
-      }))
-
-      const { error: dirError } = await adminSupabase
-        .from('directors')
-        .insert(directorsToInsert)
-
-      if (dirError) {
+      try {
+        await directorRepository.createMany(
+          formData.directors.map((dir: any) => ({
+            companyId: companyId,
+            firstName: dir.firstName,
+            lastName: dir.lastName,
+            middleName: dir.middleName || null,
+            din: dir.din || null,
+            designation: dir.designation || null,
+            dob: dir.dob || null,
+            pan: dir.pan || null,
+            email: dir.email || null,
+            mobile: dir.mobile || null,
+            isVerified: dir.verified || false,
+            source: dir.source || 'manual'
+          }))
+        )
+      } catch (dirError) {
         console.error('Director insertion error:', dirError)
         // Don't throw - company update succeeded
       }
@@ -378,42 +342,21 @@ export async function getCompanyDirectors(companyId: string) {
     return { success: false, directors: [], error: 'Invalid company ID format' }
   }
 
-  const supabase = await createClient()
-  const adminSupabase: any = createAdminClient()
+  const { directorRepository } = createServerContainer()
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
+  try {
+    await requireCurrentUser()
+  } catch {
     return { success: false, directors: [], error: 'Unauthorized' }
   }
 
-  const { data: directors, error } = await adminSupabase
-    .from('directors')
-    .select('*')
-    .eq('company_id', companyId)
-    .order('created_at', { ascending: true })
-
-  if (error) {
+  try {
+    const directors = await directorRepository.getByCompanyId(companyId)
+    return { success: true, directors }
+  } catch (error: any) {
     console.error('Error fetching directors:', error)
     return { success: false, directors: [], error: error.message }
   }
-
-  // Transform to match frontend Director interface
-  const transformedDirectors = (directors || []).map((dir: any) => ({
-    id: dir.id,
-    firstName: dir.first_name || '',
-    lastName: dir.last_name || '',
-    middleName: dir.middle_name || '',
-    din: dir.director_id || '',
-    designation: dir.designation || '',
-    dob: dir.dob || '',
-    pan: dir.tax_id || '',
-    email: dir.email || '',
-    mobile: dir.mobile || '',
-    verified: dir.is_verified || false,
-    source: (dir.source as 'cin' | 'din' | 'manual') || 'manual'
-  }))
-
-  return { success: true, directors: transformedDirectors }
 }
 
 export async function uploadDocument(
@@ -452,50 +395,35 @@ export async function uploadDocument(
     throw new Error('Invalid input: folder name, document name, or file name contains invalid characters')
   }
 
-  const supabase = await createClient()
-  const adminSupabase: any = createAdminClient()
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
-    throw new Error('Unauthorized')
-  }
+  const { documentRepository } = createServerContainer()
+  await requireCurrentUser()
 
   const embedding = await generateEmbedding(`${sanitizedDocumentName} ${sanitizedFileName}`)
 
-  const { data: insertedDoc, error } = await adminSupabase
-    .from('company_documents_internal')
-    .insert({
-      company_id: companyId,
-      document_type: sanitizedDocumentName,
-      folder_name: sanitizedFolderName,
-      registration_date: data.registrationDate || null,
-      expiry_date: data.expiryDate || null,
-      is_portal_required: data.isPortalRequired,
-      portal_email: data.portalEmail || null,
-      portal_password: data.portalPassword || null,
-      frequency: data.frequency,
-      file_path: data.filePath,
-      file_name: sanitizedFileName,
-      embedding: embedding.length > 0 ? embedding : null,
-      // Period metadata
-      period_type: data.periodType || null,
-      period_financial_year: data.periodFinancialYear || null,
-      period_key: data.periodKey || null,
-      period_start: data.periodStart || null,
-      period_end: data.periodEnd || null,
-      requirement_id: data.requirementId || null
-    })
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Document upload error:', error)
-    throw new Error('Failed to save document metadata: ' + error.message)
-  }
+  const [insertedDoc] = await documentRepository.createCompanyDocuments([{
+    companyId,
+    documentType: sanitizedDocumentName,
+    folderName: sanitizedFolderName,
+    registrationDate: data.registrationDate || null,
+    expiryDate: data.expiryDate || null,
+    isPortalRequired: data.isPortalRequired,
+    portalEmail: data.portalEmail || null,
+    portalPassword: data.portalPassword || null,
+    frequency: data.frequency,
+    filePath: data.filePath,
+    fileName: sanitizedFileName,
+    embedding: embedding.length > 0 ? embedding : null,
+    periodType: data.periodType || null,
+    periodFinancialYear: data.periodFinancialYear || null,
+    periodKey: data.periodKey || null,
+    periodStart: data.periodStart || null,
+    periodEnd: data.periodEnd || null,
+    requirementId: data.requirementId || null,
+  }])
 
   // Trigger content processing in background
   if (insertedDoc) {
-    processDocumentContent(insertedDoc.id, companyId, insertedDoc.file_path).catch(err =>
+    processDocumentContent(insertedDoc.id, companyId, insertedDoc.filePath).catch(err =>
       console.error(`Async processing failed for ${insertedDoc.id}:`, err)
     )
   }
@@ -503,18 +431,44 @@ export async function uploadDocument(
   return { success: true, documentId: insertedDoc?.id }
 }
 
-export async function getDownloadUrl(filePath: string) {
+export async function uploadFileToStorage(filePath: string, fileData: ArrayBuffer, contentType: string) {
   try {
-    const supabase = await createClient()
+    await requireCurrentUser()
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      throw new Error('Unauthorized')
+    // SECURITY: Sanitize filePath
+    const sanitizedFilePath = sanitizeStringInput(filePath, 1000)
+    if (!sanitizedFilePath) {
+      throw new Error('Invalid file path')
     }
 
-    const { data, error } = await supabase.storage
+    // Use admin client to bypass RLS for Passport users
+    const adminSupabase = createAdminClient()
+
+    const { error: uploadError } = await adminSupabase.storage
       .from('company-documents')
-      .createSignedUrl(filePath, 60) // 60 seconds expiry
+      .upload(sanitizedFilePath, fileData, {
+        contentType: contentType,
+        upsert: false, // Don't overwrite existing files
+      })
+
+    if (uploadError) throw uploadError
+    return { success: true }
+  } catch (err: any) {
+    console.error('Error uploading file to storage:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+export async function getDownloadUrl(filePath: string) {
+  try {
+    await requireCurrentUser()
+
+    // Use admin client to bypass RLS for Passport users
+    const adminSupabase = createAdminClient()
+
+    const { data, error } = await adminSupabase.storage
+      .from('company-documents')
+      .createSignedUrl(filePath, 3600) // 1 hour expiry for preview
 
     if (error) throw error
     return { success: true, url: data.signedUrl }
@@ -537,16 +491,14 @@ export async function deleteDocument(documentId: string, filePath: string) {
       throw new Error('Invalid file path')
     }
 
-    const supabase = await createClient()
-    const adminSupabase: any = createAdminClient()
+    const { documentRepository } = createServerContainer()
+    await requireCurrentUser()
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      throw new Error('Unauthorized')
-    }
+    // Use admin client to bypass RLS for Passport users
+    const adminSupabase = createAdminClient()
 
     // 1. Delete from Storage
-    const { error: storageError } = await supabase.storage
+    const { error: storageError } = await adminSupabase.storage
       .from('company-documents')
       .remove([sanitizedFilePath])
 
@@ -556,12 +508,7 @@ export async function deleteDocument(documentId: string, filePath: string) {
     }
 
     // 2. Delete from Metadata table
-    const { error: dbError } = await adminSupabase
-      .from('company_documents_internal')
-      .delete()
-      .eq('id', documentId)
-
-    if (dbError) throw dbError
+    await documentRepository.deleteCompanyDocument(documentId)
 
     return { success: true }
   } catch (err: any) {
@@ -572,23 +519,21 @@ export async function deleteDocument(documentId: string, filePath: string) {
 
 export async function getDocumentTemplates() {
   try {
-    const adminSupabase: any = createAdminClient()
-
-    const { data, error } = await adminSupabase
-      .from('document_templates_internal')
-      .select('*')
-      .order('folder_name', { ascending: true })
-
-    if (error) {
-      console.error('Supabase error fetching templates:', JSON.stringify(error, null, 2))
-      if (error.code === 'PGRST106' || error.message?.includes('does not exist')) {
-        return { success: true, templates: [] }
-      }
-      throw error
+    const { documentRepository } = createServerContainer()
+    const templates = await documentRepository.getTemplateMappings()
+    return {
+      success: true,
+      templates: templates.map(template => ({
+        document_name: template.documentName,
+        folder_name: template.folderName,
+        default_frequency: template.defaultFrequency,
+      })),
     }
-    return { success: true, templates: data || [] }
   } catch (err: any) {
     console.error('Error fetching templates:', err)
+    if (err?.code === 'PGRST106' || err?.message?.includes('does not exist')) {
+      return { success: true, templates: [] }
+    }
     return { success: false, templates: [] }
   }
 }
@@ -600,35 +545,63 @@ export async function getCompanyDocuments(companyId: string) {
       return { success: false, documents: [], error: 'Invalid company ID format' }
     }
 
-    const supabase = await createClient()
-    const adminSupabase: any = createAdminClient()
+    const { documentRepository, authService, accessService } = createServerContainer()
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
+    // Check authentication
+    const user = await authService.getCurrentUser()
+    if (!user) {
       return { success: false, documents: [], error: 'Unauthorized' }
     }
 
-    console.log('Fetching documents for company:', companyId)
-
-    // Fetch documents from internal table using admin client
-    const { data, error } = await adminSupabase
-      .from('company_documents_internal')
-      .select('*')
-      .eq('company_id', companyId)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Supabase error fetching documents:', JSON.stringify(error, null, 2))
-      // If the table doesn't exist, return empty instead of 500
-      if (error.code === 'PGRST106' || error.message?.includes('does not exist')) {
-        return { success: true, documents: [], warning: 'Storage table not found' }
-      }
-      return { success: false, documents: [], error: `Failed to fetch documents: ${error.message}` }
+    // Check access to company
+    console.log('[getCompanyDocuments] Checking access for user:', user.id, 'company:', companyId, 'isPassportUser:', !!user.canonicalId)
+    const accessSnapshot = await accessService.getCompanyAccessSnapshot(user.id, companyId)
+    console.log('[getCompanyDocuments] Access snapshot:', {
+      hasAccess: accessSnapshot.hasAccess,
+      accessType: accessSnapshot.accessType,
+      isOwner: accessSnapshot.isOwner,
+      ownerSubscriptionExpired: accessSnapshot.ownerSubscriptionExpired
+    })
+    
+    if (!accessSnapshot.hasAccess) {
+      console.log('[getCompanyDocuments] Access denied for user:', user.id, 'company:', companyId, 'reason:', {
+        accessType: accessSnapshot.accessType,
+        isOwner: accessSnapshot.isOwner,
+        ownerSubscriptionExpired: accessSnapshot.ownerSubscriptionExpired
+      })
+      return { success: false, documents: [], error: 'Access denied to this company' }
     }
 
-    return { success: true, documents: data || [] }
+    console.log('[getCompanyDocuments] Fetching documents for company:', companyId, 'user:', user.id)
+
+    const documents = await documentRepository.getCompanyDocuments(companyId)
+    console.log('[getCompanyDocuments] Found', documents.length, 'documents for company:', companyId)
+    
+    return {
+      success: true,
+      documents: documents.map(document => ({
+        id: document.id,
+        company_id: document.companyId,
+        document_type: document.documentType,
+        folder_name: document.folderName,
+        file_path: document.filePath,
+        file_name: document.fileName,
+        created_at: document.createdAt,
+        registration_date: document.registrationDate || null,
+        expiry_date: document.expiryDate || null,
+        period_type: document.periodType || null,
+        period_financial_year: document.periodFinancialYear || null,
+        period_key: document.periodKey || null,
+        period_start: document.periodStart || null,
+        period_end: document.periodEnd || null,
+        requirement_id: document.requirementId || null,
+      })),
+    }
   } catch (err: any) {
-    console.error('Outer error in getCompanyDocuments:', err)
+    console.error('[getCompanyDocuments] Error:', err)
+    if (err?.code === 'PGRST106' || err?.message?.includes('does not exist')) {
+      return { success: true, documents: [], warning: 'Storage table not found' }
+    }
     return { success: false, error: err.message, documents: [] }
   }
 }

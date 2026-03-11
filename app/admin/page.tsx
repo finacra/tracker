@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import SubtleCircuitBackground from '@/components/ui/SubtleCircuitBackground'
@@ -12,7 +12,8 @@ import { useComplianceCategories } from '@/hooks/useComplianceCategories'
 import UsersManagement from '@/components/admin/UsersManagement'
 import AllUsersManagement from '@/components/admin/AllUsersManagement'
 import TransactionHistory from '@/components/admin/TransactionHistory'
-import { explainKPIData, chatWithKPIData, type KPIAggregation, type KPIMetric } from '@/app/admin/tracking/actions'
+import { explainKPIData, chatWithKPIData, getKPIAggregations, getKPIMetrics, type KPIAggregation, type KPIMetric } from '@/app/admin/tracking/actions'
+import { checkSuperadminStatus, getAllCompaniesForAdmin } from '@/app/admin/actions'
 import { InlineMath, BlockMath } from 'react-katex'
 import 'katex/dist/katex.min.css'
 import {
@@ -27,28 +28,32 @@ import {
   type FolderInfo,
   type DocumentTemplate,
 } from '@/app/admin/vault/actions'
+import CountrySelector from '@/components/features/CountrySelector'
 import {
   parseFolderPath,
   buildBreadcrumb,
   getFolderName,
   getParentPath,
 } from '@/lib/vault/folder-utils'
-import { 
-  FIXED_COSTS, 
-  CAPEX_YEAR_1, 
-  calculateBreakEven, 
+import {
+  FIXED_COSTS,
+  CAPEX_YEAR_1,
+  calculateBreakEven,
   calculateFinancialMetrics,
   calculateProfitability,
   formatCurrency,
   formatPercent,
-  type CustomerMix 
+  type CustomerMix
 } from '@/lib/pricing/calculator'
 
 interface Company {
   id: string
   name: string
   type: string
-  incorporation_date: string
+  incorporation_date: string | null
+  country_code: string | null
+  region: null
+  created_at: null
   user_id: string
 }
 
@@ -62,11 +67,50 @@ interface Requirement {
   company_name?: string
 }
 
+const superadminStatusCache = new Map<string, boolean>()
+const superadminStatusPromiseCache = new Map<string, Promise<boolean>>()
+
+async function resolveSuperadminStatus(userId: string): Promise<boolean> {
+  if (superadminStatusCache.has(userId)) {
+    return superadminStatusCache.get(userId) ?? false
+  }
+
+  const inFlight = superadminStatusPromiseCache.get(userId)
+  if (inFlight) {
+    return inFlight
+  }
+
+  const request = (async () => {
+    try {
+      const result = await checkSuperadminStatus()
+      if (!result.success) {
+        console.error(`[AdminPage] Error checking superadmin:`, result.error)
+        return false
+      }
+
+      const isPlatformSuperadmin = result.isSuperadmin
+      superadminStatusCache.set(userId, isPlatformSuperadmin)
+      return isPlatformSuperadmin
+    } catch (error) {
+      console.error(`[AdminPage] Error checking superadmin:`, error)
+      return false
+    }
+  })().finally(() => {
+    superadminStatusPromiseCache.delete(userId)
+  })
+
+  superadminStatusPromiseCache.set(userId, request)
+  return request
+}
+
 export default function AdminPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const supabase = createClient()
-  
+  const checkedSuperadminUserRef = useRef<string | null>(null)
+  const checkingSuperadminUserRef = useRef<string | null>(null)
+  const dataFetchedRef = useRef<string | null>(null)
+  const dataFetchingRef = useRef<string | null>(null)
+
   const [isLoading, setIsLoading] = useState(true)
   const [isSuperadmin, setIsSuperadmin] = useState(false)
   const [companies, setCompanies] = useState<Company[]>([])
@@ -80,10 +124,10 @@ export default function AdminPage() {
   const [isDeletingTemplates, setIsDeletingTemplates] = useState(false)
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<ComplianceTemplate | null>(null)
-  
+
   // Fetch compliance categories from database
   const { categories: complianceCategories, isLoading: categoriesLoading } = useComplianceCategories('IN')
-  
+
   const [templateForm, setTemplateForm] = useState({
     category: '',
     requirement: '',
@@ -101,6 +145,8 @@ export default function AdminPage() {
     due_date: '',
     year_type: 'FY' as 'FY' | 'CY',  // Financial Year (India) or Calendar Year (Gulf/USA)
     is_active: true,
+    country_code: 'IN' as string,  // Default to India
+    applicable_regions: [] as string[],  // For multi-country templates
     // New fields for V2
     required_documents: [] as string[],
     possible_legal_action: '',
@@ -139,108 +185,77 @@ export default function AdminPage() {
         return
       }
 
-      setIsLoading(true)
-      let retryCount = 0
-      const maxRetries = 3
-      const retryDelay = 1000
-
-      const attemptCheck = async (attempt: number): Promise<void> => {
-        try {
-          console.log(`[AdminPage] Checking superadmin status (attempt ${attempt + 1}/${maxRetries + 1}) for user:`, user.id)
-          
-          // Try RPC function first
-          const { data: rpcData, error: rpcError } = await supabase.rpc('is_superadmin', {
-            p_user_id: user.id
-          })
-
-          if (!rpcError && rpcData !== null) {
-            console.log('[AdminPage] RPC result:', rpcData)
-            if (rpcData) {
-              console.log('[AdminPage] User is superadmin, setting state and loading data')
-              setIsSuperadmin(true)
-              setIsLoading(false)
-              await loadData()
-            } else {
-              console.log('[AdminPage] User is not superadmin (RPC returned false), redirecting to data-room')
-              setIsLoading(false)
-              router.push('/data-room')
-            }
-            return
-          }
-
-          // Fallback: Direct query
-          console.log('[AdminPage] RPC failed, falling back to direct query. Error:', rpcError)
-          const { data, error } = await supabase
-            .from('user_roles')
-            .select('role, company_id')
-            .eq('user_id', user.id)
-            .eq('role', 'superadmin')
-
-          if (error) {
-            console.error(`[AdminPage] Query error (attempt ${attempt + 1}):`, error)
-            throw error
-          }
-
-          console.log('[AdminPage] Query result:', data)
-          const isPlatformSuperadmin = data && data.some(role => role.company_id === null)
-          console.log('[AdminPage] Is platform superadmin:', isPlatformSuperadmin)
-
-          if (isPlatformSuperadmin) {
-            console.log('[AdminPage] User is superadmin (direct query), setting state and loading data')
-            setIsSuperadmin(true)
-            setIsLoading(false)
-            await loadData()
-          } else {
-            console.log('[AdminPage] User is not superadmin (no platform superadmin role found), redirecting to data-room')
-            setIsLoading(false)
-            router.push('/data-room')
-          }
-        } catch (error: any) {
-          console.error(`[AdminPage] Error checking superadmin (attempt ${attempt + 1}):`, error)
-          
-          if (attempt < maxRetries) {
-            console.log(`[AdminPage] Retrying in ${retryDelay}ms...`)
-            await new Promise(resolve => setTimeout(resolve, retryDelay))
-            return attemptCheck(attempt + 1)
-          } else {
-            console.error('[AdminPage] Max retries reached, redirecting to data-room')
-            setIsLoading(false)
-            router.push('/data-room')
-          }
-        }
+      if (checkedSuperadminUserRef.current === user.id) {
+        return
       }
 
-      await attemptCheck(0)
+      if (checkingSuperadminUserRef.current === user.id) {
+        return
+      }
+
+      setIsLoading(true)
+      checkingSuperadminUserRef.current = user.id
+
+      try {
+        const isPlatformSuperadmin = await resolveSuperadminStatus(user.id)
+
+        if (isPlatformSuperadmin) {
+          console.log('[AdminPage] User is superadmin, setting state and loading data')
+          checkedSuperadminUserRef.current = user.id
+          setIsSuperadmin(true)
+          setIsLoading(false)
+          await loadData()
+        } else {
+          console.log('[AdminPage] User is not superadmin, redirecting to data-room')
+          setIsLoading(false)
+          router.push('/data-room')
+        }
+      } finally {
+        if (checkingSuperadminUserRef.current === user.id) {
+          checkingSuperadminUserRef.current = null
+        }
+      }
     }
 
     if (user) {
       checkSuperadmin()
+    } else if (!isLoading) {
+      setIsLoading(true) // Ensure we show loading if auth is lost
     }
-  }, [user, router, supabase])
+  }, [user, router, isLoading])
 
   const loadData = async () => {
-    try {
-      // Load all companies
-      const { data: companiesData, error: companiesError } = await supabase
-        .from('companies')
-        .select('*')
-        .order('created_at', { ascending: false })
+    if (!user) return
+    if (dataFetchedRef.current === user.id) return
+    if (dataFetchingRef.current === user.id) return
 
-      if (companiesError) throw companiesError
-      setCompanies(companiesData || [])
+    dataFetchingRef.current = user.id
+    try {
+      // Load all companies via server action (works for both Supabase and Passport users)
+      const result = await getAllCompaniesForAdmin()
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to load companies')
+      }
+      
+      setCompanies(result.companies || [])
+      const companiesData = result.companies || []
 
       // Load all requirements
-      const result = await getRegulatoryRequirements(null) // null = all companies for superadmin
-      if (result.success && result.requirements) {
+      const requirementsResult = await getRegulatoryRequirements(null) // null = all companies for superadmin
+      if (requirementsResult.success && requirementsResult.requirements) {
         // Enrich with company names
-        const enriched = result.requirements.map(req => ({
+        const enriched = requirementsResult.requirements.map(req => ({
           ...req,
           company_name: companiesData?.find(c => c.id === req.company_id)?.name || 'Unknown'
         }))
         setAllRequirements(enriched)
       }
+      dataFetchedRef.current = user.id
     } catch (error) {
       console.error('Error loading data:', error)
+    } finally {
+      dataFetchingRef.current = null
     }
   }
 
@@ -263,7 +278,7 @@ export default function AdminPage() {
     setIsLoadingVaultFolders(true)
     try {
       console.log('[ADMIN VAULT] Loading vault folders')
-      
+
       const foldersResult = await getFolders()
 
       console.log('[ADMIN VAULT] Folders result:', {
@@ -290,7 +305,7 @@ export default function AdminPage() {
     setIsLoadingVaultTemplates(true)
     try {
       console.log('[ADMIN VAULT] Loading vault templates for folder:', folderPath)
-      
+
       const templatesResult = await getDocumentTemplates(folderPath)
 
       console.log('[ADMIN VAULT] Templates result:', {
@@ -356,7 +371,7 @@ export default function AdminPage() {
     setIsCreatingVaultFolder(true)
     try {
       const parentPath = getParentPath(editingVaultFolder.path)
-      const newPath = parentPath 
+      const newPath = parentPath
         ? `${parentPath}/${vaultFolderForm.name.trim()}`
         : vaultFolderForm.name.trim()
 
@@ -520,9 +535,8 @@ export default function AdminPage() {
       return (
         <div key={folder.path}>
           <div
-            className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors ${
-              isSelected ? 'bg-primary-orange/20 border border-primary-orange/50' : ''
-            }`}
+            className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors ${isSelected ? 'bg-primary-orange/20 border border-primary-orange/50' : ''
+              }`}
             style={{ paddingLeft: `${level * 20 + 8}px` }}
             onClick={() => setSelectedFolderPath(folder.path)}
           >
@@ -660,8 +674,8 @@ export default function AdminPage() {
     return null // Will redirect
   }
 
-  const filteredRequirements = selectedCompany === 'all' 
-    ? allRequirements 
+  const filteredRequirements = selectedCompany === 'all'
+    ? allRequirements
     : allRequirements.filter(r => r.company_id === selectedCompany)
 
   const stats = {
@@ -686,11 +700,10 @@ export default function AdminPage() {
         <div className="flex items-center gap-2 mb-8">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${
-              activeTab === 'overview'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
-            }`}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'overview'
+              ? 'border-primary-orange bg-primary-orange/20 text-white'
+              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="7" height="7" />
@@ -702,11 +715,10 @@ export default function AdminPage() {
           </button>
           <button
             onClick={() => setActiveTab('companies')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${
-              activeTab === 'companies'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
-            }`}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'companies'
+              ? 'border-primary-orange bg-primary-orange/20 text-white'
+              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -716,11 +728,10 @@ export default function AdminPage() {
           </button>
           <button
             onClick={() => setActiveTab('compliances')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${
-              activeTab === 'compliances'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
-            }`}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'compliances'
+              ? 'border-primary-orange bg-primary-orange/20 text-white'
+              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -729,11 +740,10 @@ export default function AdminPage() {
           </button>
           <button
             onClick={() => setActiveTab('templates')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${
-              activeTab === 'templates'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
-            }`}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'templates'
+              ? 'border-primary-orange bg-primary-orange/20 text-white'
+              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -746,11 +756,10 @@ export default function AdminPage() {
           </button>
           <button
             onClick={() => setActiveTab('subscriptions')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${
-              activeTab === 'subscriptions'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
-            }`}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'subscriptions'
+              ? 'border-primary-orange bg-primary-orange/20 text-white'
+              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
@@ -760,11 +769,10 @@ export default function AdminPage() {
           </button>
           <button
             onClick={() => setActiveTab('allusers')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${
-              activeTab === 'allusers'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
-            }`}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'allusers'
+              ? 'border-primary-orange bg-primary-orange/20 text-white'
+              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -776,11 +784,10 @@ export default function AdminPage() {
           </button>
           <button
             onClick={() => setActiveTab('financials')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${
-              activeTab === 'financials'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
-            }`}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'financials'
+              ? 'border-primary-orange bg-primary-orange/20 text-white'
+              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="12" y1="1" x2="12" y2="23" />
@@ -790,11 +797,10 @@ export default function AdminPage() {
           </button>
           <button
             onClick={() => setActiveTab('transactions')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${
-              activeTab === 'transactions'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
-            }`}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'transactions'
+              ? 'border-primary-orange bg-primary-orange/20 text-white'
+              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -807,11 +813,10 @@ export default function AdminPage() {
           </button>
           <button
             onClick={() => setActiveTab('vault')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${
-              activeTab === 'vault'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
-            }`}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'vault'
+              ? 'border-primary-orange bg-primary-orange/20 text-white'
+              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
@@ -822,11 +827,10 @@ export default function AdminPage() {
           </button>
           <button
             onClick={() => setActiveTab('kpis')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${
-              activeTab === 'kpis'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
-            }`}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'kpis'
+              ? 'border-primary-orange bg-primary-orange/20 text-white'
+              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="12" y1="20" x2="12" y2="10" />
@@ -837,11 +841,10 @@ export default function AdminPage() {
           </button>
           <button
             onClick={() => setActiveTab('tracking')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${
-              activeTab === 'tracking'
-                ? 'border-primary-orange bg-primary-orange/20 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
-            }`}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'tracking'
+              ? 'border-primary-orange bg-primary-orange/20 text-white'
+              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
@@ -927,7 +930,7 @@ export default function AdminPage() {
                       <td className="px-6 py-4 text-white font-medium">{company.name}</td>
                       <td className="px-6 py-4 text-gray-300">{company.type}</td>
                       <td className="px-6 py-4 text-gray-300">
-                        {new Date(company.incorporation_date).toLocaleDateString()}
+                        {company.incorporation_date ? new Date(company.incorporation_date).toLocaleDateString() : 'N/A'}
                       </td>
                       <td className="px-6 py-4">
                         <button
@@ -985,12 +988,11 @@ export default function AdminPage() {
                         <td className="px-6 py-4 text-gray-300">{req.category}</td>
                         <td className="px-6 py-4 text-white">{req.requirement}</td>
                         <td className="px-6 py-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            req.status === 'completed' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${req.status === 'completed' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
                             req.status === 'overdue' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                            req.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
-                            'bg-gray-800 text-gray-400 border border-gray-700'
-                          }`}>
+                              req.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                                'bg-gray-800 text-gray-400 border border-gray-700'
+                            }`}>
                             {req.status.toUpperCase()}
                           </span>
                         </td>
@@ -1028,12 +1030,12 @@ export default function AdminPage() {
                   className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
                   title="Refresh templates list"
                 >
-                  <svg 
-                    width="16" 
-                    height="16" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
                     strokeWidth="2"
                     className={isLoadingTemplates ? 'animate-spin' : ''}
                   >
@@ -1081,98 +1083,100 @@ export default function AdminPage() {
                     </>
                   )}
                 </button>
-              <button
-                onClick={() => {
-                  setTemplateForm({
-                    category: '',
-                    requirement: '',
-                    description: '',
-                    compliance_type: 'one-time',
-                    entity_types: [],
-                    industries: [],
-                    industry_categories: [],
-                    penalty: '',
-                    is_critical: false,
-                    financial_year: '',
-                    due_date_offset: undefined,
-                    due_month: undefined,
-                    due_day: undefined,
-                    due_date: '',
-                    year_type: 'FY',
-                    is_active: true,
-                    required_documents: [],
-                    possible_legal_action: '',
-                    required_documents_input: ''
-                  })
-                  setEditingTemplate(null)
-                  setIsTemplateModalOpen(true)
-                }}
-                className="bg-primary-orange text-white px-6 py-3 rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2 font-medium"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                Add Template
-              </button>
-              <button
-                onClick={() => window.open('/admin/bulk-upload', '_blank')}
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-medium"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-                Bulk Upload
-              </button>
-              {selectedTemplates.length > 0 && (
                 <button
-                  onClick={async () => {
-                    if (!confirm(`Are you sure you want to delete ${selectedTemplates.length} template(s) and their associated compliance requirements? This action cannot be undone.`)) {
-                      return
-                    }
-                    setIsDeletingTemplates(true)
-                    let deletedCount = 0
-                    let errorCount = 0
-                    for (const templateId of selectedTemplates) {
-                      const result = await deleteComplianceTemplate(templateId, true) // true = also delete requirements
-                      if (result.success) {
-                        deletedCount++
-                      } else {
-                        errorCount++
-                        console.error('Failed to delete template:', templateId, result.error)
-                      }
-                    }
-                    // Refresh templates
-                    const fetchedTemplates = await getComplianceTemplates()
-                    if (fetchedTemplates.success && fetchedTemplates.templates) {
-                      setTemplates(fetchedTemplates.templates)
-                    }
-                    setSelectedTemplates([])
-                    setIsDeletingTemplates(false)
-                    alert(`Deleted ${deletedCount} template(s)${errorCount > 0 ? `. ${errorCount} failed.` : ''}`)
+                  onClick={() => {
+                    setTemplateForm({
+                      category: '',
+                      requirement: '',
+                      description: '',
+                      compliance_type: 'one-time',
+                      entity_types: [],
+                      industries: [],
+                      industry_categories: [],
+                      penalty: '',
+                      is_critical: false,
+                      financial_year: '',
+                      due_date_offset: undefined,
+                      due_month: undefined,
+                      due_day: undefined,
+                      due_date: '',
+                      year_type: 'FY',
+                      is_active: true,
+                      country_code: 'IN',
+                      applicable_regions: [],
+                      required_documents: [],
+                      possible_legal_action: '',
+                      required_documents_input: ''
+                    })
+                    setEditingTemplate(null)
+                    setIsTemplateModalOpen(true)
                   }}
-                  disabled={isDeletingTemplates}
-                  className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 font-medium disabled:opacity-50"
+                  className="bg-primary-orange text-white px-6 py-3 rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center gap-2 font-medium"
                 >
-                  {isDeletingTemplates ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                        <line x1="10" y1="11" x2="10" y2="17" />
-                        <line x1="14" y1="11" x2="14" y2="17" />
-                      </svg>
-                      Delete {selectedTemplates.length} Selected
-                    </>
-                  )}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Add Template
                 </button>
-              )}
+                <button
+                  onClick={() => window.open('/admin/bulk-upload', '_blank')}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-medium"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  Bulk Upload
+                </button>
+                {selectedTemplates.length > 0 && (
+                  <button
+                    onClick={async () => {
+                      if (!confirm(`Are you sure you want to delete ${selectedTemplates.length} template(s) and their associated compliance requirements? This action cannot be undone.`)) {
+                        return
+                      }
+                      setIsDeletingTemplates(true)
+                      let deletedCount = 0
+                      let errorCount = 0
+                      for (const templateId of selectedTemplates) {
+                        const result = await deleteComplianceTemplate(templateId, true) // true = also delete requirements
+                        if (result.success) {
+                          deletedCount++
+                        } else {
+                          errorCount++
+                          console.error('Failed to delete template:', templateId, result.error)
+                        }
+                      }
+                      // Refresh templates
+                      const fetchedTemplates = await getComplianceTemplates()
+                      if (fetchedTemplates.success && fetchedTemplates.templates) {
+                        setTemplates(fetchedTemplates.templates)
+                      }
+                      setSelectedTemplates([])
+                      setIsDeletingTemplates(false)
+                      alert(`Deleted ${deletedCount} template(s)${errorCount > 0 ? `. ${errorCount} failed.` : ''}`)
+                    }}
+                    disabled={isDeletingTemplates}
+                    className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 font-medium disabled:opacity-50"
+                  >
+                    {isDeletingTemplates ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                          <line x1="10" y1="11" x2="10" y2="17" />
+                          <line x1="14" y1="11" x2="14" y2="17" />
+                        </svg>
+                        Delete {selectedTemplates.length} Selected
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1249,7 +1253,7 @@ export default function AdminPage() {
                               {template.required_documents && template.required_documents.length > 0 ? (
                                 <div className="flex flex-wrap gap-1">
                                   {template.required_documents.slice(0, 2).map((doc, idx) => (
-                                    <span 
+                                    <span
                                       key={idx}
                                       className="px-2 py-0.5 text-xs rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30"
                                       title={doc}
@@ -1268,8 +1272,8 @@ export default function AdminPage() {
                             <td className="px-6 py-4 text-gray-300 text-sm">
                               {template.entity_types && template.entity_types.length > 0 ? (
                                 <>
-                              {template.entity_types.slice(0, 2).join(', ')}
-                              {template.entity_types.length > 2 && ` +${template.entity_types.length - 2}`}
+                                  {template.entity_types.slice(0, 2).join(', ')}
+                                  {template.entity_types.length > 2 && ` +${template.entity_types.length - 2}`}
                                 </>
                               ) : (
                                 <span className="text-gray-500">All entities</span>
@@ -1278,8 +1282,8 @@ export default function AdminPage() {
                             <td className="px-6 py-4 text-gray-300 text-sm">
                               {template.industries && template.industries.length > 0 ? (
                                 <>
-                              {template.industries.slice(0, 2).join(', ')}
-                              {template.industries.length > 2 && ` +${template.industries.length - 2}`}
+                                  {template.industries.slice(0, 2).join(', ')}
+                                  {template.industries.length > 2 && ` +${template.industries.length - 2}`}
                                 </>
                               ) : (
                                 <span className="text-gray-500">All industries</span>
@@ -1287,11 +1291,10 @@ export default function AdminPage() {
                             </td>
                             <td className="px-6 py-4 text-gray-300 text-center">{template.matching_companies_count || 0}</td>
                             <td className="px-6 py-4">
-                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                template.is_active 
-                                  ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                  : 'bg-gray-800 text-gray-400 border border-gray-700'
-                              }`}>
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${template.is_active
+                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                : 'bg-gray-800 text-gray-400 border border-gray-700'
+                                }`}>
                                 {template.is_active ? 'Active' : 'Inactive'}
                               </span>
                             </td>
@@ -1317,6 +1320,8 @@ export default function AdminPage() {
                                       due_date: template.due_date || '',
                                       year_type: (template as any).year_type || 'FY',
                                       is_active: template.is_active,
+                                      country_code: (template as any).country_code || 'IN',
+                                      applicable_regions: (template as any).applicable_regions || [],
                                       required_documents: (template as any).required_documents || [],
                                       possible_legal_action: (template as any).possible_legal_action || '',
                                       required_documents_input: ''
@@ -1385,15 +1390,15 @@ export default function AdminPage() {
         )}
 
         {activeTab === 'subscriptions' && (
-          <UsersManagement supabase={supabase} companies={companies} />
+          <UsersManagement companies={companies} />
         )}
 
         {activeTab === 'allusers' && (
-          <AllUsersManagement supabase={supabase} companies={companies} />
+          <AllUsersManagement companies={companies} />
         )}
 
         {activeTab === 'transactions' && (
-          <TransactionHistory supabase={supabase} />
+          <TransactionHistory />
         )}
 
         {activeTab === 'financials' && (
@@ -1703,6 +1708,8 @@ export default function AdminPage() {
                         due_date: '',
                         year_type: 'FY',
                         is_active: true,
+                        country_code: 'IN',
+                        applicable_regions: [],
                         required_documents: [],
                         possible_legal_action: '',
                         required_documents_input: ''
@@ -1780,6 +1787,21 @@ export default function AdminPage() {
                     <option value="quarterly">Quarterly</option>
                     <option value="annual">Annual</option>
                   </select>
+                </div>
+
+                {/* Country Code */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Country *
+                  </label>
+                  <CountrySelector
+                    value={templateForm.country_code}
+                    onChange={(countryCode) => setTemplateForm(prev => ({ ...prev, country_code: countryCode }))}
+                    className="w-full"
+                  />
+                  <p className="mt-1 text-xs text-gray-400">
+                    Select the country where this compliance template applies. Defaults to India (IN).
+                  </p>
                 </div>
 
                 {/* Year Type - Show for quarterly, annual, and monthly compliance */}
@@ -2260,11 +2282,13 @@ export default function AdminPage() {
                             due_date: '',
                             year_type: 'FY',
                             is_active: true,
+                            country_code: 'IN',
+                            applicable_regions: [],
                             required_documents: [],
                             possible_legal_action: '',
                             required_documents_input: ''
                           })
-                          alert(editingTemplate 
+                          alert(editingTemplate
                             ? `Template updated successfully. Applied to ${result.applied_count || 0} companies.`
                             : `Template created successfully. Applied to ${result.applied_count || 0} companies.`
                           )
@@ -2349,9 +2373,8 @@ export default function AdminPage() {
                     {/* Root level button */}
                     <button
                       onClick={() => setSelectedFolderPath(null)}
-                      className={`w-full flex items-center gap-2 p-2 rounded-lg hover:bg-gray-800 transition-colors mb-2 ${
-                        selectedFolderPath === null ? 'bg-primary-orange/20 border border-primary-orange/50' : ''
-                      }`}
+                      className={`w-full flex items-center gap-2 p-2 rounded-lg hover:bg-gray-800 transition-colors mb-2 ${selectedFolderPath === null ? 'bg-primary-orange/20 border border-primary-orange/50' : ''
+                        }`}
                     >
                       <svg
                         width="16"
@@ -2678,7 +2701,7 @@ export default function AdminPage() {
 
         {/* Tracking System Tab */}
         {activeTab === 'tracking' && (
-          <TrackingSystemTab supabase={supabase} />
+          <TrackingSystemTab />
         )}
 
       </div>
@@ -2731,6 +2754,7 @@ const KPI_DATA: KPI[] = [
 
 // KPIs Tab Component
 function KPIsTab() {
+  const { user } = useAuth()
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -2740,7 +2764,7 @@ function KPIsTab() {
   // Filter KPIs
   const filteredKPIs = KPI_DATA.filter(kpi => {
     const matchesCategory = selectedCategory === 'All' || kpi.category === selectedCategory
-    const matchesSearch = searchQuery === '' || 
+    const matchesSearch = searchQuery === '' ||
       kpi.kpi.toLowerCase().includes(searchQuery.toLowerCase()) ||
       kpi.formula.toLowerCase().includes(searchQuery.toLowerCase()) ||
       kpi.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -2825,7 +2849,9 @@ function KPIsTab() {
 }
 
 // Tracking System Tab Component
-function TrackingSystemTab({ supabase }: { supabase: any }) {
+function TrackingSystemTab() {
+  const { user } = useAuth()
+  const supabase = createClient()
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
   const [selectedKPI, setSelectedKPI] = useState<string>('All')
   const [selectedCompany, setSelectedCompany] = useState<string>('All')
@@ -2854,7 +2880,7 @@ function TrackingSystemTab({ supabase }: { supabase: any }) {
     let lastIndex = 0
     const inlineMathRegex = /\$([^$]+)\$/g
     const blockMathRegex = /\$\$([^$]+)\$\$/g
-    
+
     // First handle block math ($$...$$)
     const blockMatches = Array.from(text.matchAll(blockMathRegex))
     blockMatches.forEach((match) => {
@@ -2873,13 +2899,13 @@ function TrackingSystemTab({ supabase }: { supabase: any }) {
         lastIndex = match.index + match[0].length
       }
     })
-    
+
     // Add remaining text
     if (lastIndex < text.length) {
       const remainingText = text.substring(lastIndex)
       parts.push(renderInlineMath(remainingText))
     }
-    
+
     return parts.length > 0 ? parts : [text]
   }
 
@@ -2889,7 +2915,7 @@ function TrackingSystemTab({ supabase }: { supabase: any }) {
     let lastIndex = 0
     const inlineMathRegex = /\$([^$]+)\$/g
     const matches = Array.from(text.matchAll(inlineMathRegex))
-    
+
     matches.forEach((match) => {
       if (match.index !== undefined) {
         // Add text before match
@@ -2905,33 +2931,33 @@ function TrackingSystemTab({ supabase }: { supabase: any }) {
         lastIndex = match.index + match[0].length
       }
     })
-    
+
     // Add remaining text
     if (lastIndex < text.length) {
       parts.push(text.substring(lastIndex))
     }
-    
+
     return parts.length > 0 ? parts : [text]
   }
 
-  // Load companies
+  // Load companies via server action (works for both Supabase and Passport users)
   useEffect(() => {
     async function loadCompanies() {
+      if (!user) return
+      
       try {
-        const { data, error } = await supabase
-          .from('companies')
-          .select('id, name')
-          .order('name')
+        const result = await getAllCompaniesForAdmin()
         
-        if (!error && data) {
-          setCompanies(data)
+        if (result.success && result.companies) {
+          // Set companies for KPI filters (only need id and name)
+          setCompanies(result.companies.map(c => ({ id: c.id, name: c.name })))
         }
       } catch (error) {
         console.error('Error loading companies:', error)
       }
     }
     loadCompanies()
-  }, [supabase])
+  }, [user])
 
   // Load aggregations
   useEffect(() => {
@@ -2939,68 +2965,25 @@ function TrackingSystemTab({ supabase }: { supabase: any }) {
       setIsLoading(true)
       try {
         const endDate = new Date().toISOString()
-        const startDate = dateRange === 'all' 
-          ? undefined 
+        const startDate = dateRange === 'all'
+          ? undefined
           : new Date(Date.now() - (dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90) * 24 * 60 * 60 * 1000).toISOString()
 
-        let query = supabase
-          .from('kpi_metrics')
-          .select('*')
+        // Use server action instead of direct Supabase query (works for both Supabase and Passport users)
+        const result = await getKPIAggregations(
+          selectedCategory !== 'All' ? selectedCategory : undefined,
+          selectedKPI !== 'All' ? selectedKPI : undefined,
+          startDate,
+          endDate,
+          selectedCompany !== 'All' ? selectedCompany : undefined
+        )
 
-        if (startDate) {
-          query = query.gte('recorded_at', startDate)
-        }
-        if (selectedCategory !== 'All') {
-          query = query.eq('category', selectedCategory)
-        }
-        if (selectedKPI !== 'All') {
-          query = query.eq('kpi_name', selectedKPI)
-        }
-        if (selectedCompany !== 'All') {
-          query = query.eq('company_id', selectedCompany)
-        }
-
-        const { data, error } = await query
-
-        if (error) {
-          console.error('Error loading aggregations:', error)
+        if (!result.success || !result.data) {
+          console.error('Error loading aggregations:', result.error)
           setAggregations([])
-        } else if (data) {
-          // Aggregate the data
-          const aggregated = data.reduce((acc: any, metric: any) => {
-            const key = `${metric.category}::${metric.kpi_name}`
-            if (!acc[key]) {
-              acc[key] = {
-                kpi_name: metric.kpi_name,
-                category: metric.category,
-                values: [],
-                user_ids: new Set(),
-                company_ids: new Set(),
-                last_recorded: metric.recorded_at,
-              }
-            }
-            acc[key].values.push(metric.metric_value)
-            if (metric.user_id) acc[key].user_ids.add(metric.user_id)
-            if (metric.company_id) acc[key].company_ids.add(metric.company_id)
-            if (new Date(metric.recorded_at) > new Date(acc[key].last_recorded)) {
-              acc[key].last_recorded = metric.recorded_at
-            }
-            return acc
-          }, {})
-
-          const result = Object.values(aggregated).map((agg: any) => ({
-            kpi_name: agg.kpi_name,
-            category: agg.category,
-            total_count: agg.values.length,
-            average_value: agg.values.reduce((a: number, b: number) => a + b, 0) / agg.values.length,
-            min_value: Math.min(...agg.values),
-            max_value: Math.max(...agg.values),
-            last_recorded: agg.last_recorded,
-            user_count: agg.user_ids.size,
-            company_count: agg.company_ids.size,
-          }))
-
-          setAggregations(result)
+        } else {
+          // Server action already returns aggregated data
+          setAggregations(result.data)
         }
       } catch (error) {
         console.error('Error loading aggregations:', error)
@@ -3010,7 +2993,7 @@ function TrackingSystemTab({ supabase }: { supabase: any }) {
       }
     }
     loadAggregations()
-  }, [selectedCategory, selectedKPI, selectedCompany, dateRange, supabase])
+  }, [selectedCategory, selectedKPI, selectedCompany, dateRange])
 
   // Handle chat submission
   const handleChatSubmit = async () => {
@@ -3027,31 +3010,20 @@ function TrackingSystemTab({ supabase }: { supabase: any }) {
     try {
       // Get sample metrics for context
       const endDate = new Date().toISOString()
-      const startDate = dateRange === 'all' 
-        ? undefined 
+      const startDate = dateRange === 'all'
+        ? undefined
         : new Date(Date.now() - (dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90) * 24 * 60 * 60 * 1000).toISOString()
-      
-      let metricsQuery = supabase
-        .from('kpi_metrics')
-        .select('*')
-        .order('recorded_at', { ascending: false })
-        .limit(50)
-      
-      if (startDate) {
-        metricsQuery = metricsQuery.gte('recorded_at', startDate)
-      }
-      if (selectedCategory !== 'All') {
-        metricsQuery = metricsQuery.eq('category', selectedCategory)
-      }
-      if (selectedKPI !== 'All') {
-        metricsQuery = metricsQuery.eq('kpi_name', selectedKPI)
-      }
-      if (selectedCompany !== 'All') {
-        metricsQuery = metricsQuery.eq('company_id', selectedCompany)
-      }
-      
-      const { data: sampleMetrics } = await metricsQuery
-      
+
+      // Use server action instead of direct Supabase query (works for both Supabase and Passport users)
+      const metricsResult = await getKPIMetrics(
+        selectedKPI !== 'All' ? selectedKPI : 'all',
+        startDate,
+        endDate,
+        selectedCompany !== 'All' ? selectedCompany : undefined
+      )
+
+      const sampleMetrics = metricsResult.success ? (metricsResult.data || []) : []
+
       const result = await chatWithKPIData(
         userQuestion,
         aggregations as KPIAggregation[],
@@ -3062,7 +3034,7 @@ function TrackingSystemTab({ supabase }: { supabase: any }) {
         selectedCompany !== 'All' ? selectedCompany : undefined,
         newHistory.slice(0, -1) // Pass history without the current question
       )
-      
+
       if (result.success && result.answer) {
         setChatHistory([...newHistory, { role: 'assistant', content: result.answer }])
       } else {
@@ -3082,32 +3054,27 @@ function TrackingSystemTab({ supabase }: { supabase: any }) {
     setSelectedKPIDetail(kpiName)
     try {
       const endDate = new Date().toISOString()
-      const startDate = dateRange === 'all' 
-        ? undefined 
+      const startDate = dateRange === 'all'
+        ? undefined
         : new Date(Date.now() - (dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90) * 24 * 60 * 60 * 1000).toISOString()
 
-      let query = supabase
-        .from('kpi_metrics')
-        .select('*, companies(name)')
-        .eq('kpi_name', kpiName)
-        .eq('category', category)
-        .order('recorded_at', { ascending: false })
-        .limit(100)
+      // Use server action instead of direct Supabase query (works for both Supabase and Passport users)
+      const result = await getKPIMetrics(
+        kpiName,
+        startDate,
+        endDate,
+        selectedCompany !== 'All' ? selectedCompany : undefined
+      )
 
-      if (startDate) {
-        query = query.gte('recorded_at', startDate)
-      }
-      if (selectedCompany !== 'All') {
-        query = query.eq('company_id', selectedCompany)
-      }
-
-      const { data, error } = await query
-
-      if (error) {
-        console.error('Error loading metrics:', error)
+      if (!result.success) {
+        console.error('Error loading metrics:', result.error)
         setMetrics([])
       } else {
-        setMetrics(data || [])
+        // Map to include company name if needed (server action doesn't return joined data)
+        setMetrics((result.data || []).map(m => ({
+          ...m,
+          companies: undefined // Company name would need separate lookup if needed
+        })))
       }
     } catch (error) {
       console.error('Error loading metrics:', error)
@@ -3186,11 +3153,10 @@ function TrackingSystemTab({ supabase }: { supabase: any }) {
             </button>
             <button
               onClick={() => setChatMode(!chatMode)}
-              className={`px-4 py-2 text-sm rounded-lg transition-colors ${
-                chatMode 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
+              className={`px-4 py-2 text-sm rounded-lg transition-colors ${chatMode
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
             >
               {chatMode ? '📊 Summary' : '💬 Chat'}
             </button>
@@ -3204,20 +3170,20 @@ function TrackingSystemTab({ supabase }: { supabase: any }) {
                   setIsGeneratingExplanation(true)
                   setExplanationError(null)
                   setAiExplanation(null)
-                  
+
                   try {
                     // Get sample metrics for context
                     const endDate = new Date().toISOString()
-                    const startDate = dateRange === 'all' 
-                      ? undefined 
+                    const startDate = dateRange === 'all'
+                      ? undefined
                       : new Date(Date.now() - (dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90) * 24 * 60 * 60 * 1000).toISOString()
-                    
+
                     let metricsQuery = supabase
                       .from('kpi_metrics')
                       .select('*')
                       .order('recorded_at', { ascending: false })
                       .limit(50)
-                    
+
                     if (startDate) {
                       metricsQuery = metricsQuery.gte('recorded_at', startDate)
                     }
@@ -3230,9 +3196,9 @@ function TrackingSystemTab({ supabase }: { supabase: any }) {
                     if (selectedCompany !== 'All') {
                       metricsQuery = metricsQuery.eq('company_id', selectedCompany)
                     }
-                    
+
                     const { data: sampleMetrics } = await metricsQuery
-                    
+
                     const result = await explainKPIData(
                       aggregations as KPIAggregation[],
                       (sampleMetrics || []) as KPIMetric[],
@@ -3241,7 +3207,7 @@ function TrackingSystemTab({ supabase }: { supabase: any }) {
                       selectedKPI !== 'All' ? selectedKPI : undefined,
                       selectedCompany !== 'All' ? selectedCompany : undefined
                     )
-                    
+
                     if (result.success && result.explanation) {
                       setAiExplanation(result.explanation)
                     } else {
@@ -3475,11 +3441,10 @@ function TrackingSystemTab({ supabase }: { supabase: any }) {
                         className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
                         <div
-                          className={`max-w-[80%] rounded-lg p-4 ${
-                            msg.role === 'user'
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-800 text-gray-300'
-                          }`}
+                          className={`max-w-[80%] rounded-lg p-4 ${msg.role === 'user'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-800 text-gray-300'
+                            }`}
                         >
                           <div className="whitespace-pre-wrap">
                             {renderWithLaTeX(msg.content)}
@@ -3499,7 +3464,7 @@ function TrackingSystemTab({ supabase }: { supabase: any }) {
                     </div>
                   )}
                 </div>
-                
+
                 {/* Chat Input */}
                 <div className="flex gap-2">
                   <input

@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { AzureOpenAI } from 'openai'
 
 export interface KPIMetric {
@@ -63,12 +64,49 @@ export async function recordKPIMetric(
   try {
     const supabase = await createClient()
     
+    // If userId is provided, check if it's app_users.id (Passport) or auth.users.id (Supabase)
+    // If it's app_users.id, resolve to Supabase identity if available
+    let resolvedUserId: string | null = userId || null
+    
+    if (userId) {
+      try {
+        // Try to find if this userId is an app_users.id with identities
+        const { createServerContainer } = await import('@/lib/composition/server-container')
+        const { authIdentityRepository } = createServerContainer()
+        
+        const allIdentities = await authIdentityRepository.findByAppUserId(userId)
+        
+        if (allIdentities.length > 0) {
+          // This userId is an app_users.id - find Supabase identity
+          const supabaseIdentity = allIdentities.find((id) => id.provider === 'supabase')
+          
+          if (supabaseIdentity && supabaseIdentity.legacyAuthId) {
+            // Use Supabase legacy_auth_id for tracking
+            resolvedUserId = supabaseIdentity.legacyAuthId
+          } else {
+            // No Supabase identity - track without user_id (Passport-only user)
+            resolvedUserId = null
+            // Store app_user_id in metadata
+            if (metricData) {
+              metricData.app_user_id = userId
+            } else {
+              metricData = { app_user_id: userId }
+            }
+          }
+        }
+        // If no identities found, assume userId is already a valid auth.users.id
+      } catch (error) {
+        // If identity lookup fails, assume userId is already a valid auth.users.id
+        console.warn('[KPI Tracking] Could not resolve user identity, using userId as-is:', error)
+      }
+    }
+    
     const { error } = await supabase
       .from('kpi_metrics')
       .insert({
         kpi_name: kpiName,
         category: category,
-        user_id: userId || null,
+        user_id: resolvedUserId,
         company_id: companyId || null,
         metric_value: metricValue,
         metric_data: metricData || {},
@@ -96,7 +134,8 @@ export async function getKPIAggregations(
   companyId?: string
 ): Promise<{ success: boolean; data?: KPIAggregation[]; error?: string }> {
   try {
-    const supabase = await createClient()
+    // Use admin client to bypass RLS (works for both Supabase and Passport users)
+    const supabase = createAdminClient()
     
     let query = supabase
       .from('kpi_metrics')
@@ -130,7 +169,8 @@ export async function getKPIAggregations(
     }
 
     // Aggregate by KPI name
-    const aggregations = data.reduce((acc, metric) => {
+    type KPIMetricRow = { category: string; kpi_name: string; metric_value: number; recorded_at: string; user_id: string | null; company_id: string | null }
+    const aggregations = (data as KPIMetricRow[]).reduce((acc, metric) => {
       const key = `${metric.category}::${metric.kpi_name}`
       if (!acc[key]) {
         acc[key] = {
@@ -177,7 +217,8 @@ export async function getKPIMetrics(
   userId?: string
 ): Promise<{ success: boolean; data?: KPIMetric[]; error?: string }> {
   try {
-    const supabase = await createClient()
+    // Use admin client to bypass RLS (works for both Supabase and Passport users)
+    const supabase = createAdminClient()
     
     let query = supabase
       .from('kpi_metrics')
@@ -215,7 +256,8 @@ export async function getKPIMetrics(
 // Get all companies for filtering
 export async function getAllCompanies(): Promise<{ success: boolean; data?: Array<{ id: string; name: string }>; error?: string }> {
   try {
-    const supabase = await createClient()
+    // Use admin client to bypass RLS (works for both Supabase and Passport users)
+    const supabase = createAdminClient()
     
     const { data, error } = await supabase
       .from('companies')

@@ -54,9 +54,6 @@ supabase functions deploy process-trial-refunds
 Set the required secrets in Supabase Dashboard or via CLI:
 
 ```bash
-# Required: Supabase service role key (for admin access)
-supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-
 # Required: Your app URL (for calling the refund API)
 supabase secrets set NEXT_PUBLIC_APP_URL=https://yourdomain.com
 # OR for local development:

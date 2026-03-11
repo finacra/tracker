@@ -761,16 +761,6 @@ function BulkUploadPage() {
       }
 
       try {
-        const { data: rpcData, error: rpcError } = await supabase.rpc('is_superadmin', {
-          p_user_id: user.id
-        })
-
-        if (!rpcError && rpcData !== null) {
-          setIsSuperadmin(!!rpcData)
-          return
-        }
-
-        // Fallback: Check user_roles table
         const { data: rolesData, error: rolesError } = await supabase
           .from('user_roles')
           .select('role, company_id')
@@ -780,6 +770,8 @@ function BulkUploadPage() {
         if (!rolesError && rolesData) {
           const isPlatformSuperadmin = rolesData.some(role => role.company_id === null)
           setIsSuperadmin(!!isPlatformSuperadmin)
+        } else {
+          setIsSuperadmin(false)
         }
       } catch (error) {
         console.error('Error checking superadmin:', error)

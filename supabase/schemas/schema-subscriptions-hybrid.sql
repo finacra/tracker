@@ -414,6 +414,16 @@ BEGIN
     RAISE EXCEPTION 'User does not own this company';
   END IF;
 
+  -- A company can only ever use one company-level trial, even if it has expired.
+  IF EXISTS (
+    SELECT 1 FROM public.subscriptions s
+    WHERE s.company_id = p_company_id
+    AND s.subscription_type = 'company'
+    AND s.is_trial = TRUE
+  ) THEN
+    RAISE EXCEPTION 'Company has already used its trial';
+  END IF;
+
   -- Check if company already has an active subscription
   IF EXISTS (
     SELECT 1 FROM public.subscriptions s

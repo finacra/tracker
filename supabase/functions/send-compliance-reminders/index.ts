@@ -24,6 +24,19 @@ type UserRoleRow = {
   role: string
 }
 
+type AppUserIdentityRow = {
+  legacy_auth_id: string | null
+  email: string | null
+  app_users:
+    | {
+        primary_email: string
+      }
+    | {
+        primary_email: string
+      }[]
+    | null
+}
+
 function siteUrl(): string {
   const u = Deno.env.get('NEXT_PUBLIC_SITE_URL') || 'https://comptracker.vercel.app'
   return u.replace(/\/+$/, '')
@@ -311,36 +324,38 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Resolve user emails - batch lookup for better performance
+  // Resolve user emails from canonical identity records in one batch.
   const userIds = Array.from(byUser.keys())
   const emailByUserId = new Map<string, string>()
 
-  // Batch lookup all user emails at once
   try {
-    const { data: users, error: usersError } = await supabase.auth.admin.listUsers()
-    if (!usersError && users?.users) {
-      for (const user of users.users) {
-        if (userIds.includes(user.id) && user.email) {
-          emailByUserId.set(user.id, user.email)
-        }
+    const { data: identities, error: identityError } = await supabase
+      .from('auth_identities')
+      .select('legacy_auth_id, email, app_users!inner(primary_email)')
+      .eq('provider', 'supabase')
+      .in('legacy_auth_id', userIds)
+
+    if (identityError) {
+      throw identityError
+    }
+
+    for (const identity of (identities || []) as AppUserIdentityRow[]) {
+      const legacyAuthId = identity.legacy_auth_id
+      if (!legacyAuthId) {
+        continue
       }
-    } else {
-      // Fallback to individual lookups if batch fails
-      console.warn('Batch user lookup failed, falling back to individual lookups:', usersError)
-      for (const userId of userIds) {
-        const { data } = await supabase.auth.admin.getUserById(userId)
-        const email = data?.user?.email
-        if (email) emailByUserId.set(userId, email)
+
+      const appUser = Array.isArray(identity.app_users)
+        ? identity.app_users[0]
+        : identity.app_users
+
+      const email = identity.email || appUser?.primary_email || null
+      if (email) {
+        emailByUserId.set(legacyAuthId, email)
       }
     }
   } catch (error) {
-    console.error('Error in batch user lookup:', error)
-    // Fallback to individual lookups
-  for (const userId of userIds) {
-    const { data } = await supabase.auth.admin.getUserById(userId)
-    const email = data?.user?.email
-    if (email) emailByUserId.set(userId, email)
-    }
+    console.error('Error resolving reminder recipient emails from auth identities:', error)
   }
 
   let sent = 0

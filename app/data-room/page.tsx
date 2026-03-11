@@ -1,618 +1,732 @@
-'use client'
+"use client";
 
-import { useState, useEffect, Suspense, useMemo, useCallback, useRef, startTransition, lazy } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import React from 'react'
+import {
+  useState,
+  useEffect,
+  Suspense,
+  useMemo,
+  useCallback,
+  useRef,
+  startTransition,
+  lazy,
+} from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import React from "react";
 
 // Lazy load tracker tab for better performance
-const TrackerTab = lazy(() => import('./components/tracker/TrackerTab'))
-const DocumentsTab = lazy(() => import('./components/DocumentsTab'))
-const ReportsTab = lazy(() => import('./components/ReportsTab'))
-const OverviewTab = lazy(() => import('./components/OverviewTab'))
-const NoticesTab = lazy(() => import('./components/NoticesTab'))
-const GSTTab = lazy(() => import('./components/GSTTab'))
-const DscDinTab = lazy(() => import('./components/DscDinTab'))
-import Header from '@/components/layout/Header'
-import CompanySelector from '@/components/features/CompanySelector'
-import SubtleCircuitBackground from '@/components/ui/SubtleCircuitBackground'
-import { createClient } from '@/utils/supabase/client'
-import { useAuth } from '@/hooks/useAuth'
-import { uploadDocument, getCompanyDocuments, getDocumentTemplates, getDownloadUrl, deleteDocument } from '@/app/onboarding/actions'
-import { getRegulatoryRequirements, updateRequirementStatus, createRequirement, deleteRequirement, updateRequirement, sendDocumentsEmail, getDirectors, hideDocumentTemplateForCompany, getHiddenDocumentTemplates, hideComplianceForCompany, showComplianceForCompany, getHiddenCompliances, type RegulatoryRequirement } from '@/app/data-room/actions'
-import { trackTrackerTabOpened, trackStatusChange, trackDocumentUpload, trackCalendarSync, trackVaultFileExport, trackReportDownload, trackVaultFileUpload } from '@/lib/tracking/kpi-tracker'
-import { performanceLogger } from '@/lib/utils/performance-logger'
-import jsPDF from 'jspdf'
-import { useUserRole } from '@/hooks/useUserRole'
-import { useCompanyAccess, useAnyCompanyAccess } from '@/hooks/useCompanyAccess'
-import { enrichComplianceRequirements, type EnrichedComplianceData } from '@/app/data-room/actions-enrichment'
-import { showToast } from '@/components/ui/Toast'
-import ToastContainer from '@/components/ui/Toast'
-import { getCurrentFinancialYear, parseFinancialYear, getFinancialYearMonths, isInFinancialYear as isInFinancialYearUtil } from '@/lib/utils/financial-year'
-import { getCountryConfig } from '@/lib/config/countries'
-import { formatCurrency } from '@/lib/utils/currency'
-import { useCompanyCountry } from '@/hooks/useCompanyCountry'
-import { useComplianceCategories } from '@/hooks/useComplianceCategories'
-import { RegulatoryServiceImpl } from './services/RegulatoryServiceImpl'
+const TrackerTab = lazy(() => import("./components/tracker/TrackerTab"));
+const DocumentsTab = lazy(() => import("./components/DocumentsTab"));
+const ReportsTab = lazy(() => import("./components/ReportsTab"));
+const OverviewTab = lazy(() => import("./components/OverviewTab"));
+const NoticesTab = lazy(() => import("./components/NoticesTab"));
+const GSTTab = lazy(() => import("./components/GSTTab"));
+const DscDinTab = lazy(() => import("./components/DscDinTab"));
+import Header from "@/components/layout/Header";
+import CompanySelector from "@/components/features/CompanySelector";
+import SubtleCircuitBackground from "@/components/ui/SubtleCircuitBackground";
+import { createClient } from "@/utils/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  uploadDocument,
+  getCompanyDocuments,
+  getDocumentTemplates,
+  getDownloadUrl,
+  deleteDocument,
+  uploadFileToStorage,
+} from "@/app/onboarding/actions";
+import {
+  getRegulatoryRequirements,
+  updateRequirementStatus,
+  createRequirement,
+  deleteRequirement,
+  updateRequirement,
+  sendDocumentsEmail,
+  getDirectors,
+  hideDocumentTemplateForCompany,
+  getHiddenDocumentTemplates,
+  hideComplianceForCompany,
+  showComplianceForCompany,
+  getHiddenCompliances,
+  getDataRoomInitState,
+  getCompanyDetails,
+  type RegulatoryRequirement,
+} from "@/app/data-room/actions";
+import {
+  trackTrackerTabOpened,
+  trackStatusChange,
+  trackDocumentUpload,
+  trackCalendarSync,
+  trackVaultFileExport,
+  trackReportDownload,
+  trackVaultFileUpload,
+} from "@/lib/tracking/kpi-tracker";
+import { performanceLogger } from "@/lib/utils/performance-logger";
+import jsPDF from "jspdf";
+import { useUserRole } from "@/hooks/useUserRole";
+import {
+  useCompanyAccess,
+  useAnyCompanyAccess,
+  useUserSubscription,
+} from "@/hooks/useCompanyAccess";
+import {
+  enrichComplianceRequirements,
+  type EnrichedComplianceData,
+} from "@/app/data-room/actions-enrichment";
+import { showToast } from "@/components/ui/Toast";
+import ToastContainer from "@/components/ui/Toast";
+import {
+  getCurrentFinancialYear,
+  parseFinancialYear,
+  getFinancialYearMonths,
+  isInFinancialYear as isInFinancialYearUtil,
+} from "@/lib/utils/financial-year";
+import { getCountryConfig } from "@/lib/config/countries";
+import { formatCurrency } from "@/lib/utils/currency";
+import { useCompanyCountry } from "@/hooks/useCompanyCountry";
+import { useComplianceCategories } from "@/hooks/useComplianceCategories";
+import { RegulatoryServiceImpl } from "./services/RegulatoryServiceImpl";
 
-const isDataRoomDebugEnabled = process.env.NODE_ENV === 'development'
+const isDataRoomDebugEnabled = process.env.NODE_ENV === "development";
 
 interface Company {
-  id: string
-  name: string
-  type: string
-  year: string
-  country_code?: string
-  region?: string
+  id: string;
+  name: string;
+  type: string;
+  year: string;
+  country_code?: string;
+  region?: string;
 }
 
 interface Director {
-  id: string
-  firstName: string
-  lastName: string
-  middleName: string
-  din?: string
-  designation?: string
-  dob?: string
-  pan?: string
-  email?: string
-  mobile?: string
-  verified: boolean
+  id: string;
+  firstName: string;
+  lastName: string;
+  middleName: string;
+  din?: string;
+  designation?: string;
+  dob?: string;
+  pan?: string;
+  email?: string;
+  mobile?: string;
+  verified: boolean;
 }
 
 interface EntityDetails {
-  companyName: string
-  type: string
-  regDate: string
-  taxId: string // Country-specific: PAN (India), VAT (GCC), EIN (USA)
-  registrationId: string // Country-specific: CIN (India), Trade License (UAE), Commercial Registration (GCC), EIN (USA)
-  address: string
-  phoneNumber: string
-  industryCategory: string
-  directors: Director[]
+  companyName: string;
+  type: string;
+  regDate: string;
+  taxId: string; // Country-specific: PAN (India), VAT (GCC), EIN (USA)
+  registrationId: string; // Country-specific: CIN (India), Trade License (UAE), Commercial Registration (GCC), EIN (USA)
+  address: string;
+  phoneNumber: string;
+  industryCategory: string;
+  directors: Director[];
 }
 
 // Generate ICS calendar file from regulatory requirements
 function generateICSFile(requirements: RegulatoryRequirement[]): string {
-  const now = new Date()
-  const timestamp = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+  const now = new Date();
+  const timestamp = now.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
 
-  let icsContent = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Finacra//Compliance Calendar//EN',
-    'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH'
-  ].join('\r\n') + '\r\n'
+  let icsContent =
+    [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Finacra//Compliance Calendar//EN",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
+    ].join("\r\n") + "\r\n";
 
   requirements.forEach((req, index) => {
-    if (!req.due_date) return
+    if (!req.due_date) return;
 
-    const dueDate = new Date(req.due_date)
-    const dateStr = dueDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
-    const uid = `compliance-${req.id}-${index}@finacra.com`
+    const dueDate = new Date(req.due_date);
+    const dateStr =
+      dueDate.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+    const uid = `compliance-${req.id}-${index}@finacra.com`;
 
     // Escape text for ICS format
     const escapeText = (text: string | null | undefined) => {
-      if (!text) return ''
-      return text.replace(/\\/g, '\\\\')
-        .replace(/;/g, '\\;')
-        .replace(/,/g, '\\,')
-        .replace(/\n/g, '\\n')
-    }
+      if (!text) return "";
+      return text
+        .replace(/\\/g, "\\\\")
+        .replace(/;/g, "\\;")
+        .replace(/,/g, "\\,")
+        .replace(/\n/g, "\\n");
+    };
 
-    const summary = escapeText(req.requirement || '')
+    const summary = escapeText(req.requirement || "");
     const description = escapeText(
-      `${req.category || ''}${req.description ? ': ' + req.description : ''}${req.penalty ? ' | Penalty: ' + req.penalty : ''}`
-    )
+      `${req.category || ""}${req.description ? ": " + req.description : ""}${req.penalty ? " | Penalty: " + req.penalty : ""}`,
+    );
 
-    icsContent += [
-      'BEGIN:VEVENT',
-      `UID:${uid}`,
-      `DTSTAMP:${timestamp}`,
-      `DTSTART:${dateStr}`,
-      `DTEND:${dateStr}`,
-      `SUMMARY:${summary}`,
-      `DESCRIPTION:${description}`,
-      `STATUS:CONFIRMED`,
-      `SEQUENCE:0`,
-      'END:VEVENT'
-    ].join('\r\n') + '\r\n'
-  })
+    icsContent +=
+      [
+        "BEGIN:VEVENT",
+        `UID:${uid}`,
+        `DTSTAMP:${timestamp}`,
+        `DTSTART:${dateStr}`,
+        `DTEND:${dateStr}`,
+        `SUMMARY:${summary}`,
+        `DESCRIPTION:${description}`,
+        `STATUS:CONFIRMED`,
+        `SEQUENCE:0`,
+        "END:VEVENT",
+      ].join("\r\n") + "\r\n";
+  });
 
-  icsContent += 'END:VCALENDAR\r\n'
+  icsContent += "END:VCALENDAR\r\n";
 
-  return icsContent
+  return icsContent;
 }
 
 function DataRoomPageInner() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const { user, loading: authLoading } = useAuth()
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
   // Memoize supabase client to prevent infinite re-renders
-  const supabase = useMemo(() => createClient(), [])
+  const supabase = useMemo(() => createClient(), []);
   // Create service instance (DIP: Dependency injection)
-  const regulatoryService = useMemo(() => new RegulatoryServiceImpl(), [])
+  const regulatoryService = useMemo(() => new RegulatoryServiceImpl(), []);
   // Memoize initialCompanyId to prevent unnecessary re-renders
-  const initialCompanyId = useMemo(() => {
-    return searchParams.get('company_id') || searchParams.get('company') || null
-  }, [searchParams])
+  const urlParamValue =
+    searchParams.get("company_id") || searchParams.get("company") || null;
+  const initialCompanyId = useMemo(() => urlParamValue, [urlParamValue]);
 
-  const [currentCompany, setCurrentCompany] = useState<Company | null>(null)
-  const [companies, setCompanies] = useState<Company[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [entityDetails, setEntityDetails] = useState<EntityDetails | null>(null)
-  const [vaultDocuments, setVaultDocuments] = useState<any[]>([])
-  const [isLoadingVaultDocuments, setIsLoadingVaultDocuments] = useState(false)
-  const [documentTemplates, setDocumentTemplates] = useState<any[]>([])
-  const [hiddenTemplates, setHiddenTemplates] = useState<Set<string>>(new Set()) // Track hidden templates as "folderName:documentName"
-  const [regulatoryRequirements, setRegulatoryRequirements] = useState<RegulatoryRequirement[]>([])
-  const [isLoadingRequirements, setIsLoadingRequirements] = useState(false)
-  const [hiddenCompliances, setHiddenCompliances] = useState<Set<string>>(new Set()) // Track hidden compliance IDs
+  const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
+  const [isDataRoomInitLoading, setIsDataRoomInitLoading] = useState(true);
+  const [initError, setInitError] = useState<string | null>(null);
+  const [loadingMessage, setLoadingMessage] = useState("Setting up your Data Room...");
+  
+  // Fallback: Rotate messages if initialization takes longer than expected
+  // This prevents the loading screen from feeling stuck
+  useEffect(() => {
+    if (!isDataRoomInitLoading) {
+      setLoadingMessage("Setting up your Data Room...");
+      return;
+    }
+    
+    const loadingMessages = [
+      "🔐 Verifying access permissions...",
+      "📊 Loading company information...",
+      "📁 Organizing document structure...",
+      "⚖️ Loading compliance requirements...",
+      "📋 Preparing compliance tracker...",
+      "✨ Finalizing your workspace...",
+    ];
+    
+    // Only start rotating after 3 seconds (fallback if something is slow)
+    const timeout = setTimeout(() => {
+      let messageIndex = 0;
+      const interval = setInterval(() => {
+        if (!isDataRoomInitLoading) {
+          clearInterval(interval);
+          return;
+        }
+        messageIndex = (messageIndex + 1) % loadingMessages.length;
+        setLoadingMessage(loadingMessages[messageIndex]);
+      }, 1200);
+      
+      return () => clearInterval(interval);
+    }, 3000);
+    
+    return () => clearTimeout(timeout);
+  }, [isDataRoomInitLoading]);
+  
+  const [entityDetails, setEntityDetails] = useState<EntityDetails | null>(
+    null,
+  );
+  // Pre-fetched results from initialization to skip hook-driven loading flickers
+  const [initDataResults, setInitDataResults] = useState<{
+    hasAnyAccess: boolean;
+    hasSubscription: boolean;
+    accessibleCompanyIds: string[];
+    userSubscription: any;
+    companyAccess: any;
+    userRole: any;
+  } | null>(null);
+  const [vaultDocuments, setVaultDocuments] = useState<any[]>([]);
+  const [isLoadingVaultDocuments, setIsLoadingVaultDocuments] = useState(false);
+  const [documentTemplates, setDocumentTemplates] = useState<any[]>([]);
+  const [hiddenTemplates, setHiddenTemplates] = useState<Set<string>>(
+    new Set(),
+  ); // Track hidden templates as "folderName:documentName"
+  const [regulatoryRequirements, setRegulatoryRequirements] = useState<
+    RegulatoryRequirement[]
+  >([]);
+  const [isLoadingRequirements, setIsLoadingRequirements] = useState(false);
+  const [hiddenCompliances, setHiddenCompliances] = useState<Set<string>>(
+    new Set(),
+  ); // Track hidden compliance IDs
 
   // Refs to track if data has been fetched to prevent re-fetching on tab switch
-  const companiesFetchedRef = useRef(false)
-  const companiesFetchingRef = useRef(false)
-  const detailsFetchedRef = useRef<string | null>(null)
-  const detailsFetchingRef = useRef<string | null>(null)
-  const requirementsFetchedRef = useRef<string | null>(null)
-  const requirementsFetchingRef = useRef<string | null>(null)
-  const [isGeneratingEnhancedPDF, setIsGeneratingEnhancedPDF] = useState(false)
-  const [pdfGenerationProgress, setPdfGenerationProgress] = useState({ current: 0, total: 0, step: '' })
+  const companiesFetchedRef = useRef(false);
+  const companiesFetchingRef = useRef(false);
+  const lastMessageUpdateRef = useRef(Date.now());
+  const detailsFetchedRef = useRef<string | null>(null);
+  const detailsFetchingRef = useRef<string | null>(null);
+  const requirementsFetchedRef = useRef<string | null>(null);
+  const requirementsFetchingRef = useRef<string | null>(null);
+  const vaultDocumentsFetchedRef = useRef<string | null>(null);
+  const [isGeneratingEnhancedPDF, setIsGeneratingEnhancedPDF] = useState(false);
+  const [pdfGenerationProgress, setPdfGenerationProgress] = useState({
+    current: 0,
+    total: 0,
+    step: "",
+  });
 
-  // Get user role for current company
-  const { role, canEdit, canManage, loading: roleLoading } = useUserRole(currentCompany?.id || null)
+  // Guard to prevent any automatic company changes during initial boot
+  const didInitRef = useRef(false);
+  const lockUntilRef = useRef(0);
 
-  // Check subscription/trial access for current company
-  const { hasAccess, accessType, isLoading: accessLoading, trialDaysRemaining, isOwner, ownerSubscriptionExpired } = useCompanyAccess(currentCompany?.id || null)
+  const {
+    role,
+    canEdit,
+    canManage,
+    loading: roleLoading,
+    setRole,
+  } = useUserRole(currentCompany?.id || null, { 
+    enabled: !isDataRoomInitLoading && !initDataResults,
+    initialData: initDataResults?.userRole
+  });
 
-  // Check if user has access to ANY company (for initial page load check)
-  const { hasAnyAccess, accessibleCompanyIds, isLoading: anyAccessLoading } = useAnyCompanyAccess()
+  const {
+    hasAccess,
+    accessType,
+    isLoading: accessLoading,
+    trialDaysRemaining,
+    isOwner,
+    ownerSubscriptionExpired,
+    error: accessError,
+  } = useCompanyAccess(currentCompany?.id || null, { 
+    enabled: !isDataRoomInitLoading && !initDataResults,
+    initialData: initDataResults?.companyAccess
+  });
+
+  const {
+    hasAnyAccess,
+    accessibleCompanyIds,
+    isLoading: anyAccessLoading,
+  } = useAnyCompanyAccess({ 
+    enabled: !isDataRoomInitLoading && !initDataResults,
+    initialData: initDataResults ? {
+        hasAnyAccess: initDataResults.hasAnyAccess,
+        accessibleCompanyIds: initDataResults.accessibleCompanyIds
+    } : undefined
+  });
+  const {
+    hasSubscription: userHasSubscription,
+    isLoading: userSubscriptionLoading,
+  } = useUserSubscription({ 
+    enabled: !isDataRoomInitLoading && !!initDataResults,
+    initialData: initDataResults?.userSubscription
+  });
 
 
-  // Fetch all companies for the selector (owned + invited)
+  // Main Data Room Initialization & URL Sync - Consolidated to prevent flickering/waterfalls
   useEffect(() => {
-    if (isDataRoomDebugEnabled) {
-      console.log('[fetchCompanies] useEffect triggered - authLoading:', authLoading, 'user:', user?.id, 'email:', user?.email)
+    if (authLoading) return;
+    
+    // Auth guard
+    if (!user && !authLoading && !isDataRoomInitLoading) {
+      router.push("/login");
+      return;
     }
+    if (!user) return;
 
-    // Wait for auth to finish loading
-    if (authLoading) {
-      if (isDataRoomDebugEnabled) {
-        console.log('[fetchCompanies] Auth still loading, waiting...')
-      }
-      return
-    }
-
-    // If no user after loading, return early
-    if (!user) {
-      if (isDataRoomDebugEnabled) {
-        console.log('[fetchCompanies] No user after auth loaded, returning early')
-      }
-      return
-    }
-
-    // Skip if already fetched (prevents re-fetch on tab switch or remount)
-    // Check both ref and state to handle remounts where refs reset but state persists
-    if ((companiesFetchedRef.current && companies.length > 0) || companies.length > 0) {
-      if (isDataRoomDebugEnabled) {
-        console.log('[fetchCompanies] Already fetched, skipping...')
-      }
-      // Update ref in case it was reset on remount
-      companiesFetchedRef.current = true
-      return
-    }
-
+    // Only skip if we're actively fetching (prevent duplicate concurrent calls)
+    // On full reload, refs reset, so this check is fine
     if (companiesFetchingRef.current) {
       if (isDataRoomDebugEnabled) {
-        console.log('[fetchCompanies] Fetch already in progress, skipping duplicate trigger...')
+        console.log("[DataRoomInit] Already fetching, skipping duplicate call...");
       }
-      return
+      return;
     }
-
-    async function fetchCompanies() {
-      if (!user) {
-        if (isDataRoomDebugEnabled) {
-          console.log('[fetchCompanies] No user available')
-        }
-        return
-      }
-
-      companiesFetchingRef.current = true
+    
+    // If already fetched, we're done (this handles hot reloads where state persists)
+    if (companiesFetchedRef.current) {
       if (isDataRoomDebugEnabled) {
-        console.log('[fetchCompanies] Function called - user:', user.id, 'email:', user.email)
-        console.log('[fetchCompanies] Starting fetch for user:', user.id)
+        console.log("[DataRoomInit] Already fetched, skipping...");
+      }
+      // Ensure loading state is cleared if ref says we're done
+      if (isDataRoomInitLoading) {
+        setIsDataRoomInitLoading(false);
+      }
+      return;
+    }
+    
+    async function initializeDataRoom() {
+      companiesFetchingRef.current = true;
+      setIsDataRoomInitLoading(true);
+      
+      if (isDataRoomDebugEnabled) {
+        console.log("[DataRoomInit] Starting consolidated initialization...");
       }
 
+      const startTime = performance.now();
+      
+      // Update loading messages as initialization progresses
+      const updateLoadingMessage = (message: string) => {
+        lastMessageUpdateRef.current = Date.now();
+        setLoadingMessage(message);
+      };
+      
       try {
-        // Fetch companies owned by user
-        const { data: ownedCompanies, error: ownedError } = await supabase
-          .from('companies')
-          .select('id, name, type, incorporation_date, country_code, region')
-          .eq('user_id', user.id)
+        updateLoadingMessage("🔐 Verifying access permissions...");
+        const result = await getDataRoomInitState(initialCompanyId);
+        
+        if (!result.success || !result.data) {
+          throw new Error(result.error || "Failed to initialize Data Room");
+        }
 
-        if (ownedError) throw ownedError
+        const { data } = result;
+        
+        updateLoadingMessage("📊 Loading company information...");
+        
+        // 1. Format and set companies
+        const formattedCompanies = data.companies.map(c => ({
+          id: c.id,
+          name: c.name,
+          type: c.type,
+          year: c.incorporation_date ? new Date(c.incorporation_date).getFullYear().toString() : "N/A",
+          country_code: c.country_code || "IN",
+          region: c.region || "APAC",
+        }));
+        setCompanies(formattedCompanies);
+        
+        // 2. Determine Final Selected Company (Priority: URL > Preferred > First)
+        const urlId = searchParams.get("company_id") || searchParams.get("company");
+        const selected = formattedCompanies.find(c => c.id === urlId) || 
+                         formattedCompanies.find(c => c.id === data.currentCompanyId) || 
+                         formattedCompanies[0] || null;
+        
+        setCurrentCompany(selected);
 
-        // Fetch companies user has access to via user_roles
-        // Try RPC first, then fallback to direct query
-        let invitedCompanyIds: string[] = []
+        updateLoadingMessage("📁 Organizing document structure...");
 
+        // 3. Populate entity details and directors
+        if (data.initialEntityDetails && selected?.id === data.currentCompanyId) {
+            setEntityDetails(data.initialEntityDetails);
+            detailsFetchedRef.current = selected.id;
+        }
+
+        // 4. Update hidden states and role
+        if (data.hiddenTemplates) setHiddenTemplates(new Set(data.hiddenTemplates));
+        if (data.hiddenCompliances) setHiddenCompliances(new Set(data.hiddenCompliances));
+        if (data.userRole) setRole(data.userRole);
+        
+        updateLoadingMessage("⚖️ Loading compliance requirements...");
+        
+        // 5. Populate requirements if available for the selected company
+        if (data.initialRequirements && selected?.id === data.currentCompanyId) {
+            setRegulatoryRequirements(data.initialRequirements);
+            requirementsFetchedRef.current = selected.id;
+        }
+
+        updateLoadingMessage("✨ Finalizing your workspace...");
+
+        // 6. Finalize Init State to trigger hooks
+        setInitDataResults({
+            hasAnyAccess: data.accessibleCompanyIds.length > 0,
+            hasSubscription: data.userSubscription.hasSubscription,
+            accessibleCompanyIds: data.accessibleCompanyIds,
+            userSubscription: data.userSubscription,
+            companyAccess: data.companyAccess,
+            userRole: data.userRole
+        });
+
+        companiesFetchedRef.current = true;
         if (isDataRoomDebugEnabled) {
-          console.log('[fetchCompanies] Starting to fetch invited companies for user:', user.id)
+          console.log(`[DataRoomInit] Initialization took ${(performance.now() - startTime).toFixed(2)}ms`);
+          console.log(`[DataRoomInit] Final selected company: ${selected?.name} (${selected?.id})`);
         }
-
-        // First try: Direct query (most reliable - uses "Users can view their own roles" policy)
-        if (isDataRoomDebugEnabled) {
-          console.log('[fetchCompanies] Attempting direct query...')
-        }
-        const { data: directRoles, error: directError } = await supabase
-          .from('user_roles')
-          .select('company_id')
-          .eq('user_id', user.id)
-          .not('company_id', 'is', null)
-
-        if (directError) {
-          console.error('[fetchCompanies] Direct query failed:', directError)
-          // Fallback: Try RPC function
-          if (isDataRoomDebugEnabled) {
-            console.log('[fetchCompanies] Trying RPC function as fallback...')
-          }
-          try {
-            const { data: userRoles, error: rolesError } = await supabase
-              .rpc('get_user_company_ids', { p_user_id: user.id })
-
-            if (rolesError) {
-              console.error('[fetchCompanies] RPC also failed:', rolesError)
-            } else {
-              if (isDataRoomDebugEnabled) {
-                console.log('[fetchCompanies] RPC succeeded, found', userRoles?.length || 0, 'company IDs')
-              }
-              invitedCompanyIds = userRoles
-                ? [...new Set((userRoles as Array<{ company_id: string | null }>).map((ur) => ur.company_id).filter((id: string | null): id is string => id !== null))]
-                : []
-            }
-          } catch (rpcError) {
-            console.error('[fetchCompanies] RPC exception:', rpcError)
-          }
-        } else {
-          if (isDataRoomDebugEnabled) {
-            console.log('[fetchCompanies] Direct query succeeded! Found', directRoles?.length || 0, 'roles')
-            console.log('[fetchCompanies] Role data:', JSON.stringify(directRoles, null, 2))
-          }
-          invitedCompanyIds = directRoles
-            ? [...new Set(directRoles.map((ur: { company_id: string | null }) => ur.company_id).filter((id: string | null): id is string => id !== null))]
-            : []
-          if (isDataRoomDebugEnabled) {
-            console.log('[fetchCompanies] Extracted company IDs:', invitedCompanyIds)
-          }
-        }
-
-        // Fetch company details for invited companies
-        let invitedCompanies: any[] = []
-        if (invitedCompanyIds.length > 0) {
-          if (isDataRoomDebugEnabled) {
-            console.log('[fetchCompanies] Fetching company details for', invitedCompanyIds.length, 'companies')
-            console.log('[fetchCompanies] Company IDs to fetch:', JSON.stringify(invitedCompanyIds))
-          }
-
-          const { data: invitedData, error: invitedError } = await supabase
-            .from('companies')
-            .select('id, name, type, incorporation_date, country_code, region')
-            .in('id', invitedCompanyIds)
-
-          if (isDataRoomDebugEnabled) {
-            console.log('[fetchCompanies] Company details query result - Data:', invitedData, 'Error:', invitedError)
-          }
-
-          if (invitedError) {
-            console.error('[fetchCompanies] ERROR fetching company details:', invitedError)
-            console.error('[fetchCompanies] Error code:', invitedError.code, 'Message:', invitedError.message)
-            console.error('[fetchCompanies] Error details:', invitedError.details, 'Hint:', invitedError.hint)
-            // Don't throw - continue with empty array so owned companies still show
-            invitedCompanies = []
-          } else {
-            if (isDataRoomDebugEnabled) {
-              console.log('[fetchCompanies] Fetched', invitedData?.length || 0, 'company details')
-            }
-            if (invitedData && invitedData.length > 0) {
-              if (isDataRoomDebugEnabled) {
-                console.log('[fetchCompanies] Company details:', JSON.stringify(invitedData, null, 2))
-              }
-            } else {
-              console.warn('[fetchCompanies] WARNING: Company IDs found but no company details returned!')
-              console.warn('[fetchCompanies] This suggests an RLS policy is blocking access to the companies table.')
-              console.warn('[fetchCompanies] Run FIX-COMPANIES-RLS-POLICY.sql to fix this!')
-            }
-            invitedCompanies = invitedData || []
-          }
-        } else {
-          if (isDataRoomDebugEnabled) {
-            console.log('[fetchCompanies] No invited company IDs to fetch')
-          }
-        }
-
-        // Combine and deduplicate companies
-        const companyMap = new Map<string, Company>()
-
-        // Add owned companies
-        if (ownedCompanies) {
-          ownedCompanies.forEach(c => {
-            companyMap.set(c.id, {
-              id: c.id,
-              name: c.name,
-              type: c.type,
-              year: new Date(c.incorporation_date).getFullYear().toString(),
-              country_code: c.country_code || 'IN', // Include country_code, default to IN
-              region: c.region || 'APAC' // Include region
-            })
-          })
-        }
-
-        // Add companies from user_roles
-        invitedCompanies.forEach(c => {
-          if (!companyMap.has(c.id)) {
-            companyMap.set(c.id, {
-              id: c.id,
-              name: c.name,
-              type: c.type,
-              year: new Date(c.incorporation_date).getFullYear().toString(),
-              country_code: c.country_code || 'IN', // Include country_code, default to IN
-              region: c.region || 'APAC' // Include region
-            })
-          }
-        })
-
-        const allCompanies = Array.from(companyMap.values())
-          .sort((a, b) => b.id.localeCompare(a.id)) // Sort by ID (newest first)
-
-        if (isDataRoomDebugEnabled) {
-          console.log('[fetchCompanies] Total companies found:', allCompanies.length)
-          console.log('[fetchCompanies] Companies:', allCompanies.map(c => ({ id: c.id, name: c.name })))
-        }
-
-        // Mark as fetched
-        companiesFetchedRef.current = true
-
-        if (allCompanies.length > 0) {
-          const preferred = initialCompanyId
-            ? allCompanies.find(c => c.id === initialCompanyId)
-            : undefined
-          const selected = preferred || allCompanies[0]
-          if (isDataRoomDebugEnabled) {
-            console.log('[fetchCompanies] Setting companies and current company:', selected.name)
-          }
-          setCompanies(allCompanies)
-          // Only update currentCompany if it's different to prevent infinite loops
-          setCurrentCompany(prev => {
-            // If the company ID is the same, keep the previous reference to prevent re-renders
-            if (prev?.id === selected.id) {
-              return prev
-            }
-            return selected
-          })
-          // Update URL params when setting initial company (only if not already set)
-          if (!initialCompanyId || initialCompanyId !== selected.id) {
-            const params = new URLSearchParams(searchParams.toString())
-            params.set('company_id', selected.id)
-            router.replace(`/data-room?${params.toString()}`, { scroll: false })
-          }
-        } else {
-          if (isDataRoomDebugEnabled) {
-            console.log('[fetchCompanies] No companies found, clearing state')
-          }
-          setCompanies([])
-          setCurrentCompany(prev => {
-            // Only update if not already null to prevent unnecessary re-renders
-            if (prev === null) return prev
-            return null
-          })
-        }
-      } catch (err) {
-        console.error('[fetchCompanies] ERROR fetching companies:', err)
-        console.error('[fetchCompanies] Error details:', JSON.stringify(err, null, 2))
+      } catch (err: any) {
+        console.error("[DataRoomInit] Initialization error:", err);
+        setInitError(err.message || "Failed to initialize Data Room");
+        // Ensure loading state is cleared even on error
+        setIsDataRoomInitLoading(false);
+        setIsLoadingCompanies(false);
+        setIsLoading(false);
       } finally {
-        companiesFetchingRef.current = false
+        // Always clear loading states and refs
+        setIsDataRoomInitLoading(false);
+        setIsLoadingCompanies(false);
+        setIsLoading(false);
+        companiesFetchingRef.current = false;
+        
+        // Lock the currentCompany for 2 seconds to prevent Sync effects from cycling through IDs
+        didInitRef.current = true;
+        lockUntilRef.current = Date.now() + 2000;
       }
     }
 
-    if (isDataRoomDebugEnabled) {
-      console.log('[fetchCompanies] useEffect setup complete, calling fetchCompanies...')
-    }
-
-    // Run fetchCompanies
-    fetchCompanies()
-  }, [user, supabase, authLoading, initialCompanyId])
+    initializeDataRoom();
+  }, [user, authLoading, initialCompanyId, router]);
 
   // Check if user has access to ANY company - redirect if no access at all
   useEffect(() => {
-    // Wait for all loading states to complete
-    if (anyAccessLoading || authLoading || isLoading) return
+    // If during initial boot, wait for it to finish
+    if (isDataRoomInitLoading || authLoading) return;
+    
+    // Use init results if available, otherwise fallback to hooks
+    const finalHasAnyAccess = initDataResults ? initDataResults.hasAnyAccess : hasAnyAccess;
+    const finalHasSubscription = initDataResults ? initDataResults.hasSubscription : userHasSubscription;
+    
+    // If we have init results, we don't need to wait for the hooks
+    const isWaitingForHooks = !initDataResults && (anyAccessLoading || userSubscriptionLoading);
+    
+    // Wait for all loading states to complete before making redirect decisions
+    if (isWaitingForHooks || isLoading || accessLoading)
+      return;
 
     // If no user, redirect to login
     if (!user) {
-      router.push('/login')
-      return
+      router.push("/login");
+      return;
     }
 
     // If user has no companies at all, redirect to onboarding or subscribe
     if (companies.length === 0 && !isLoading) {
-      console.log('[Access Check] User has no companies, checking subscription status')
-
-      // Check if user has active subscription or trial
-      supabase.rpc('check_user_subscription', { target_user_id: user.id })
-        .single()
-        .then(({ data, error }) => {
-          if (!error && data) {
-            const subInfo = data as {
-              has_subscription: boolean
-              is_trial: boolean
-              trial_days_remaining: number
-            }
-
-            // If user has active subscription or trial, redirect to onboarding to create company
-            if (subInfo.has_subscription || (subInfo.is_trial && subInfo.trial_days_remaining > 0)) {
-              console.log('[Access Check] User has subscription/trial but no companies, redirecting to onboarding')
-              router.push('/onboarding')
-            } else {
-              // No subscription/trial and no companies, redirect to subscribe
-              console.log('[Access Check] User has no subscription/trial and no companies, redirecting to subscribe')
-              router.push('/subscribe')
-            }
-          } else {
-            // Error checking subscription, redirect to subscribe
-            console.log('[Access Check] Error checking subscription, redirecting to subscribe')
-            router.push('/subscribe')
-          }
-        })
-      return
+      if (finalHasSubscription) {
+        router.push("/onboarding");
+      } else {
+        router.push("/subscribe");
+      }
+      return;
     }
 
-    // If user has companies but no access to any of them, redirect
-    if (companies.length > 0 && !hasAnyAccess && !anyAccessLoading) {
-      console.log('[Access Check] User has companies but no access to any, redirecting to subscribe')
-      router.push('/subscribe')
-      return
+    // Only redirect to subscribe if we're CERTAIN the user has no access
+    // This prevents premature redirects during loading states
+    // Check: user has companies, all loading is done, and we're sure there's no access
+    if (companies.length > 0 && !isLoading && !isWaitingForHooks && !accessLoading) {
+      // Double-check: if initDataResults exists, use it; otherwise trust the hook
+      const definitelyNoAccess = initDataResults 
+        ? !initDataResults.hasAnyAccess && initDataResults.accessibleCompanyIds.length === 0
+        : !hasAnyAccess && !anyAccessLoading;
+      
+      if (definitelyNoAccess) {
+        console.log('[DataRoom] User has companies but no access, redirecting to subscribe');
+        router.push("/subscribe");
+        return;
+      }
     }
-  }, [companies.length, hasAnyAccess, anyAccessLoading, authLoading, isLoading, user, router, supabase])
+  }, [
+    companies.length,
+    hasAnyAccess,
+    anyAccessLoading,
+    authLoading,
+    isLoading,
+    isDataRoomInitLoading,
+    initDataResults,
+    userSubscriptionLoading,
+    userHasSubscription,
+    accessLoading,
+    user,
+    router,
+  ]);
 
   // Check access when company is selected - redirect if no access
+  // CRITICAL: If subscription/trial expired, NO ONE (not even team members) should access data-room
   useEffect(() => {
     // Wait for all loading states to complete
-    if (accessLoading || authLoading) return
+    if (accessLoading || authLoading || accessError) return;
 
     // If no company selected, don't check access yet
-    if (!currentCompany) return
+    if (!currentCompany) return;
+
+    // CRITICAL: If subscription expired, redirect EVERYONE (owners and team members)
+    if (ownerSubscriptionExpired) {
+      if (isOwner) {
+        console.log(
+          "[Access Check] Owner subscription/trial expired, redirecting to subscription-required page",
+        );
+        router.replace(`/subscription-required?company_id=${currentCompany.id}`);
+        return;
+      } else {
+        console.log(
+          "[Access Check] Owner subscription/trial expired - team member cannot access, redirecting to owner-subscription-expired page",
+        );
+        router.replace(
+          `/owner-subscription-expired?company_id=${currentCompany.id}`,
+        );
+        return;
+      }
+    }
 
     // If user is owner but no subscription/trial (or company subscription revoked/expired)
     if (isOwner && !hasAccess) {
-      console.log('[Access Check] Owner has no subscription or company subscription expired, redirecting to subscription-required page')
-      router.push(`/subscription-required?company_id=${currentCompany.id}`)
-      return
-    }
-
-    // If user is invited but owner's subscription expired
-    if (!isOwner && ownerSubscriptionExpired) {
-      console.log('[Access Check] Owner subscription expired, redirecting to contact owner page')
-      router.push(`/owner-subscription-expired?company_id=${currentCompany.id}`)
-      return
+      console.log(
+        "[Access Check] Owner has no subscription or company subscription expired, redirecting to subscription-required page",
+      );
+      router.replace(`/subscription-required?company_id=${currentCompany.id}`);
+      return;
     }
 
     // If user is not owner and doesn't have access for other reasons
     if (!hasAccess && !isOwner) {
-      console.log('[Access Check] No access to this company')
-      router.push(`/subscription-required?company_id=${currentCompany.id}`)
+      console.log("[Access Check] No access to this company");
+      router.replace(`/subscription-required?company_id=${currentCompany.id}`);
     }
-  }, [currentCompany, hasAccess, isOwner, ownerSubscriptionExpired, accessLoading, authLoading, router])
+  }, [
+    currentCompany,
+    hasAccess,
+    isOwner,
+    ownerSubscriptionExpired,
+    accessLoading,
+    authLoading,
+    accessError,
+    router,
+  ]);
 
   const fetchVaultDocuments = async () => {
-    if (!currentCompany) return
-    setIsLoadingVaultDocuments(true)
+    if (!currentCompany) return;
+    setIsLoadingVaultDocuments(true);
     try {
-      const result = await getCompanyDocuments(currentCompany.id)
+      console.log('[fetchVaultDocuments] Fetching documents for company:', currentCompany.id);
+      const result = await getCompanyDocuments(currentCompany.id);
+      console.log('[fetchVaultDocuments] Result:', {
+        success: result.success,
+        documentCount: result.documents?.length || 0,
+        error: result.error,
+        warning: result.warning,
+      });
       if (result.success) {
-        setVaultDocuments(result.documents || [])
+        setVaultDocuments(result.documents || []);
+        vaultDocumentsFetchedRef.current = currentCompany.id;
+        console.log('[fetchVaultDocuments] Set vault documents:', result.documents?.length || 0);
       } else {
-        console.error('Failed to load vault documents:', result.error)
-        setVaultDocuments([])
+        console.error("[fetchVaultDocuments] Failed to load vault documents:", result.error);
+        setVaultDocuments([]);
       }
     } catch (err) {
-      console.error('Error fetching vault documents:', err)
-      setVaultDocuments([])
+      console.error("[fetchVaultDocuments] Error fetching vault documents:", err);
+      setVaultDocuments([]);
     } finally {
-      setIsLoadingVaultDocuments(false)
+      setIsLoadingVaultDocuments(false);
     }
-  }
+  };
 
   // Fetch specific company details and directors when currentCompany changes
   useEffect(() => {
     async function fetchDetails() {
-      if (!currentCompany) return
+      // Skip if during initial boot (handled by consolidated init)
+      if (isDataRoomInitLoading || !currentCompany) return;
 
       // Skip if already fetched for this company (prevents re-fetch on tab switch or remount)
       // Check both ref and state to handle remounts where refs reset but state persists
-      if (detailsFetchedRef.current === currentCompany.id || 
-          (entityDetails && entityDetails.companyName && currentCompany.name === entityDetails.companyName)) {
-        console.log('[fetchDetails] Already fetched for company:', currentCompany.id, 'skipping...')
-        // Update ref in case it was reset on remount
-        detailsFetchedRef.current = currentCompany.id
-        // IMPORTANT: Set loading to false since we're skipping the fetch
-        setIsLoading(false)
-        return
+      const hasCorrectData =
+        entityDetails && entityDetails.companyName === currentCompany.name;
+
+      if (detailsFetchedRef.current === currentCompany.id || hasCorrectData) {
+        if (detailsFetchedRef.current !== currentCompany.id) {
+          console.log(
+            "[fetchDetails] Correct data found in state, updating ref",
+          );
+          detailsFetchedRef.current = currentCompany.id;
+        } else {
+          console.log(
+            "[fetchDetails] Already fetched and ref matches, skipping...",
+          );
+        }
+
+        if (isLoading) {
+          setIsLoading(false);
+        }
+        return;
       }
 
       if (detailsFetchingRef.current === currentCompany.id) {
-        console.log('[fetchDetails] Fetch already in progress for company:', currentCompany.id, 'skipping...')
-        return
+        return;
       }
 
-      setIsLoading(true)
-      const startTime = performance.now()
-      console.log('[fetchDetails] Starting fetch for company:', currentCompany.id)
-      detailsFetchingRef.current = currentCompany.id
+      // ONLY set isLoading(true) if we actually need to fetch (prevents boot flicker)
+      if (!hasCorrectData) {
+          setIsLoading(true);
+      }
+      const startTime = performance.now();
+      console.log(
+        "[fetchDetails] Starting fetch for company:",
+        currentCompany.id,
+      );
+      detailsFetchingRef.current = currentCompany.id;
 
       try {
         // Fetch company details and directors IN PARALLEL
-        // Use server action for directors to bypass RLS
+        // Use server actions to bypass RLS and support both Supabase and Passport users
         const [companyResult, directorsResult] = await Promise.all([
-          supabase
-            .from('companies')
-            .select('name, type, incorporation_date, tax_id, registration_id, address, phone_number, industry_categories, industry, country_code')
-            .eq('id', currentCompany.id)
-            .single(),
-          getDirectors(currentCompany.id)
-        ])
+          getCompanyDetails(currentCompany.id),
+          getDirectors(currentCompany.id),
+        ]);
 
-        console.log('[fetchDetails] Parallel fetch completed in', Math.round(performance.now() - startTime), 'ms')
+        console.log(
+          "[fetchDetails] Parallel fetch completed in",
+          Math.round(performance.now() - startTime),
+          "ms",
+        );
 
-        if (companyResult.error) {
-          console.error('[fetchDetails] Company fetch error:', companyResult.error)
-          throw companyResult.error
+        if (!companyResult.success) {
+          console.error(
+            "[fetchDetails] Company fetch error:",
+            companyResult.error,
+          );
+          throw new Error(companyResult.error || 'Failed to fetch company details');
         }
         if (!directorsResult.success) {
-          console.error('[fetchDetails] Directors fetch error:', directorsResult.error)
+          console.error(
+            "[fetchDetails] Directors fetch error:",
+            directorsResult.error,
+          );
           // Don't throw - continue with empty directors array
         }
 
-        const company = companyResult.data
-        const directors = directorsResult.directors || []
-        
-        console.log('[fetchDetails] Directors fetched:', directors.length, 'directors')
-        console.log('[fetchDetails] Directors data:', directors)
+        const company = companyResult.company;
+        const directors = directorsResult.directors || [];
+
+        console.log(
+          "[fetchDetails] Directors fetched:",
+          directors.length,
+          "directors",
+        );
+        console.log("[fetchDetails] Directors data:", directors);
 
         // Map to EntityDetails structure
         if (company) {
           // Get country config for date formatting (use current company's country)
-          const companyCountryCode = company.country_code || 'IN'
-          const countryConfig = getCountryConfig(companyCountryCode)
+          const companyCountryCode = company.country_code || "IN";
+          const countryConfig = getCountryConfig(companyCountryCode);
 
           // Format date based on country config
-          const incorporationDate = new Date(company.incorporation_date)
-          let formattedDate = ''
-          if (countryConfig?.dateFormat === 'DD/MM/YYYY') {
-            formattedDate = incorporationDate.toLocaleDateString('en-GB', {
-              day: '2-digit',
-              month: 'long',
-              year: 'numeric'
-            })
+          const incorporationDate = new Date(company.incorporation_date);
+          let formattedDate = "";
+          if (countryConfig?.dateFormat === "DD/MM/YYYY") {
+            formattedDate = incorporationDate.toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+            });
           } else {
-            formattedDate = incorporationDate.toLocaleDateString('en-US', {
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric'
-            })
+            formattedDate = incorporationDate.toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            });
           }
 
           const mappedDetails: EntityDetails = {
             companyName: company.name,
-            type: company.type.toUpperCase(),
+            type: company.type ? company.type.toUpperCase() : '',
             regDate: formattedDate,
-            taxId: company.tax_id || 'Not Provided', // Generic tax identifier
-            registrationId: company.registration_id || 'Not Provided', // Generic registration identifier
-            address: company.address,
-            phoneNumber: company.phone_number || 'Not Provided',
+            taxId: company.tax_id || "Not Provided", // Generic tax identifier
+            registrationId: company.registration_id || "Not Provided", // Generic registration identifier
+            address: company.address || '',
+            phoneNumber: company.phone_number || "Not Provided",
             industryCategory: Array.isArray(company.industry_categories)
-              ? company.industry_categories.join(', ')
-              : company.industry,
-            directors: directors.map(d => ({
+              ? company.industry_categories.join(", ")
+              : company.industry || '',
+            directors: directors.map((d) => ({
               id: d.id,
               firstName: d.firstName,
               lastName: d.lastName,
@@ -623,700 +737,866 @@ function DataRoomPageInner() {
               pan: d.pan,
               email: d.email,
               mobile: d.mobile,
-              verified: d.verified
-            }))
-          }
-          setEntityDetails(mappedDetails)
+              verified: d.verified,
+            })),
+          };
+          setEntityDetails(mappedDetails);
         }
 
         // Mark as fetched for this company
-        detailsFetchedRef.current = currentCompany.id
+        detailsFetchedRef.current = currentCompany.id;
 
         // Fetch vault documents in background (don't block UI)
-        fetchVaultDocuments()
+        fetchVaultDocuments();
 
-        console.log('[fetchDetails] Total time:', Math.round(performance.now() - startTime), 'ms')
+        console.log(
+          "[fetchDetails] Total time:",
+          Math.round(performance.now() - startTime),
+          "ms",
+        );
       } catch (err) {
-        console.error('Error fetching entity details:', err)
+        console.error("Error fetching entity details:", err);
       } finally {
         if (detailsFetchingRef.current === currentCompany.id) {
-          detailsFetchingRef.current = null
+          detailsFetchingRef.current = null;
         }
-        setIsLoading(false)
+        setIsLoading(false);
       }
     }
 
-    fetchDetails()
-  }, [currentCompany, supabase])
+    fetchDetails();
+  }, [currentCompany?.id]); // Remove supabase from dependencies - it's stable and doesn't need to trigger re-fetches
+
+  // Fetch vault documents when company changes (independent of fetchDetails)
+  useEffect(() => {
+    if (!currentCompany || isDataRoomInitLoading) return;
+    
+    // Skip if already fetched for this company
+    if (vaultDocumentsFetchedRef.current === currentCompany.id) {
+      console.log('[fetchVaultDocuments] Already fetched for company:', currentCompany.id, 'skipping...');
+      return;
+    }
+    
+    // Always fetch documents when company changes, even if details are already fetched
+    console.log('[fetchVaultDocuments] Triggering fetch for company:', currentCompany.id);
+    fetchVaultDocuments();
+  }, [currentCompany?.id, isDataRoomInitLoading]);
 
   // Handle company change - update both state and URL params
-  const handleCompanyChange = useCallback((company: Company) => {
-    setCurrentCompany(company)
-    // Update URL params without causing navigation
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('company_id', company.id)
-    router.replace(`/data-room?${params.toString()}`, { scroll: false })
-    // Reset director selection when company changes
-    setSelectedDirectorId(null)
-    // Reset fetch refs so new data is fetched for the new company
-    detailsFetchedRef.current = null
-    requirementsFetchedRef.current = null
-    templatesFetchedRef.current.clear() // Clear the Set for templates
-  }, [router, searchParams])
+  const handleCompanyChange = useCallback(
+    (company: Company) => {
+      setCurrentCompany(company);
+      // Update URL params without causing navigation
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("company_id", company.id);
+      router.replace(`/data-room?${params.toString()}`, { scroll: false });
+      // Reset director selection when company changes
+      setSelectedDirectorId(null);
+      // CRITICAL FIX: Clear all data immediately when company changes
+      // This prevents showing wrong company's data
+      setRegulatoryRequirements([]);
+      setVaultDocuments([]);
+      setEntityDetails(null);
+      // Reset fetch refs so new data is fetched for the new company
+      detailsFetchedRef.current = null;
+      requirementsFetchedRef.current = null;
+      requirementsFetchingRef.current = null;
+      vaultDocumentsFetchedRef.current = null;
+      templatesFetchedRef.current.clear(); // Clear the Set for templates
+    },
+    [router, searchParams],
+  );
 
-  // Sync URL params to state on mount/change (only when companies are loaded)
-  // Only sync FROM URL TO STATE, not the other way around (to prevent loops)
+  // Sync URL params to state when they change manually (from outside the init flow)
   useEffect(() => {
-    if (companies.length === 0) return // Wait for companies to load
-    
-    const urlCompanyId = searchParams.get('company_id') || searchParams.get('company')
-    if (urlCompanyId) {
-      // Only update if URL has a company and it's different from current
-      const companyFromUrl = companies.find(c => c.id === urlCompanyId)
-      if (companyFromUrl && (!currentCompany || currentCompany.id !== urlCompanyId)) {
-        setCurrentCompany(companyFromUrl)
-        setSelectedDirectorId(null) // Reset director when company changes
-        // Reset fetch refs so new data is fetched for the new company
-        detailsFetchedRef.current = null
-        requirementsFetchedRef.current = null
-        templatesFetchedRef.current.clear() // Clear the Set for templates
-      }
-    } else if (currentCompany && companies.length > 0) {
-      // If URL has no company but we have one selected, set first company as default
-      // This only happens on initial load when there's no URL param
-      if (!searchParams.has('company_id') && !searchParams.has('company')) {
-        const firstCompany = companies[0]
-        if (firstCompany && firstCompany.id !== currentCompany.id) {
-          setCurrentCompany(firstCompany)
-          setSelectedDirectorId(null)
-          // Update URL to match
-          const params = new URLSearchParams(searchParams.toString())
-          params.set('company_id', firstCompany.id)
-          router.replace(`/data-room?${params.toString()}`, { scroll: false })
-        }
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, companies.length]) // Only depend on URL and companies, not currentCompany to prevent loops
+    if (!companiesFetchedRef.current || companies.length === 0) return;
 
-  const [selectedDirectorId, setSelectedDirectorId] = useState<string | null>(null)
+    const urlCompanyId = searchParams.get("company_id") || searchParams.get("company");
+    if (!urlCompanyId) return;
+
+    // Prevent SYNC from fighting INIT flow: If we just finished init, don't allow sync to change it for 2s
+    if (Date.now() < lockUntilRef.current) {
+        if (isDataRoomDebugEnabled) {
+            console.log("[Sync] Guarded by lockUntil, skipping sync for ID:", urlCompanyId);
+        }
+        return;
+    }
+
+    const companyFromUrl = companies.find((c) => c.id === urlCompanyId);
+    if (companyFromUrl && currentCompany?.id !== urlCompanyId) {
+        if (isDataRoomDebugEnabled) {
+            console.log(`[Sync] Legitimate URL change detected: ${currentCompany?.id} -> ${urlCompanyId}`);
+        }
+        setCurrentCompany(companyFromUrl);
+        setSelectedDirectorId(null);
+        // CRITICAL FIX: Clear all data immediately when company changes via URL
+        setRegulatoryRequirements([]);
+        setVaultDocuments([]);
+        setEntityDetails(null);
+        detailsFetchedRef.current = null;
+        requirementsFetchedRef.current = null;
+        requirementsFetchingRef.current = null;
+        templatesFetchedRef.current.clear();
+    }
+  }, [searchParams, companies]);
+
+  const [selectedDirectorId, setSelectedDirectorId] = useState<string | null>(
+    null,
+  );
 
   // Reset director selection when company changes
   useEffect(() => {
-    setSelectedDirectorId(null)
-  }, [currentCompany?.id])
+    setSelectedDirectorId(null);
+  }, [currentCompany?.id]);
 
   // Fetch hidden templates when company changes
   useEffect(() => {
-    async function fetchHiddenTemplates() {
-      if (!currentCompany) {
-        setHiddenTemplates(new Set())
-        return
+    const fetchTemplates = async () => {
+      // Skip if during initial boot (handled by consolidated init)
+      if (isDataRoomInitLoading || !currentCompany) {
+        if (!currentCompany) setHiddenTemplates(new Set());
+        return;
       }
 
       try {
-        const result = await getHiddenDocumentTemplates(currentCompany.id)
+        const result = await getHiddenDocumentTemplates(currentCompany.id);
         if (result.success && result.hiddenTemplates) {
           const hiddenSet = new Set(
-            result.hiddenTemplates.map(t => `${t.folder_name}:${t.document_name}`)
-          )
-          setHiddenTemplates(hiddenSet)
+            result.hiddenTemplates.map(
+              (t: any) => `${t.folder_name}:${t.document_name}`,
+            ),
+          );
+          setHiddenTemplates(hiddenSet);
         }
       } catch (error) {
-        console.error('Error fetching hidden templates:', error)
-        setHiddenTemplates(new Set())
+        console.error("Error fetching hidden templates:", error);
+        setHiddenTemplates(new Set());
       }
-    }
+    };
 
-    fetchHiddenTemplates()
-  }, [currentCompany?.id])
+    fetchTemplates();
+  }, [currentCompany?.id, isDataRoomInitLoading]);
 
   // Fetch hidden compliances when company changes
   useEffect(() => {
-    async function fetchHiddenCompliances() {
-      if (!currentCompany) {
-        setHiddenCompliances(new Set())
-        return
+    const fetchCompliances = async () => {
+      // Skip if during initial boot (handled by consolidated init)
+      if (isDataRoomInitLoading || !currentCompany) {
+        if (!currentCompany) setHiddenCompliances(new Set());
+        return;
       }
 
       try {
-        const result = await getHiddenCompliances(currentCompany.id)
+        const result = await getHiddenCompliances(currentCompany.id);
         if (result.success && result.hiddenComplianceIds) {
-          setHiddenCompliances(new Set(result.hiddenComplianceIds))
+          setHiddenCompliances(new Set(result.hiddenComplianceIds));
         } else {
-          setHiddenCompliances(new Set())
+          setHiddenCompliances(new Set());
         }
       } catch (error) {
-        console.error('Error fetching hidden compliances:', error)
-        setHiddenCompliances(new Set())
+        console.error("Error fetching hidden compliances:", error);
+        setHiddenCompliances(new Set());
       }
-    }
+    };
 
-    fetchHiddenCompliances()
-  }, [currentCompany?.id])
+    fetchCompliances();
+  }, [currentCompany?.id, isDataRoomInitLoading]);
 
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState("overview");
 
   // GST Integration States
   // GST tab state moved to GSTTab component
 
   // Notices States
   // Notices tab state moved to NoticesTab component
-  const [complianceDetailsModal, setComplianceDetailsModal] = useState<any>(null)
+  const [complianceDetailsModal, setComplianceDetailsModal] =
+    useState<any>(null);
   // Notices form state moved to NoticesTab component
 
   // Document upload from tracker
   const [documentUploadModal, setDocumentUploadModal] = useState<{
-    isOpen: boolean
-    requirementId: string
-    requirement: string
-    category: string
-    documentName: string
-    complianceType: string
-    dueDate: string
-    financialYear: string | null
-    allRequiredDocs: string[]
-  } | null>(null)
-  const [uploadingDocument, setUploadingDocument] = useState(false)
-  const [uploadFile, setUploadFile] = useState<File | null>(null)
-  const [uploadProgress, setUploadProgress] = useState<number>(0)
-  const [uploadStage, setUploadStage] = useState<string>('')
-  const [previewFileUrl, setPreviewFileUrl] = useState<string | null>(null)
-  const [requirementUploadHistory, setRequirementUploadHistory] = useState<any[]>([])
+    isOpen: boolean;
+    requirementId: string;
+    requirement: string;
+    category: string;
+    documentName: string;
+    complianceType: string;
+    dueDate: string;
+    financialYear: string | null;
+    allRequiredDocs: string[];
+  } | null>(null);
+  const [uploadingDocument, setUploadingDocument] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [uploadStage, setUploadStage] = useState<string>("");
+  const [previewFileUrl, setPreviewFileUrl] = useState<string | null>(null);
+  const [requirementUploadHistory, setRequirementUploadHistory] = useState<
+    any[]
+  >([]);
 
   // Demo Notices Data moved to NoticesTab component
 
   // Get country configuration for current company (must be before useEffect that uses it)
-  const { countryCode, countryConfig } = useCompanyCountry(currentCompany)
+  const { countryCode, countryConfig } = useCompanyCountry(currentCompany);
 
   // Fetch compliance categories from database
-  const { categories: complianceCategories } = useComplianceCategories(countryCode || 'IN')
+  const { categories: complianceCategories } = useComplianceCategories(
+    countryCode || "IN",
+  );
 
   // Track if templates have been fetched to prevent re-fetching on tab switch
-  const templatesFetchedRef = useRef<Set<string>>(new Set())
+  const templatesFetchedRef = useRef<Set<string>>(new Set());
 
   // Fetch document templates when country code changes (must be after countryCode is defined)
   useEffect(() => {
-    if (!countryCode) return
+    if (!countryCode) return;
     // Skip if already fetched for this country
-    if (templatesFetchedRef.current.has(countryCode)) return
+    if (templatesFetchedRef.current.has(countryCode)) return;
 
     async function fetchTemplates() {
       try {
         // Use server action which bypasses RLS
-        const result = await getDocumentTemplates()
+        const result = await getDocumentTemplates();
         if (result.success && result.templates) {
           // Filter by country code on client side if templates have country_code
-          const filtered = result.templates.filter((t: any) => 
-            !t.country_code || t.country_code === countryCode
-          )
-          setDocumentTemplates(filtered)
-          templatesFetchedRef.current.add(countryCode)
+          const filtered = result.templates.filter(
+            (t: any) => !t.country_code || t.country_code === countryCode,
+          );
+          setDocumentTemplates(filtered);
+          templatesFetchedRef.current.add(countryCode);
         }
       } catch (error) {
-        console.error('Error fetching templates:', error)
-        setDocumentTemplates([])
+        console.error("Error fetching templates:", error);
+        setDocumentTemplates([]);
       }
     }
 
-    fetchTemplates()
-  }, [countryCode])
+    fetchTemplates();
+  }, [countryCode]);
 
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
-  const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false)
-  const [isAdvancedOptionsOpen, setIsAdvancedOptionsOpen] = useState(false)
-  const [isFolderDropdownOpen, setIsFolderDropdownOpen] = useState(false)
-  const [showComplianceContext, setShowComplianceContext] = useState(true)
-  const [bulkUploadFiles, setBulkUploadFiles] = useState<File[]>([])
-  const [bulkUploadProgress, setBulkUploadProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 })
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
+  const [isAdvancedOptionsOpen, setIsAdvancedOptionsOpen] = useState(false);
+  const [isFolderDropdownOpen, setIsFolderDropdownOpen] = useState(false);
+  const [showComplianceContext, setShowComplianceContext] = useState(true);
+  const [bulkUploadFiles, setBulkUploadFiles] = useState<File[]>([]);
+  const [bulkUploadProgress, setBulkUploadProgress] = useState<{
+    current: number;
+    total: number;
+  }>({ current: 0, total: 0 });
   // Track advanced options for each file in bulk upload (indexed by file name)
-  const [bulkUploadFileOptions, setBulkUploadFileOptions] = useState<Record<string, {
-    documentName: string
-    registrationDate: string
-    expiryDate: string
-    frequency: string
-    hasNote: boolean
-    externalEmail: string
-    externalPassword: string
-  }>>({})
+  const [bulkUploadFileOptions, setBulkUploadFileOptions] = useState<
+    Record<
+      string,
+      {
+        documentName: string;
+        registrationDate: string;
+        expiryDate: string;
+        frequency: string;
+        hasNote: boolean;
+        externalEmail: string;
+        externalPassword: string;
+      }
+    >
+  >({});
   // Track which file's advanced options are expanded
-  const [expandedBulkFileOptions, setExpandedBulkFileOptions] = useState<Set<string>>(new Set())
+  const [expandedBulkFileOptions, setExpandedBulkFileOptions] = useState<
+    Set<string>
+  >(new Set());
   // Track which file's document name dropdown is open
-  const [openDocumentNameDropdown, setOpenDocumentNameDropdown] = useState<string | null>(null)
-  const [previewDocument, setPreviewDocument] = useState<any | null>(null)
-  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false)
-  const [previewModalTab, setPreviewModalTab] = useState<'preview' | 'compliance'>('preview')
-  const [isStorageBreakdownOpen, setIsStorageBreakdownOpen] = useState(false)
-  const [expiringSoonFilter, setExpiringSoonFilter] = useState<'all' | 'expiring' | 'expired'>('all')
-  const [selectedVersions, setSelectedVersions] = useState<Record<string, number>>({})
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
-  const [expandedDocumentVersions, setExpandedDocumentVersions] = useState<Set<string>>(new Set())
-  const [expandedYearGroups, setExpandedYearGroups] = useState<Record<string, Set<string>>>({})
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
-  const [isSendModalOpen, setIsSendModalOpen] = useState(false)
-  const [isEmailTemplateOpen, setIsEmailTemplateOpen] = useState(false)
-  const [selectedFY, setSelectedFY] = useState<string>('')
-  const [searchQuery, setSearchQuery] = useState<string>('')
-  const [sortOption, setSortOption] = useState<'name-asc' | 'name-desc' | 'date-newest' | 'date-oldest' | 'expiry' | 'folder'>('date-newest')
-  const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set())
-  const [selectedDocumentsToSend, setSelectedDocumentsToSend] = useState<Set<string>>(new Set())
-  const [isSendingEmail, setIsSendingEmail] = useState(false)
+  const [openDocumentNameDropdown, setOpenDocumentNameDropdown] = useState<
+    string | null
+  >(null);
+  const [previewDocument, setPreviewDocument] = useState<any | null>(null);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [previewModalTab, setPreviewModalTab] = useState<
+    "preview" | "compliance"
+  >("preview");
+  const [isStorageBreakdownOpen, setIsStorageBreakdownOpen] = useState(false);
+  const [expiringSoonFilter, setExpiringSoonFilter] = useState<
+    "all" | "expiring" | "expired"
+  >("all");
+  const [selectedVersions, setSelectedVersions] = useState<
+    Record<string, number>
+  >({});
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
+    new Set(),
+  );
+  const [expandedDocumentVersions, setExpandedDocumentVersions] = useState<
+    Set<string>
+  >(new Set());
+  const [expandedYearGroups, setExpandedYearGroups] = useState<
+    Record<string, Set<string>>
+  >({});
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isSendModalOpen, setIsSendModalOpen] = useState(false);
+  const [isEmailTemplateOpen, setIsEmailTemplateOpen] = useState(false);
+  const [selectedFY, setSelectedFY] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [sortOption, setSortOption] = useState<
+    | "name-asc"
+    | "name-desc"
+    | "date-newest"
+    | "date-oldest"
+    | "expiry"
+    | "folder"
+  >("date-newest");
+  const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(
+    new Set(),
+  );
+  const [selectedDocumentsToSend, setSelectedDocumentsToSend] = useState<
+    Set<string>
+  >(new Set());
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailData, setEmailData] = useState({
-    recipients: '',
-    subject: 'Document Sharing - Compliance Vault',
-    content: 'Please find the attached documents from our Compliance Vault.',
-  })
+    recipients: "",
+    subject: "Document Sharing - Compliance Vault",
+    content: "Please find the attached documents from our Compliance Vault.",
+  });
 
   // Generate financial years from 2019 to current year (country-aware)
-  const currentYear = new Date().getFullYear()
+  const currentYear = new Date().getFullYear();
   const financialYears = useMemo(() => {
-    const years: string[] = []
+    const years: string[] = [];
     for (let year = 2019; year <= currentYear; year++) {
       // Generate FY based on country's FY start month
-      const config = countryConfig
-      if (config.financialYear.type === 'CY') {
-        years.push(`CY ${year}`)
+      const config = countryConfig;
+      if (config.financialYear.type === "CY") {
+        years.push(`CY ${year}`);
       } else {
         // FY format: FY 2024-25
-        years.push(`FY ${year}-${(year + 1).toString().slice(-2)}`)
+        years.push(`FY ${year}-${(year + 1).toString().slice(-2)}`);
       }
     }
-    return years.reverse()
-  }, [currentYear, countryConfig])
+    return years.reverse();
+  }, [currentYear, countryConfig]);
   const [uploadFormData, setUploadFormData] = useState({
-    folder: '',
-    documentName: '',
-    registrationDate: '',
-    expiryDate: '',
+    folder: "",
+    documentName: "",
+    registrationDate: "",
+    expiryDate: "",
     hasNote: false,
-    externalEmail: '',
-    externalPassword: '',
-    frequency: 'annually', // Default frequency
+    externalEmail: "",
+    externalPassword: "",
+    frequency: "annually", // Default frequency
     file: null as File | null,
     // Period metadata for tracker integration
-    periodType: '' as '' | 'one-time' | 'monthly' | 'quarterly' | 'annual',
-    periodFinancialYear: '',
-    periodKey: '',
-    requirementId: '', // If uploading from tracker context
-  })
+    periodType: "" as "" | "one-time" | "monthly" | "quarterly" | "annual",
+    periodFinancialYear: "",
+    periodKey: "",
+    requirementId: "", // If uploading from tracker context
+  });
 
-  const [isUploading, setIsUploading] = useState(false)
+  const [isUploading, setIsUploading] = useState(false);
 
   // Country-aware default folders and documents
   const getCountryDefaultFolders = (countryCode: string): string[] => {
-    const config = countryConfig
-    if (!config) return ['Constitutional Documents', 'Financials and licenses', 'Taxation & GST Compliance', 'Regulatory & MCA Filings']
+    const config = countryConfig;
+    if (!config)
+      return [
+        "Constitutional Documents",
+        "Financials and licenses",
+        "Taxation & GST Compliance",
+        "Regulatory & MCA Filings",
+      ];
 
     // Base folders that apply to all countries
-    const baseFolders = ['Constitutional Documents', 'Financials and licenses']
+    const baseFolders = ["Constitutional Documents", "Financials and licenses"];
 
     // Country-specific compliance folders based on compliance categories
-    const complianceFolders: string[] = []
+    const complianceFolders: string[] = [];
 
-    if (countryCode === 'IN') {
+    if (countryCode === "IN") {
       // India-specific folders
-      complianceFolders.push('Taxation & GST Compliance', 'Regulatory & MCA Filings')
-    } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode)) {
+      complianceFolders.push(
+        "Taxation & GST Compliance",
+        "Regulatory & MCA Filings",
+      );
+    } else if (["AE", "SA", "OM", "QA", "BH"].includes(countryCode)) {
       // GCC countries
-      complianceFolders.push('VAT & Tax Compliance', 'Corporate & Regulatory Filings')
-    } else if (countryCode === 'US') {
+      complianceFolders.push(
+        "VAT & Tax Compliance",
+        "Corporate & Regulatory Filings",
+      );
+    } else if (countryCode === "US") {
       // USA
-      complianceFolders.push('Federal Tax Returns', 'State Tax Returns', 'Business License & Registration')
+      complianceFolders.push(
+        "Federal Tax Returns",
+        "State Tax Returns",
+        "Business License & Registration",
+      );
     } else {
       // Fallback
-      complianceFolders.push('Tax Compliance', 'Regulatory Filings')
+      complianceFolders.push("Tax Compliance", "Regulatory Filings");
     }
 
-    return [...baseFolders, ...complianceFolders]
-  }
+    return [...baseFolders, ...complianceFolders];
+  };
 
-  const getCountryDefaultDocuments = (countryCode: string): Record<string, string[]> => {
-    const config = countryConfig
+  const getCountryDefaultDocuments = (
+    countryCode: string,
+  ): Record<string, string[]> => {
+    const config = countryConfig;
     if (!config) {
       return {
-        'Constitutional Documents': ['Certificate of Incorporation', 'MOA (Memorandum of Association)', 'AOA (Articles of Association)', 'Rental Deed', 'DIN Certificate'],
-        'Financials and licenses': ['PAN', 'TAN'],
-        'Taxation & GST Compliance': ['GST Returns', 'Income Tax Returns'],
-        'Regulatory & MCA Filings': ['Annual Returns', 'Board Minutes']
-      }
+        "Constitutional Documents": [
+          "Certificate of Incorporation",
+          "MOA (Memorandum of Association)",
+          "AOA (Articles of Association)",
+          "Rental Deed",
+          "DIN Certificate",
+        ],
+        "Financials and licenses": ["PAN", "TAN"],
+        "Taxation & GST Compliance": ["GST Returns", "Income Tax Returns"],
+        "Regulatory & MCA Filings": ["Annual Returns", "Board Minutes"],
+      };
     }
 
     // Use country config's document types and compliance categories
-    const constitutionalDocs = config.onboarding.documentTypes.filter(doc =>
-      doc.includes('Certificate') || doc.includes('Memorandum') || doc.includes('Articles') || doc.includes('Association')
-    )
+    const constitutionalDocs = config.onboarding.documentTypes.filter(
+      (doc) =>
+        doc.includes("Certificate") ||
+        doc.includes("Memorandum") ||
+        doc.includes("Articles") ||
+        doc.includes("Association"),
+    );
 
-    const financialDocs = config.onboarding.documentTypes.filter(doc =>
-      doc === config.labels.taxId || doc.includes('TAN') || doc.includes('Tax') || doc.includes('License')
-    )
+    const financialDocs = config.onboarding.documentTypes.filter(
+      (doc) =>
+        doc === config.labels.taxId ||
+        doc.includes("TAN") ||
+        doc.includes("Tax") ||
+        doc.includes("License"),
+    );
 
-    const complianceDocs: Record<string, string[]> = {}
+    const complianceDocs: Record<string, string[]> = {};
 
-    if (countryCode === 'IN') {
+    if (countryCode === "IN") {
       // India-specific documents
-      complianceDocs['Taxation & GST Compliance'] = ['GST Returns', 'Income Tax Returns']
-      complianceDocs['Regulatory & MCA Filings'] = ['Annual Returns', 'Board Minutes', 'ROC Filings']
-    } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode)) {
+      complianceDocs["Taxation & GST Compliance"] = [
+        "GST Returns",
+        "Income Tax Returns",
+      ];
+      complianceDocs["Regulatory & MCA Filings"] = [
+        "Annual Returns",
+        "Board Minutes",
+        "ROC Filings",
+      ];
+    } else if (["AE", "SA", "OM", "QA", "BH"].includes(countryCode)) {
       // GCC countries
-      complianceDocs['VAT & Tax Compliance'] = ['VAT Returns', 'Corporate Tax Returns']
-      complianceDocs['Corporate & Regulatory Filings'] = ['Commercial Registration', 'Trade License Renewal', 'Annual Returns']
-    } else if (countryCode === 'US') {
+      complianceDocs["VAT & Tax Compliance"] = [
+        "VAT Returns",
+        "Corporate Tax Returns",
+      ];
+      complianceDocs["Corporate & Regulatory Filings"] = [
+        "Commercial Registration",
+        "Trade License Renewal",
+        "Annual Returns",
+      ];
+    } else if (countryCode === "US") {
       // USA
-      complianceDocs['Federal Tax Returns'] = ['Federal Income Tax Return', 'EIN Certificate']
-      complianceDocs['State Tax Returns'] = ['State Income Tax Return', 'Sales Tax Return']
-      complianceDocs['Business License & Registration'] = ['Business License', 'State Registration', 'Annual Report']
+      complianceDocs["Federal Tax Returns"] = [
+        "Federal Income Tax Return",
+        "EIN Certificate",
+      ];
+      complianceDocs["State Tax Returns"] = [
+        "State Income Tax Return",
+        "Sales Tax Return",
+      ];
+      complianceDocs["Business License & Registration"] = [
+        "Business License",
+        "State Registration",
+        "Annual Report",
+      ];
     } else {
       // Fallback
-      complianceDocs['Tax Compliance'] = ['Tax Returns']
-      complianceDocs['Regulatory Filings'] = ['Annual Returns']
+      complianceDocs["Tax Compliance"] = ["Tax Returns"];
+      complianceDocs["Regulatory Filings"] = ["Annual Returns"];
     }
 
     return {
-      'Constitutional Documents': constitutionalDocs.length > 0 ? constitutionalDocs : ['Certificate of Incorporation', 'Memorandum of Association'],
-      'Financials and licenses': financialDocs.length > 0 ? financialDocs : [config.labels.taxId],
-      ...complianceDocs
-    }
-  }
+      "Constitutional Documents":
+        constitutionalDocs.length > 0
+          ? constitutionalDocs
+          : ["Certificate of Incorporation", "Memorandum of Association"],
+      "Financials and licenses":
+        financialDocs.length > 0 ? financialDocs : [config.labels.taxId],
+      ...complianceDocs,
+    };
+  };
 
   // Get country-specific defaults
   const DEFAULT_FOLDERS = useMemo(() => {
-    return getCountryDefaultFolders(countryCode || 'IN')
-  }, [countryCode, countryConfig])
+    return getCountryDefaultFolders(countryCode || "IN");
+  }, [countryCode, countryConfig]);
 
   const DEFAULT_DOCUMENTS = useMemo(() => {
-    return getCountryDefaultDocuments(countryCode || 'IN')
-  }, [countryCode, countryConfig])
+    return getCountryDefaultDocuments(countryCode || "IN");
+  }, [countryCode, countryConfig]);
 
   // Merge database templates with defaults to ensure all folders are present
   // Prioritize country-aware DEFAULT_FOLDERS, filter out country-inappropriate folders
   const documentFolders = useMemo(() => {
-    const countryFolders = new Set(DEFAULT_FOLDERS)
+    const countryFolders = new Set(DEFAULT_FOLDERS);
 
     // Only add database template folders if they're appropriate for the country
     if (documentTemplates.length > 0) {
-      documentTemplates.forEach(t => {
-        const folderName = t.folder_name
-        const folderLower = folderName.toLowerCase()
+      documentTemplates.forEach((t) => {
+        const folderName = t.folder_name;
+        const folderLower = folderName.toLowerCase();
 
         // Skip if already in country-specific folders
         if (countryFolders.has(folderName)) {
-          return
+          return;
         }
 
         // Filter out India-specific folders for non-India countries
-        if (countryCode !== 'IN') {
+        if (countryCode !== "IN") {
           // Don't add India-specific folder names
-          if (folderLower.includes('gst') ||
-            folderLower.includes('mca') ||
-            folderLower.includes('roc') ||
-            folderLower.includes('income tax') ||
-            folderLower.includes('taxation & gst') ||
-            folderLower.includes('regulatory & mca')) {
-            return // Skip India-specific folders
+          if (
+            folderLower.includes("gst") ||
+            folderLower.includes("mca") ||
+            folderLower.includes("roc") ||
+            folderLower.includes("income tax") ||
+            folderLower.includes("taxation & gst") ||
+            folderLower.includes("regulatory & mca")
+          ) {
+            return; // Skip India-specific folders
           }
         }
 
         // Add the folder if it passed the filter
-        countryFolders.add(folderName)
-      })
+        countryFolders.add(folderName);
+      });
     }
 
-    return Array.from(countryFolders)
-  }, [DEFAULT_FOLDERS, documentTemplates, countryCode])
+    return Array.from(countryFolders);
+  }, [DEFAULT_FOLDERS, documentTemplates, countryCode]);
 
   // Merge database templates with defaults, filtering out hidden templates
   const predefinedDocuments = useMemo(() => {
     if (documentTemplates.length > 0) {
       // Start with defaults (ensures PAN and TAN are in Financials and licenses)
-      const merged = { ...DEFAULT_DOCUMENTS }
+      const merged = { ...DEFAULT_DOCUMENTS };
 
       // Add/override with database templates, but move PAN and TAN to correct folder
-      documentTemplates.forEach(template => {
-        const docName = template.document_name
-        const folderName = template.folder_name
+      documentTemplates.forEach((template) => {
+        const docName = template.document_name;
+        const folderName = template.folder_name;
 
         // Skip if this template is hidden for this company
-        const templateKey = `${folderName}:${docName}`
+        const templateKey = `${folderName}:${docName}`;
         if (hiddenTemplates.has(templateKey)) {
-          return
+          return;
         }
 
         // Country-specific tax ID documents should be in "Financials and licenses"
-        const taxIdLabel = countryConfig?.labels.taxId || 'PAN'
-        if (docName === taxIdLabel || docName === 'PAN' || docName === 'TAN' ||
-          (countryCode !== 'IN' && (docName.includes('Tax') || docName.includes('VAT') || docName.includes('Registration')))) {
+        const taxIdLabel = countryConfig?.labels.taxId || "PAN";
+        if (
+          docName === taxIdLabel ||
+          docName === "PAN" ||
+          docName === "TAN" ||
+          (countryCode !== "IN" &&
+            (docName.includes("Tax") ||
+              docName.includes("VAT") ||
+              docName.includes("Registration")))
+        ) {
           // Remove from any other folder
-          Object.keys(merged).forEach(folder => {
-            if (folder !== 'Financials and licenses') {
-              merged[folder] = merged[folder].filter((d: string) => d !== docName)
+          Object.keys(merged).forEach((folder) => {
+            if (folder !== "Financials and licenses") {
+              merged[folder] = merged[folder].filter(
+                (d: string) => d !== docName,
+              );
             }
-          })
+          });
           // Add to Financials and licenses
-          if (!merged['Financials and licenses']) {
-            merged['Financials and licenses'] = []
+          if (!merged["Financials and licenses"]) {
+            merged["Financials and licenses"] = [];
           }
-          if (!merged['Financials and licenses'].includes(docName)) {
-            merged['Financials and licenses'].push(docName)
+          if (!merged["Financials and licenses"].includes(docName)) {
+            merged["Financials and licenses"].push(docName);
           }
         } else {
           // For other documents, add to their specified folder
           if (!merged[folderName]) {
-            merged[folderName] = []
+            merged[folderName] = [];
           }
           if (!merged[folderName].includes(docName)) {
-            merged[folderName].push(docName)
+            merged[folderName].push(docName);
           }
         }
-      })
+      });
 
       // Ensure tax ID documents are removed from Constitutional Documents
-      const taxIdLabel = countryConfig?.labels.taxId || 'PAN'
-      if (merged['Constitutional Documents']) {
-        merged['Constitutional Documents'] = merged['Constitutional Documents'].filter(
-          (d: string) => d !== taxIdLabel && d !== 'PAN' && d !== 'TAN'
-        )
+      const taxIdLabel = countryConfig?.labels.taxId || "PAN";
+      if (merged["Constitutional Documents"]) {
+        merged["Constitutional Documents"] = merged[
+          "Constitutional Documents"
+        ].filter((d: string) => d !== taxIdLabel && d !== "PAN" && d !== "TAN");
       }
 
       // Also filter out hidden templates from default documents
-      Object.keys(merged).forEach(folder => {
+      Object.keys(merged).forEach((folder) => {
         merged[folder] = merged[folder].filter((docName: string) => {
-          const templateKey = `${folder}:${docName}`
-          return !hiddenTemplates.has(templateKey)
-        })
-      })
+          const templateKey = `${folder}:${docName}`;
+          return !hiddenTemplates.has(templateKey);
+        });
+      });
 
-      return merged
+      return merged;
     } else {
       // Filter hidden templates from default documents too
-      const filtered = { ...DEFAULT_DOCUMENTS }
-      Object.keys(filtered).forEach(folder => {
+      const filtered = { ...DEFAULT_DOCUMENTS };
+      Object.keys(filtered).forEach((folder) => {
         filtered[folder] = filtered[folder].filter((docName: string) => {
-          const templateKey = `${folder}:${docName}`
-          return !hiddenTemplates.has(templateKey)
-        })
-      })
-      return filtered
+          const templateKey = `${folder}:${docName}`;
+          return !hiddenTemplates.has(templateKey);
+        });
+      });
+      return filtered;
     }
-  }, [documentTemplates, hiddenTemplates, countryCode, countryConfig])
+  }, [documentTemplates, hiddenTemplates, countryCode, countryConfig]);
 
   const handleView = async (filePath: string) => {
     try {
-      const result = await getDownloadUrl(filePath)
+      const result = await getDownloadUrl(filePath);
       if (result.success && result.url) {
-        window.open(result.url, '_blank')
+        window.open(result.url, "_blank");
       } else {
-        showToast('Failed to get document view URL', 'error')
+        showToast("Failed to get document view URL", "error");
       }
     } catch (err) {
-      console.error('View error:', err)
-      showToast('Error opening document', 'error')
+      console.error("View error:", err);
+      showToast("Error opening document", "error");
     }
-  }
+  };
 
   const handlePreview = async (doc: any) => {
     try {
-      const result = await getDownloadUrl(doc.file_path)
+      const result = await getDownloadUrl(doc.file_path);
       if (result.success && result.url) {
-        setPreviewDocument({ ...doc, previewUrl: result.url })
-        setIsPreviewModalOpen(true)
+        setPreviewDocument({ ...doc, previewUrl: result.url });
+        setIsPreviewModalOpen(true);
       } else {
-        showToast('Failed to get document preview URL', 'error')
+        showToast("Failed to get document preview URL", "error");
       }
     } catch (err) {
-      console.error('Preview error:', err)
-      showToast('Error loading document preview', 'error')
+      console.error("Preview error:", err);
+      showToast("Error loading document preview", "error");
     }
-  }
+  };
 
   // Helper function to get file type icon
   const getFileTypeIcon = (fileName: string) => {
-    const ext = fileName?.split('.').pop()?.toLowerCase() || ''
+    const ext = fileName?.split(".").pop()?.toLowerCase() || "";
     switch (ext) {
-      case 'pdf':
+      case "pdf":
         return (
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
             <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
           </svg>
-        )
-      case 'doc':
-      case 'docx':
+        );
+      case "doc":
+      case "docx":
         return (
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
             <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
           </svg>
-        )
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
-      case 'gif':
+        );
+      case "jpg":
+      case "jpeg":
+      case "png":
+      case "gif":
         return (
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
             <path d="M8.5,13.5L11,16.5L14.5,12L19,18H5M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19Z" />
           </svg>
-        )
+        );
       default:
         return (
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
             <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
           </svg>
-        )
+        );
     }
-  }
+  };
 
   const handleExport = async (filePath: string, fileName: string) => {
     try {
-      const result = await getDownloadUrl(filePath)
+      const result = await getDownloadUrl(filePath);
       if (result.success && result.url) {
-        const link = document.createElement('a')
-        link.href = result.url
-        link.download = fileName
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
+        const link = document.createElement("a");
+        link.href = result.url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
         // Track vault file export
         if (user?.id && currentCompany?.id) {
-          trackVaultFileExport(user.id, currentCompany.id, 1)
+          trackVaultFileExport(user.id, currentCompany.id, 1);
         }
-        showToast('Document downloaded successfully', 'success')
+        showToast("Document downloaded successfully", "success");
       } else {
-        showToast('Failed to download document', 'error')
+        showToast("Failed to download document", "error");
       }
     } catch (err) {
-      console.error('Export error:', err)
-      showToast('Error downloading document', 'error')
+      console.error("Export error:", err);
+      showToast("Error downloading document", "error");
     }
-  }
+  };
 
   const handleRemove = async (docId: string, filePath: string) => {
-    if (!confirm('Are you sure you want to remove this document? This action cannot be undone.')) return
+    if (
+      !confirm(
+        "Are you sure you want to remove this document? This action cannot be undone.",
+      )
+    )
+      return;
 
     try {
-      const result = await deleteDocument(docId, filePath)
+      const result = await deleteDocument(docId, filePath);
       if (result.success) {
-        await fetchVaultDocuments()
-        showToast('Document removed successfully', 'success')
+        await fetchVaultDocuments();
+        showToast("Document removed successfully", "success");
       } else {
-        showToast('Failed to remove document: ' + result.error, 'error')
+        showToast("Failed to remove document: " + result.error, "error");
       }
     } catch (err) {
-      console.error('Remove error:', err)
-      showToast('Error removing document', 'error')
+      console.error("Remove error:", err);
+      showToast("Error removing document", "error");
     }
-  }
+  };
 
   const getFinancialYear = (dateStr: string) => {
-    if (!dateStr) return null
-    const date = new Date(dateStr)
-    const month = date.getMonth() // 0-11
-    const year = date.getFullYear()
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    const month = date.getMonth(); // 0-11
+    const year = date.getFullYear();
 
     // In India, FY starts in April (month 3)
     if (month >= 3) {
-      return `FY ${year}-${(year + 1).toString().slice(-2)}`
+      return `FY ${year}-${(year + 1).toString().slice(-2)}`;
     } else {
-      return `FY ${year - 1}-${year.toString().slice(-2)}`
+      return `FY ${year - 1}-${year.toString().slice(-2)}`;
     }
-  }
+  };
 
   // Helper function to format period information for display
   const formatPeriodInfo = (doc: any): string | null => {
-    if (!doc.period_key && !doc.period_financial_year) return null
+    if (!doc.period_key && !doc.period_financial_year) return null;
 
-    if (doc.period_type === 'monthly' && doc.period_key) {
+    if (doc.period_type === "monthly" && doc.period_key) {
       // Format: "2025-03" -> "March 2025"
-      const [year, month] = doc.period_key.split('-')
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December']
-      const monthName = monthNames[parseInt(month) - 1]
-      return `${monthName} ${year}`
-    } else if (doc.period_type === 'quarterly' && doc.period_key) {
+      const [year, month] = doc.period_key.split("-");
+      const monthNames = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
+      const monthName = monthNames[parseInt(month) - 1];
+      return `${monthName} ${year}`;
+    } else if (doc.period_type === "quarterly" && doc.period_key) {
       // Format: "Q1-2025" -> "Q1 2025"
-      return doc.period_key.replace('-', ' ')
-    } else if (doc.period_type === 'annual' && doc.period_financial_year) {
+      return doc.period_key.replace("-", " ");
+    } else if (doc.period_type === "annual" && doc.period_financial_year) {
       // Format: "FY 2024-25"
-      return doc.period_financial_year
+      return doc.period_financial_year;
     } else if (doc.period_financial_year) {
-      return doc.period_financial_year
+      return doc.period_financial_year;
     }
 
-    return null
-  }
+    return null;
+  };
 
   // Helper function to get period badge color
   const getPeriodBadgeColor = (periodType: string | null): string => {
-    if (!periodType) return 'bg-gray-700'
+    if (!periodType) return "bg-gray-700";
     // Color coding aligned with compliance types:
     // one-time (purple, no recurring), annual (green, recurs annually)
     switch (periodType) {
-      case 'one-time': return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-      case 'annual': return 'bg-green-500/20 text-green-400 border-green-500/30'
-      case 'monthly': return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-      case 'quarterly': return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
-      default: return 'bg-gray-700'
+      case "one-time":
+        return "bg-purple-500/20 text-purple-400 border-purple-500/30";
+      case "annual":
+        return "bg-green-500/20 text-green-400 border-green-500/30";
+      case "monthly":
+        return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+      case "quarterly":
+        return "bg-cyan-500/20 text-cyan-400 border-cyan-500/30";
+      default:
+        return "bg-gray-700";
     }
-  }
+  };
 
   // Helper function to extract financial year from document
   const getFinancialYearFromDoc = (doc: any): string | null => {
     // Prefer period_financial_year if available
     if (doc.period_financial_year) {
-      return doc.period_financial_year
+      return doc.period_financial_year;
     }
     // Fallback to created_at
     if (doc.created_at) {
-      return getFinancialYear(doc.created_at)
+      return getFinancialYear(doc.created_at);
     }
     // Fallback to registration_date
     if (doc.registration_date) {
-      return getFinancialYear(doc.registration_date)
+      return getFinancialYear(doc.registration_date);
     }
-    return null
-  }
+    return null;
+  };
 
   // Helper function to format relative time
   const formatRelativeTime = (dateStr: string): string => {
-    if (!dateStr) return 'Unknown'
-    const date = new Date(dateStr)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-    const diffMonths = Math.floor(diffDays / 30)
-    const diffYears = Math.floor(diffDays / 365)
+    if (!dateStr) return "Unknown";
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffMonths = Math.floor(diffDays / 30);
+    const diffYears = Math.floor(diffDays / 365);
 
-    if (diffDays === 0) return 'Today'
-    if (diffDays === 1) return 'Yesterday'
-    if (diffDays < 7) return `${diffDays} days ago`
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
-    if (diffMonths < 12) return `${diffMonths} months ago`
-    return `${diffYears} years ago`
-  }
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    if (diffMonths < 12) return `${diffMonths} months ago`;
+    return `${diffYears} years ago`;
+  };
 
   // Helper function to format file size
   const formatFileSize = (bytes: number | null | undefined): string => {
-    if (!bytes) return 'Unknown size'
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  }
+    if (!bytes) return "Unknown size";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   // Interface for version groups
   interface VersionGroup {
-    documentType: string
-    latestVersion: any
-    yearlyVersions: Map<string, any[]> // Key: financial year, Value: array of versions
-    totalVersions: number
-    folderName: string
+    documentType: string;
+    latestVersion: any;
+    yearlyVersions: Map<string, any[]>; // Key: financial year, Value: array of versions
+    totalVersions: number;
+    folderName: string;
   }
 
   // Function to group documents by type, then by financial year
   const groupDocumentsByVersion = (documents: any[]): VersionGroup[] => {
-    const groups = new Map<string, VersionGroup>()
+    const groups = new Map<string, VersionGroup>();
 
-    documents.forEach(doc => {
-      const docType = doc.document_type
-      if (!docType) return
+    documents.forEach((doc) => {
+      const docType = doc.document_type;
+      if (!docType) return;
 
       // Get or create group for this document type
       if (!groups.has(docType)) {
@@ -1325,194 +1605,214 @@ function DataRoomPageInner() {
           latestVersion: doc,
           yearlyVersions: new Map(),
           totalVersions: 0,
-          folderName: doc.folder_name || ''
-        })
+          folderName: doc.folder_name || "",
+        });
       }
 
-      const group = groups.get(docType)!
-      group.totalVersions++
+      const group = groups.get(docType)!;
+      group.totalVersions++;
 
       // Get financial year for this document
-      const fy = getFinancialYearFromDoc(doc)
+      const fy = getFinancialYearFromDoc(doc);
       if (fy) {
         if (!group.yearlyVersions.has(fy)) {
-          group.yearlyVersions.set(fy, [])
+          group.yearlyVersions.set(fy, []);
         }
-        group.yearlyVersions.get(fy)!.push(doc)
+        group.yearlyVersions.get(fy)!.push(doc);
       } else {
         // If no FY, put in "Other" category
-        if (!group.yearlyVersions.has('Other')) {
-          group.yearlyVersions.set('Other', [])
+        if (!group.yearlyVersions.has("Other")) {
+          group.yearlyVersions.set("Other", []);
         }
-        group.yearlyVersions.get('Other')!.push(doc)
+        group.yearlyVersions.get("Other")!.push(doc);
       }
 
       // Update latest version if this is newer
-      const docDate = doc.created_at || doc.period_key || ''
-      const latestDate = group.latestVersion.created_at || group.latestVersion.period_key || ''
+      const docDate = doc.created_at || doc.period_key || "";
+      const latestDate =
+        group.latestVersion.created_at || group.latestVersion.period_key || "";
       if (docDate > latestDate) {
-        group.latestVersion = doc
+        group.latestVersion = doc;
       }
-    })
+    });
 
     // Sort versions within each year (newest first)
-    groups.forEach(group => {
+    groups.forEach((group) => {
       group.yearlyVersions.forEach((versions, fy) => {
         versions.sort((a, b) => {
-          const dateA = a.created_at || a.period_key || ''
-          const dateB = b.created_at || b.period_key || ''
-          if (!dateA && !dateB) return 0
-          if (!dateA) return 1
-          if (!dateB) return -1
-          return dateB.localeCompare(dateA)
-        })
-      })
-    })
+          const dateA = a.created_at || a.period_key || "";
+          const dateB = b.created_at || b.period_key || "";
+          if (!dateA && !dateB) return 0;
+          if (!dateA) return 1;
+          if (!dateB) return -1;
+          return dateB.localeCompare(dateA);
+        });
+      });
+    });
 
-    return Array.from(groups.values())
-  }
+    return Array.from(groups.values());
+  };
 
   // Helper function to check if document matches search query
   const matchesSearch = (doc: any, query: string): boolean => {
-    if (!query.trim()) return true
-    const lowerQuery = query.toLowerCase()
-    const docType = (doc.document_type || '').toLowerCase()
-    const folderName = (doc.folder_name || '').toLowerCase()
-    const periodInfo = formatPeriodInfo(doc)?.toLowerCase() || ''
-    const expiryDate = doc.expiry_date ? formatDateForDisplay(doc.expiry_date).toLowerCase() : ''
+    if (!query.trim()) return true;
+    const lowerQuery = query.toLowerCase();
+    const docType = (doc.document_type || "").toLowerCase();
+    const folderName = (doc.folder_name || "").toLowerCase();
+    const periodInfo = formatPeriodInfo(doc)?.toLowerCase() || "";
+    const expiryDate = doc.expiry_date
+      ? formatDateForDisplay(doc.expiry_date).toLowerCase()
+      : "";
 
-    return docType.includes(lowerQuery) ||
+    return (
+      docType.includes(lowerQuery) ||
       folderName.includes(lowerQuery) ||
       periodInfo.includes(lowerQuery) ||
       expiryDate.includes(lowerQuery)
-  }
+    );
+  };
 
   // Helper function to get document status (valid, expiring, expired)
-  const getDocumentStatus = (doc: any): 'valid' | 'expiring' | 'expired' | 'no-expiry' => {
-    if (!doc.expiry_date) return 'no-expiry'
-    const expiryDate = new Date(doc.expiry_date)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  const getDocumentStatus = (
+    doc: any,
+  ): "valid" | "expiring" | "expired" | "no-expiry" => {
+    if (!doc.expiry_date) return "no-expiry";
+    const expiryDate = new Date(doc.expiry_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const daysUntilExpiry = Math.ceil(
+      (expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+    );
 
-    if (daysUntilExpiry < 0) return 'expired'
-    if (daysUntilExpiry <= 30) return 'expiring'
-    return 'valid'
-  }
+    if (daysUntilExpiry < 0) return "expired";
+    if (daysUntilExpiry <= 30) return "expiring";
+    return "valid";
+  };
 
   // Helper function to get status badge color
-  const getStatusBadgeColor = (status: 'valid' | 'expiring' | 'expired' | 'no-expiry'): string => {
+  const getStatusBadgeColor = (
+    status: "valid" | "expiring" | "expired" | "no-expiry",
+  ): string => {
     switch (status) {
-      case 'valid':
-        return 'bg-green-500/20 text-green-400 border-green-500/30'
-      case 'expiring':
-        return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-      case 'expired':
-        return 'bg-red-500/20 text-red-400 border-red-500/30'
+      case "valid":
+        return "bg-green-500/20 text-green-400 border-green-500/30";
+      case "expiring":
+        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
+      case "expired":
+        return "bg-red-500/20 text-red-400 border-red-500/30";
       default:
-        return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+        return "bg-gray-500/20 text-gray-400 border-gray-500/30";
     }
-  }
+  };
 
   // Helper function to sort documents
   const sortDocuments = (docs: any[], sortBy: typeof sortOption): any[] => {
-    const sorted = [...docs]
+    const sorted = [...docs];
     switch (sortBy) {
-      case 'name-asc':
+      case "name-asc":
         return sorted.sort((a, b) => {
-          const nameA = (a.document_type || '').toLowerCase()
-          const nameB = (b.document_type || '').toLowerCase()
-          return nameA.localeCompare(nameB)
-        })
-      case 'name-desc':
+          const nameA = (a.document_type || "").toLowerCase();
+          const nameB = (b.document_type || "").toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+      case "name-desc":
         return sorted.sort((a, b) => {
-          const nameA = (a.document_type || '').toLowerCase()
-          const nameB = (b.document_type || '').toLowerCase()
-          return nameB.localeCompare(nameA)
-        })
-      case 'date-newest':
+          const nameA = (a.document_type || "").toLowerCase();
+          const nameB = (b.document_type || "").toLowerCase();
+          return nameB.localeCompare(nameA);
+        });
+      case "date-newest":
         return sorted.sort((a, b) => {
-          const dateA = a.period_key || a.created_at || ''
-          const dateB = b.period_key || b.created_at || ''
-          if (!dateA && !dateB) return 0
-          if (!dateA) return 1
-          if (!dateB) return -1
-          return dateB.localeCompare(dateA)
-        })
-      case 'date-oldest':
+          const dateA = a.period_key || a.created_at || "";
+          const dateB = b.period_key || b.created_at || "";
+          if (!dateA && !dateB) return 0;
+          if (!dateA) return 1;
+          if (!dateB) return -1;
+          return dateB.localeCompare(dateA);
+        });
+      case "date-oldest":
         return sorted.sort((a, b) => {
-          const dateA = a.period_key || a.created_at || ''
-          const dateB = b.period_key || b.created_at || ''
-          if (!dateA && !dateB) return 0
-          if (!dateA) return 1
-          if (!dateB) return -1
-          return dateA.localeCompare(dateB)
-        })
-      case 'expiry':
+          const dateA = a.period_key || a.created_at || "";
+          const dateB = b.period_key || b.created_at || "";
+          if (!dateA && !dateB) return 0;
+          if (!dateA) return 1;
+          if (!dateB) return -1;
+          return dateA.localeCompare(dateB);
+        });
+      case "expiry":
         return sorted.sort((a, b) => {
-          const expiryA = a.expiry_date || ''
-          const expiryB = b.expiry_date || ''
-          if (!expiryA && !expiryB) return 0
-          if (!expiryA) return 1
-          if (!expiryB) return -1
-          return expiryA.localeCompare(expiryB)
-        })
-      case 'folder':
+          const expiryA = a.expiry_date || "";
+          const expiryB = b.expiry_date || "";
+          if (!expiryA && !expiryB) return 0;
+          if (!expiryA) return 1;
+          if (!expiryB) return -1;
+          return expiryA.localeCompare(expiryB);
+        });
+      case "folder":
         return sorted.sort((a, b) => {
-          const folderA = (a.folder_name || '').toLowerCase()
-          const folderB = (b.folder_name || '').toLowerCase()
-          return folderA.localeCompare(folderB)
-        })
+          const folderA = (a.folder_name || "").toLowerCase();
+          const folderB = (b.folder_name || "").toLowerCase();
+          return folderA.localeCompare(folderB);
+        });
       default:
-        return sorted
+        return sorted;
     }
-  }
+  };
 
   const allDocuments = (vaultDocuments || [])
-    .filter(doc => {
+    .filter((doc) => {
       // If no FY selected, show all documents
-      if (!selectedFY) return true
+      if (!selectedFY) return true;
 
       // Prefer period_financial_year if available (for tracker-uploaded docs)
       if (doc.period_financial_year) {
-        return doc.period_financial_year === selectedFY
+        return doc.period_financial_year === selectedFY;
       }
 
       // Fallback to registration_date for older documents
       if (doc.registration_date) {
-        const docFY = getFinancialYear(doc.registration_date)
-        return docFY === selectedFY
+        const docFY = getFinancialYear(doc.registration_date);
+        return docFY === selectedFY;
       }
 
       // If no period or registration date, don't show when FY is selected
-      return false
+      return false;
     })
-    .map(doc => ({
+    .map((doc) => ({
       id: doc.id,
       name: doc.document_type,
       category: doc.folder_name,
-      status: 'uploaded',
-      period: formatPeriodInfo(doc) || null
-    }))
+      status: "uploaded",
+      period: formatPeriodInfo(doc) || null,
+    }));
 
   const handleUpload = async () => {
-    if (!uploadFormData.file || !uploadFormData.folder || !uploadFormData.documentName || !currentCompany) {
-      showToast('Please fill all required fields and select a file.', 'warning')
-      return
+    if (
+      !uploadFormData.file ||
+      !uploadFormData.folder ||
+      !uploadFormData.documentName ||
+      !currentCompany
+    ) {
+      showToast(
+        "Please fill all required fields and select a file.",
+        "warning",
+      );
+      return;
     }
 
-    setIsUploading(true)
+    setIsUploading(true);
     try {
-      const fileExt = uploadFormData.file.name.split('.').pop()
-      const fileName = `${uploadFormData.documentName.replace(/\s+/g, '_')}_${Date.now()}.${fileExt}`
-      const filePath = `${user?.id}/${currentCompany.id}/${fileName}`
+      const fileExt = uploadFormData.file.name.split(".").pop();
+      const fileName = `${uploadFormData.documentName.replace(/\s+/g, "_")}_${Date.now()}.${fileExt}`;
+      const filePath = `${user?.id}/${currentCompany.id}/${fileName}`;
 
-      // 1. Upload to Storage
-      const { error: uploadError } = await supabase.storage
-        .from('company-documents')
-        .upload(filePath, uploadFormData.file)
+      // 1. Upload to Storage via server action (works for both Supabase and Passport users)
+      const fileArrayBuffer = await uploadFormData.file.arrayBuffer();
+      const uploadResult = await uploadFileToStorage(filePath, fileArrayBuffer, uploadFormData.file.type);
 
-      if (uploadError) throw uploadError
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Upload failed');
+      }
 
       // 2. Save metadata via Server Action
       const result = await uploadDocument(currentCompany.id, {
@@ -1531,1179 +1831,1693 @@ function DataRoomPageInner() {
         periodFinancialYear: uploadFormData.periodFinancialYear || undefined,
         periodKey: uploadFormData.periodKey || undefined,
         requirementId: uploadFormData.requirementId || undefined,
-      })
+      });
 
       if (result.success) {
         // Track document upload (vault)
         if (user?.id && currentCompany?.id) {
-          await trackDocumentUpload(user.id, currentCompany.id, uploadFormData.documentName).catch(err => {
-            console.error('Failed to track document upload:', err)
-          })
+          await trackDocumentUpload(
+            user.id,
+            currentCompany.id,
+            uploadFormData.documentName,
+          ).catch((err) => {
+            console.error("Failed to track document upload:", err);
+          });
           // Also track as vault file upload
-          await trackVaultFileUpload(user.id, currentCompany.id, uploadFormData.file?.type || 'unknown').catch(err => {
-            console.error('Failed to track vault file upload:', err)
-          })
+          await trackVaultFileUpload(
+            user.id,
+            currentCompany.id,
+            uploadFormData.file?.type || "unknown",
+          ).catch((err) => {
+            console.error("Failed to track vault file upload:", err);
+          });
         }
 
-        setIsUploadModalOpen(false)
+        setIsUploadModalOpen(false);
         setUploadFormData({
-          folder: '',
-          documentName: '',
-          registrationDate: '',
-          expiryDate: '',
+          folder: "",
+          documentName: "",
+          registrationDate: "",
+          expiryDate: "",
           hasNote: false,
-          externalEmail: '',
-          externalPassword: '',
-          frequency: 'annually',
+          externalEmail: "",
+          externalPassword: "",
+          frequency: "annually",
           file: null,
-          periodType: '',
-          periodFinancialYear: '',
-          periodKey: '',
-          requirementId: '',
-        })
+          periodType: "",
+          periodFinancialYear: "",
+          periodKey: "",
+          requirementId: "",
+        });
         // Refresh documents list
-        await fetchVaultDocuments()
-        showToast('Document uploaded successfully!', 'success')
+        await fetchVaultDocuments();
+        showToast("Document uploaded successfully!", "success");
       } else {
-        showToast('Upload failed: Unknown error', 'error')
+        showToast("Upload failed: Unknown error", "error");
       }
     } catch (error: any) {
-      console.error('Upload failed:', error)
-      showToast('Upload failed: ' + error.message, 'error')
+      console.error("Upload failed:", error);
+      showToast("Upload failed: " + error.message, "error");
     } finally {
-      setIsUploading(false)
+      setIsUploading(false);
     }
-  }
+  };
 
   const toggleDocumentSelection = (docId: string) => {
     setSelectedDocuments((prev) => {
-      const newSet = new Set(prev)
+      const newSet = new Set(prev);
       if (newSet.has(docId)) {
-        newSet.delete(docId)
+        newSet.delete(docId);
       } else {
-        newSet.add(docId)
+        newSet.add(docId);
       }
-      return newSet
-    })
-  }
+      return newSet;
+    });
+  };
 
   const toggleDocumentSelectionForSend = (docId: string) => {
     setSelectedDocumentsToSend((prev) => {
-      const newSet = new Set(prev)
+      const newSet = new Set(prev);
       if (newSet.has(docId)) {
-        newSet.delete(docId)
+        newSet.delete(docId);
       } else {
-        newSet.add(docId)
+        newSet.add(docId);
       }
-      return newSet
-    })
-  }
+      return newSet;
+    });
+  };
 
   const handleSelectAll = () => {
-    if (allDocuments.length === 0) return
-    if (selectedDocuments.size === allDocuments.length && allDocuments.length > 0) {
-      setSelectedDocuments(new Set())
+    if (allDocuments.length === 0) return;
+    if (
+      selectedDocuments.size === allDocuments.length &&
+      allDocuments.length > 0
+    ) {
+      setSelectedDocuments(new Set());
     } else {
-      setSelectedDocuments(new Set(allDocuments.map((doc) => doc.id)))
+      setSelectedDocuments(new Set(allDocuments.map((doc) => doc.id)));
     }
-  }
+  };
 
   const handleSelectAllForSend = () => {
     if (selectedDocumentsToSend.size === allDocuments.length) {
-      setSelectedDocumentsToSend(new Set())
+      setSelectedDocumentsToSend(new Set());
     } else {
-      setSelectedDocumentsToSend(new Set(allDocuments.map((doc) => doc.id)))
+      setSelectedDocumentsToSend(new Set(allDocuments.map((doc) => doc.id)));
     }
-  }
+  };
 
   const handleSendNext = () => {
     if (selectedDocumentsToSend.size > 0) {
-      setIsSendModalOpen(false)
-      setIsEmailTemplateOpen(true)
+      setIsSendModalOpen(false);
+      setIsEmailTemplateOpen(true);
     }
-  }
-  const [inviteEmail, setInviteEmail] = useState('colleague@example.com')
-  const [inviteName, setInviteName] = useState('John Doe')
-  const [inviteRole, setInviteRole] = useState('viewer')
-  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false)
+  };
+  const [inviteEmail, setInviteEmail] = useState("colleague@example.com");
+  const [inviteName, setInviteName] = useState("John Doe");
+  const [inviteRole, setInviteRole] = useState("viewer");
+  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
 
   // Get current month name
   const getCurrentMonth = (): string => {
-    const months = ['January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December']
-    return months[new Date().getMonth()]
-  }
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+    return months[new Date().getMonth()];
+  };
 
-  const [selectedTrackerFY, setSelectedTrackerFY] = useState<string>('') // '' means "All Years"
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null) // null means "All Months"
-  const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState(false)
-  const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null)
-  const [isQuarterDropdownOpen, setIsQuarterDropdownOpen] = useState(false)
-  const [trackerView, setTrackerView] = useState<'list' | 'calendar'>('list')
-  const [calendarMonth, setCalendarMonth] = useState<number>(new Date().getMonth())
-  const [calendarYear, setCalendarYear] = useState<number>(new Date().getFullYear())
-  const [categoryFilter, setCategoryFilter] = useState('all') // Status filter (all, critical, pending, etc.)
-  const [selectedCategory, setSelectedCategory] = useState<string>('all') // Category filter (Income Tax, GST, etc.)
-  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false)
-  const [entityTypeFilter, setEntityTypeFilter] = useState<string>('all')
-  const [industryFilter, setIndustryFilter] = useState<string>('all')
-  const [industryCategoryFilter, setIndustryCategoryFilter] = useState<string>('all')
-  const [complianceTypeFilter, setComplianceTypeFilter] = useState<string>('all')
-  const [trackerSearchQuery, setTrackerSearchQuery] = useState('')
-  const [selectedRequirements, setSelectedRequirements] = useState<Set<string>>(new Set())
-  const [isComplianceScoreModalOpen, setIsComplianceScoreModalOpen] = useState(false)
-  const [isBulkActionModalOpen, setIsBulkActionModalOpen] = useState(false)
-  const [bulkActionType, setBulkActionType] = useState<'status' | 'delete' | null>(null)
-
+  const [selectedTrackerFY, setSelectedTrackerFY] = useState<string>(""); // '' means "All Years"
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null); // null means "All Months"
+  const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState(false);
+  const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null);
+  const [isQuarterDropdownOpen, setIsQuarterDropdownOpen] = useState(false);
+  const [trackerView, setTrackerView] = useState<"list" | "calendar">("list");
+  const [calendarMonth, setCalendarMonth] = useState<number>(
+    new Date().getMonth(),
+  );
+  const [calendarYear, setCalendarYear] = useState<number>(
+    new Date().getFullYear(),
+  );
+  const [categoryFilter, setCategoryFilter] = useState("all"); // Status filter (all, critical, pending, etc.)
+  const [selectedCategory, setSelectedCategory] = useState<string>("all"); // Category filter (Income Tax, GST, etc.)
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const [entityTypeFilter, setEntityTypeFilter] = useState<string>("all");
+  const [industryFilter, setIndustryFilter] = useState<string>("all");
+  const [industryCategoryFilter, setIndustryCategoryFilter] =
+    useState<string>("all");
+  const [complianceTypeFilter, setComplianceTypeFilter] =
+    useState<string>("all");
+  const [trackerSearchQuery, setTrackerSearchQuery] = useState("");
+  const [selectedRequirements, setSelectedRequirements] = useState<Set<string>>(
+    new Set(),
+  );
+  const [isComplianceScoreModalOpen, setIsComplianceScoreModalOpen] =
+    useState(false);
+  const [isBulkActionModalOpen, setIsBulkActionModalOpen] = useState(false);
+  const [bulkActionType, setBulkActionType] = useState<
+    "status" | "delete" | null
+  >(null);
 
   // CRUD modals and forms
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [editingRequirement, setEditingRequirement] = useState<RegulatoryRequirement | null>(null)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingRequirement, setEditingRequirement] =
+    useState<RegulatoryRequirement | null>(null);
   const [requirementForm, setRequirementForm] = useState({
-    category: '',
-    requirement: '',
-    description: '',
-    due_date: '',
-    penalty: '',
+    category: "",
+    requirement: "",
+    description: "",
+    due_date: "",
+    penalty: "",
     penalty_base_amount: null as number | null,
     is_critical: false,
-    financial_year: '',
-    status: 'not_started' as 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed',
-    compliance_type: 'one-time' as 'one-time' | 'monthly' | 'quarterly' | 'annual',
-    year: new Date().getFullYear().toString()
-  })
+    financial_year: "",
+    status: "not_started" as
+      | "not_started"
+      | "upcoming"
+      | "pending"
+      | "overdue"
+      | "completed",
+    compliance_type: "one-time" as
+      | "one-time"
+      | "monthly"
+      | "quarterly"
+      | "annual",
+    year: new Date().getFullYear().toString(),
+  });
 
   const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ]
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
 
   const quarters = [
-    { value: 'q1', label: 'Q1 - April - June' },
-    { value: 'q2', label: 'Q2 - July - Sep' },
-    { value: 'q3', label: 'Q3 - Oct - Dec' },
-    { value: 'q4', label: 'Q4 - Jan - Mar' },
-  ]
+    { value: "q1", label: "Q1 - April - June" },
+    { value: "q2", label: "Q2 - July - Sep" },
+    { value: "q3", label: "Q3 - Oct - Dec" },
+    { value: "q4", label: "Q4 - Jan - Mar" },
+  ];
 
   // Fetch regulatory requirements when company changes
   useEffect(() => {
     async function fetchRequirements() {
-      if (!currentCompany) {
-        setRegulatoryRequirements([])
-        return
+      // Skip if during initial boot (handled by consolidated init)
+      if (isDataRoomInitLoading || !currentCompany) {
+        if (!currentCompany && !isDataRoomInitLoading) {
+          setRegulatoryRequirements([]);
+          requirementsFetchedRef.current = null;
+          requirementsFetchingRef.current = null;
+        }
+        return;
+      }
+
+      // Wait for company access resolution before fetching requirements.
+      // Without this guard, a company change can briefly kick off a stale
+      // requirements request before the matching access state has settled.
+      if (authLoading || accessLoading) {
+        return;
+      }
+
+      if (accessError || !hasAccess) {
+        setRegulatoryRequirements([]);
+        setIsLoadingRequirements(false);
+        requirementsFetchedRef.current = null;
+        requirementsFetchingRef.current = null;
+        return;
+      }
+
+      // CRITICAL FIX: Clear requirements if they're from a different company
+      // This prevents showing wrong company's data when switching
+      const hasWrongCompanyData = regulatoryRequirements.length > 0 &&
+        regulatoryRequirements.some((r) => r.company_id !== currentCompany.id);
+      
+      if (hasWrongCompanyData) {
+        console.log('[fetchRequirements] Clearing wrong company data, refetching for:', currentCompany.id);
+        setRegulatoryRequirements([]);
+        requirementsFetchedRef.current = null;
+        requirementsFetchingRef.current = null;
+        // Continue to fetch below
       }
 
       // Skip if already fetched for this company (prevents re-fetch on tab switch or remount)
-      // Check both ref and state to handle remounts where refs reset but state persists
-      if (requirementsFetchedRef.current === currentCompany.id || 
-          (regulatoryRequirements.length > 0 && currentCompany)) {
-        console.log('[fetchRequirements] Already fetched for company:', currentCompany.id, 'skipping...')
-        // Update ref in case it was reset on remount
-        requirementsFetchedRef.current = currentCompany.id
-        // IMPORTANT: Set loading to false since we're skipping the fetch
-        setIsLoadingRequirements(false)
-        return
+      // Check both ref and current state's company association to handle remounts stably
+      const hasCorrectData =
+        regulatoryRequirements.length > 0 &&
+        regulatoryRequirements.every((r) => r.company_id === currentCompany.id);
+
+      if (
+        requirementsFetchedRef.current === currentCompany.id &&
+        hasCorrectData
+      ) {
+        console.log(
+          "[fetchRequirements] Already fetched and ref matches, skipping...",
+        );
+
+        if (isLoadingRequirements) {
+          setIsLoadingRequirements(false);
+        }
+        return;
       }
 
       if (requirementsFetchingRef.current === currentCompany.id) {
-        console.log('[fetchRequirements] Fetch already in progress for company:', currentCompany.id, 'skipping...')
-        return
+        console.log(
+          "[fetchRequirements] Fetch already in progress for company:",
+          currentCompany.id,
+          "skipping...",
+        );
+        return;
       }
 
-      setIsLoadingRequirements(true)
-      const startTime = performance.now()
-      console.log('[fetchRequirements] Starting fetch for company:', currentCompany.id)
-      requirementsFetchingRef.current = currentCompany.id
+      setIsLoadingRequirements(true);
+      const startTime = performance.now();
+      console.log(
+        "[fetchRequirements] Starting fetch for company:",
+        currentCompany.id,
+      );
+      requirementsFetchingRef.current = currentCompany.id;
 
       try {
-        const result = await getRegulatoryRequirements(currentCompany.id)
-        const duration = performance.now() - startTime
-        console.log('[fetchRequirements] Completed in', Math.round(duration), 'ms')
-        
+        const result = await getRegulatoryRequirements(currentCompany.id);
+        const duration = performance.now() - startTime;
+        console.log(
+          "[fetchRequirements] Completed in",
+          Math.round(duration),
+          "ms",
+        );
+
         // Log to performance logger
-        performanceLogger.log('DataRoomPage', 'fetchRequirements', duration, {
+        performanceLogger.log("DataRoomPage", "fetchRequirements", duration, {
           companyId: currentCompany.id,
           success: result.success,
           requirementCount: result.requirements?.length || 0,
-        })
+        });
 
         if (result.success && result.requirements) {
-          console.log('[fetchRequirements] Setting requirements, count:', result.requirements.length)
+          console.log(
+            "[fetchRequirements] Setting requirements, count:",
+            result.requirements.length,
+          );
           // Log sample requirement with required_documents
           if (result.requirements.length > 0) {
-            const sample = result.requirements.find((r: any) => r.requirement === 'GSTR-3B - Monthly Summary Return' || r.requirement === 'ESI Challan - Monthly ESI Payment')
+            const sample = result.requirements.find(
+              (r: any) =>
+                r.requirement === "GSTR-3B - Monthly Summary Return" ||
+                r.requirement === "ESI Challan - Monthly ESI Payment",
+            );
             if (sample) {
-              console.log('[fetchRequirements] Sample requirement in state:', {
+              console.log("[fetchRequirements] Sample requirement in state:", {
                 requirement: sample.requirement,
                 required_documents: sample.required_documents,
                 type: typeof sample.required_documents,
-                isArray: Array.isArray(sample.required_documents)
-              })
+                isArray: Array.isArray(sample.required_documents),
+              });
             }
           }
-          setRegulatoryRequirements(result.requirements)
+          setRegulatoryRequirements(result.requirements);
           // Mark as fetched for this company
-          requirementsFetchedRef.current = currentCompany.id
+          requirementsFetchedRef.current = currentCompany.id;
         } else {
-          console.error('Failed to fetch requirements:', result.error)
-          setRegulatoryRequirements([])
+          console.error("Failed to fetch requirements:", result.error);
+          setRegulatoryRequirements([]);
         }
       } catch (error: any) {
-        console.error('Error fetching requirements:', error)
+        console.error("Error fetching requirements:", error);
         // Handle network errors gracefully
-        if (error?.message?.includes('fetch failed') || error?.name === 'TypeError' || error?.message?.includes('Failed to fetch')) {
-          console.warn('Network error while fetching requirements - this may be a temporary connectivity issue')
+        if (
+          error?.message?.includes("fetch failed") ||
+          error?.name === "TypeError" ||
+          error?.message?.includes("Failed to fetch")
+        ) {
+          console.warn(
+            "Network error while fetching requirements - this may be a temporary connectivity issue",
+          );
           // Continue with empty array - user can retry by refreshing or the app will retry on company change
         }
-        setRegulatoryRequirements([])
+        setRegulatoryRequirements([]);
       } finally {
         if (requirementsFetchingRef.current === currentCompany.id) {
-          requirementsFetchingRef.current = null
+          requirementsFetchingRef.current = null;
         }
-        setIsLoadingRequirements(false)
+        setIsLoadingRequirements(false);
       }
     }
 
-    fetchRequirements()
-  }, [currentCompany]) // Removed activeTab - no need to re-fetch on tab change
+    fetchRequirements();
+  }, [currentCompany, authLoading, accessLoading, accessError, hasAccess]); // Wait for access state before fetching
 
-  // Track tracker tab opened
+  // Track tracker tab opened (only when switching TO tracker, not on every render)
   useEffect(() => {
-    if (activeTab === 'tracker' && currentCompany?.id && user?.id) {
-      trackTrackerTabOpened(user.id, currentCompany.id)
+    if (activeTab === "tracker" && prevActiveTab.current !== "tracker" && currentCompany?.id && user?.id) {
+      trackTrackerTabOpened(user.id, currentCompany.id);
     }
-  }, [activeTab, currentCompany?.id, user?.id])
+  }, [activeTab, currentCompany?.id, user?.id]);
 
   // Date normalization utilities for consistency
   // Normalize date to UTC midnight for consistent comparisons (avoids timezone issues)
-  const normalizeDate = (dateStr: string | Date | null | undefined): Date | null => {
-    if (!dateStr) return null
+  const normalizeDate = (
+    dateStr: string | Date | null | undefined,
+  ): Date | null => {
+    if (!dateStr) return null;
     try {
-      const date = dateStr instanceof Date ? dateStr : new Date(dateStr)
-      if (isNaN(date.getTime())) return null
+      const date = dateStr instanceof Date ? dateStr : new Date(dateStr);
+      if (isNaN(date.getTime())) return null;
       // Normalize to UTC midnight for consistent comparisons
-      return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+      return new Date(
+        Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+      );
     } catch {
-      return null
+      return null;
     }
-  }
+  };
 
   // Compare dates ignoring time (for due date comparisons)
-  const compareDates = (date1: string | Date | null, date2: string | Date | null): number => {
-    const d1 = normalizeDate(date1)
-    const d2 = normalizeDate(date2)
-    if (!d1 && !d2) return 0
-    if (!d1) return 1
-    if (!d2) return -1
-    return d1.getTime() - d2.getTime()
-  }
+  const compareDates = (
+    date1: string | Date | null,
+    date2: string | Date | null,
+  ): number => {
+    const d1 = normalizeDate(date1);
+    const d2 = normalizeDate(date2);
+    if (!d1 && !d2) return 0;
+    if (!d1) return 1;
+    if (!d2) return -1;
+    return d1.getTime() - d2.getTime();
+  };
 
   // Check if date is in the future (for validation)
   const isDateInFuture = (dateStr: string | Date | null): boolean => {
-    const date = normalizeDate(dateStr)
-    if (!date) return false
-    const today = normalizeDate(new Date())
-    if (!today) return false
-    return date.getTime() > today.getTime()
-  }
+    const date = normalizeDate(dateStr);
+    if (!date) return false;
+    const today = normalizeDate(new Date());
+    if (!today) return false;
+    return date.getTime() > today.getTime();
+  };
 
   // Validate due date for upcoming items
-  const validateDueDate = (dueDate: string, status: string): { valid: boolean; error?: string } => {
+  const validateDueDate = (
+    dueDate: string,
+    status: string,
+  ): { valid: boolean; error?: string } => {
     if (!dueDate) {
-      return { valid: false, error: 'Due date is required' }
+      return { valid: false, error: "Due date is required" };
     }
 
-    const normalized = normalizeDate(dueDate)
+    const normalized = normalizeDate(dueDate);
     if (!normalized) {
-      return { valid: false, error: 'Invalid date format' }
+      return { valid: false, error: "Invalid date format" };
     }
 
     // For "upcoming" status, due date should be in the future
-    if (status === 'upcoming') {
+    if (status === "upcoming") {
       if (!isDateInFuture(dueDate)) {
-        return { valid: false, error: 'Due date for upcoming items must be in the future' }
+        return {
+          valid: false,
+          error: "Due date for upcoming items must be in the future",
+        };
       }
     }
 
-    return { valid: true }
-  }
+    return { valid: true };
+  };
 
   // Helper function to format date for display (consistent format)
   // Memoized to prevent recreation on every render
   const formatDate = useCallback((dateStr: string): string => {
     try {
-      const date = normalizeDate(dateStr)
-      if (!date) return dateStr
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-      return `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`
+      const date = normalizeDate(dateStr);
+      if (!date) return dateStr;
+      const months = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+      return `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
     } catch {
-      return dateStr
+      return dateStr;
     }
-  }, []) // normalizeDate is a pure function, stable across renders
+  }, []); // normalizeDate is a pure function, stable across renders
 
   // Helper function to format date with full month name (consistent format)
   const formatDateForDisplay = (dateStr: string): string => {
-    if (!dateStr) return ''
+    if (!dateStr) return "";
     try {
-      const date = normalizeDate(dateStr)
-      if (!date) return dateStr
+      const date = normalizeDate(dateStr);
+      if (!date) return dateStr;
       // Use UTC to avoid timezone issues
-      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-      return `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`
+      const months = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
+      return `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
     } catch {
-      return dateStr
+      return dateStr;
     }
-  }
+  };
 
   // Format date as ISO string for storage (consistent format)
-  const formatDateForStorage = (dateStr: string | Date | null): string | null => {
-    const date = normalizeDate(dateStr)
-    if (!date) return null
+  const formatDateForStorage = (
+    dateStr: string | Date | null,
+  ): string | null => {
+    const date = normalizeDate(dateStr);
+    if (!date) return null;
     // Return ISO string in YYYY-MM-DD format
-    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`
-  }
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+  };
 
   // Memoized penalty calculation function
-  const calculatePenaltyMemoized = useCallback((
-    penaltyStr: string | null,
-    daysDelayed: number | null,
-    penaltyBaseAmount?: number | null  // Base amount for interest calculations
-  ): string => {
-    // If no delay or penalty string is empty, return '-'
-    if (daysDelayed === null || daysDelayed <= 0 || !penaltyStr || penaltyStr.trim() === '') {
-      return '-'
-    }
-
-    const penalty = penaltyStr.trim()
-
-    // Handle NULL (from database)
-    if (penalty === 'NULL' || penalty === 'null' || penalty === '') {
-      return 'Refer to Act'
-    }
-
-    // Simple daily rate: "50", "100", "200"
-    if (/^\d+$/.test(penalty)) {
-      const dailyRate = parseInt(penalty, 10)
-      if (!isNaN(dailyRate) && dailyRate > 0) {
-        return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
+  const calculatePenaltyMemoized = useCallback(
+    (
+      penaltyStr: string | null,
+      daysDelayed: number | null,
+      penaltyBaseAmount?: number | null, // Base amount for interest calculations
+    ): string => {
+      // If no delay or penalty string is empty, return '-'
+      if (
+        daysDelayed === null ||
+        daysDelayed <= 0 ||
+        !penaltyStr ||
+        penaltyStr.trim() === ""
+      ) {
+        return "-";
       }
-    }
 
-    // Complex format with max cap: "100|500000" (daily|max)
-    if (/^\d+\|\d+$/.test(penalty)) {
-      const [dailyRateStr, maxCapStr] = penalty.split('|')
-      const dailyRate = parseInt(dailyRateStr, 10)
-      const maxCap = parseInt(maxCapStr, 10)
+      const penalty = penaltyStr.trim();
 
-      if (!isNaN(dailyRate) && dailyRate > 0) {
-        let calculated = dailyRate * daysDelayed
-        if (!isNaN(maxCap) && maxCap > 0) {
-          calculated = Math.min(calculated, maxCap)
+      // Handle NULL (from database)
+      if (penalty === "NULL" || penalty === "null" || penalty === "") {
+        return "Refer to Act";
+      }
+
+      // Simple daily rate: "50", "100", "200"
+      if (/^\d+$/.test(penalty)) {
+        const dailyRate = parseInt(penalty, 10);
+        if (!isNaN(dailyRate) && dailyRate > 0) {
+          return formatCurrency(
+            Math.round(dailyRate * daysDelayed),
+            countryCode,
+          );
         }
-        return formatCurrency(Math.round(calculated), countryCode)
       }
-    }
 
-    // Extract daily rate from penalty string (e.g., "â‚¹100/day", "100/day")
-    // Use country-specific currency symbol
-    const currencySymbol = countryConfig.currency.symbol
-    const currencySymbolEscaped = currencySymbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    let dailyRateMatch = penalty.match(/(\d+)\/day\s*\([^)]*NIL[^)]*\)/i)
-    if (!dailyRateMatch) {
-      dailyRateMatch = penalty.match(new RegExp(`(?:${currencySymbolEscaped})?[\\d,]+(?:\\.[\\d]+)?\\/day`, 'i'))
-    }
-    if (dailyRateMatch) {
-      const rateStr = dailyRateMatch[1] || dailyRateMatch[0].replace(new RegExp(currencySymbolEscaped, 'gi'), '').replace(/\/day/gi, '').replace(/,/g, '')
-      const dailyRate = parseFloat(rateStr.replace(/,/g, ''))
-      if (!isNaN(dailyRate) && dailyRate > 0) {
-        let calculatedPenalty = dailyRate * daysDelayed
+      // Complex format with max cap: "100|500000" (daily|max)
+      if (/^\d+\|\d+$/.test(penalty)) {
+        const [dailyRateStr, maxCapStr] = penalty.split("|");
+        const dailyRate = parseInt(dailyRateStr, 10);
+        const maxCap = parseInt(maxCapStr, 10);
 
-        // Check for maximum limit
-        const maxMatch = penalty.match(new RegExp(`max\\s*(?:${currencySymbolEscaped})?[\\d,]+(?:\\.[\\d]+)?`, 'i'))
-        if (maxMatch) {
-          const maxStr = maxMatch[0].replace(new RegExp(`max\\s*(?:${currencySymbolEscaped})?`, 'gi'), '').replace(/,/g, '')
-          const maxAmount = parseFloat(maxStr)
-          if (!isNaN(maxAmount) && maxAmount > 0) {
-            calculatedPenalty = Math.min(calculatedPenalty, maxAmount)
+        if (!isNaN(dailyRate) && dailyRate > 0) {
+          let calculated = dailyRate * daysDelayed;
+          if (!isNaN(maxCap) && maxCap > 0) {
+            calculated = Math.min(calculated, maxCap);
           }
+          return formatCurrency(Math.round(calculated), countryCode);
         }
-
-        return formatCurrency(calculatedPenalty, countryCode)
       }
-    }
 
-    // Handle "200/day + 10000-100000" - extract daily rate before the +
-    const dailyWithRangeMatch = penalty.match(/(\d+)\/day\s*\+\s*[\d-]+/i)
-    if (dailyWithRangeMatch) {
-      const dailyRate = parseFloat(dailyWithRangeMatch[1].replace(/,/g, ''))
-      if (!isNaN(dailyRate) && dailyRate > 0) {
-        return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
+      // Extract daily rate from penalty string (e.g., "â‚¹100/day", "100/day")
+      // Use country-specific currency symbol
+      const currencySymbol = countryConfig.currency.symbol;
+      const currencySymbolEscaped = currencySymbol.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&",
+      );
+      let dailyRateMatch = penalty.match(/(\d+)\/day\s*\([^)]*NIL[^)]*\)/i);
+      if (!dailyRateMatch) {
+        dailyRateMatch = penalty.match(
+          new RegExp(
+            `(?:${currencySymbolEscaped})?[\\d,]+(?:\\.[\\d]+)?\\/day`,
+            "i",
+          ),
+        );
       }
-    }
+      if (dailyRateMatch) {
+        const rateStr =
+          dailyRateMatch[1] ||
+          dailyRateMatch[0]
+            .replace(new RegExp(currencySymbolEscaped, "gi"), "")
+            .replace(/\/day/gi, "")
+            .replace(/,/g, "");
+        const dailyRate = parseFloat(rateStr.replace(/,/g, ""));
+        if (!isNaN(dailyRate) && dailyRate > 0) {
+          let calculatedPenalty = dailyRate * daysDelayed;
 
-    // Handle "2%/month + 5/day" - extract daily rate after the +
-    const interestPlusDailyMatch = penalty.match(/[\d.]+%[^+]*\+\s*(\d+)\/day/i)
-    if (interestPlusDailyMatch) {
-      const dailyRate = parseFloat(interestPlusDailyMatch[1].replace(/,/g, ''))
-      if (!isNaN(dailyRate) && dailyRate > 0) {
-        return formatCurrency(Math.round(dailyRate * daysDelayed), countryCode)
-      }
-    }
-
-    // Handle range formats like "25000-300000" - extract minimum
-    const rangeMatch = penalty.match(/(\d+)\s*-\s*(\d+)/)
-    if (rangeMatch && !penalty.includes('%') && !penalty.includes('/day')) {
-      const minAmount = parseFloat(rangeMatch[1].replace(/,/g, ''))
-      if (!isNaN(minAmount) && minAmount > 0) {
-        return `${formatCurrency(Math.round(minAmount), countryCode)} (minimum)`
-      }
-    }
-
-    // Check for explicit fixed penalty amounts
-    const fixedKeywords = /(?:fixed|one-time|one time|flat|lump)/i
-    if (fixedKeywords.test(penalty)) {
-      let fixedMatch = penalty.match(new RegExp(`${currencySymbolEscaped}[\\d,]+(?:\\.[\\d]+)?`, 'i'))
-      if (!fixedMatch) {
-        const plainNumberMatch = penalty.match(/[\d,]+(?:\.[\d]+)?/i)
-        if (plainNumberMatch) {
-          const amount = plainNumberMatch[0].replace(/,/g, '')
-          const numAmount = parseFloat(amount)
-          if (!isNaN(numAmount) && numAmount > 0) {
-            return formatCurrency(numAmount, countryCode)
-          }
-        }
-      } else {
-        // Extract amount from fixed match and format with country currency
-        const amountStr = fixedMatch[0].replace(new RegExp(currencySymbolEscaped, 'gi'), '').replace(/,/g, '')
-        const amount = parseFloat(amountStr)
-        if (!isNaN(amount) && amount > 0) {
-          return formatCurrency(amount, countryCode)
-        }
-        return fixedMatch[0]
-      }
-    }
-
-    // Plain number as daily rate (fallback for text format)
-    const plainNumberMatch = penalty.match(/^[\d,]+(?:\.[\d]+)?$/i)
-    if (plainNumberMatch && !penalty.includes('/day') && !penalty.includes('Interest') && !penalty.includes('+')) {
-      const amount = plainNumberMatch[0].replace(/,/g, '')
-      const numAmount = parseFloat(amount)
-      if (!isNaN(numAmount) && numAmount > 0) {
-        const calculatedPenalty = numAmount * daysDelayed
-        return formatCurrency(calculatedPenalty, countryCode)
-      }
-    }
-
-    // Check for penalties with Interest - IMPROVED: Calculate if base amount is available
-    if (penalty.includes('Interest') || penalty.includes('+ Interest') || penalty.includes('interest')) {
-      // Try to calculate interest if base amount is available
-      if (penaltyBaseAmount && penaltyBaseAmount > 0) {
-        // Extract interest rate from penalty string
-        // Common formats: "1%/month", "12%/year", "1.5%/month", "Interest @ 1%/month", "u/s 234B & 234C"
-        const interestRateMatch = penalty.match(/([\d.]+)\s*%\s*(?:\/|\s*)(month|year|annum|annually|per month|per year)/i)
-
-        if (interestRateMatch) {
-          const rate = parseFloat(interestRateMatch[1])
-          const period = interestRateMatch[2].toLowerCase()
-
-          if (!isNaN(rate) && rate > 0 && daysDelayed) {
-            // Calculate interest based on period
-            let interest = 0
-
-            if (period.includes('month')) {
-              // Monthly interest: (principal * rate/100) * (days/30)
-              const months = daysDelayed / 30
-              interest = (penaltyBaseAmount * rate / 100) * months
-            } else if (period.includes('year') || period.includes('annum') || period.includes('annually')) {
-              // Annual interest: (principal * rate/100) * (days/365)
-              const years = daysDelayed / 365
-              interest = (penaltyBaseAmount * rate / 100) * years
-            }
-
-            if (interest > 0) {
-              return `${formatCurrency(Math.round(interest), countryCode)} (Interest @ ${rate}%/${period.includes('month') ? 'month' : 'year'} on ${formatCurrency(penaltyBaseAmount, countryCode)})`
+          // Check for maximum limit
+          const maxMatch = penalty.match(
+            new RegExp(
+              `max\\s*(?:${currencySymbolEscaped})?[\\d,]+(?:\\.[\\d]+)?`,
+              "i",
+            ),
+          );
+          if (maxMatch) {
+            const maxStr = maxMatch[0]
+              .replace(
+                new RegExp(`max\\s*(?:${currencySymbolEscaped})?`, "gi"),
+                "",
+              )
+              .replace(/,/g, "");
+            const maxAmount = parseFloat(maxStr);
+            if (!isNaN(maxAmount) && maxAmount > 0) {
+              calculatedPenalty = Math.min(calculatedPenalty, maxAmount);
             }
           }
-        }
 
-        // Special handling for Income Tax sections 234B & 234C (default 1% per month)
-        if (penalty.includes('234B') || penalty.includes('234C') || penalty.includes('u/s 234') || penalty.includes('section 234')) {
-          if (daysDelayed) {
-            // Default to 1% per month for Income Tax interest
-            const months = daysDelayed / 30
-            const interest = (penaltyBaseAmount * 0.01) * months
-            return `${formatCurrency(Math.round(interest), countryCode)} (Interest @ 1%/month u/s 234B/234C on ${formatCurrency(penaltyBaseAmount, countryCode)})`
-          }
-        }
-
-        // If rate format not found but base amount exists, try to extract any percentage
-        const anyPercentMatch = penalty.match(/([\d.]+)\s*%/i)
-        if (anyPercentMatch && daysDelayed) {
-          const rate = parseFloat(anyPercentMatch[1])
-          if (!isNaN(rate) && rate > 0) {
-            // Default to monthly calculation if period not specified
-            const months = daysDelayed / 30
-            const interest = (penaltyBaseAmount * rate / 100) * months
-            return `${formatCurrency(Math.round(interest), countryCode)} (Interest @ ${rate}%/month on ${formatCurrency(penaltyBaseAmount, countryCode)})`
-          }
+          return formatCurrency(calculatedPenalty, countryCode);
         }
       }
 
-      // If base amount not available, return helpful error message
-      return 'Cannot calculate - Please provide principal amount (Base Amount) for interest calculation'
-    }
+      // Handle "200/day + 10000-100000" - extract daily rate before the +
+      const dailyWithRangeMatch = penalty.match(/(\d+)\/day\s*\+\s*[\d-]+/i);
+      if (dailyWithRangeMatch) {
+        const dailyRate = parseFloat(dailyWithRangeMatch[1].replace(/,/g, ""));
+        if (!isNaN(dailyRate) && dailyRate > 0) {
+          return formatCurrency(
+            Math.round(dailyRate * daysDelayed),
+            countryCode,
+          );
+        }
+      }
 
-    // Check for vague "as per Act" references
-    if (/as per.*Act/i.test(penalty) || /as per.*guidelines/i.test(penalty)) {
-      return 'Refer to Act'
-    }
+      // Handle "2%/month + 5/day" - extract daily rate after the +
+      const interestPlusDailyMatch = penalty.match(
+        /[\d.]+%[^+]*\+\s*(\d+)\/day/i,
+      );
+      if (interestPlusDailyMatch) {
+        const dailyRate = parseFloat(
+          interestPlusDailyMatch[1].replace(/,/g, ""),
+        );
+        if (!isNaN(dailyRate) && dailyRate > 0) {
+          return formatCurrency(
+            Math.round(dailyRate * daysDelayed),
+            countryCode,
+          );
+        }
+      }
 
-    // Check for penalties that are too complex
-    if (penalty.includes('+') && !penalty.includes('/day')) {
-      return 'Cannot calculate - Complex penalty structure requires additional information'
-    }
+      // Handle range formats like "25000-300000" - extract minimum
+      const rangeMatch = penalty.match(/(\d+)\s*-\s*(\d+)/);
+      if (rangeMatch && !penalty.includes("%") && !penalty.includes("/day")) {
+        const minAmount = parseFloat(rangeMatch[1].replace(/,/g, ""));
+        if (!isNaN(minAmount) && minAmount > 0) {
+          return `${formatCurrency(Math.round(minAmount), countryCode)} (minimum)`;
+        }
+      }
 
-    return 'Cannot calculate - Insufficient information'
-  }, [])
+      // Check for explicit fixed penalty amounts
+      const fixedKeywords = /(?:fixed|one-time|one time|flat|lump)/i;
+      if (fixedKeywords.test(penalty)) {
+        let fixedMatch = penalty.match(
+          new RegExp(`${currencySymbolEscaped}[\\d,]+(?:\\.[\\d]+)?`, "i"),
+        );
+        if (!fixedMatch) {
+          const plainNumberMatch = penalty.match(/[\d,]+(?:\.[\d]+)?/i);
+          if (plainNumberMatch) {
+            const amount = plainNumberMatch[0].replace(/,/g, "");
+            const numAmount = parseFloat(amount);
+            if (!isNaN(numAmount) && numAmount > 0) {
+              return formatCurrency(numAmount, countryCode);
+            }
+          }
+        } else {
+          // Extract amount from fixed match and format with country currency
+          const amountStr = fixedMatch[0]
+            .replace(new RegExp(currencySymbolEscaped, "gi"), "")
+            .replace(/,/g, "");
+          const amount = parseFloat(amountStr);
+          if (!isNaN(amount) && amount > 0) {
+            return formatCurrency(amount, countryCode);
+          }
+          return fixedMatch[0];
+        }
+      }
+
+      // Plain number as daily rate (fallback for text format)
+      const plainNumberMatch = penalty.match(/^[\d,]+(?:\.[\d]+)?$/i);
+      if (
+        plainNumberMatch &&
+        !penalty.includes("/day") &&
+        !penalty.includes("Interest") &&
+        !penalty.includes("+")
+      ) {
+        const amount = plainNumberMatch[0].replace(/,/g, "");
+        const numAmount = parseFloat(amount);
+        if (!isNaN(numAmount) && numAmount > 0) {
+          const calculatedPenalty = numAmount * daysDelayed;
+          return formatCurrency(calculatedPenalty, countryCode);
+        }
+      }
+
+      // Check for penalties with Interest - IMPROVED: Calculate if base amount is available
+      if (
+        penalty.includes("Interest") ||
+        penalty.includes("+ Interest") ||
+        penalty.includes("interest")
+      ) {
+        // Try to calculate interest if base amount is available
+        if (penaltyBaseAmount && penaltyBaseAmount > 0) {
+          // Extract interest rate from penalty string
+          // Common formats: "1%/month", "12%/year", "1.5%/month", "Interest @ 1%/month", "u/s 234B & 234C"
+          const interestRateMatch = penalty.match(
+            /([\d.]+)\s*%\s*(?:\/|\s*)(month|year|annum|annually|per month|per year)/i,
+          );
+
+          if (interestRateMatch) {
+            const rate = parseFloat(interestRateMatch[1]);
+            const period = interestRateMatch[2].toLowerCase();
+
+            if (!isNaN(rate) && rate > 0 && daysDelayed) {
+              // Calculate interest based on period
+              let interest = 0;
+
+              if (period.includes("month")) {
+                // Monthly interest: (principal * rate/100) * (days/30)
+                const months = daysDelayed / 30;
+                interest = ((penaltyBaseAmount * rate) / 100) * months;
+              } else if (
+                period.includes("year") ||
+                period.includes("annum") ||
+                period.includes("annually")
+              ) {
+                // Annual interest: (principal * rate/100) * (days/365)
+                const years = daysDelayed / 365;
+                interest = ((penaltyBaseAmount * rate) / 100) * years;
+              }
+
+              if (interest > 0) {
+                return `${formatCurrency(Math.round(interest), countryCode)} (Interest @ ${rate}%/${period.includes("month") ? "month" : "year"} on ${formatCurrency(penaltyBaseAmount, countryCode)})`;
+              }
+            }
+          }
+
+          // Special handling for Income Tax sections 234B & 234C (default 1% per month)
+          if (
+            penalty.includes("234B") ||
+            penalty.includes("234C") ||
+            penalty.includes("u/s 234") ||
+            penalty.includes("section 234")
+          ) {
+            if (daysDelayed) {
+              // Default to 1% per month for Income Tax interest
+              const months = daysDelayed / 30;
+              const interest = penaltyBaseAmount * 0.01 * months;
+              return `${formatCurrency(Math.round(interest), countryCode)} (Interest @ 1%/month u/s 234B/234C on ${formatCurrency(penaltyBaseAmount, countryCode)})`;
+            }
+          }
+
+          // If rate format not found but base amount exists, try to extract any percentage
+          const anyPercentMatch = penalty.match(/([\d.]+)\s*%/i);
+          if (anyPercentMatch && daysDelayed) {
+            const rate = parseFloat(anyPercentMatch[1]);
+            if (!isNaN(rate) && rate > 0) {
+              // Default to monthly calculation if period not specified
+              const months = daysDelayed / 30;
+              const interest = ((penaltyBaseAmount * rate) / 100) * months;
+              return `${formatCurrency(Math.round(interest), countryCode)} (Interest @ ${rate}%/month on ${formatCurrency(penaltyBaseAmount, countryCode)})`;
+            }
+          }
+        }
+
+        // If base amount not available, return helpful error message
+        return "Cannot calculate - Please provide principal amount (Base Amount) for interest calculation";
+      }
+
+      // Check for vague "as per Act" references
+      if (/as per.*Act/i.test(penalty) || /as per.*guidelines/i.test(penalty)) {
+        return "Refer to Act";
+      }
+
+      // Check for penalties that are too complex
+      if (penalty.includes("+") && !penalty.includes("/day")) {
+        return "Cannot calculate - Complex penalty structure requires additional information";
+      }
+
+      return "Cannot calculate - Insufficient information";
+    },
+    [],
+  );
 
   // Memoized delay calculation
-  const calculateDelayMemoized = useCallback((dueDateStr: string, status: string): number | null => {
-    // For not_started, pending, or overdue status, calculate delay if date has passed
-    if (status === 'completed' || status === 'upcoming') return null
+  const calculateDelayMemoized = useCallback(
+    (dueDateStr: string, status: string): number | null => {
+      // For not_started, pending, or overdue status, calculate delay if date has passed
+      if (status === "completed" || status === "upcoming") return null;
 
-    try {
-      const months: { [key: string]: number } = {
-        'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
-        'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+      try {
+        const months: { [key: string]: number } = {
+          Jan: 0,
+          Feb: 1,
+          Mar: 2,
+          Apr: 3,
+          May: 4,
+          Jun: 5,
+          Jul: 6,
+          Aug: 7,
+          Sep: 8,
+          Oct: 9,
+          Nov: 10,
+          Dec: 11,
+        };
+        const parts = dueDateStr.split(" ");
+        if (parts.length >= 3) {
+          const day = parseInt(parts[1].replace(",", ""));
+          const month = months[parts[0]];
+          const year = parseInt(parts[2]);
+          const dueDate = new Date(year, month, day);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          dueDate.setHours(0, 0, 0, 0);
+          const diffTime = today.getTime() - dueDate.getTime();
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          // Return delay if date has passed (diffDays > 0)
+          return diffDays > 0 ? diffDays : null;
+        }
+      } catch {
+        // Invalid date format
       }
-      const parts = dueDateStr.split(' ')
-      if (parts.length >= 3) {
-        const day = parseInt(parts[1].replace(',', ''))
-        const month = months[parts[0]]
-        const year = parseInt(parts[2])
-        const dueDate = new Date(year, month, day)
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        dueDate.setHours(0, 0, 0, 0)
-        const diffTime = today.getTime() - dueDate.getTime()
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-        // Return delay if date has passed (diffDays > 0)
-        return diffDays > 0 ? diffDays : null
-      }
-    } catch {
-      // Invalid date format
-    }
-    return null
-  }, [])
+      return null;
+    },
+    [],
+  );
 
   // Refresh requirements
   const refreshRequirements = async () => {
-    if (!currentCompany) return
+    if (!currentCompany) return;
 
-    setIsLoadingRequirements(true)
+    setIsLoadingRequirements(true);
     try {
-      const result = await getRegulatoryRequirements(currentCompany.id)
+      const result = await getRegulatoryRequirements(currentCompany.id);
       if (result.success && result.requirements) {
-        setRegulatoryRequirements(result.requirements)
+        setRegulatoryRequirements(result.requirements);
       } else {
-        console.error('Failed to fetch requirements:', result.error)
-        setRegulatoryRequirements([])
+        console.error("Failed to fetch requirements:", result.error);
+        setRegulatoryRequirements([]);
       }
     } catch (error) {
-      console.error('Error fetching requirements:', error)
-      setRegulatoryRequirements([])
+      console.error("Error fetching requirements:", error);
+      setRegulatoryRequirements([]);
     } finally {
-      setIsLoadingRequirements(false)
+      setIsLoadingRequirements(false);
     }
-  }
+  };
 
   // Validate status transition
-  const isValidStatusTransition = (oldStatus: string, newStatus: string): { valid: boolean; reason?: string } => {
+  const isValidStatusTransition = (
+    oldStatus: string,
+    newStatus: string,
+  ): { valid: boolean; reason?: string } => {
     // Define valid status transitions
     const validTransitions: Record<string, string[]> = {
-      'not_started': ['upcoming', 'pending', 'overdue', 'completed'],
-      'upcoming': ['pending', 'overdue', 'completed', 'not_started'],
-      'pending': ['completed', 'overdue', 'upcoming', 'not_started'],
-      'overdue': ['completed', 'pending', 'upcoming', 'not_started'],
-      'completed': ['pending', 'overdue', 'upcoming', 'not_started'] // Allow reopening completed items
-    }
+      not_started: ["upcoming", "pending", "overdue", "completed"],
+      upcoming: ["pending", "overdue", "completed", "not_started"],
+      pending: ["completed", "overdue", "upcoming", "not_started"],
+      overdue: ["completed", "pending", "upcoming", "not_started"],
+      completed: ["pending", "overdue", "upcoming", "not_started"], // Allow reopening completed items
+    };
 
     // Same status is always valid (no-op)
     if (oldStatus === newStatus) {
-      return { valid: true }
+      return { valid: true };
     }
 
     // Check if transition is allowed
-    const allowedTransitions = validTransitions[oldStatus] || []
+    const allowedTransitions = validTransitions[oldStatus] || [];
     if (!allowedTransitions.includes(newStatus)) {
       return {
         valid: false,
-        reason: `Cannot change status from "${oldStatus}" to "${newStatus}". Valid transitions: ${allowedTransitions.join(', ')}`
-      }
+        reason: `Cannot change status from "${oldStatus}" to "${newStatus}". Valid transitions: ${allowedTransitions.join(", ")}`,
+      };
     }
 
-    return { valid: true }
-  }
+    return { valid: true };
+  };
 
   // Handle status change
-  const handleStatusChange = async (requirementId: string, newStatus: 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed') => {
-    if (!currentCompany) return
+  const handleStatusChange = async (
+    requirementId: string,
+    newStatus: "not_started" | "upcoming" | "pending" | "overdue" | "completed",
+  ) => {
+    if (!currentCompany) return;
 
     try {
       // Get old status for validation and tracking
-      const oldRequirement = (regulatoryRequirements || []).find(req => req.id === requirementId)
+      const oldRequirement = (regulatoryRequirements || []).find(
+        (req) => req.id === requirementId,
+      );
       if (!oldRequirement) {
-        showToast('Requirement not found', 'error')
-        return
+        showToast("Requirement not found", "error");
+        return;
       }
 
-      const oldStatus = oldRequirement.status
+      const oldStatus = oldRequirement.status;
 
       // Validate status transition
-      const validation = isValidStatusTransition(oldStatus, newStatus)
+      const validation = isValidStatusTransition(oldStatus, newStatus);
       if (!validation.valid) {
-        showToast(validation.reason || 'Invalid status transition', 'error')
-        return
+        showToast(validation.reason || "Invalid status transition", "error");
+        return;
       }
 
       // For critical items or moving to completed, show confirmation
-      if ((oldRequirement.is_critical || oldStatus === 'overdue') && newStatus === 'completed') {
-        if (!confirm(`Are you sure you want to mark this ${oldRequirement.is_critical ? 'critical ' : ''}requirement as completed?`)) {
-          return
+      if (
+        (oldRequirement.is_critical || oldStatus === "overdue") &&
+        newStatus === "completed"
+      ) {
+        if (
+          !confirm(
+            `Are you sure you want to mark this ${oldRequirement.is_critical ? "critical " : ""}requirement as completed?`,
+          )
+        ) {
+          return;
         }
       }
 
-      const result = await updateRequirementStatus(requirementId, currentCompany.id, newStatus)
+      const result = await updateRequirementStatus(
+        requirementId,
+        currentCompany.id,
+        newStatus,
+      );
       if (result.success) {
         // Track status change
         if (user?.id && currentCompany?.id) {
-          await trackStatusChange(user.id, currentCompany.id, requirementId, oldStatus, result.actualStatus || newStatus).catch(err => {
-            console.error('Failed to track status change:', err)
-          })
+          await trackStatusChange(
+            user.id,
+            currentCompany.id,
+            requirementId,
+            oldStatus,
+            result.actualStatus || newStatus,
+          ).catch((err) => {
+            console.error("Failed to track status change:", err);
+          });
         }
 
         // Update local state with actual status (may differ from requested if validation changed it)
-        const actualStatus: 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed' = (result.actualStatus || newStatus) as 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed'
-        setRegulatoryRequirements(prev =>
-          prev.map(req =>
+        const actualStatus:
+          | "not_started"
+          | "upcoming"
+          | "pending"
+          | "overdue"
+          | "completed" = (result.actualStatus || newStatus) as
+          | "not_started"
+          | "upcoming"
+          | "pending"
+          | "overdue"
+          | "completed";
+        setRegulatoryRequirements((prev) =>
+          prev.map((req) =>
             req.id === requirementId
-              ? { ...req, status: actualStatus, status_reason: result.missingDocs ? `Missing documents: ${result.missingDocs.join(', ')}` : req.status_reason }
-              : req
-          )
-        )
-        
+              ? {
+                  ...req,
+                  status: actualStatus,
+                  status_reason: result.missingDocs
+                    ? `Missing documents: ${result.missingDocs.join(", ")}`
+                    : req.status_reason,
+                }
+              : req,
+          ),
+        );
+
         // Show appropriate message
-        if (result.missingDocs && result.missingDocs.length > 0 && actualStatus === 'completed') {
-          showToast(`Status updated to completed. Note: ${result.missingDocs.length} required document(s) still pending. Admin has been notified.`, 'success')
+        if (
+          result.missingDocs &&
+          result.missingDocs.length > 0 &&
+          actualStatus === "completed"
+        ) {
+          showToast(
+            `Status updated to completed. Note: ${result.missingDocs.length} required document(s) still pending. Admin has been notified.`,
+            "success",
+          );
         } else {
-        showToast('Status updated successfully', 'success')
+          showToast("Status updated successfully", "success");
         }
       } else {
-        showToast(`Failed to update status: ${result.error}`, 'error')
+        showToast(`Failed to update status: ${result.error}`, "error");
       }
     } catch (error: any) {
-      console.error('Error updating status:', error)
-      showToast(`Error: ${error.message}`, 'error')
+      console.error("Error updating status:", error);
+      showToast(`Error: ${error.message}`, "error");
     }
-  }
+  };
 
   // Helper function to detect notice type from document name (for metadata/priority flagging)
-  const detectNoticeType = (documentName: string): {
-    type?: string
-    formCode?: string
-    section?: string
-    priority?: 'low' | 'medium' | 'high'
-    description?: string
+  const detectNoticeType = (
+    documentName: string,
+  ): {
+    type?: string;
+    formCode?: string;
+    section?: string;
+    priority?: "low" | "medium" | "high";
+    description?: string;
   } | null => {
-    if (!countryConfig?.regulatory?.noticeTypes) return null
+    if (!countryConfig?.regulatory?.noticeTypes) return null;
 
-    const docLower = documentName.toLowerCase()
-    const noticeTypes = countryConfig.regulatory.noticeTypes
+    const docLower = documentName.toLowerCase();
+    const noticeTypes = countryConfig.regulatory.noticeTypes;
 
     // Check for exact form code matches first (e.g., DRC-01, ASMT-10)
     for (const [key, notice] of Object.entries(noticeTypes)) {
-      const formCodeLower = notice.formCode.toLowerCase()
-      if (docLower.includes(formCodeLower) || docLower.includes(key.toLowerCase())) {
+      const formCodeLower = notice.formCode.toLowerCase();
+      if (
+        docLower.includes(formCodeLower) ||
+        docLower.includes(key.toLowerCase())
+      ) {
         return {
           type: notice.type,
           formCode: notice.formCode,
           section: notice.section,
           priority: notice.priority,
-          description: notice.description
-        }
+          description: notice.description,
+        };
       }
     }
 
     // Check for section-based notices (e.g., Section 142, Section 143)
     for (const [key, notice] of Object.entries(noticeTypes)) {
       if (notice.section) {
-        const sectionLower = notice.section.toLowerCase()
+        const sectionLower = notice.section.toLowerCase();
         if (docLower.includes(sectionLower)) {
           return {
             type: notice.type,
             formCode: notice.formCode,
             section: notice.section,
             priority: notice.priority,
-            description: notice.description
-          }
+            description: notice.description,
+          };
         }
       }
     }
 
-    return null
-  }
+    return null;
+  };
 
   // Helper to get form frequency for a requirement
   const getFormFrequency = (requirement: string): string | null => {
-    if (!countryConfig?.regulatory?.formFrequencies) return null
+    if (!countryConfig?.regulatory?.formFrequencies) return null;
 
-    const reqLower = requirement.toLowerCase()
+    const reqLower = requirement.toLowerCase();
 
     // Try to match requirement to form name
-    for (const [formName, frequency] of Object.entries(countryConfig.regulatory.formFrequencies)) {
+    for (const [formName, frequency] of Object.entries(
+      countryConfig.regulatory.formFrequencies,
+    )) {
       if (reqLower.includes(formName.toLowerCase())) {
-        return frequency
+        return frequency;
       }
     }
-    return null
-  }
+    return null;
+  };
 
   // Helper to find relevant legal sections for a requirement
-  const getRelevantLegalSections = (requirement: string, category: string): Array<{
-    act: string
-    section: string
-    description: string
-    relevance: string
+  const getRelevantLegalSections = (
+    requirement: string,
+    category: string,
+  ): Array<{
+    act: string;
+    section: string;
+    description: string;
+    relevance: string;
   }> => {
-    if (!countryConfig?.regulatory?.legalSections) return []
+    if (!countryConfig?.regulatory?.legalSections) return [];
 
-    const reqLower = requirement.toLowerCase()
+    const reqLower = requirement.toLowerCase();
     const relevantSections: Array<{
-      act: string
-      section: string
-      description: string
-      relevance: string
-    }> = []
+      act: string;
+      section: string;
+      description: string;
+      relevance: string;
+    }> = [];
 
     // Match based on requirement text and category
-    Object.values(countryConfig.regulatory.legalSections).forEach(section => {
-      const sectionLower = section.section.toLowerCase()
-      const actLower = section.act.toLowerCase()
+    Object.values(countryConfig.regulatory.legalSections).forEach((section) => {
+      const sectionLower = section.section.toLowerCase();
+      const actLower = section.act.toLowerCase();
 
-      if (reqLower.includes(sectionLower) ||
+      if (
+        reqLower.includes(sectionLower) ||
         reqLower.includes(actLower) ||
-        (category === 'GST' && actLower.includes('gst')) ||
-        (category === 'Income Tax' && actLower.includes('income tax')) ||
-        (category === 'RoC' && actLower.includes('companies act'))) {
-        relevantSections.push(section)
+        (category === "GST" && actLower.includes("gst")) ||
+        (category === "Income Tax" && actLower.includes("income tax")) ||
+        (category === "RoC" && actLower.includes("companies act"))
+      ) {
+        relevantSections.push(section);
       }
-    })
+    });
 
-    return relevantSections
-  }
+    return relevantSections;
+  };
 
   // Helper to get authority for category
   const getAuthorityForCategory = (category: string): string | null => {
-    if (!countryConfig?.regulatory?.authorities) return null
+    if (!countryConfig?.regulatory?.authorities) return null;
 
-    const categoryMap: Record<string, keyof typeof countryConfig.regulatory.authorities> = {
-      'GST': 'indirectTax',
-      'Income Tax': 'tax',
-      'RoC': 'corporate',
-      'Payroll': 'labor',
-      'Labour Law': 'labor',
-      'Renewals': 'registration'
-    }
+    const categoryMap: Record<
+      string,
+      keyof typeof countryConfig.regulatory.authorities
+    > = {
+      GST: "indirectTax",
+      "Income Tax": "tax",
+      RoC: "corporate",
+      Payroll: "labor",
+      "Labour Law": "labor",
+      Renewals: "registration",
+    };
 
-    const authorityKey = categoryMap[category]
-    return authorityKey ? countryConfig.regulatory.authorities[authorityKey] || null : null
-  }
+    const authorityKey = categoryMap[category];
+    return authorityKey
+      ? countryConfig.regulatory.authorities[authorityKey] || null
+      : null;
+  };
 
   // Helper to map folder names to compliance categories (country-aware)
   const getCategoryFromFolder = (folderName: string): string | null => {
-    if (!countryConfig) return null
+    if (!countryConfig) return null;
 
     // Country-specific folder mappings
-    if (countryCode === 'IN') {
+    if (countryCode === "IN") {
       const folderMap: Record<string, string> = {
-        'GST Returns': 'GST',
-        'Income Tax Returns': 'Income Tax',
-        'ROC Filings': 'RoC',
-        'Labour Law Compliance': 'Payroll',
-        'Renewals': 'Renewals',
-        'Other Compliance Documents': 'Other',
-        'Professional Tax': 'Prof. Tax',
-        'Constitutional Documents': 'Other',
-        'Financials and licenses': 'Other',
-        'Taxation & GST Compliance': 'GST',
-        'Regulatory & MCA Filings': 'RoC'
-      }
-      return folderMap[folderName] || null
-    } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
+        "GST Returns": "GST",
+        "Income Tax Returns": "Income Tax",
+        "ROC Filings": "RoC",
+        "Labour Law Compliance": "Payroll",
+        Renewals: "Renewals",
+        "Other Compliance Documents": "Other",
+        "Professional Tax": "Prof. Tax",
+        "Constitutional Documents": "Other",
+        "Financials and licenses": "Other",
+        "Taxation & GST Compliance": "GST",
+        "Regulatory & MCA Filings": "RoC",
+      };
+      return folderMap[folderName] || null;
+    } else if (["AE", "SA", "OM", "QA", "BH"].includes(countryCode || "")) {
       // GCC countries
       const folderMap: Record<string, string> = {
-        'VAT & Tax Compliance': 'VAT',
-        'Corporate & Regulatory Filings': 'Corporate Tax',
-        'Constitutional Documents': 'Other',
-        'Financials and licenses': 'Other'
-      }
-      return folderMap[folderName] || null
-    } else if (countryCode === 'US') {
+        "VAT & Tax Compliance": "VAT",
+        "Corporate & Regulatory Filings": "Corporate Tax",
+        "Constitutional Documents": "Other",
+        "Financials and licenses": "Other",
+      };
+      return folderMap[folderName] || null;
+    } else if (countryCode === "US") {
       // USA
       const folderMap: Record<string, string> = {
-        'Federal Tax Returns': 'Federal Tax',
-        'State Tax Returns': 'State Tax',
-        'Business License & Registration': 'Business License',
-        'Constitutional Documents': 'Other',
-        'Financials and licenses': 'Other'
-      }
-      return folderMap[folderName] || null
+        "Federal Tax Returns": "Federal Tax",
+        "State Tax Returns": "State Tax",
+        "Business License & Registration": "Business License",
+        "Constitutional Documents": "Other",
+        "Financials and licenses": "Other",
+      };
+      return folderMap[folderName] || null;
     }
 
     // Fallback
-    return null
-  }
+    return null;
+  };
 
   // Get relevant forms for folder (country-aware)
   const getRelevantFormsForFolder = (folderName: string): string[] => {
-    const category = getCategoryFromFolder(folderName)
-    if (!category || !countryConfig?.regulatory?.commonForms) return []
+    const category = getCategoryFromFolder(folderName);
+    if (!category || !countryConfig?.regulatory?.commonForms) return [];
 
-    const categoryLower = category.toLowerCase()
-    const forms = countryConfig.regulatory.commonForms.filter(form => {
-      const formLower = form.toLowerCase()
+    const categoryLower = category.toLowerCase();
+    const forms = countryConfig.regulatory.commonForms.filter((form) => {
+      const formLower = form.toLowerCase();
 
       // India-specific patterns
-      if (countryCode === 'IN') {
-        if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
-        if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
-        if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
-        if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
+      if (countryCode === "IN") {
+        if (
+          categoryLower === "gst" &&
+          (formLower.includes("gstr") ||
+            formLower.includes("gst") ||
+            formLower.includes("cmp") ||
+            formLower.includes("itc") ||
+            formLower.includes("iff"))
+        )
+          return true;
+        if (
+          categoryLower === "income tax" &&
+          (formLower.includes("itr") ||
+            formLower.includes("form 24") ||
+            formLower.includes("form 26") ||
+            formLower.includes("form 27"))
+        )
+          return true;
+        if (
+          (categoryLower === "roc" || categoryLower === "mca") &&
+          (formLower.includes("mgt") ||
+            formLower.includes("aoc") ||
+            formLower.includes("dir") ||
+            formLower.includes("pas") ||
+            formLower.includes("ben") ||
+            formLower.includes("inc") ||
+            formLower.includes("adt") ||
+            formLower.includes("cra") ||
+            formLower.includes("llp"))
+        )
+          return true;
+        if (
+          (categoryLower === "payroll" || categoryLower === "labour law") &&
+          (formLower.includes("ecr") ||
+            formLower.includes("form 5a") ||
+            formLower.includes("form 2") ||
+            formLower.includes("form 10") ||
+            formLower.includes("form 19"))
+        )
+          return true;
       }
       // GCC countries
-      else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
-        if ((categoryLower === 'vat' || categoryLower === 'tax') && (formLower.includes('vat') || formLower.includes('tax return') || formLower.includes('corporate tax'))) return true
-        if (categoryLower === 'corporate' && (formLower.includes('trade license') || formLower.includes('commercial registration') || formLower.includes('cr'))) return true
+      else if (["AE", "SA", "OM", "QA", "BH"].includes(countryCode || "")) {
+        if (
+          (categoryLower === "vat" || categoryLower === "tax") &&
+          (formLower.includes("vat") ||
+            formLower.includes("tax return") ||
+            formLower.includes("corporate tax"))
+        )
+          return true;
+        if (
+          categoryLower === "corporate" &&
+          (formLower.includes("trade license") ||
+            formLower.includes("commercial registration") ||
+            formLower.includes("cr"))
+        )
+          return true;
       }
       // USA
-      else if (countryCode === 'US') {
-        if ((categoryLower === 'federal tax' || categoryLower === 'state tax') && (formLower.includes('tax') || formLower.includes('return') || formLower.includes('ein'))) return true
-        if (categoryLower === 'business license' && (formLower.includes('license') || formLower.includes('registration') || formLower.includes('report'))) return true
+      else if (countryCode === "US") {
+        if (
+          (categoryLower === "federal tax" || categoryLower === "state tax") &&
+          (formLower.includes("tax") ||
+            formLower.includes("return") ||
+            formLower.includes("ein"))
+        )
+          return true;
+        if (
+          categoryLower === "business license" &&
+          (formLower.includes("license") ||
+            formLower.includes("registration") ||
+            formLower.includes("report"))
+        )
+          return true;
       }
 
-      return false
-    })
+      return false;
+    });
 
-    return forms
-  }
+    return forms;
+  };
 
   // Get authority for folder
   const getAuthorityForFolder = (folderName: string): string | null => {
-    const category = getCategoryFromFolder(folderName)
-    return category ? getAuthorityForCategory(category) : null
-  }
+    const category = getCategoryFromFolder(folderName);
+    return category ? getAuthorityForCategory(category) : null;
+  };
 
   // Suggest folders based on document name (country-aware)
   const suggestFoldersForDocument = (documentName: string): string[] => {
-    const docLower = documentName.toLowerCase()
-    const suggestions: string[] = []
+    const docLower = documentName.toLowerCase();
+    const suggestions: string[] = [];
 
-    if (countryCode === 'IN') {
+    if (countryCode === "IN") {
       // India-specific patterns
-      if (docLower.includes('gstr') || docLower.includes('gst') || docLower.includes('cmp-') || docLower.includes('itc-') || docLower.includes('iff')) {
-        suggestions.push('Taxation & GST Compliance')
+      if (
+        docLower.includes("gstr") ||
+        docLower.includes("gst") ||
+        docLower.includes("cmp-") ||
+        docLower.includes("itc-") ||
+        docLower.includes("iff")
+      ) {
+        suggestions.push("Taxation & GST Compliance");
       }
-      if (docLower.includes('itr') || docLower.includes('form 24') || docLower.includes('form 26') || docLower.includes('form 27') || docLower.includes('tds') || docLower.includes('tcs')) {
-        suggestions.push('Taxation & GST Compliance')
+      if (
+        docLower.includes("itr") ||
+        docLower.includes("form 24") ||
+        docLower.includes("form 26") ||
+        docLower.includes("form 27") ||
+        docLower.includes("tds") ||
+        docLower.includes("tcs")
+      ) {
+        suggestions.push("Taxation & GST Compliance");
       }
-      if (docLower.includes('mgt') || docLower.includes('aoc') || docLower.includes('roc') || docLower.includes('dir-') || docLower.includes('pas-') || docLower.includes('ben-') || docLower.includes('inc-') || docLower.includes('adt-') || docLower.includes('cra-') || docLower.includes('llp form')) {
-        suggestions.push('Regulatory & MCA Filings')
+      if (
+        docLower.includes("mgt") ||
+        docLower.includes("aoc") ||
+        docLower.includes("roc") ||
+        docLower.includes("dir-") ||
+        docLower.includes("pas-") ||
+        docLower.includes("ben-") ||
+        docLower.includes("inc-") ||
+        docLower.includes("adt-") ||
+        docLower.includes("cra-") ||
+        docLower.includes("llp form")
+      ) {
+        suggestions.push("Regulatory & MCA Filings");
       }
-      if (docLower.includes('epf') || docLower.includes('esi') || docLower.includes('ecr') || docLower.includes('form 5a') || docLower.includes('form 2') || docLower.includes('form 10') || docLower.includes('form 19')) {
-        suggestions.push('Labour Law Compliance')
+      if (
+        docLower.includes("epf") ||
+        docLower.includes("esi") ||
+        docLower.includes("ecr") ||
+        docLower.includes("form 5a") ||
+        docLower.includes("form 2") ||
+        docLower.includes("form 10") ||
+        docLower.includes("form 19")
+      ) {
+        suggestions.push("Labour Law Compliance");
       }
-    } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
+    } else if (["AE", "SA", "OM", "QA", "BH"].includes(countryCode || "")) {
       // GCC countries
-      if (docLower.includes('vat') || docLower.includes('tax return') || docLower.includes('corporate tax') || docLower.includes('zakat')) {
-        suggestions.push('VAT & Tax Compliance')
+      if (
+        docLower.includes("vat") ||
+        docLower.includes("tax return") ||
+        docLower.includes("corporate tax") ||
+        docLower.includes("zakat")
+      ) {
+        suggestions.push("VAT & Tax Compliance");
       }
-      if (docLower.includes('trade license') || docLower.includes('commercial registration') || docLower.includes('cr') || docLower.includes('ded') || docLower.includes('moci')) {
-        suggestions.push('Corporate & Regulatory Filings')
+      if (
+        docLower.includes("trade license") ||
+        docLower.includes("commercial registration") ||
+        docLower.includes("cr") ||
+        docLower.includes("ded") ||
+        docLower.includes("moci")
+      ) {
+        suggestions.push("Corporate & Regulatory Filings");
       }
-    } else if (countryCode === 'US') {
+    } else if (countryCode === "US") {
       // USA
-      if (docLower.includes('federal') || docLower.includes('irs') || docLower.includes('form 1120') || docLower.includes('form 1065')) {
-        suggestions.push('Federal Tax Returns')
+      if (
+        docLower.includes("federal") ||
+        docLower.includes("irs") ||
+        docLower.includes("form 1120") ||
+        docLower.includes("form 1065")
+      ) {
+        suggestions.push("Federal Tax Returns");
       }
-      if (docLower.includes('state') || docLower.includes('sales tax')) {
-        suggestions.push('State Tax Returns')
+      if (docLower.includes("state") || docLower.includes("sales tax")) {
+        suggestions.push("State Tax Returns");
       }
-      if (docLower.includes('license') || docLower.includes('registration') || docLower.includes('ein') || docLower.includes('annual report')) {
-        suggestions.push('Business License & Registration')
+      if (
+        docLower.includes("license") ||
+        docLower.includes("registration") ||
+        docLower.includes("ein") ||
+        docLower.includes("annual report")
+      ) {
+        suggestions.push("Business License & Registration");
       }
     }
 
-    return suggestions
-  }
+    return suggestions;
+  };
 
   // Get folder description with authority and form count
-  const getFolderDescription = (folderName: string): { authority: string | null, formCount: number } => {
-    const authority = getAuthorityForFolder(folderName)
-    const forms = getRelevantFormsForFolder(folderName)
+  const getFolderDescription = (
+    folderName: string,
+  ): { authority: string | null; formCount: number } => {
+    const authority = getAuthorityForFolder(folderName);
+    const forms = getRelevantFormsForFolder(folderName);
     return {
       authority,
-      formCount: forms.length
-    }
-  }
+      formCount: forms.length,
+    };
+  };
 
   // Get legal sections for document
-  const getLegalSectionsForDocument = (documentName: string, folderName: string): Array<{
-    act: string
-    section: string
-    description: string
-    relevance: string
+  const getLegalSectionsForDocument = (
+    documentName: string,
+    folderName: string,
+  ): Array<{
+    act: string;
+    section: string;
+    description: string;
+    relevance: string;
   }> => {
-    const category = getCategoryFromFolder(folderName)
-    if (!category) return []
+    const category = getCategoryFromFolder(folderName);
+    if (!category) return [];
 
-    return getRelevantLegalSections(documentName, category)
-  }
+    return getRelevantLegalSections(documentName, category);
+  };
 
   // Helper function to map document name to folder based on category (country-aware)
-  const getFolderForDocument = (documentName: string, category: string): string => {
+  const getFolderForDocument = (
+    documentName: string,
+    category: string,
+  ): string => {
     // Check if document template exists
-    const template = documentTemplates.find(t =>
-      t.document_name.toLowerCase() === documentName.toLowerCase() ||
-      documentName.toLowerCase().includes(t.document_name.toLowerCase())
-    )
-    if (template) return template.folder_name
+    const template = documentTemplates.find(
+      (t) =>
+        t.document_name.toLowerCase() === documentName.toLowerCase() ||
+        documentName.toLowerCase().includes(t.document_name.toLowerCase()),
+    );
+    if (template) return template.folder_name;
 
-    const docLower = documentName.toLowerCase()
+    const docLower = documentName.toLowerCase();
 
     // Use country config patterns if available, with fallback to hardcoded patterns
-    const patterns = countryConfig?.regulatory?.documentPatterns
+    const patterns = countryConfig?.regulatory?.documentPatterns;
 
     // Country-specific document pattern matching
-    if (countryCode === 'IN') {
+    if (countryCode === "IN") {
       // India-specific patterns
       const categoryMap: Record<string, string> = {
-        'GST': 'GST Returns',
-        'Income Tax': 'Income Tax Returns',
-        'RoC': 'ROC Filings',
-        'Labour Law': 'Labour Law Compliance',
-        'LLP Act': 'ROC Filings',
-        'Prof. Tax': 'Professional Tax',
-        'Payroll': 'Labour Law Compliance',
-        'Others': 'Other Compliance Documents',
-        'Renewals': 'Renewals'
-      }
+        GST: "GST Returns",
+        "Income Tax": "Income Tax Returns",
+        RoC: "ROC Filings",
+        "Labour Law": "Labour Law Compliance",
+        "LLP Act": "ROC Filings",
+        "Prof. Tax": "Professional Tax",
+        Payroll: "Labour Law Compliance",
+        Others: "Other Compliance Documents",
+        Renewals: "Renewals",
+      };
 
       // Enhanced pattern matching using country config (with fallback)
       if (patterns) {
         // Check tax patterns (GST, Income Tax, TDS, ITR, notices) - all map to Income Tax or GST
-        if (patterns.tax && patterns.tax.some(pattern => docLower.includes(pattern.toLowerCase()))) {
+        if (
+          patterns.tax &&
+          patterns.tax.some((pattern) =>
+            docLower.includes(pattern.toLowerCase()),
+          )
+        ) {
           // GST patterns
-          if (patterns.tax.some(p => ['gstr', 'gst', 'cmp-', 'itc-', 'iff'].some(gst => p.toLowerCase().includes(gst)) && docLower.includes(p.toLowerCase()))) {
-            return 'GST Returns'
+          if (
+            patterns.tax.some(
+              (p) =>
+                ["gstr", "gst", "cmp-", "itc-", "iff"].some((gst) =>
+                  p.toLowerCase().includes(gst),
+                ) && docLower.includes(p.toLowerCase()),
+            )
+          ) {
+            return "GST Returns";
           }
           // Income Tax patterns (TDS, ITR, notices)
-          if (patterns.tax.some(p => ['itr', 'form 24q', 'form 26q', 'form 27q', 'form 27eq', 'tds', 'tcs', 'drc-', 'asmt-', 'section 142', 'section 143', 'section 156'].some(it => p.toLowerCase().includes(it)) && docLower.includes(p.toLowerCase()))) {
-            return 'Income Tax Returns'
+          if (
+            patterns.tax.some(
+              (p) =>
+                [
+                  "itr",
+                  "form 24q",
+                  "form 26q",
+                  "form 27q",
+                  "form 27eq",
+                  "tds",
+                  "tcs",
+                  "drc-",
+                  "asmt-",
+                  "section 142",
+                  "section 143",
+                  "section 156",
+                ].some((it) => p.toLowerCase().includes(it)) &&
+                docLower.includes(p.toLowerCase()),
+            )
+          ) {
+            return "Income Tax Returns";
           }
           // Default tax pattern match
-          return 'Income Tax Returns'
+          return "Income Tax Returns";
         }
 
         // Check corporate patterns (MCA/RoC) - map to RoC
-        if (patterns.corporate && patterns.corporate.some(pattern => docLower.includes(pattern.toLowerCase()))) {
-          return 'ROC Filings'
+        if (
+          patterns.corporate &&
+          patterns.corporate.some((pattern) =>
+            docLower.includes(pattern.toLowerCase()),
+          )
+        ) {
+          return "ROC Filings";
         }
 
         // Check labor patterns (EPFO/ESIC) - map to Payroll category
-        if (patterns.labor && patterns.labor.some(pattern => docLower.includes(pattern.toLowerCase()))) {
-          return 'Labour Law Compliance'
+        if (
+          patterns.labor &&
+          patterns.labor.some((pattern) =>
+            docLower.includes(pattern.toLowerCase()),
+          )
+        ) {
+          return "Labour Law Compliance";
         }
 
         // Check notice patterns - map to Others/Renewals
-        if (patterns.notices && patterns.notices.some(pattern => docLower.includes(pattern.toLowerCase()))) {
+        if (
+          patterns.notices &&
+          patterns.notices.some((pattern) =>
+            docLower.includes(pattern.toLowerCase()),
+          )
+        ) {
           // Registration-related notices go to Renewals, others to Other Compliance Documents
-          if (docLower.includes('reg-17') || docLower.includes('reg-19')) {
-            return 'Renewals'
+          if (docLower.includes("reg-17") || docLower.includes("reg-19")) {
+            return "Renewals";
           }
-          return 'Other Compliance Documents'
+          return "Other Compliance Documents";
         }
       }
 
       // Fallback to hardcoded patterns for backward compatibility
-      if (docLower.includes('gstr') || docLower.includes('gst')) {
-        return 'GST Returns'
+      if (docLower.includes("gstr") || docLower.includes("gst")) {
+        return "GST Returns";
       }
-      if (docLower.includes('form 24q') || docLower.includes('form 26q') ||
-        docLower.includes('form 27q') || docLower.includes('form 27eq') ||
-        docLower.includes('tds') || docLower.includes('tcs') || docLower.includes('itr') ||
-        docLower.includes('drc-') || docLower.includes('asmt-') ||
-        docLower.includes('section 142') || docLower.includes('section 143') || docLower.includes('section 156')) {
-        return 'Income Tax Returns'
+      if (
+        docLower.includes("form 24q") ||
+        docLower.includes("form 26q") ||
+        docLower.includes("form 27q") ||
+        docLower.includes("form 27eq") ||
+        docLower.includes("tds") ||
+        docLower.includes("tcs") ||
+        docLower.includes("itr") ||
+        docLower.includes("drc-") ||
+        docLower.includes("asmt-") ||
+        docLower.includes("section 142") ||
+        docLower.includes("section 143") ||
+        docLower.includes("section 156")
+      ) {
+        return "Income Tax Returns";
       }
-      if (docLower.includes('pf') || docLower.includes('esi') ||
-        docLower.includes('epf') || docLower.includes('epfo') || docLower.includes('labour') ||
-        docLower.includes('ecr') || docLower.includes('form 5a') || docLower.includes('form 2') ||
-        docLower.includes('form 10c') || docLower.includes('form 10d') || docLower.includes('form 19')) {
-        return 'Labour Law Compliance'
+      if (
+        docLower.includes("pf") ||
+        docLower.includes("esi") ||
+        docLower.includes("epf") ||
+        docLower.includes("epfo") ||
+        docLower.includes("labour") ||
+        docLower.includes("ecr") ||
+        docLower.includes("form 5a") ||
+        docLower.includes("form 2") ||
+        docLower.includes("form 10c") ||
+        docLower.includes("form 10d") ||
+        docLower.includes("form 19")
+      ) {
+        return "Labour Law Compliance";
       }
-      if (docLower.includes('mgt') || docLower.includes('aoc') ||
-        docLower.includes('roc') || docLower.includes('form 11') || docLower.includes('form 8') ||
-        docLower.includes('dir-') || docLower.includes('pas-') || docLower.includes('ben-') ||
-        docLower.includes('inc-22a') || docLower.includes('adt-01') || docLower.includes('cra-2') ||
-        docLower.includes('llp form')) {
-        return 'ROC Filings'
+      if (
+        docLower.includes("mgt") ||
+        docLower.includes("aoc") ||
+        docLower.includes("roc") ||
+        docLower.includes("form 11") ||
+        docLower.includes("form 8") ||
+        docLower.includes("dir-") ||
+        docLower.includes("pas-") ||
+        docLower.includes("ben-") ||
+        docLower.includes("inc-22a") ||
+        docLower.includes("adt-01") ||
+        docLower.includes("cra-2") ||
+        docLower.includes("llp form")
+      ) {
+        return "ROC Filings";
       }
-      if (docLower.includes('reg-17') || docLower.includes('reg-19') || docLower.includes('cmp-05')) {
-        return 'Renewals'
+      if (
+        docLower.includes("reg-17") ||
+        docLower.includes("reg-19") ||
+        docLower.includes("cmp-05")
+      ) {
+        return "Renewals";
       }
 
       // Default to category-based folder for India
-      return categoryMap[category] || 'Compliance Documents'
+      return categoryMap[category] || "Compliance Documents";
     } else {
       // For other countries, use generic category-based mapping
       // Map compliance categories to folder names
       const genericCategoryMap: Record<string, string> = {
-        'VAT': 'VAT Returns',
-        'Corporate Tax': 'Corporate Tax Returns',
-        'Income Tax': 'Income Tax Returns',
-        'Payroll': 'Payroll Compliance',
-        'Trade License Renewal': 'License Renewals',
-        'Commercial Registration Renewal': 'License Renewals',
-        'Federal Tax': 'Federal Tax Returns',
-        'State Tax': 'State Tax Returns',
-        'Business License': 'License Renewals',
-        'Others': 'Other Compliance Documents'
-      }
+        VAT: "VAT Returns",
+        "Corporate Tax": "Corporate Tax Returns",
+        "Income Tax": "Income Tax Returns",
+        Payroll: "Payroll Compliance",
+        "Trade License Renewal": "License Renewals",
+        "Commercial Registration Renewal": "License Renewals",
+        "Federal Tax": "Federal Tax Returns",
+        "State Tax": "State Tax Returns",
+        "Business License": "License Renewals",
+        Others: "Other Compliance Documents",
+      };
 
       // Try to match category first
       if (genericCategoryMap[category]) {
-        return genericCategoryMap[category]
+        return genericCategoryMap[category];
       }
 
       // Fallback: check for common patterns across countries
-      const docLower = documentName.toLowerCase()
-      if (docLower.includes('vat') || docLower.includes('value added tax')) {
-        return 'VAT Returns'
+      const docLower = documentName.toLowerCase();
+      if (docLower.includes("vat") || docLower.includes("value added tax")) {
+        return "VAT Returns";
       }
-      if (docLower.includes('tax return') || docLower.includes('tax filing')) {
-        return 'Tax Returns'
+      if (docLower.includes("tax return") || docLower.includes("tax filing")) {
+        return "Tax Returns";
       }
-      if (docLower.includes('license') || docLower.includes('registration')) {
-        return 'License Renewals'
+      if (docLower.includes("license") || docLower.includes("registration")) {
+        return "License Renewals";
       }
-      if (docLower.includes('payroll') || docLower.includes('salary')) {
-        return 'Payroll Compliance'
+      if (docLower.includes("payroll") || docLower.includes("salary")) {
+        return "Payroll Compliance";
       }
 
       // Default fallback
-      return 'Compliance Documents'
+      return "Compliance Documents";
     }
-  }
+  };
 
   // Calculate period metadata for document upload
   const calculatePeriodMetadata = (req: any) => {
-    const complianceType = req.compliance_type || 'one-time'
-    const dueDate = new Date(req.dueDate)
-    const financialYear = req.financial_year || null
+    const complianceType = req.compliance_type || "one-time";
+    const dueDate = new Date(req.dueDate);
+    const financialYear = req.financial_year || null;
 
-    let periodType: 'one-time' | 'monthly' | 'quarterly' | 'annual' = 'one-time'
-    let periodKey = ''
-    let periodStart = ''
-    let periodEnd = ''
-    let periodFinancialYear = financialYear
+    let periodType: "one-time" | "monthly" | "quarterly" | "annual" =
+      "one-time";
+    let periodKey = "";
+    let periodStart = "";
+    let periodEnd = "";
+    let periodFinancialYear = financialYear;
 
-    if (complianceType === 'monthly') {
-      periodType = 'monthly'
-      const month = dueDate.getMonth() + 1
-      const year = dueDate.getFullYear()
-      periodKey = `${year}-${String(month).padStart(2, '0')}`
-      periodStart = `${year}-${String(month).padStart(2, '0')}-01`
-      const lastDay = new Date(year, month, 0).getDate()
-      periodEnd = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-    } else if (complianceType === 'quarterly') {
-      periodType = 'quarterly'
-      const month = dueDate.getMonth() + 1
-      const year = dueDate.getFullYear()
-      let quarter = 1
-      if (month >= 4 && month <= 6) quarter = 1
-      else if (month >= 7 && month <= 9) quarter = 2
-      else if (month >= 10 && month <= 12) quarter = 3
-      else quarter = 4
-      periodKey = `Q${quarter}-${year}`
-      const quarterStartMonth = (quarter - 1) * 3 + 1
-      periodStart = `${year}-${String(quarterStartMonth).padStart(2, '0')}-01`
-      const quarterEndMonth = quarter * 3
-      const lastDay = new Date(year, quarterEndMonth, 0).getDate()
-      periodEnd = `${year}-${String(quarterEndMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-    } else if (complianceType === 'annual') {
+    if (complianceType === "monthly") {
+      periodType = "monthly";
+      const month = dueDate.getMonth() + 1;
+      const year = dueDate.getFullYear();
+      periodKey = `${year}-${String(month).padStart(2, "0")}`;
+      periodStart = `${year}-${String(month).padStart(2, "0")}-01`;
+      const lastDay = new Date(year, month, 0).getDate();
+      periodEnd = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    } else if (complianceType === "quarterly") {
+      periodType = "quarterly";
+      const month = dueDate.getMonth() + 1;
+      const year = dueDate.getFullYear();
+      let quarter = 1;
+      if (month >= 4 && month <= 6) quarter = 1;
+      else if (month >= 7 && month <= 9) quarter = 2;
+      else if (month >= 10 && month <= 12) quarter = 3;
+      else quarter = 4;
+      periodKey = `Q${quarter}-${year}`;
+      const quarterStartMonth = (quarter - 1) * 3 + 1;
+      periodStart = `${year}-${String(quarterStartMonth).padStart(2, "0")}-01`;
+      const quarterEndMonth = quarter * 3;
+      const lastDay = new Date(year, quarterEndMonth, 0).getDate();
+      periodEnd = `${year}-${String(quarterEndMonth).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    } else if (complianceType === "annual") {
       // Annual compliance: recurs every year
-      periodType = 'annual'
-      const year = dueDate.getFullYear()
-      periodKey = `FY-${year}`
-      periodStart = `${year}-04-01`
-      periodEnd = `${year + 1}-03-31`
-      periodFinancialYear = `FY ${year}-${String(year + 1).slice(-2)}`
-    } else if (complianceType === 'one-time') {
+      periodType = "annual";
+      const year = dueDate.getFullYear();
+      periodKey = `FY-${year}`;
+      periodStart = `${year}-04-01`;
+      periodEnd = `${year + 1}-03-31`;
+      periodFinancialYear = `FY ${year}-${String(year + 1).slice(-2)}`;
+    } else if (complianceType === "one-time") {
       // One-time compliance: happens once, no recurring
-      periodType = 'one-time'
-      const year = dueDate.getFullYear()
-      periodKey = `one-time-${year}`
-      const normalizedDate = normalizeDate(dueDate)
+      periodType = "one-time";
+      const year = dueDate.getFullYear();
+      periodKey = `one-time-${year}`;
+      const normalizedDate = normalizeDate(dueDate);
       if (normalizedDate) {
-        periodStart = formatDateForStorage(normalizedDate) || ''
-        periodEnd = formatDateForStorage(normalizedDate) || ''
+        periodStart = formatDateForStorage(normalizedDate) || "";
+        periodEnd = formatDateForStorage(normalizedDate) || "";
       } else {
-        periodStart = `${year}-01-01`
-        periodEnd = `${year}-12-31`
+        periodStart = `${year}-01-01`;
+        periodEnd = `${year}-12-31`;
       }
-      periodFinancialYear = null // One-time items don't have a recurring financial year
+      periodFinancialYear = null; // One-time items don't have a recurring financial year
     }
 
-    return { periodType, periodKey, periodStart, periodEnd, periodFinancialYear }
-  }
+    return {
+      periodType,
+      periodKey,
+      periodStart,
+      periodEnd,
+      periodFinancialYear,
+    };
+  };
 
   // Handle document upload from tracker
   const handleTrackerDocumentUpload = async () => {
-    if (!documentUploadModal || !uploadFile || !currentCompany) return
+    if (!documentUploadModal || !uploadFile || !currentCompany) return;
 
-    setUploadingDocument(true)
-    setUploadProgress(0)
-    setUploadStage('Uploading file...')
+    setUploadingDocument(true);
+    setUploadProgress(0);
+    setUploadStage("Uploading file...");
 
     try {
-      const supabase = createClient()
+      // Remove unused supabase client - we use server actions now
 
-      // Upload file to storage
-      const fileExt = uploadFile.name.split('.').pop()
-      const fileName = `${documentUploadModal.requirementId}-${documentUploadModal.documentName}-${Date.now()}.${fileExt}`
-      const filePath = `${currentCompany.id}/compliance/${fileName}`
+      // Upload file to storage via server action (works for both Supabase and Passport users)
+      const fileExt = uploadFile.name.split(".").pop();
+      const fileName = `${documentUploadModal.requirementId}-${documentUploadModal.documentName}-${Date.now()}.${fileExt}`;
+      const filePath = `${currentCompany.id}/compliance/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('company-documents')
-        .upload(filePath, uploadFile)
+      const fileArrayBuffer = await uploadFile.arrayBuffer();
+      const uploadResult = await uploadFileToStorage(filePath, fileArrayBuffer, uploadFile.type);
 
-      if (uploadError) {
-        throw new Error(`Upload failed: ${uploadError.message}`)
+      if (!uploadResult.success) {
+        throw new Error(`Upload failed: ${uploadResult.error || 'Unknown error'}`);
       }
 
       // Get the requirement to calculate period metadata
-      const requirement = (regulatoryRequirements || []).find(r => r.id === documentUploadModal.requirementId)
-      if (!requirement) throw new Error('Requirement not found')
+      const requirement = (regulatoryRequirements || []).find(
+        (r) => r.id === documentUploadModal.requirementId,
+      );
+      if (!requirement) throw new Error("Requirement not found");
 
       const periodMeta = calculatePeriodMetadata({
         compliance_type: requirement.compliance_type,
         dueDate: requirement.due_date,
-        financial_year: requirement.financial_year
-      })
+        financial_year: requirement.financial_year,
+      });
 
       // Determine folder name
-      const folderName = getFolderForDocument(documentUploadModal.documentName, documentUploadModal.category)
+      const folderName = getFolderForDocument(
+        documentUploadModal.documentName,
+        documentUploadModal.category,
+      );
 
       // Save document metadata
       try {
@@ -2718,10 +3532,16 @@ function DataRoomPageInner() {
           // - 'annual': recurs annually (use 'annually')
           // - 'monthly': recurs monthly (use 'monthly')
           // - 'quarterly': recurs quarterly (use 'quarterly')
-          frequency: documentUploadModal.complianceType === 'one-time' ? 'one-time' :
-            documentUploadModal.complianceType === 'annual' ? 'annually' :
-              documentUploadModal.complianceType === 'monthly' ? 'monthly' :
-                documentUploadModal.complianceType === 'quarterly' ? 'quarterly' : 'one-time',
+          frequency:
+            documentUploadModal.complianceType === "one-time"
+              ? "one-time"
+              : documentUploadModal.complianceType === "annual"
+                ? "annually"
+                : documentUploadModal.complianceType === "monthly"
+                  ? "monthly"
+                  : documentUploadModal.complianceType === "quarterly"
+                    ? "quarterly"
+                    : "one-time",
           filePath,
           fileName: uploadFile.name,
           periodType: periodMeta.periodType,
@@ -2729,205 +3549,236 @@ function DataRoomPageInner() {
           periodKey: periodMeta.periodKey,
           periodStart: periodMeta.periodStart,
           periodEnd: periodMeta.periodEnd,
-          requirementId: documentUploadModal.requirementId
-        })
+          requirementId: documentUploadModal.requirementId,
+        });
 
         if (!uploadResult.success) {
-          throw new Error('Failed to save document metadata')
+          throw new Error("Failed to save document metadata");
         }
 
         // Track document upload
         if (user?.id && currentCompany?.id) {
-          await trackDocumentUpload(user.id, currentCompany.id, documentUploadModal.documentName).catch(err => {
-            console.error('Failed to track document upload:', err)
-          })
+          await trackDocumentUpload(
+            user.id,
+            currentCompany.id,
+            documentUploadModal.documentName,
+          ).catch((err) => {
+            console.error("Failed to track document upload:", err);
+          });
         }
       } catch (uploadError: any) {
-        throw new Error(uploadError.message || 'Failed to upload document')
+        throw new Error(uploadError.message || "Failed to upload document");
       }
 
-      setUploadStage('Verifying upload...')
-      setUploadProgress(90)
+      setUploadStage("Verifying upload...");
+      setUploadProgress(90);
 
       // Check if all required documents are uploaded
-      const allDocs = documentUploadModal.allRequiredDocs
-      const uploadedDocs = await getCompanyDocuments(currentCompany.id)
-      if (!uploadedDocs.success) throw new Error('Failed to check uploaded documents')
+      const allDocs = documentUploadModal.allRequiredDocs;
+      const uploadedDocs = await getCompanyDocuments(currentCompany.id);
+      if (!uploadedDocs.success)
+        throw new Error("Failed to check uploaded documents");
 
       // Filter documents for this requirement by period_key and document_type
       // Improved matching: exact match preferred, then normalized comparison
       const normalizeDocName = (name: string): string => {
-        return name.toLowerCase()
-          .replace(/[^a-z0-9]/g, '') // Remove special chars
-          .replace(/\s+/g, '') // Remove spaces
-          .trim()
-      }
+        return name
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "") // Remove special chars
+          .replace(/\s+/g, "") // Remove spaces
+          .trim();
+      };
 
-      const requirementDocs = (uploadedDocs.documents || []).filter((doc: any) => {
-        // Must match period
-        if (doc.period_key !== periodMeta.periodKey) return false
+      const requirementDocs = (uploadedDocs.documents || []).filter(
+        (doc: any) => {
+          // Must match period
+          if (doc.period_key !== periodMeta.periodKey) return false;
 
-        // Check for document match with improved logic
-        const docTypeNormalized = normalizeDocName(doc.document_type || '')
-        return allDocs.some(reqDoc => {
-          const reqDocNormalized = normalizeDocName(reqDoc)
-          // Exact normalized match (preferred)
-          if (docTypeNormalized === reqDocNormalized) return true
-          // Check if one contains the other (but require at least 3 chars to avoid false positives)
-          if (docTypeNormalized.length >= 3 && reqDocNormalized.length >= 3) {
-            if (docTypeNormalized.includes(reqDocNormalized) || reqDocNormalized.includes(docTypeNormalized)) {
-              // Additional validation: ensure it's not a substring match that's too short
-              const minLength = Math.min(docTypeNormalized.length, reqDocNormalized.length)
-              if (minLength >= 5) return true // Only allow substring match if at least 5 chars
+          // Check for document match with improved logic
+          const docTypeNormalized = normalizeDocName(doc.document_type || "");
+          return allDocs.some((reqDoc) => {
+            const reqDocNormalized = normalizeDocName(reqDoc);
+            // Exact normalized match (preferred)
+            if (docTypeNormalized === reqDocNormalized) return true;
+            // Check if one contains the other (but require at least 3 chars to avoid false positives)
+            if (docTypeNormalized.length >= 3 && reqDocNormalized.length >= 3) {
+              if (
+                docTypeNormalized.includes(reqDocNormalized) ||
+                reqDocNormalized.includes(docTypeNormalized)
+              ) {
+                // Additional validation: ensure it's not a substring match that's too short
+                const minLength = Math.min(
+                  docTypeNormalized.length,
+                  reqDocNormalized.length,
+                );
+                if (minLength >= 5) return true; // Only allow substring match if at least 5 chars
+              }
             }
-          }
-          return false
-        })
-      })
+            return false;
+          });
+        },
+      );
 
-      const uploadedDocNames = requirementDocs.map((doc: any) => normalizeDocName(doc.document_type || ''))
+      const uploadedDocNames = requirementDocs.map((doc: any) =>
+        normalizeDocName(doc.document_type || ""),
+      );
       const allRequiredUploaded = allDocs.every((doc: string) => {
-        const reqDocNormalized = normalizeDocName(doc)
+        const reqDocNormalized = normalizeDocName(doc);
         return uploadedDocNames.some((uploaded: string) => {
           // Exact match
-          if (uploaded === reqDocNormalized) return true
+          if (uploaded === reqDocNormalized) return true;
           // Substring match with minimum length requirement
           if (uploaded.length >= 5 && reqDocNormalized.length >= 5) {
-            return uploaded.includes(reqDocNormalized) || reqDocNormalized.includes(uploaded)
+            return (
+              uploaded.includes(reqDocNormalized) ||
+              reqDocNormalized.includes(uploaded)
+            );
           }
-          return false
-        })
-      })
+          return false;
+        });
+      });
 
-      setUploadStage('Updating requirement status...')
-      setUploadProgress(95)
+      setUploadStage("Updating requirement status...");
+      setUploadProgress(95);
 
       // Update requirement status
-      let newStatus: 'pending' | 'completed' = 'pending'
+      let newStatus: "pending" | "completed" = "pending";
       if (allRequiredUploaded) {
-        newStatus = 'completed'
+        newStatus = "completed";
       } else if (requirementDocs.length > 0) {
-        newStatus = 'pending'
+        newStatus = "pending";
       }
 
       // Update requirement status
       const statusResult = await updateRequirementStatus(
         documentUploadModal.requirementId,
         currentCompany.id,
-        newStatus
-      )
+        newStatus,
+      );
 
       if (!statusResult.success) {
-        console.error('Failed to update status:', statusResult.error)
+        console.error("Failed to update status:", statusResult.error);
       }
 
-      setUploadProgress(100)
-      setUploadStage('Complete!')
+      setUploadProgress(100);
+      setUploadStage("Complete!");
 
       // Refresh requirements and vault documents
-      const refreshResult = await getRegulatoryRequirements(currentCompany.id)
+      const refreshResult = await getRegulatoryRequirements(currentCompany.id);
       if (refreshResult.success && refreshResult.requirements) {
-        setRegulatoryRequirements(refreshResult.requirements)
+        setRegulatoryRequirements(refreshResult.requirements);
       }
 
-      const vaultResult = await getCompanyDocuments(currentCompany.id)
+      const vaultResult = await getCompanyDocuments(currentCompany.id);
       if (vaultResult.success) {
-        setVaultDocuments(vaultResult.documents || [])
+        setVaultDocuments(vaultResult.documents || []);
       }
 
       // Show success message with more detail
       const successMessage = allRequiredUploaded
         ? `âœ… Document uploaded successfully! All required documents are now uploaded. Requirement status updated to "Completed".`
-        : `âœ… Document uploaded successfully! ${allDocs.length - requirementDocs.length - 1} document(s) remaining. Requirement status updated to "Pending".`
+        : `âœ… Document uploaded successfully! ${allDocs.length - requirementDocs.length - 1} document(s) remaining. Requirement status updated to "Pending".`;
 
-      showToast(successMessage, 'success')
+      showToast(successMessage, "success");
 
       // Keep modal open briefly to show success, then close
       setTimeout(() => {
-        setDocumentUploadModal(null)
-        setUploadFile(null)
-        setUploadProgress(0)
-        setUploadStage('')
-        setPreviewFileUrl(null)
-      }, 1500)
+        setDocumentUploadModal(null);
+        setUploadFile(null);
+        setUploadProgress(0);
+        setUploadStage("");
+        setPreviewFileUrl(null);
+      }, 1500);
     } catch (error: any) {
-      console.error('Error uploading document:', error)
-      showToast(`âŒ Error uploading document: ${error.message}`, 'error')
-      setUploadProgress(0)
-      setUploadStage('')
+      console.error("Error uploading document:", error);
+      showToast(`âŒ Error uploading document: ${error.message}`, "error");
+      setUploadProgress(0);
+      setUploadStage("");
     } finally {
-      setUploadingDocument(false)
+      setUploadingDocument(false);
     }
-  }
+  };
 
   // Fetch upload history for requirement
+  // Only fetch when modal opens (isOpen becomes true) or requirementId changes
   useEffect(() => {
     const fetchUploadHistory = async () => {
-      if (!documentUploadModal || !currentCompany) {
-        setRequirementUploadHistory([])
-        return
+      // Only fetch if modal is actually open
+      if (!documentUploadModal?.isOpen || !documentUploadModal?.requirementId || !currentCompany) {
+        setRequirementUploadHistory([]);
+        return;
       }
 
       try {
-        const result = await getCompanyDocuments(currentCompany.id)
+        const result = await getCompanyDocuments(currentCompany.id);
         if (result.success && result.documents) {
           // Filter documents for this requirement
-          const history = result.documents.filter((doc: any) =>
-            doc.requirement_id === documentUploadModal.requirementId
-          ).sort((a: any, b: any) => {
-            const dateA = new Date(a.created_at || 0).getTime()
-            const dateB = new Date(b.created_at || 0).getTime()
-            return dateB - dateA // Newest first
-          })
-          setRequirementUploadHistory(history)
+          const history = result.documents
+            .filter(
+              (doc: any) =>
+                doc.requirement_id === documentUploadModal.requirementId,
+            )
+            .sort((a: any, b: any) => {
+              const dateA = new Date(a.created_at || 0).getTime();
+              const dateB = new Date(b.created_at || 0).getTime();
+              return dateB - dateA; // Newest first
+            });
+          setRequirementUploadHistory(history);
         }
       } catch (error) {
-        console.error('Error fetching upload history:', error)
-        setRequirementUploadHistory([])
+        console.error("Error fetching upload history:", error);
+        setRequirementUploadHistory([]);
       }
-    }
+    };
 
-    fetchUploadHistory()
-  }, [documentUploadModal, currentCompany])
+    // Only fetch if modal is open
+    if (documentUploadModal?.isOpen) {
+      fetchUploadHistory();
+    }
+  }, [
+    documentUploadModal?.isOpen ?? false,
+    documentUploadModal?.requirementId ?? null,
+    currentCompany?.id ?? null
+  ]);
 
   // Generate preview URL for file
   useEffect(() => {
     if (uploadFile) {
-      const url = URL.createObjectURL(uploadFile)
-      setPreviewFileUrl(url)
+      const url = URL.createObjectURL(uploadFile);
+      setPreviewFileUrl(url);
       return () => {
-        URL.revokeObjectURL(url)
-      }
+        URL.revokeObjectURL(url);
+      };
     } else {
-      setPreviewFileUrl(null)
+      setPreviewFileUrl(null);
     }
-  }, [uploadFile])
+  }, [uploadFile]);
 
   // Convert database requirements to display format and apply filters
   // Memoized to prevent recalculation on every render
   const displayRequirements = useMemo(() => {
-    const startTime = performance.now()
+    const startTime = performance.now();
     const result = (regulatoryRequirements || [])
-      .filter(req => {
+      .filter((req) => {
         // Filter out hidden compliances
         if (hiddenCompliances.has(req.id)) {
-          return false
+          return false;
         }
         // Apply category filter
-        if (selectedCategory !== 'all' && req.category !== selectedCategory) {
-          return false
+        if (selectedCategory !== "all" && req.category !== selectedCategory) {
+          return false;
         }
-        return true
+        return true;
       })
-      .map(req => ({
+      .map((req) => ({
         id: req.id,
         template_id: (req as any).template_id ?? null,
         category: req.category,
         requirement: req.requirement,
-        description: req.description || '',
+        description: req.description || "",
         status: req.status,
         dueDate: formatDate(req.due_date),
-        penalty: req.penalty || '',
+        penalty: req.penalty || "",
         isCritical: req.is_critical,
         financial_year: req.financial_year,
         entity_type: (req as any).entity_type,
@@ -2941,155 +3792,196 @@ function DataRoomPageInner() {
         filed_on: req.filed_on,
         filed_by: req.filed_by,
         status_reason: req.status_reason,
-      }))
-    
-    const duration = performance.now() - startTime
-    performanceLogger.log('DataRoomPage', 'displayRequirements_compute', duration, {
-      inputCount: regulatoryRequirements?.length || 0,
-      outputCount: result.length,
-      hasHiddenCompliances: hiddenCompliances.size > 0,
-      selectedCategory,
-    })
-    
-    return result
-  }, [regulatoryRequirements, hiddenCompliances, selectedCategory, formatDate])
+      }));
+
+    const duration = performance.now() - startTime;
+    performanceLogger.log(
+      "DataRoomPage",
+      "displayRequirements_compute",
+      duration,
+      {
+        inputCount: regulatoryRequirements?.length || 0,
+        outputCount: result.length,
+        hasHiddenCompliances: hiddenCompliances.size > 0,
+        selectedCategory,
+      },
+    );
+
+    return result;
+  }, [regulatoryRequirements, hiddenCompliances, selectedCategory, formatDate]);
 
   // Memoized filtered requirements for tracker tab - prevents recalculation on every render
   // MUST be placed before any early returns to maintain hook order
   const filteredRequirements = useMemo(() => {
-    if (activeTab !== 'tracker') {
-      return []
+    if (activeTab !== "tracker") {
+      return [];
     }
 
-    const startTime = performance.now()
+    const startTime = performance.now();
 
-    const months = ['January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December']
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
 
     // Helper function to parse dates
     const parseDate = (dateStr: string): Date | null => {
-      if (!dateStr) return null
-      return normalizeDate(dateStr)
-    }
+      if (!dateStr) return null;
+      return normalizeDate(dateStr);
+    };
 
     // Helper to check if date falls within a financial year (country-aware)
-    const isInFinancialYear = (reqDate: Date | null, fyStr: string): boolean => {
-      if (!reqDate || !fyStr) return false
-      return isInFinancialYearUtil(reqDate, fyStr, countryCode)
-    }
+    const isInFinancialYear = (
+      reqDate: Date | null,
+      fyStr: string,
+    ): boolean => {
+      if (!reqDate || !fyStr) return false;
+      return isInFinancialYearUtil(reqDate, fyStr, countryCode);
+    };
 
     // Filter by date (Financial Year, Month, Quarter - all independent/loosely coupled)
-    let dateFilteredRequirements = displayRequirements
+    let dateFilteredRequirements = displayRequirements;
 
     // Filter by Financial Year (if selected) - with null safety
     if (selectedTrackerFY) {
       try {
         dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
-          if (!req.dueDate) return false
-          const reqDate = parseDate(req.dueDate)
-          return isInFinancialYear(reqDate, selectedTrackerFY)
-        })
+          if (!req.dueDate) return false;
+          const reqDate = parseDate(req.dueDate);
+          return isInFinancialYear(reqDate, selectedTrackerFY);
+        });
       } catch (error) {
-        console.error('Error filtering by financial year:', error)
+        console.error("Error filtering by financial year:", error);
         // Fallback: don't filter if parsing fails
       }
     }
 
     // Filter by Month (if selected) - works independently but shows relationship
     if (selectedMonth) {
-      const monthIndex = months.indexOf(selectedMonth)
+      const monthIndex = months.indexOf(selectedMonth);
       dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
-        const reqDate = parseDate(req.dueDate)
-        if (!reqDate) return false
-        return reqDate.getUTCMonth() === monthIndex
-      })
+        const reqDate = parseDate(req.dueDate);
+        if (!reqDate) return false;
+        return reqDate.getUTCMonth() === monthIndex;
+      });
     }
 
     // Filter by Quarter (if selected) - works independently but shows relationship
     if (selectedQuarter) {
       dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
-        const reqDate = parseDate(req.dueDate)
-        if (!reqDate) return false
-        const reqMonth = reqDate.getUTCMonth()
-        const reqQuarter = reqMonth >= 3 && reqMonth <= 5 ? 'q1' : // Apr-Jun
-          reqMonth >= 6 && reqMonth <= 8 ? 'q2' : // Jul-Sep
-            reqMonth >= 9 && reqMonth <= 11 ? 'q3' : // Oct-Dec
-              'q4' // Jan-Mar
-        return reqQuarter === selectedQuarter
-      })
+        const reqDate = parseDate(req.dueDate);
+        if (!reqDate) return false;
+        const reqMonth = reqDate.getUTCMonth();
+        const reqQuarter =
+          reqMonth >= 3 && reqMonth <= 5
+            ? "q1" // Apr-Jun
+            : reqMonth >= 6 && reqMonth <= 8
+              ? "q2" // Jul-Sep
+              : reqMonth >= 9 && reqMonth <= 11
+                ? "q3" // Oct-Dec
+                : "q4"; // Jan-Mar
+        return reqQuarter === selectedQuarter;
+      });
     }
 
     // Filter by status/category and additional filters
     const result = dateFilteredRequirements.filter((req) => {
       // Status filter
-      if (categoryFilter !== 'all') {
-        if (categoryFilter === 'critical' && !(req.isCritical || req.status === 'overdue')) return false
-        if (categoryFilter === 'pending' && req.status !== 'pending') return false
-        if (categoryFilter === 'upcoming' && req.status !== 'upcoming') return false
-        if (categoryFilter === 'completed' && req.status !== 'completed') return false
+      if (categoryFilter !== "all") {
+        if (
+          categoryFilter === "critical" &&
+          !(req.isCritical || req.status === "overdue")
+        )
+          return false;
+        if (categoryFilter === "pending" && req.status !== "pending")
+          return false;
+        if (categoryFilter === "upcoming" && req.status !== "upcoming")
+          return false;
+        if (categoryFilter === "completed" && req.status !== "completed")
+          return false;
       }
 
       // Entity type filter
-      if (entityTypeFilter !== 'all') {
+      if (entityTypeFilter !== "all") {
         // Get entity type from requirement metadata or company
-        const reqEntityType = (req as any).entity_type || entityDetails?.type
-        if (reqEntityType !== entityTypeFilter) return false
+        const reqEntityType = (req as any).entity_type || entityDetails?.type;
+        if (reqEntityType !== entityTypeFilter) return false;
       }
 
       // Industry filter
-      if (industryFilter !== 'all') {
-        const reqIndustry = (req as any).industry || entityDetails?.industryCategory
-        if (reqIndustry !== industryFilter) return false
+      if (industryFilter !== "all") {
+        const reqIndustry =
+          (req as any).industry || entityDetails?.industryCategory;
+        if (reqIndustry !== industryFilter) return false;
       }
 
       // Industry category filter
-      if (industryCategoryFilter !== 'all') {
-        const reqIndustryCategory = (req as any).industry_category || entityDetails?.industryCategory
-        if (reqIndustryCategory !== industryCategoryFilter) return false
+      if (industryCategoryFilter !== "all") {
+        const reqIndustryCategory =
+          (req as any).industry_category || entityDetails?.industryCategory;
+        if (reqIndustryCategory !== industryCategoryFilter) return false;
       }
 
       // Compliance type filter
-      if (complianceTypeFilter !== 'all') {
-        const reqComplianceType = (req as any).compliance_type
-        if (reqComplianceType !== complianceTypeFilter) return false
+      if (complianceTypeFilter !== "all") {
+        const reqComplianceType = (req as any).compliance_type;
+        if (reqComplianceType !== complianceTypeFilter) return false;
       }
 
       // Search filter
       if (trackerSearchQuery.trim()) {
-        const query = trackerSearchQuery.toLowerCase().trim()
+        const query = trackerSearchQuery.toLowerCase().trim();
         const searchableText = [
           req.category,
           req.requirement,
           req.description,
           req.status,
           req.compliance_type,
-          req.financial_year
-        ].filter(Boolean).join(' ').toLowerCase()
-        if (!searchableText.includes(query)) return false
+          req.financial_year,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!searchableText.includes(query)) return false;
       }
 
-      return true
-    })
-    
-    const endTime = performance.now()
-    const duration = endTime - startTime
-    
+      return true;
+    });
+
+    const endTime = performance.now();
+    const duration = endTime - startTime;
+
     // Log to file via performance logger
-    performanceLogger.log('DataRoomPage', 'filteredRequirements_compute', duration, {
-      inputCount: displayRequirements.length,
-      outputCount: result.length,
-      hasFYFilter: !!selectedTrackerFY,
-      hasMonthFilter: !!selectedMonth,
-      hasQuarterFilter: !!selectedQuarter,
-      categoryFilter,
-      entityTypeFilter,
-      industryFilter,
-      industryCategoryFilter,
-      complianceTypeFilter,
-      hasSearchQuery: !!trackerSearchQuery.trim(),
-    })
-    
-    return result
+    performanceLogger.log(
+      "DataRoomPage",
+      "filteredRequirements_compute",
+      duration,
+      {
+        inputCount: displayRequirements.length,
+        outputCount: result.length,
+        hasFYFilter: !!selectedTrackerFY,
+        hasMonthFilter: !!selectedMonth,
+        hasQuarterFilter: !!selectedQuarter,
+        categoryFilter,
+        entityTypeFilter,
+        industryFilter,
+        industryCategoryFilter,
+        complianceTypeFilter,
+        hasSearchQuery: !!trackerSearchQuery.trim(),
+      },
+    );
+
+    return result;
   }, [
     activeTab,
     displayRequirements,
@@ -3103,195 +3995,286 @@ function DataRoomPageInner() {
     complianceTypeFilter,
     trackerSearchQuery,
     entityDetails,
-    countryCode
-  ])
+    countryCode,
+  ]);
 
   // Memoized category order for tracker tab
   const categoryOrder = useMemo(() => {
-    if (activeTab !== 'tracker') return []
-    
-    const startTime = performance.now()
+    if (activeTab !== "tracker") return [];
+
+    const startTime = performance.now();
     // Get all unique categories from ALL requirements (before filtering) - dynamic, not hardcoded
-    const allCategories = Array.from(new Set((displayRequirements || []).map(req => req.category).filter(Boolean)))
+    const allCategories = Array.from(
+      new Set(
+        (displayRequirements || []).map((req) => req.category).filter(Boolean),
+      ),
+    );
     // Use country-specific categories as preferred order, fallback to dynamic categories
-    const preferredOrder = complianceCategories.length > 0 ? complianceCategories : ['Income Tax', 'GST', 'Payroll', 'RoC', 'Renewals', 'Prof.Tax', 'Other', 'Others']
+    const preferredOrder =
+      complianceCategories.length > 0
+        ? complianceCategories
+        : [
+            "Income Tax",
+            "GST",
+            "Payroll",
+            "RoC",
+            "Renewals",
+            "Prof.Tax",
+            "Other",
+            "Others",
+          ];
     const result = [
-      ...preferredOrder.filter(cat => allCategories.includes(cat)),
-      ...allCategories.filter(cat => !preferredOrder.includes(cat) && cat).sort((a, b) => {
-        const catA = a || ''
-        const catB = b || ''
-        if (!catA && !catB) return 0
-        if (!catA) return 1
-        if (!catB) return -1
-        return catA.localeCompare(catB)
-      })
-    ]
-    
-    const duration = performance.now() - startTime
-    performanceLogger.log('DataRoomPage', 'categoryOrder_compute', duration, {
+      ...preferredOrder.filter((cat) => allCategories.includes(cat)),
+      ...allCategories
+        .filter((cat) => !preferredOrder.includes(cat) && cat)
+        .sort((a, b) => {
+          const catA = a || "";
+          const catB = b || "";
+          if (!catA && !catB) return 0;
+          if (!catA) return 1;
+          if (!catB) return -1;
+          return catA.localeCompare(catB);
+        }),
+    ];
+
+    const duration = performance.now() - startTime;
+    performanceLogger.log("DataRoomPage", "categoryOrder_compute", duration, {
       categoryCount: result.length,
       allCategoriesCount: allCategories.length,
-    })
-    
-    return result
-  }, [activeTab, displayRequirements, complianceCategories])
+    });
+
+    return result;
+  }, [activeTab, displayRequirements, complianceCategories]);
 
   // Memoized grouped requirements by category for list view
   const groupedByCategory = useMemo(() => {
-    if (activeTab !== 'tracker' || filteredRequirements.length === 0) return []
-    
-    const startTime = performance.now()
-    const result = categoryOrder.map((category) => {
-      const items = filteredRequirements
-        .filter((req) => req.category === category)
-        .sort((a, b) => {
-          const dateA = a.dueDate || ''
-          const dateB = b.dueDate || ''
-          if (!dateA && !dateB) return 0
-          if (!dateA) return 1
-          if (!dateB) return -1
-          return dateA.localeCompare(dateB)
-        })
-      return { category, items }
-    }).filter((group) => group.items.length > 0)
-    
-    const duration = performance.now() - startTime
-    performanceLogger.log('DataRoomPage', 'groupedByCategory_compute', duration, {
-      inputCount: filteredRequirements.length,
-      categoryCount: categoryOrder.length,
-      outputGroupCount: result.length,
-      totalItemsInGroups: result.reduce((sum, group) => sum + group.items.length, 0),
-    })
-    
-    return result
-  }, [activeTab, filteredRequirements, categoryOrder])
+    if (activeTab !== "tracker" || filteredRequirements.length === 0) return [];
+
+    const startTime = performance.now();
+    const result = categoryOrder
+      .map((category) => {
+        const items = filteredRequirements
+          .filter((req) => req.category === category)
+          .sort((a, b) => {
+            const dateA = a.dueDate || "";
+            const dateB = b.dueDate || "";
+            if (!dateA && !dateB) return 0;
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+            return dateA.localeCompare(dateB);
+          });
+        return { category, items };
+      })
+      .filter((group) => group.items.length > 0);
+
+    const duration = performance.now() - startTime;
+    performanceLogger.log(
+      "DataRoomPage",
+      "groupedByCategory_compute",
+      duration,
+      {
+        inputCount: filteredRequirements.length,
+        categoryCount: categoryOrder.length,
+        outputGroupCount: result.length,
+        totalItemsInGroups: result.reduce(
+          (sum, group) => sum + group.items.length,
+          0,
+        ),
+      },
+    );
+
+    return result;
+  }, [activeTab, filteredRequirements, categoryOrder]);
 
   // Memoized requirements grouped by date for calendar view
   const requirementsByDate = useMemo(() => {
-    if (activeTab !== 'tracker' || filteredRequirements.length === 0) {
-      return new Map<string, typeof filteredRequirements>()
+    if (activeTab !== "tracker" || filteredRequirements.length === 0) {
+      return new Map<string, typeof filteredRequirements>();
     }
 
-    const startTime = performance.now()
-    const parseDateForCalendar = (dateStr: string | null | undefined): Date | null => {
-      if (!dateStr) return null
-      return normalizeDate(dateStr)
-    }
+    const startTime = performance.now();
+    const parseDateForCalendar = (
+      dateStr: string | null | undefined,
+    ): Date | null => {
+      if (!dateStr) return null;
+      return normalizeDate(dateStr);
+    };
 
-    const dateMap = new Map<string, typeof filteredRequirements>()
+    const dateMap = new Map<string, typeof filteredRequirements>();
     filteredRequirements.forEach((req) => {
-      const date = parseDateForCalendar(req.dueDate)
+      const date = parseDateForCalendar(req.dueDate);
       if (date) {
-        const dateKey = date.toISOString().split('T')[0] // YYYY-MM-DD
+        const dateKey = date.toISOString().split("T")[0]; // YYYY-MM-DD
         if (!dateMap.has(dateKey)) {
-          dateMap.set(dateKey, [])
+          dateMap.set(dateKey, []);
         }
-        dateMap.get(dateKey)!.push(req)
+        dateMap.get(dateKey)!.push(req);
       }
-    })
-    
-    const duration = performance.now() - startTime
-    performanceLogger.log('DataRoomPage', 'requirementsByDate_compute', duration, {
-      inputCount: filteredRequirements.length,
-      uniqueDates: dateMap.size,
-      totalMapped: Array.from(dateMap.values()).reduce((sum, reqs) => sum + reqs.length, 0),
-    })
-    
-    return dateMap
-  }, [activeTab, filteredRequirements])
+    });
+
+    const duration = performance.now() - startTime;
+    performanceLogger.log(
+      "DataRoomPage",
+      "requirementsByDate_compute",
+      duration,
+      {
+        inputCount: filteredRequirements.length,
+        uniqueDates: dateMap.size,
+        totalMapped: Array.from(dateMap.values()).reduce(
+          (sum, reqs) => sum + reqs.length,
+          0,
+        ),
+      },
+    );
+
+    return dateMap;
+  }, [activeTab, filteredRequirements]);
 
   // Track render completion for tracker tab (must be after memoized values are defined)
-  const prevActiveTab = useRef(activeTab)
+  const prevActiveTab = useRef(activeTab);
   useEffect(() => {
     // Only log when switching TO tracker tab (not on every render)
-    if (activeTab === 'tracker' && prevActiveTab.current !== 'tracker' && currentCompany?.id) {
-      const renderStartTime = performance.now()
+    if (
+      activeTab === "tracker" &&
+      prevActiveTab.current !== "tracker" &&
+      currentCompany?.id
+    ) {
+      const renderStartTime = performance.now();
       // Use requestAnimationFrame to measure after React has painted
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          const renderDuration = performance.now() - renderStartTime
-          performanceLogger.log('DataRoomPage', 'tracker_tab_render_complete', renderDuration, {
-            companyId: currentCompany.id,
-            displayRequirementsCount: displayRequirements.length,
-            filteredRequirementsCount: filteredRequirements.length,
-            groupedByCategoryCount: groupedByCategory.length,
-            requirementsByDateCount: requirementsByDate.size,
-          })
-        })
-      })
+          const renderDuration = performance.now() - renderStartTime;
+          performanceLogger.log(
+            "DataRoomPage",
+            "tracker_tab_render_complete",
+            renderDuration,
+            {
+              companyId: currentCompany.id,
+              displayRequirementsCount: displayRequirements.length,
+              filteredRequirementsCount: filteredRequirements.length,
+              groupedByCategoryCount: groupedByCategory.length,
+              requirementsByDateCount: requirementsByDate.size,
+            },
+          );
+        });
+      });
     }
-    prevActiveTab.current = activeTab
-  }, [activeTab, currentCompany?.id, displayRequirements.length, filteredRequirements.length, groupedByCategory.length, requirementsByDate.size])
+    prevActiveTab.current = activeTab;
+  }, [
+    activeTab,
+    currentCompany?.id,
+    displayRequirements.length,
+    filteredRequirements.length,
+    groupedByCategory.length,
+    requirementsByDate.size,
+  ]);
 
   const [teamMembers] = useState([
     {
-      id: '1',
-      name: 'Mohammed Ibrahim',
-      email: 'ibrahimshaheer75@gmail.com',
-      joinedDate: 'Jan 14, 2026',
-      role: 'ADMIN',
+      id: "1",
+      name: "Mohammed Ibrahim",
+      email: "ibrahimshaheer75@gmail.com",
+      joinedDate: "Jan 14, 2026",
+      role: "ADMIN",
     },
     {
-      id: '2',
-      name: 'MUNEER AHMED',
-      email: 'camuneer@muneerassociates.in',
-      joinedDate: 'Jan 16, 2026',
-      role: 'ADMIN',
+      id: "2",
+      name: "MUNEER AHMED",
+      email: "camuneer@muneerassociates.in",
+      joinedDate: "Jan 16, 2026",
+      role: "ADMIN",
     },
-  ])
+  ]);
 
   const roles = [
-    { value: 'viewer', label: 'Viewer - Can view compliance items' },
-    { value: 'editor', label: 'Editor - Can view and edit' },
-    { value: 'admin', label: 'Admin - Full access including invites' },
-  ]
+    { value: "viewer", label: "Viewer - Can view compliance items" },
+    { value: "editor", label: "Editor - Can view and edit" },
+    { value: "admin", label: "Admin - Full access including invites" },
+  ];
 
-  // Show loading while fetching companies or checking access
-  if (isLoading || anyAccessLoading || (authLoading && !user)) {
+  // --- Consolidated Rendering Logic ---
+  
+  // 1. Initial boot: Show dynamic loading messages
+  if (isDataRoomInitLoading || (authLoading && !user)) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-400 text-sm">Loading...</p>
+        <div className="text-center max-w-md px-4">
+          <div className="relative mb-6">
+            <div className="w-16 h-16 border-4 border-white/20 border-t-transparent rounded-full animate-spin mx-auto" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full animate-pulse" />
+            </div>
+          </div>
+          <h2 className="text-white text-xl font-semibold mb-2">Preparing Your Data Room</h2>
+          <p className="text-gray-300 text-sm mb-1">{loadingMessage}</p>
+          <div className="mt-4 flex items-center justify-center gap-1">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          </div>
         </div>
       </div>
-    )
+    );
   }
 
-  // If no companies and access check is complete, show redirect message (redirect happens via useEffect)
-  if (companies.length === 0 && !isLoading && !anyAccessLoading && user) {
+  // 2. Initialization Error
+  if (initError) {
     return (
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-400 text-sm">Redirecting...</p>
+      <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <div className="text-red-500 text-4xl mb-4">⚠️</div>
+          <h2 className="text-white text-xl font-medium mb-2">Failed to initialize</h2>
+          <p className="text-gray-400 text-sm mb-6">{initError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-white text-black rounded-lg hover:bg-gray-200"
+          >
+            Retry
+          </button>
         </div>
       </div>
-    )
+    );
   }
 
-  // Show loading while checking access
-  if (currentCompany && accessLoading) {
+  // 3. User authenticated but no access or no company (while redirecting)
+  const isNoCompany = companies.length === 0;
+  if ((isNoCompany || (currentCompany && !hasAccess && !accessLoading)) && !isDataRoomInitLoading) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-400 text-sm">Checking access...</p>
+        <div className="text-center max-w-md px-4">
+          <div className="relative mb-6">
+            <div className="w-12 h-12 border-4 border-white/30 border-t-transparent rounded-full animate-spin mx-auto" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-6 h-6 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-full animate-pulse" />
+            </div>
+          </div>
+          <h2 className="text-white text-lg font-semibold mb-2">
+            {isNoCompany ? "Setting Up Your Workspace" : "Verifying Access"}
+          </h2>
+          <p className="text-gray-300 text-sm">
+            {isNoCompany ? "Redirecting to company setup..." : "Checking subscription status..."}
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   // If owner without access, show redirect message (redirect happens via useEffect)
   if (currentCompany && isOwner && !hasAccess && !accessLoading) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-400 text-sm">Redirecting to subscription...</p>
+        <div className="text-center max-w-md px-4">
+          <div className="relative mb-6">
+            <div className="w-12 h-12 border-4 border-white/30 border-t-transparent rounded-full animate-spin mx-auto" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-6 h-6 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-full animate-pulse" />
+            </div>
+          </div>
+          <h2 className="text-white text-lg font-semibold mb-2">Subscription Required</h2>
+          <p className="text-gray-300 text-sm">Redirecting to subscription page...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -3303,32 +4286,51 @@ function DataRoomPageInner() {
       <Header />
 
       {/* Trial Banner */}
-      {accessType === 'trial' && trialDaysRemaining !== null && currentCompany && (
-        <div className="relative z-20 bg-gradient-to-r from-white/10 to-gray-600/20 border-b border-white/20">
-          <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-gray-300">
-                <span className="text-white font-semibold">{trialDaysRemaining} days</span> left in your trial
-              </span>
+      {accessType === "trial" &&
+        trialDaysRemaining !== null &&
+        currentCompany && (
+          <div className="relative z-20 bg-gradient-to-r from-white/10 to-gray-600/20 border-b border-white/20">
+            <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm">
+                <svg
+                  className="w-4 h-4 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span className="text-gray-300">
+                  <span className="text-white font-semibold">
+                    {trialDaysRemaining} days
+                  </span>{" "}
+                  left in your trial
+                </span>
+              </div>
+              <button
+                onClick={() =>
+                  router.push(`/subscribe?company_id=${currentCompany.id}`)
+                }
+                className="text-xs sm:text-sm bg-white text-black px-3 py-1 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Upgrade Now
+              </button>
             </div>
-            <button
-              onClick={() => router.push(`/subscribe?company_id=${currentCompany.id}`)}
-              className="text-xs sm:text-sm bg-white text-black px-3 py-1 rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              Upgrade Now
-            </button>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Main Content */}
       <div className="relative z-10 container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Company Selector */}
         <div className="mb-4 sm:mb-6">
-          <h2 className="text-gray-400 text-sm font-medium mb-2 sm:mb-3">My companies</h2>
+          <h2 className="text-gray-400 text-sm font-medium mb-2 sm:mb-3">
+            My companies
+          </h2>
           <CompanySelector
             companies={companies}
             currentCompany={currentCompany}
@@ -3337,26 +4339,29 @@ function DataRoomPageInner() {
         </div>
 
         {/* Page Title */}
-        <h1 className="text-2xl sm:text-4xl font-light text-white mb-4 sm:mb-6">Data Room</h1>
+        <h1 className="text-2xl sm:text-4xl font-light text-white mb-4 sm:mb-6">
+          Data Room
+        </h1>
 
         {/* Horizontal Tabs - Scrollable on Mobile */}
         <div className="flex items-center gap-2 mb-4 sm:mb-8 overflow-x-auto pb-2 -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide">
           <button
             onClick={() => {
-              const startTime = performance.now()
+              const startTime = performance.now();
               startTransition(() => {
-                setActiveTab('overview')
-                const duration = performance.now() - startTime
-                performanceLogger.log('DataRoomPage', 'tab_switch', duration, {
+                setActiveTab("overview");
+                const duration = performance.now() - startTime;
+                performanceLogger.log("DataRoomPage", "tab_switch", duration, {
                   fromTab: activeTab,
-                  toTab: 'overview',
-                })
-              })
+                  toTab: "overview",
+                });
+              });
             }}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'overview'
-                ? 'border-white/40 bg-white/10 text-white'
-                : 'border-white/20 bg-black text-white hover:text-white hover:border-white/40'
-              }`}
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+              activeTab === "overview"
+                ? "border-white/40 bg-white/10 text-white"
+                : "border-white/20 bg-black text-white hover:text-white hover:border-white/40"
+            }`}
           >
             <svg
               width="16"
@@ -3378,25 +4383,20 @@ function DataRoomPageInner() {
           </button>
           <button
             onClick={() => {
-              const startTime = performance.now()
-              startTransition(() => {
-                setActiveTab('tracker')
-                // Measure time after state update (will be logged on next render)
-                setTimeout(() => {
-                  const duration = performance.now() - startTime
-                  performanceLogger.log('DataRoomPage', 'tab_switch_to_tracker', duration, {
-                    fromTab: activeTab,
-                    toTab: 'tracker',
-                    displayRequirementsCount: displayRequirements.length,
-                    filteredRequirementsCount: filteredRequirements.length,
-                  })
-                }, 0)
-              })
+              // Immediate UI update - no transition delay
+              setActiveTab("tracker");
             }}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'tracker'
-                ? 'border-white/40 bg-white/10 text-white'
-                : 'border-white/20 bg-black text-white hover:text-white hover:border-white/40'
-              }`}
+            onMouseEnter={() => {
+              // Preload TrackerTab component on hover for faster switching
+              if (activeTab !== "tracker") {
+                import("./components/tracker/TrackerTab");
+              }
+            }}
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+              activeTab === "tracker"
+                ? "border-white/40 bg-white/10 text-white"
+                : "border-white/20 bg-black text-white hover:text-white hover:border-white/40"
+            }`}
           >
             <svg
               width="16"
@@ -3414,11 +4414,12 @@ function DataRoomPageInner() {
             <span className="text-sm sm:text-base">Tracker</span>
           </button>
           <button
-            onClick={() => startTransition(() => setActiveTab('documents'))}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'documents'
-                ? 'border-white/40 bg-white/10 text-white'
-                : 'border-white/20 bg-black text-white hover:text-white hover:border-white/40'
-              }`}
+            onClick={() => startTransition(() => setActiveTab("documents"))}
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+              activeTab === "documents"
+                ? "border-white/40 bg-white/10 text-white"
+                : "border-white/20 bg-black text-white hover:text-white hover:border-white/40"
+            }`}
           >
             <svg
               width="16"
@@ -3440,11 +4441,12 @@ function DataRoomPageInner() {
             <span className="text-sm sm:text-base">Documents</span>
           </button>
           <button
-            onClick={() => startTransition(() => setActiveTab('reports'))}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'reports'
-                ? 'border-white/40 bg-white/10 text-white'
-                : 'border-white/20 bg-black text-white hover:text-white hover:border-white/40'
-              }`}
+            onClick={() => startTransition(() => setActiveTab("reports"))}
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+              activeTab === "reports"
+                ? "border-white/40 bg-white/10 text-white"
+                : "border-white/20 bg-black text-white hover:text-white hover:border-white/40"
+            }`}
           >
             <svg
               width="16"
@@ -3466,11 +4468,12 @@ function DataRoomPageInner() {
             <span className="text-sm sm:text-base">Reports</span>
           </button>
           <button
-            onClick={() => startTransition(() => setActiveTab('dsc-din'))}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'dsc-din'
-                ? 'border-white/40 bg-white/10 text-white'
-                : 'border-white/20 bg-black text-white hover:text-white hover:border-white/40'
-              }`}
+            onClick={() => startTransition(() => setActiveTab("dsc-din"))}
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+              activeTab === "dsc-din"
+                ? "border-white/40 bg-white/10 text-white"
+                : "border-white/20 bg-black text-white hover:text-white hover:border-white/40"
+            }`}
           >
             <svg
               width="16"
@@ -3491,11 +4494,12 @@ function DataRoomPageInner() {
             <span className="text-sm sm:text-base">DSC & DIN</span>
           </button>
           <button
-            onClick={() => startTransition(() => setActiveTab('notices'))}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'notices'
-                ? 'border-white/40 bg-white/10 text-white'
-                : 'border-white/20 bg-black text-white hover:text-white hover:border-white/40'
-              }`}
+            onClick={() => startTransition(() => setActiveTab("notices"))}
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+              activeTab === "notices"
+                ? "border-white/40 bg-white/10 text-white"
+                : "border-white/20 bg-black text-white hover:text-white hover:border-white/40"
+            }`}
           >
             <svg
               width="16"
@@ -3511,16 +4515,19 @@ function DataRoomPageInner() {
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
-            <span className="text-sm sm:text-base">Notices <span className="text-gray-500 text-xs">(Soon)</span></span>
+            <span className="text-sm sm:text-base">
+              Notices <span className="text-gray-500 text-xs">(Soon)</span>
+            </span>
           </button>
           {/* GST Tab - Only show for India */}
-          {countryCode === 'IN' && (
+          {countryCode === "IN" && (
             <button
-              onClick={() => startTransition(() => setActiveTab('gst'))}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${activeTab === 'gst'
-                  ? 'border-white/40 bg-white/10 text-white'
-                  : 'border-white/20 bg-black text-white hover:text-white hover:border-white/40'
-                }`}
+              onClick={() => startTransition(() => setActiveTab("gst"))}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+                activeTab === "gst"
+                  ? "border-white/40 bg-white/10 text-white"
+                  : "border-white/20 bg-black text-white hover:text-white hover:border-white/40"
+              }`}
             >
               <svg
                 width="16"
@@ -3536,18 +4543,22 @@ function DataRoomPageInner() {
                 <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
                 <line x1="1" y1="10" x2="23" y2="10" />
               </svg>
-              <span className="text-sm sm:text-base">GST <span className="text-gray-500 text-xs">(Soon)</span></span>
+              <span className="text-sm sm:text-base">
+                GST <span className="text-gray-500 text-xs">(Soon)</span>
+              </span>
             </button>
           )}
         </div>
 
         {/* Content based on active tab */}
-        {activeTab === 'overview' && (
-          <Suspense fallback={
-            <div className="flex items-center justify-center p-8">
-              <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
-            </div>
-          }>
+        {activeTab === "overview" && (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center p-8">
+                <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+              </div>
+            }
+          >
             <OverviewTab
               isLoading={isLoading}
               entityDetails={entityDetails}
@@ -3560,12 +4571,14 @@ function DataRoomPageInner() {
           </Suspense>
         )}
 
-        {activeTab === 'reports' && (
-          <Suspense fallback={
-            <div className="flex items-center justify-center p-8">
-              <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
-            </div>
-          }>
+        {activeTab === "reports" && (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center p-8">
+                <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+              </div>
+            }
+          >
             <ReportsTab
               displayRequirements={displayRequirements}
               currentCompany={currentCompany}
@@ -3588,12 +4601,14 @@ function DataRoomPageInner() {
 
         {/* Reports tab is now in ReportsTab component */}
 
-        {activeTab === 'notices' && (
-          <Suspense fallback={
-            <div className="flex items-center justify-center p-8">
-              <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
-            </div>
-          }>
+        {activeTab === "notices" && (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center p-8">
+                <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+              </div>
+            }
+          >
             <NoticesTab
               countryConfig={countryConfig}
               complianceCategories={complianceCategories}
@@ -3603,199 +4618,341 @@ function DataRoomPageInner() {
         )}
 
         {/* Compliance Details Modal */}
-        {complianceDetailsModal && (() => {
-          const req = complianceDetailsModal
-          const formFreq = getFormFrequency(req.requirement)
-          const legalSections = getRelevantLegalSections(req.requirement, req.category)
-          const authority = getAuthorityForCategory(req.category)
+        {complianceDetailsModal &&
+          (() => {
+            const req = complianceDetailsModal;
+            const formFreq = getFormFrequency(req.requirement);
+            const legalSections = getRelevantLegalSections(
+              req.requirement,
+              req.category,
+            );
+            const authority = getAuthorityForCategory(req.category);
 
-          // Get all relevant forms for this category (country-aware)
-          const categoryForms = countryConfig?.regulatory?.commonForms?.filter(form => {
-            const formLower = form.toLowerCase()
-            const categoryLower = req.category.toLowerCase()
+            // Get all relevant forms for this category (country-aware)
+            const categoryForms =
+              countryConfig?.regulatory?.commonForms?.filter((form) => {
+                const formLower = form.toLowerCase();
+                const categoryLower = req.category.toLowerCase();
 
-            if (countryCode === 'IN') {
-              // India-specific patterns
-              if (categoryLower === 'gst' && (formLower.includes('gstr') || formLower.includes('gst') || formLower.includes('cmp') || formLower.includes('itc') || formLower.includes('iff'))) return true
-              if (categoryLower === 'income tax' && (formLower.includes('itr') || formLower.includes('form 24') || formLower.includes('form 26') || formLower.includes('form 27'))) return true
-              if ((categoryLower === 'roc' || categoryLower === 'mca') && (formLower.includes('mgt') || formLower.includes('aoc') || formLower.includes('dir') || formLower.includes('pas') || formLower.includes('ben') || formLower.includes('inc') || formLower.includes('adt') || formLower.includes('cra') || formLower.includes('llp'))) return true
-              if ((categoryLower === 'payroll' || categoryLower === 'labour law') && (formLower.includes('ecr') || formLower.includes('form 5a') || formLower.includes('form 2') || formLower.includes('form 10') || formLower.includes('form 19'))) return true
-            } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
-              // GCC countries
-              if ((categoryLower === 'vat' || categoryLower === 'tax') && (formLower.includes('vat') || formLower.includes('tax return') || formLower.includes('corporate tax') || formLower.includes('zakat'))) return true
-              if (categoryLower === 'corporate' && (formLower.includes('trade license') || formLower.includes('commercial registration') || formLower.includes('cr'))) return true
-            } else if (countryCode === 'US') {
-              // USA
-              if ((categoryLower === 'federal tax' || categoryLower === 'state tax') && (formLower.includes('tax') || formLower.includes('return') || formLower.includes('ein'))) return true
-              if (categoryLower === 'business license' && (formLower.includes('license') || formLower.includes('registration') || formLower.includes('report'))) return true
-            }
+                if (countryCode === "IN") {
+                  // India-specific patterns
+                  if (
+                    categoryLower === "gst" &&
+                    (formLower.includes("gstr") ||
+                      formLower.includes("gst") ||
+                      formLower.includes("cmp") ||
+                      formLower.includes("itc") ||
+                      formLower.includes("iff"))
+                  )
+                    return true;
+                  if (
+                    categoryLower === "income tax" &&
+                    (formLower.includes("itr") ||
+                      formLower.includes("form 24") ||
+                      formLower.includes("form 26") ||
+                      formLower.includes("form 27"))
+                  )
+                    return true;
+                  if (
+                    (categoryLower === "roc" || categoryLower === "mca") &&
+                    (formLower.includes("mgt") ||
+                      formLower.includes("aoc") ||
+                      formLower.includes("dir") ||
+                      formLower.includes("pas") ||
+                      formLower.includes("ben") ||
+                      formLower.includes("inc") ||
+                      formLower.includes("adt") ||
+                      formLower.includes("cra") ||
+                      formLower.includes("llp"))
+                  )
+                    return true;
+                  if (
+                    (categoryLower === "payroll" ||
+                      categoryLower === "labour law") &&
+                    (formLower.includes("ecr") ||
+                      formLower.includes("form 5a") ||
+                      formLower.includes("form 2") ||
+                      formLower.includes("form 10") ||
+                      formLower.includes("form 19"))
+                  )
+                    return true;
+                } else if (
+                  ["AE", "SA", "OM", "QA", "BH"].includes(countryCode || "")
+                ) {
+                  // GCC countries
+                  if (
+                    (categoryLower === "vat" || categoryLower === "tax") &&
+                    (formLower.includes("vat") ||
+                      formLower.includes("tax return") ||
+                      formLower.includes("corporate tax") ||
+                      formLower.includes("zakat"))
+                  )
+                    return true;
+                  if (
+                    categoryLower === "corporate" &&
+                    (formLower.includes("trade license") ||
+                      formLower.includes("commercial registration") ||
+                      formLower.includes("cr"))
+                  )
+                    return true;
+                } else if (countryCode === "US") {
+                  // USA
+                  if (
+                    (categoryLower === "federal tax" ||
+                      categoryLower === "state tax") &&
+                    (formLower.includes("tax") ||
+                      formLower.includes("return") ||
+                      formLower.includes("ein"))
+                  )
+                    return true;
+                  if (
+                    categoryLower === "business license" &&
+                    (formLower.includes("license") ||
+                      formLower.includes("registration") ||
+                      formLower.includes("report"))
+                  )
+                    return true;
+                }
 
-            return false
-          }) || []
+                return false;
+              }) || [];
 
-          const formFrequency = countryConfig?.regulatory?.formFrequencies
+            const formFrequency = countryConfig?.regulatory?.formFrequencies;
 
-          return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-              <div className="bg-black border border-white/10 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-                {/* Modal Header */}
-                <div className="sticky top-0 bg-black border-b border-white/10 p-6 flex items-center justify-between z-10">
-                  <div>
-                    <h2 className="text-2xl font-light text-white mb-1">Compliance Details</h2>
-                    <p className="text-gray-400 text-sm">{req.requirement}</p>
+            return (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <div className="bg-black border border-white/10 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+                  {/* Modal Header */}
+                  <div className="sticky top-0 bg-black border-b border-white/10 p-6 flex items-center justify-between z-10">
+                    <div>
+                      <h2 className="text-2xl font-light text-white mb-1">
+                        Compliance Details
+                      </h2>
+                      <p className="text-gray-400 text-sm">{req.requirement}</p>
+                    </div>
+                    <button
+                      onClick={() => setComplianceDetailsModal(null)}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-800 transition-colors"
+                    >
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-gray-400"
+                      >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setComplianceDetailsModal(null)}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-800 transition-colors"
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  </button>
-                </div>
 
-                {/* Modal Body */}
-                <div className="p-6 space-y-6">
-                  {/* Basic Information */}
-                  <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
-                    <h3 className="text-white font-medium mb-3">Basic Information</h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-start justify-between">
-                        <span className="text-gray-400">Category:</span>
-                        <span className="text-white font-medium">{req.category}</span>
-                      </div>
-                      {req.description && (
+                  {/* Modal Body */}
+                  <div className="p-6 space-y-6">
+                    {/* Basic Information */}
+                    <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
+                      <h3 className="text-white font-medium mb-3">
+                        Basic Information
+                      </h3>
+                      <div className="space-y-2 text-sm">
                         <div className="flex items-start justify-between">
-                          <span className="text-gray-400">Description:</span>
-                          <span className="text-white text-right max-w-[70%]">{req.description}</span>
-                        </div>
-                      )}
-                      <div className="flex items-start justify-between">
-                        <span className="text-gray-400">Due Date:</span>
-                        <span className="text-white">{(req as any).due_date || (req as any).dueDate}</span>
-                      </div>
-                      <div className="flex items-start justify-between">
-                        <span className="text-gray-400">Status:</span>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${req.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                            req.status === 'overdue' ? 'bg-red-500/20 text-red-400' :
-                              req.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                                'bg-gray-500/20 text-gray-400'
-                          }`}>
-                          {req.status.toUpperCase()}
-                        </span>
-                      </div>
-                      {formFreq && (
-                        <div className="flex items-start justify-between">
-                          <span className="text-gray-400">Filing Frequency:</span>
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${formFreq === 'monthly' ? 'bg-blue-500/20 text-blue-400' :
-                              formFreq === 'quarterly' ? 'bg-purple-500/20 text-purple-400' :
-                                formFreq === 'annual' ? 'bg-green-500/20 text-green-400' :
-                                  'bg-gray-500/20 text-gray-400'
-                            }`}>
-                            {formFreq.toUpperCase()}
+                          <span className="text-gray-400">Category:</span>
+                          <span className="text-white font-medium">
+                            {req.category}
                           </span>
                         </div>
-                      )}
+                        {req.description && (
+                          <div className="flex items-start justify-between">
+                            <span className="text-gray-400">Description:</span>
+                            <span className="text-white text-right max-w-[70%]">
+                              {req.description}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-start justify-between">
+                          <span className="text-gray-400">Due Date:</span>
+                          <span className="text-white">
+                            {(req as any).due_date || (req as any).dueDate}
+                          </span>
+                        </div>
+                        <div className="flex items-start justify-between">
+                          <span className="text-gray-400">Status:</span>
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-medium ${
+                              req.status === "completed"
+                                ? "bg-green-500/20 text-green-400"
+                                : req.status === "overdue"
+                                  ? "bg-red-500/20 text-red-400"
+                                  : req.status === "pending"
+                                    ? "bg-yellow-500/20 text-yellow-400"
+                                    : "bg-gray-500/20 text-gray-400"
+                            }`}
+                          >
+                            {req.status.toUpperCase()}
+                          </span>
+                        </div>
+                        {formFreq && (
+                          <div className="flex items-start justify-between">
+                            <span className="text-gray-400">
+                              Filing Frequency:
+                            </span>
+                            <span
+                              className={`px-2 py-1 rounded text-xs font-medium ${
+                                formFreq === "monthly"
+                                  ? "bg-blue-500/20 text-blue-400"
+                                  : formFreq === "quarterly"
+                                    ? "bg-purple-500/20 text-purple-400"
+                                    : formFreq === "annual"
+                                      ? "bg-green-500/20 text-green-400"
+                                      : "bg-gray-500/20 text-gray-400"
+                              }`}
+                            >
+                              {formFreq.toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Regulatory Authority */}
+                    {authority && (
+                      <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
+                        <h3 className="text-white font-medium mb-3">
+                          Regulatory Authority
+                        </h3>
+                        <p className="text-gray-300 text-sm">{authority}</p>
+                      </div>
+                    )}
+
+                    {/* Legal Sections */}
+                    {legalSections.length > 0 && (
+                      <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
+                        <h3 className="text-white font-medium mb-3">
+                          Legal References
+                        </h3>
+                        <div className="space-y-3">
+                          {legalSections.map((section, idx) => (
+                            <div
+                              key={idx}
+                              className="border-l-2 border-blue-500/50 pl-3"
+                            >
+                              <div className="text-white font-medium text-sm">
+                                {section.act} - {section.section}
+                              </div>
+                              <div className="text-gray-400 text-xs mt-1">
+                                {section.description}
+                              </div>
+                              {section.relevance && (
+                                <div className="text-gray-500 text-xs mt-1 italic">
+                                  Relevance: {section.relevance}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Relevant Forms */}
+                    {categoryForms.length > 0 && (
+                      <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
+                        <h3 className="text-white font-medium mb-3">
+                          Relevant Forms
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {categoryForms.map((form) => (
+                            <div
+                              key={form}
+                              className="flex items-center justify-between p-2 bg-gray-800 rounded border border-gray-700"
+                            >
+                              <span className="text-white text-sm">{form}</span>
+                              {formFrequency?.[form] && (
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                                    formFrequency[form] === "monthly"
+                                      ? "bg-blue-500/20 text-blue-400"
+                                      : formFrequency[form] === "quarterly"
+                                        ? "bg-purple-500/20 text-purple-400"
+                                        : formFrequency[form] === "annual"
+                                          ? "bg-green-500/20 text-green-400"
+                                          : "bg-gray-500/20 text-gray-400"
+                                  }`}
+                                >
+                                  {formFrequency[form].toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Penalty Information */}
+                    {req.penalty && (
+                      <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
+                        <h3 className="text-white font-medium mb-3">
+                          Penalty Information
+                        </h3>
+                        <p className="text-gray-300 text-sm">{req.penalty}</p>
+                        {(() => {
+                          const dueDateStr =
+                            req.due_date || (req as any).dueDate || "";
+                          const daysDelayed = calculateDelayMemoized(
+                            dueDateStr,
+                            req.status,
+                          );
+                          const calculatedPenalty = calculatePenaltyMemoized(
+                            req.penalty || "",
+                            daysDelayed || 0,
+                            req.penalty_base_amount || null,
+                          );
+                          if (
+                            calculatedPenalty !== "-" &&
+                            !calculatedPenalty.includes("Cannot calculate")
+                          ) {
+                            return (
+                              <div className="mt-2 pt-2 border-t border-gray-700">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-gray-400 text-sm">
+                                    Calculated Penalty:
+                                  </span>
+                                  <span className="text-red-400 font-semibold">
+                                    {calculatedPenalty}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Regulatory Authority */}
-                  {authority && (
-                    <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
-                      <h3 className="text-white font-medium mb-3">Regulatory Authority</h3>
-                      <p className="text-gray-300 text-sm">{authority}</p>
-                    </div>
-                  )}
-
-                  {/* Legal Sections */}
-                  {legalSections.length > 0 && (
-                    <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
-                      <h3 className="text-white font-medium mb-3">Legal References</h3>
-                      <div className="space-y-3">
-                        {legalSections.map((section, idx) => (
-                          <div key={idx} className="border-l-2 border-blue-500/50 pl-3">
-                            <div className="text-white font-medium text-sm">
-                              {section.act} - {section.section}
-                            </div>
-                            <div className="text-gray-400 text-xs mt-1">{section.description}</div>
-                            {section.relevance && (
-                              <div className="text-gray-500 text-xs mt-1 italic">Relevance: {section.relevance}</div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Relevant Forms */}
-                  {categoryForms.length > 0 && (
-                    <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
-                      <h3 className="text-white font-medium mb-3">Relevant Forms</h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {categoryForms.map((form) => (
-                          <div key={form} className="flex items-center justify-between p-2 bg-gray-800 rounded border border-gray-700">
-                            <span className="text-white text-sm">{form}</span>
-                            {formFrequency?.[form] && (
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${formFrequency[form] === 'monthly' ? 'bg-blue-500/20 text-blue-400' :
-                                  formFrequency[form] === 'quarterly' ? 'bg-purple-500/20 text-purple-400' :
-                                    formFrequency[form] === 'annual' ? 'bg-green-500/20 text-green-400' :
-                                      'bg-gray-500/20 text-gray-400'
-                                }`}>
-                                {formFrequency[form].toUpperCase()}
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Penalty Information */}
-                  {req.penalty && (
-                    <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
-                      <h3 className="text-white font-medium mb-3">Penalty Information</h3>
-                      <p className="text-gray-300 text-sm">{req.penalty}</p>
-                      {(() => {
-                        const dueDateStr = req.due_date || (req as any).dueDate || ''
-                        const daysDelayed = calculateDelayMemoized(dueDateStr, req.status)
-                        const calculatedPenalty = calculatePenaltyMemoized(req.penalty || '', daysDelayed || 0, req.penalty_base_amount || null)
-                        if (calculatedPenalty !== '-' && !calculatedPenalty.includes('Cannot calculate')) {
-                          return (
-                            <div className="mt-2 pt-2 border-t border-gray-700">
-                              <div className="flex items-center justify-between">
-                                <span className="text-gray-400 text-sm">Calculated Penalty:</span>
-                                <span className="text-red-400 font-semibold">{calculatedPenalty}</span>
-                              </div>
-                            </div>
-                          )
-                        }
-                        return null
-                      })()}
-                    </div>
-                  )}
-                </div>
-
-                {/* Modal Footer */}
-                <div className="sticky bottom-0 bg-black border-t border-white/10 p-6 flex items-center justify-end">
-                  <button
-                    onClick={() => setComplianceDetailsModal(null)}
-                    className="px-6 py-2.5 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    Close
-                  </button>
+                  {/* Modal Footer */}
+                  <div className="sticky bottom-0 bg-black border-t border-white/10 p-6 flex items-center justify-end">
+                    <button
+                      onClick={() => setComplianceDetailsModal(null)}
+                      className="px-6 py-2.5 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )
-        })()}
+            );
+          })()}
 
-        {activeTab === 'gst' && countryCode === 'IN' && (
-          <Suspense fallback={
-            <div className="flex items-center justify-center p-8">
-              <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
-            </div>
-          }>
+        {activeTab === "gst" && countryCode === "IN" && (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center p-8">
+                <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+              </div>
+            }
+          >
             <GSTTab
               currentCompany={currentCompany}
               formatCurrency={formatCurrency}
@@ -3803,12 +4960,14 @@ function DataRoomPageInner() {
           </Suspense>
         )}
 
-        {activeTab === 'tracker' && (
-          <Suspense fallback={
-            <div className="flex items-center justify-center p-8">
-              <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
-            </div>
-          }>
+        {activeTab === "tracker" && (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center p-8">
+                <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+              </div>
+            }
+          >
             <TrackerTab
               regulatoryService={regulatoryService}
               trackerView={trackerView}
@@ -3899,28 +5058,31 @@ function DataRoomPageInner() {
               previewFileUrl={previewFileUrl}
               setPreviewFileUrl={setPreviewFileUrl}
               showToast={showToast}
+              handleTrackerDocumentUpload={handleTrackerDocumentUpload}
             />
           </Suspense>
         )}
 
-        {activeTab === 'dsc-din' && (
-          <Suspense fallback={
-            <div className="flex items-center justify-center p-8">
-              <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
-            </div>
-          }>
-            <DscDinTab
-              entityDetails={entityDetails}
-            />
+        {activeTab === "dsc-din" && (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center p-8">
+                <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+              </div>
+            }
+          >
+            <DscDinTab entityDetails={entityDetails} />
           </Suspense>
         )}
 
-        {activeTab === 'documents' && (
-          <Suspense fallback={
-            <div className="flex items-center justify-center p-8">
-              <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
-            </div>
-          }>
+        {activeTab === "documents" && (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center p-8">
+                <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+              </div>
+            }
+          >
             <DocumentsTab
               vaultDocuments={vaultDocuments}
               setVaultDocuments={setVaultDocuments}
@@ -3946,24 +5108,222 @@ function DataRoomPageInner() {
               getFormFrequency={getFormFrequency}
               getRelevantLegalSections={getRelevantLegalSections}
               getAuthorityForCategory={getAuthorityForCategory}
+              showToast={showToast}
             />
           </Suspense>
         )}
       </div>
 
+      {/* Document Upload Modal from Tracker - Rendered at parent level so it's always available */}
+      {documentUploadModal && documentUploadModal.isOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-800">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-light text-white">Upload Document</h3>
+                  <p className="text-sm text-gray-400 mt-1">Upload document for compliance requirement</p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (!uploadingDocument) {
+                      setDocumentUploadModal(null);
+                      setUploadFile(null);
+                      setUploadProgress(0);
+                      setUploadStage("");
+                      setPreviewFileUrl(null);
+                    }
+                  }}
+                  disabled={uploadingDocument}
+                  className="text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Requirement Info */}
+              <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">Requirement</label>
+                    <div className="text-white font-medium">{documentUploadModal.requirement}</div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">Document Type</label>
+                    <div className="text-blue-400 font-medium">{documentUploadModal.documentName}</div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">Category</label>
+                    <div className="text-gray-300 text-sm">{documentUploadModal.category}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* File Upload Area */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Select File</label>
+                <div
+                  className={`border-2 border-dashed rounded-lg p-6 transition-colors ${uploadFile
+                      ? 'border-green-500/50 bg-green-500/10'
+                      : 'border-gray-700 bg-gray-900/50 hover:border-gray-600'
+                    }`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const file = e.dataTransfer.files[0];
+                    if (file) {
+                      setUploadFile(file);
+                    }
+                  }}
+                >
+                  {!uploadFile ? (
+                    <div className="text-center">
+                      <svg className="w-12 h-12 mx-auto text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      <p className="text-gray-400 text-sm mb-2">Drag and drop a file here, or click to browse</p>
+                      <p className="text-gray-500 text-xs">Supports: PDF, Images (JPG, PNG), Word (DOC, DOCX)</p>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setUploadFile(file);
+                          }
+                        }}
+                        className="hidden"
+                        id="tracker-file-upload-input"
+                      />
+                      <label
+                        htmlFor="tracker-file-upload-input"
+                        className="mt-3 inline-block px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors cursor-pointer text-sm font-medium"
+                      >
+                        Browse Files
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-white font-medium truncate">{uploadFile.name}</p>
+                              <p className="text-gray-400 text-xs mt-0.5">
+                                {(uploadFile.size / 1024 / 1024).toFixed(2)} MB • {uploadFile.type || 'Unknown type'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setUploadFile(null)}
+                          disabled={uploadingDocument}
+                          className="text-gray-400 hover:text-red-400 transition-colors disabled:opacity-50 ml-2"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Upload Progress */}
+              {uploadingDocument && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-400">{uploadStage || 'Uploading...'}</span>
+                    <span className="text-white font-medium">{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden">
+                    <div
+                      className="bg-white h-full rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="pt-4 border-t border-gray-800 flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    if (!uploadingDocument) {
+                      setDocumentUploadModal(null);
+                      setUploadFile(null);
+                      setUploadProgress(0);
+                      setUploadStage("");
+                      setPreviewFileUrl(null);
+                    }
+                  }}
+                  disabled={uploadingDocument}
+                  className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (handleTrackerDocumentUpload) {
+                      handleTrackerDocumentUpload().catch((err) => {
+                        console.error('Upload error:', err);
+                        showToast(`Error uploading document: ${err.message || 'Unknown error'}`, 'error');
+                      });
+                    } else {
+                      console.error('handleTrackerDocumentUpload is not available');
+                      showToast('Upload handler is not available', 'error');
+                    }
+                  }}
+                  disabled={!uploadFile || uploadingDocument || !handleTrackerDocumentUpload}
+                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
+                >
+                  {uploadingDocument ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                      {uploadStage || 'Uploading...'}
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      Upload Document
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ToastContainer />
     </div>
-  )
+  );
 }
 
 export default function DataRoomPage() {
   return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
       <DataRoomPageInner />
     </Suspense>
-  )
+  );
 }

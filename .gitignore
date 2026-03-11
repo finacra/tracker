@@ -38,3 +38,13 @@ next-env.d.ts
 # logs
 /logs
 *.log
+/lib/generated/prisma
+
+# gemini/antigravity files
+.gemini/
+.antigravity/
+
+# diagnostic files
+diagnostic-*.sql
+result.txt
+dummy_test_doc.txt

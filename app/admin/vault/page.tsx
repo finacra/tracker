@@ -27,7 +27,7 @@ import {
 
 export default function VaultManagementPage() {
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [folders, setFolders] = useState<FolderInfo[]>([])
   const [templates, setTemplates] = useState<DocumentTemplate[]>([])
   const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(null)
@@ -52,14 +52,21 @@ export default function VaultManagementPage() {
 
   useEffect(() => {
     console.log('[VAULT PAGE] useEffect triggered:', {
+      authLoading,
       hasUser: !!user,
       userId: user?.id,
       selectedFolderPath,
       pathname: typeof window !== 'undefined' ? window.location.pathname : 'unknown',
     })
 
+    // Wait for auth to finish loading before making any decisions
+    if (authLoading) {
+      console.log('[VAULT PAGE] Auth still loading, waiting...')
+      return
+    }
+
     if (!user) {
-      console.log('[VAULT PAGE] No user, redirecting to /')
+      console.log('[VAULT PAGE] No user after auth loaded, redirecting to /')
       router.push('/')
       return
     }
@@ -69,7 +76,7 @@ export default function VaultManagementPage() {
     // Let loadData handle the superadmin check and redirect
     loadData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, selectedFolderPath]) // Removed router from dependencies to prevent infinite loops
+  }, [user, authLoading, selectedFolderPath]) // Removed router from dependencies to prevent infinite loops
 
   const loadData = async () => {
     console.log('[VAULT PAGE] loadData called')

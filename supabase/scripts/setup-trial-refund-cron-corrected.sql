@@ -34,7 +34,6 @@ SELECT * FROM cron.job WHERE jobname = 'process-trial-refunds';
 -- Next Steps:
 -- 1. Deploy the Edge Function: supabase functions deploy process-trial-refunds
 -- 2. Set environment variables in Supabase Dashboard:
---    - SUPABASE_SERVICE_ROLE_KEY
 --    - NEXT_PUBLIC_APP_URL (your production app URL)
 -- ============================================
 

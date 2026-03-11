@@ -1,0 +1,186 @@
+---
+description: TypeScript best practices for SOLID-compliant code
+globs: *.ts,*.tsx
+---
+
+# TypeScript Best Practices (SOLID-Compliant)
+
+## 1. Always Type Callback Parameters
+
+```typescript
+// ❌ Bad (implicit any)
+.map(item => item.value)
+.filter(cat => cat.active)
+setState(prev => ({ ...prev, value: newValue }))
+
+// ✅ Good (explicit types)
+.map((item: ItemType) => item.value)
+.filter((cat: CategoryType) => cat.active)
+setState((prev: StateType) => ({ ...prev, value: newValue }))
+```
+
+## 2. Define Proper Interfaces (ISP)
+
+```typescript
+// ❌ Bad (violates ISP - too broad)
+interface Props {
+  [key: string]: any
+}
+
+// ✅ Good (follows ISP - focused interface)
+interface ContainerProps {
+  company: Company
+  user: User
+}
+
+interface ListProps {
+  items: Item[]
+  onSelect: (id: string) => void
+}
+
+interface FormProps {
+  onSubmit: (data: FormData) => void
+  onCancel: () => void
+}
+```
+
+## 3. Service Interfaces (DIP)
+
+```typescript
+// ✅ Good: Define service interfaces (DIP)
+interface DocumentService {
+  uploadDocument: (file: File) => Promise<void>
+  deleteDocument: (id: string) => Promise<void>
+  getDocuments: (companyId: string) => Promise<Document[]>
+}
+
+interface ToastService {
+  show: (message: string, type: 'success' | 'error' | 'info') => void
+  hide: () => void
+}
+
+// Component depends on interface, not implementation
+interface ComponentProps {
+  documentService: DocumentService // Interface, not concrete class
+  toastService: ToastService
+}
+```
+
+## 4. Use Type Guards
+
+```typescript
+// ✅ Good
+function isDocument(obj: any): obj is Document {
+  return obj && typeof obj.id === 'string' && typeof obj.name === 'string'
+}
+
+if (isDocument(data)) {
+  // TypeScript knows data is Document here
+  console.log(data.name)
+}
+```
+
+## 5. Avoid Implicit Any
+
+```typescript
+// ❌ Bad
+function process(data) { ... }
+
+// ✅ Good
+function process(data: ProcessDataType): ProcessedResult { ... }
+```
+
+## 6. Comprehensive Type Audit
+
+**Before building, find ALL potential issues:**
+
+```bash
+# Find all implicit any patterns:
+grep -n "\.map(" component.tsx | grep -v ":"
+grep -n "\.filter(" component.tsx | grep -v ":"
+grep -n "\.some(" component.tsx | grep -v ":"
+grep -n "prev =>" component.tsx
+grep -n "item =>" component.tsx
+grep -n "cat =>" component.tsx
+
+# Fix ALL at once, not iteratively
+```
+
+## 7. Type State Properly
+
+```typescript
+// ❌ Bad
+const [state, setState] = useState({})
+
+// ✅ Good
+interface ComponentState {
+  items: Item[]
+  loading: boolean
+  error: string | null
+}
+
+const [state, setState] = useState<ComponentState>({
+  items: [],
+  loading: false,
+  error: null
+})
+```
+
+## 8. Type Props Properly
+
+```typescript
+// ❌ Bad
+function Component(props: any) { ... }
+
+// ✅ Good
+interface ComponentProps {
+  id: string
+  name: string
+  onAction: (id: string) => Promise<void>
+  data: DataType[]
+}
+
+function Component({ id, name, onAction, data }: ComponentProps) { ... }
+```
+
+## 9. Type Service Methods
+
+```typescript
+// ✅ Good: Service interface with typed methods
+interface ApiService {
+  get<T>(url: string): Promise<T>
+  post<T>(url: string, data: unknown): Promise<T>
+  put<T>(url: string, data: unknown): Promise<T>
+  delete(url: string): Promise<void>
+}
+```
+
+## 10. Type Hooks
+
+```typescript
+// ✅ Good: Typed custom hook
+interface UseFeatureNameReturn {
+  data: DataType[]
+  loading: boolean
+  error: string | null
+  fetch: () => Promise<void>
+  update: (id: string, data: Partial<DataType>) => Promise<void>
+}
+
+export function useFeatureName(initialData: DataType[]): UseFeatureNameReturn {
+  // Implementation
+}
+```
+
+## TypeScript Validation Checklist
+
+- [ ] All callback parameters typed
+- [ ] All map/filter/some callbacks typed
+- [ ] All state properly typed
+- [ ] All props properly typed
+- [ ] All service interfaces defined (DIP)
+- [ ] All hook return types defined
+- [ ] No implicit any
+- [ ] Type guards used where appropriate
+- [ ] Comprehensive type audit completed
+- [ ] Build passes with no type errors

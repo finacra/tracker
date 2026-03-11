@@ -1,0 +1,294 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model AppUser {
+  id             String         @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  primary_email  String
+  full_name      String?
+  status         String         @default("active")
+  created_at     DateTime       @default(now()) @db.Timestamptz
+  updated_at     DateTime       @default(now()) @db.Timestamptz
+
+  authIdentities AuthIdentity[]
+
+  @@map("app_users")
+}
+
+model AuthIdentity {
+  id             String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  app_user_id    String   @db.Uuid
+  provider       String
+  legacy_auth_id String?
+  email          String?
+  is_primary     Boolean  @default(false)
+  metadata       Json     @default("{}")
+  created_at     DateTime @default(now()) @db.Timestamptz
+
+  appUser AppUser @relation(fields: [app_user_id], references: [id])
+
+  @@map("auth_identities")
+}
+
+model Company {
+  id                      String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id                 String    @db.Uuid
+  app_user_id             String?   @db.Uuid
+  name                    String
+  type                    String?
+  tax_id                  String?
+  registration_id         String?
+  industry                String?
+  industries              String[]
+  industry_categories     String[]
+  other_industry_category String?
+  incorporation_date      DateTime? @db.Date
+  address                 String?
+  city                    String?
+  state                   String?
+  pin_code                String?
+  phone_number            String?
+  email                   String?
+  landline                String?
+  other_info              String?
+  stage                   String?
+  confidence_score        String?
+  year_type               String?   @default("FY")
+  country_code            String?   @default("IN") @db.VarChar
+  region                  String?
+  ex_directors            String[]
+  created_at              DateTime  @default(now()) @db.Timestamptz
+  updated_at              DateTime  @default(now()) @db.Timestamptz
+
+  requirements  RegulatoryRequirement[]
+  notifications CompanyNotification[]
+
+  @@map("companies")
+}
+
+model CompanyNotification {
+  id             String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id     String    @db.Uuid
+  user_id        String    @db.Uuid
+  app_user_id    String?   @db.Uuid
+  type           String
+  title          String
+  message        String
+  requirement_id String?   @db.Uuid
+  document_id    String?   @db.Uuid
+  is_read        Boolean?  @default(false)
+  read_at        DateTime? @db.Timestamptz
+  created_at     DateTime? @default(now()) @db.Timestamptz
+  metadata       Json?
+
+  company     Company @relation(fields: [company_id], references: [id])
+  requirement RegulatoryRequirement? @relation(fields: [requirement_id], references: [id])
+
+  @@map("company_notifications")
+}
+
+model RegulatoryRequirement {
+  id                  String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id          String    @db.Uuid
+  category            String
+  requirement         String
+  description         String?
+  status              String    @default("not_started")
+  due_date            DateTime? @db.Date
+  penalty             String?
+  is_critical         Boolean?  @default(false)
+  created_at          DateTime? @default(now()) @db.Timestamptz
+  updated_at          DateTime? @default(now()) @db.Timestamptz
+  created_by          String?   @db.Uuid
+  updated_by          String?   @db.Uuid
+  app_created_by      String?   @db.Uuid
+  app_updated_by      String?   @db.Uuid
+  template_id         String?   @db.Uuid
+  compliance_type     String?
+  entity_type         String?
+  industry            String?
+  industry_category   String?
+  filed_on            DateTime? @db.Date
+  filed_by            String?   @db.Uuid
+  app_filed_by        String?   @db.Uuid
+  status_reason       String?
+  possible_legal_action String?
+  penalty_config      Json?
+  penalty_base_amount Decimal?  @db.Decimal(15, 2)
+  required_documents  String[]
+  year_type           String?
+  country_code        String?
+
+  company              Company @relation(fields: [company_id], references: [id])
+  companyNotifications CompanyNotification[]
+
+  @@map("regulatory_requirements")
+}
+
+model Director {
+  id             String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id     String    @db.Uuid
+  first_name     String?
+  last_name      String?
+  middle_name    String?
+  director_id    String?   @map("director_id")
+  designation    String?
+  dob            DateTime? @db.Timestamptz
+  tax_id         String?
+  email          String?
+  mobile         String?
+  is_verified    Boolean?  @default(false)
+  source         String?   @default("manual")
+  created_at     DateTime? @default(now()) @db.Timestamptz
+  metadata       Json?
+
+  @@map("directors")
+}
+
+model Payment {
+  id                  String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id             String    @db.Uuid
+  app_user_id         String?   @db.Uuid
+  company_id          String?   @db.Uuid
+  provider_order_id   String    @unique
+  provider_payment_id String?
+  provider_signature  String?
+  payment_provider    String
+  amount              Decimal   @db.Decimal(15, 2)
+  amount_paid         Decimal?  @db.Decimal(15, 2)
+  currency            String    @default("INR")
+  status              String    @default("pending")
+  tier                String
+  billing_cycle       String
+  receipt             String?
+  payment_method      String?
+  notes               Json?
+  paid_at             DateTime? @db.Timestamptz
+  error_code          String?
+  error_description   String?
+  refund_status       String?
+  refund_scheduled_at DateTime? @db.Timestamptz
+  refunded_at         DateTime? @db.Timestamptz
+  refund_amount       Decimal?  @db.Decimal(15, 2)
+  payment_type        String?
+  created_at          DateTime? @default(now()) @db.Timestamptz
+  updated_at          DateTime? @default(now()) @db.Timestamptz
+
+  @@map("payments")
+}
+
+model Subscription {
+  id                    String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id               String    @db.Uuid
+  app_user_id           String?   @db.Uuid
+  company_id            String?   @db.Uuid
+  subscription_type     String?   @default("company")
+  status                String    @default("active")
+  tier                  String
+  billing_cycle         String?   @default("monthly")
+  amount                Decimal?  @db.Decimal(15, 2)
+  currency              String?   @default("INR")
+  payment_provider      String?
+  provider_subscription_id String?
+  start_date            DateTime  @db.Timestamptz
+  end_date              DateTime  @db.Timestamptz
+  current_period_start  DateTime? @db.Timestamptz
+  current_period_end    DateTime? @db.Timestamptz
+  cancel_at_period_end  Boolean?  @default(false)
+  cancelled_at          DateTime? @db.Timestamptz
+  is_trial              Boolean?  @default(false)
+  trial_started_at      DateTime? @db.Timestamptz
+  trial_ends_at         DateTime? @db.Timestamptz
+  created_at            DateTime? @default(now()) @db.Timestamptz
+  updated_at            DateTime? @default(now()) @db.Timestamptz
+
+  @@map("subscriptions")
+}
+
+model EmailPreference {
+  id                         String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id                    String    @unique @db.Uuid
+  app_user_id                String?   @db.Uuid
+  unsubscribe_status_changes Boolean   @default(false)
+  unsubscribe_reminders      Boolean   @default(false)
+  unsubscribe_team_updates   Boolean   @default(false)
+  unsubscribe_all            Boolean   @default(false)
+  digest_frequency           String    @default("daily")
+  created_at                 DateTime? @default(now()) @db.Timestamptz
+  updated_at                 DateTime? @default(now()) @db.Timestamptz
+
+  @@map("email_preferences")
+}
+
+model UserRole {
+  id          String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id     String    @db.Uuid
+  app_user_id String?   @db.Uuid
+  company_id  String?   @db.Uuid
+  role        String
+  created_at  DateTime? @default(now()) @db.Timestamptz
+  updated_at  DateTime? @default(now()) @db.Timestamptz
+
+  @@map("user_roles")
+}
+
+model TeamInvitation {
+  id                  String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id          String    @db.Uuid
+  email               String
+  role                String
+  token               String    @unique
+  invited_by          String    @db.Uuid
+  created_at          DateTime? @default(now()) @db.Timestamptz
+  expires_at          DateTime  @db.Timestamptz
+  accepted_at         DateTime? @db.Timestamptz
+  accepted_by_user_id String?   @db.Uuid
+
+  @@map("team_invitations")
+}
+
+model CompanyDocument {
+  id                    String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id            String    @db.Uuid
+  document_type         String?
+  folder_name           String?
+  file_path             String
+  file_name             String?
+  registration_date     DateTime? @db.Date
+  expiry_date           DateTime? @db.Date
+  is_portal_required    Boolean?  @default(false)
+  portal_email          String?
+  portal_password       String?
+  frequency             String?
+  embedding             Unsupported("vector")?
+  period_type           String?
+  period_financial_year String?
+  period_key            String?
+  period_start          DateTime? @db.Date
+  period_end            DateTime? @db.Date
+  requirement_id        String?   @db.Uuid
+  created_at            DateTime? @default(now()) @db.Timestamptz
+
+  @@map("company_documents_internal")
+}
+
+model DocumentTemplate {
+  id                String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  folder_name       String?
+  document_name     String?
+  is_mandatory      Boolean?  @default(false)
+  default_frequency String?
+  category          String?
+  description       String?
+  country_code      String?
+  created_at        DateTime? @default(now()) @db.Timestamptz
+  updated_at        DateTime? @default(now()) @db.Timestamptz
+
+  @@map("document_templates_internal")
+}

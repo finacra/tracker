@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react'
 import Header from '@/components/layout/Header'
 import CompanySelector from '@/components/features/CompanySelector'
 import SubtleCircuitBackground from '@/components/ui/SubtleCircuitBackground'
-import { createClient } from '@/utils/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { getCompanyUserRoles, createTeamInvitation, removeTeamMember, updateTeamMemberRole } from '@/app/data-room/actions'
+import { getTeamCompanySubscription, getUserCompanies, getCompanyOwnerId } from '@/app/team/actions'
+import { extendSubscriptionTrialAction, revokeSubscriptionAction, grantCompanyTrialAction } from '@/app/admin/actions'
 import { trackTeamMemberAdded } from '@/lib/tracking/kpi-tracker'
 import { useUserRole } from '@/hooks/useUserRole'
-import { getCompanySubscription, type Subscription } from '@/lib/subscriptions/subscription'
+import type { Subscription } from '@/lib/subscriptions/subscription'
 
 interface Company {
   id: string
@@ -33,7 +34,6 @@ interface UserRole {
 
 export default function TeamPage() {
   const { user } = useAuth()
-  const supabase = createClient()
   
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null)
   const [companies, setCompanies] = useState<Company[]>([])
@@ -54,125 +54,30 @@ export default function TeamPage() {
   // Get user role for current company
   const { role, canManage, isSuperadmin } = useUserRole(currentCompany?.id || null)
 
-  // Fetch companies (owned + invited)
+  // Fetch companies (owned + invited) via server action (works for both Supabase and Passport users)
   useEffect(() => {
     async function fetchCompanies() {
       if (!user) return
 
       try {
-        // Fetch companies owned by user
-        const { data: ownedCompanies, error: ownedError } = await supabase
-          .from('companies')
-          .select('id, name, type, incorporation_date, country_code, region')
-          .eq('user_id', user.id)
-
-        if (ownedError) throw ownedError
-
-        // Fetch companies user has access to via user_roles using RPC (bypasses RLS)
-        let invitedCompanyIds: string[] = []
+        const result = await getUserCompanies()
         
-        try {
-          const { data: userRoles, error: rolesError } = await supabase
-            .rpc('get_user_company_ids', { p_user_id: user.id })
-
-          if (rolesError) {
-            console.error('[fetchCompanies] RPC error, trying direct query fallback:', rolesError)
-            // Fallback: Direct query (should work with "Users can view their own roles" policy)
-            const { data: directRoles, error: directError } = await supabase
-              .from('user_roles')
-              .select('company_id')
-              .eq('user_id', user.id)
-              .not('company_id', 'is', null)
-            
-            if (directError) {
-              console.error('[fetchCompanies] Direct query also failed:', directError)
-            } else {
-              console.log('[fetchCompanies] Direct query succeeded, found', directRoles?.length || 0, 'roles')
-              invitedCompanyIds = directRoles 
-                ? [...new Set(directRoles.map((ur: { company_id: string | null }) => ur.company_id).filter((id: string | null): id is string => id !== null))]
-                : []
-            }
-          } else {
-            console.log('[fetchCompanies] RPC succeeded, found', userRoles?.length || 0, 'company IDs')
-            // Get unique company IDs from RPC result
-            invitedCompanyIds = userRoles 
-              ? [...new Set((userRoles as Array<{ company_id: string | null }>).map((ur) => ur.company_id).filter((id: string | null): id is string => id !== null))]
-              : []
-          }
-        } catch (rpcError) {
-          console.error('[fetchCompanies] Exception calling RPC:', rpcError)
-          // Final fallback: try direct query
-          try {
-            const { data: directRoles } = await supabase
-              .from('user_roles')
-              .select('company_id')
-              .eq('user_id', user.id)
-              .not('company_id', 'is', null)
-            
-            invitedCompanyIds = directRoles 
-              ? [...new Set(directRoles.map((ur: { company_id: string }) => ur.company_id).filter(Boolean))]
-              : []
-          } catch (fallbackError) {
-            console.error('[fetchCompanies] Fallback also failed:', fallbackError)
-          }
-        }
-
-        // Fetch company details for invited companies
-        let invitedCompanies: any[] = []
-        if (invitedCompanyIds.length > 0) {
-          const { data: invitedData, error: invitedError } = await supabase
-            .from('companies')
-            .select('id, name, type, incorporation_date, country_code, region')
-            .in('id', invitedCompanyIds)
-
-          if (invitedError) throw invitedError
-          invitedCompanies = invitedData || []
-        }
-
-        // Combine and deduplicate companies
-        const companyMap = new Map<string, Company>()
-        
-        // Add owned companies
-        if (ownedCompanies) {
-          ownedCompanies.forEach(c => {
-            companyMap.set(c.id, {
-              id: c.id,
-              name: c.name,
-              type: c.type,
-              year: new Date(c.incorporation_date).getFullYear().toString()
-            })
-          })
-        }
-
-        // Add companies from user_roles
-        invitedCompanies.forEach(c => {
-          if (!companyMap.has(c.id)) {
-            companyMap.set(c.id, {
-              id: c.id,
-              name: c.name,
-              type: c.type,
-              year: new Date(c.incorporation_date).getFullYear().toString()
-            })
-          }
-        })
-
-        const allCompanies = Array.from(companyMap.values())
-          .sort((a, b) => b.id.localeCompare(a.id)) // Sort by ID (newest first)
-
-        if (allCompanies.length > 0) {
-          setCompanies(allCompanies)
-          setCurrentCompany(allCompanies[0])
+        if (result.success && result.companies.length > 0) {
+          setCompanies(result.companies)
+          setCurrentCompany(result.companies[0])
         } else {
           setCompanies([])
           setCurrentCompany(null)
         }
       } catch (err) {
         console.error('Error fetching companies:', err)
+        setCompanies([])
+        setCurrentCompany(null)
       }
     }
 
     fetchCompanies()
-  }, [user, supabase])
+  }, [user])
 
   // Fetch team members (user roles) for current company
   useEffect(() => {
@@ -212,7 +117,7 @@ export default function TeamPage() {
       }
 
       try {
-        const sub = await getCompanySubscription(currentCompany.id)
+        const sub = await getTeamCompanySubscription(currentCompany.id)
         setSubscription(sub)
       } catch (error) {
         console.error('Error fetching subscription:', error)
@@ -232,24 +137,11 @@ export default function TeamPage() {
 
     setIsRevokingTrial(true)
     try {
-      const { error } = await supabase
-        .from('subscriptions')
-        .update({
-          status: 'expired',
-          trial_ends_at: new Date().toISOString(),
-          end_date: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', subscription.id)
-
-      if (error) {
-        alert(`Failed to revoke trial: ${error.message}`)
-      } else {
-        alert('Trial revoked successfully')
-        // Refresh subscription status
-        const sub = await getCompanySubscription(currentCompany.id)
-        setSubscription(sub)
-      }
+      await revokeSubscriptionAction(subscription.id)
+      alert('Trial revoked successfully')
+      // Refresh subscription status
+      const sub = await getTeamCompanySubscription(currentCompany.id)
+      setSubscription(sub)
     } catch (err: any) {
       alert(`Failed to revoke trial: ${err.message}`)
     } finally {
@@ -267,35 +159,11 @@ export default function TeamPage() {
 
     setIsExtendingTrial(true)
     try {
-      // Calculate new trial end date
-      const currentEndDate = subscription.trial_ends_at 
-        ? new Date(subscription.trial_ends_at) 
-        : new Date()
-      
-      // If trial is expired, extend from today
-      const baseDate = currentEndDate < new Date() ? new Date() : currentEndDate
-      const newEndDate = new Date(baseDate)
-      newEndDate.setDate(newEndDate.getDate() + extendDays)
-
-      const { error } = await supabase
-        .from('subscriptions')
-        .update({
-          status: 'trial',
-          is_trial: true,
-          trial_ends_at: newEndDate.toISOString(),
-          end_date: newEndDate.toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', subscription.id)
-
-      if (error) {
-        alert(`Failed to extend trial: ${error.message}`)
-      } else {
-        alert(`Trial extended by ${extendDays} days. New end date: ${newEndDate.toLocaleDateString()}`)
-        // Refresh subscription status
-        const sub = await getCompanySubscription(currentCompany.id)
-        setSubscription(sub)
-      }
+      await extendSubscriptionTrialAction(subscription.id, extendDays)
+      alert(`Trial extended by ${extendDays} days.`)
+      // Refresh subscription status
+      const sub = await getTeamCompanySubscription(currentCompany.id)
+      setSubscription(sub)
     } catch (err: any) {
       alert(`Failed to extend trial: ${err.message}`)
     } finally {
@@ -306,49 +174,23 @@ export default function TeamPage() {
   const handleGrantTrial = async () => {
     if (!currentCompany) return
     
-    // Get the company owner's user_id
-    const { data: company } = await supabase
-      .from('companies')
-      .select('user_id')
-      .eq('id', currentCompany.id)
-      .single()
+    // Get the company owner's user_id via server action (works for both Supabase and Passport users)
+    const result = await getCompanyOwnerId(currentCompany.id)
     
-    if (!company?.user_id) {
+    if (!result.success || !result.ownerId) {
       alert('Could not find company owner')
       return
     }
+    
+    const company = { user_id: result.ownerId }
 
     setIsGrantingTrial(true)
     try {
-      const trialEndDate = new Date()
-      trialEndDate.setDate(trialEndDate.getDate() + extendDays)
-
-      // Create new trial subscription for the user
-      const { error } = await supabase
-        .from('subscriptions')
-        .insert({
-          user_id: company.user_id,
-          company_id: null, // User-based subscription
-          status: 'trial',
-          tier: 'starter',
-          billing_cycle: 'monthly',
-          amount: 0,
-          currency: 'INR',
-          is_trial: true,
-          trial_started_at: new Date().toISOString(),
-          trial_ends_at: trialEndDate.toISOString(),
-          start_date: new Date().toISOString(),
-          end_date: trialEndDate.toISOString(),
-        })
-
-      if (error) {
-        alert(`Failed to grant trial: ${error.message}`)
-      } else {
-        alert(`Trial granted for ${extendDays} days`)
-        // Refresh subscription status
-        const sub = await getCompanySubscription(currentCompany.id)
-        setSubscription(sub)
-      }
+      await grantCompanyTrialAction(company.user_id, currentCompany.id, 'starter', extendDays)
+      alert(`Trial granted for ${extendDays} days`)
+      // Refresh subscription status
+      const sub = await getTeamCompanySubscription(currentCompany.id)
+      setSubscription(sub)
     } catch (err: any) {
       alert(`Failed to grant trial: ${err.message}`)
     } finally {

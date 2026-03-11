@@ -46,8 +46,14 @@ export default function TrackerEmptyState({
   if (isLoadingRequirements) {
     return (
       <div className="py-8 sm:py-12 flex flex-col items-center justify-center">
-        <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-white/40 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-gray-400 text-sm sm:text-base">Loading requirements...</p>
+        <div className="relative mb-6">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 border-4 border-white/30 border-t-transparent rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-6 h-6 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-full animate-pulse"></div>
+          </div>
+        </div>
+        <p className="text-gray-300 text-sm sm:text-base font-medium mb-1">Loading Compliance Tracker</p>
+        <p className="text-gray-500 text-xs sm:text-sm">Fetching regulatory requirements and status updates...</p>
       </div>
     )
   }

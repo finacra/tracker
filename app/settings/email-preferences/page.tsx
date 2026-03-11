@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/utils/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
+import { getEmailPreferences, saveEmailPreferences } from '@/app/settings/email-preferences/actions'
 
 type EmailPreferences = {
   unsubscribe_status_changes: boolean
@@ -24,7 +24,6 @@ const defaultPreferences: EmailPreferences = {
 export default function EmailPreferencesPage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
-  const supabase = createClient()
 
   const [preferences, setPreferences] = useState<EmailPreferences>(defaultPreferences)
   const [loading, setLoading] = useState(true)
@@ -40,29 +39,19 @@ export default function EmailPreferencesPage() {
     }
 
     async function loadPreferences() {
-      const { data, error } = await supabase
-        .from('email_preferences')
-        .select('*')
-        .eq('user_id', user!.id)
-        .single()
+      const result = await getEmailPreferences()
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error loading preferences:', error)
+      if (!result.success) {
+        console.error('Error loading preferences:', result.error)
         setError('Failed to load preferences')
-      } else if (data) {
-        setPreferences({
-          unsubscribe_status_changes: data.unsubscribe_status_changes,
-          unsubscribe_reminders: data.unsubscribe_reminders,
-          unsubscribe_team_updates: data.unsubscribe_team_updates,
-          unsubscribe_all: data.unsubscribe_all,
-          digest_frequency: data.digest_frequency,
-        })
+      } else if (result.preferences) {
+        setPreferences(result.preferences)
       }
       setLoading(false)
     }
 
     loadPreferences()
-  }, [user, authLoading, router, supabase])
+  }, [user, authLoading, router])
 
   const handleToggle = (key: keyof EmailPreferences) => {
     if (key === 'unsubscribe_all') {
@@ -93,17 +82,10 @@ export default function EmailPreferencesPage() {
     setError(null)
     setSaved(false)
 
-    const { error } = await supabase.from('email_preferences').upsert(
-      {
-        user_id: user.id,
-        ...preferences,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'user_id' }
-    )
+    const result = await saveEmailPreferences(preferences)
 
-    if (error) {
-      console.error('Error saving preferences:', error)
+    if (!result.success) {
+      console.error('Error saving preferences:', result.error)
       setError('Failed to save preferences')
     } else {
       setSaved(true)

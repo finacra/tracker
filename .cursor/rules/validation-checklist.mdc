@@ -1,0 +1,210 @@
+---
+description: Comprehensive validation checklist following SOLID principles
+globs: *.tsx,*.ts
+---
+
+# Validation Checklist (SOLID-Compliant)
+
+## Immediate Validation (Priority Order)
+
+### 1. Parent Structure Validation (DO THIS FIRST!)
+
+**⚠️ CRITICAL: After removing large JSX blocks, validate parent structure IMMEDIATELY**
+
+```bash
+# Count tags
+grep -c "<div" parent.tsx
+grep -c "</div>" parent.tsx
+# Should be equal
+
+# PowerShell validation
+$content = Get-Content "parent.tsx" -Raw
+$openDivs = ([regex]::Matches($content, '<div')).Count
+$closeDivs = ([regex]::Matches($content, '</div>')).Count
+Write-Host "Open: $openDivs, Close: $closeDivs, Diff: $($openDivs - $closeDivs)"
+# Should be 0 difference
+```
+
+**Why this matters:**
+- Removing 3,400+ lines can break parent structure
+- Parent structure issues cause cascading errors
+- Fix parent FIRST, then move to child component
+
+### 2. JSX Structure Validation (Child Component)
+
+**Verify balanced tags:**
+
+```bash
+# Count opening and closing divs
+grep -c "<div" component.tsx
+grep -c "</div>" component.tsx
+# Should be equal
+
+# Check for:
+# - Matching opening/closing tags
+# - Proper nesting
+# - No orphaned tags
+# - Unclosed conditionals
+```
+
+### 3. SRP Validation (Single Responsibility Principle)
+
+**Check component responsibilities:**
+
+- [ ] Component has single, clear responsibility
+- [ ] Business logic extracted to hooks/services
+- [ ] UI rendering separated from logic
+- [ ] Component under size limits:
+  - Presentational: Max 200 lines
+  - Container: Max 300 lines
+  - Hook: Max 150 lines
+  - Service: Max 100 lines
+- [ ] No "God Component" anti-pattern
+- [ ] Functions count within limits:
+  - Component: Max 5 functions
+  - Hook: Max 8 functions
+  - Service: Max 10 methods
+
+### 4. DIP Validation (Dependency Inversion Principle)
+
+**Check dependency injection:**
+
+- [ ] Dependencies injected, not imported directly
+- [ ] Services use interfaces, not concrete classes
+- [ ] Easy to mock for testing
+- [ ] No direct imports of services in components
+- [ ] Service interfaces defined
+- [ ] Components depend on abstractions
+
+**Example check:**
+```typescript
+// ❌ BAD: Direct import (violates DIP)
+import { uploadDocument } from '@/app/onboarding/actions'
+
+// ✅ GOOD: Injected service (follows DIP)
+interface ComponentProps {
+  documentService: DocumentService // Interface
+}
+```
+
+### 5. ISP Validation (Interface Segregation Principle)
+
+**Check interface segregation:**
+
+- [ ] Component props < 10
+- [ ] Props are focused and necessary
+- [ ] No unused props passed down
+- [ ] Large interfaces split into smaller ones
+- [ ] Components don't depend on props they don't use
+
+**Example check:**
+```typescript
+// ❌ BAD: Too many props (violates ISP)
+interface Props {
+  // 20+ props
+}
+
+// ✅ GOOD: Segregated interfaces (follows ISP)
+interface ContainerProps { /* 5 props */ }
+interface ListProps { /* 3 props */ }
+interface FormProps { /* 4 props */ }
+```
+
+### 6. OCP Validation (Open/Closed Principle)
+
+**Check extensibility:**
+
+- [ ] Component extensible via props/children
+- [ ] No hardcoded behavior
+- [ ] Uses composition over modification
+- [ ] Can extend without modifying existing code
+
+### 7. TypeScript Validation
+
+**⚠️ Do comprehensive type audit, not iterative fixes:**
+
+```bash
+# Find ALL potential implicit any issues:
+grep -n "\.map(" component.tsx | grep -v ":"
+grep -n "\.filter(" component.tsx | grep -v ":"
+grep -n "\.some(" component.tsx | grep -v ":"
+grep -n "prev =>" component.tsx
+
+# Fix ALL at once:
+# 1. Add type annotations to all callback parameters
+# 2. Add type annotations to all map/filter/some callbacks
+# 3. Fix all state type definitions
+# 4. Verify all props types
+```
+
+**Run TypeScript compiler:**
+```bash
+npm run build
+# OR
+npx tsc --noEmit
+```
+
+### 8. Runtime Validation
+
+**Test the component:**
+- [ ] Navigate to the page
+- [ ] Verify component renders
+- [ ] Test all interactions
+- [ ] Check console for errors
+- [ ] Verify lazy loading works
+- [ ] Test all modals/forms
+- [ ] Test all filters/search
+
+## Post-Extraction Checklist
+
+### Code Quality (SOLID Compliance)
+- [ ] All TypeScript errors resolved
+- [ ] All props properly typed
+- [ ] All imports are correct
+- [ ] No unused imports
+- [ ] No unused variables
+- [ ] Code is properly formatted
+- [ ] SRP compliance verified
+- [ ] DIP compliance verified
+- [ ] ISP compliance verified
+- [ ] OCP compliance verified
+
+### Functionality
+- [ ] Component renders correctly
+- [ ] All interactions work
+- [ ] All modals/forms work
+- [ ] All filters/search work
+- [ ] All data displays correctly
+- [ ] No console errors
+
+### Performance
+- [ ] Component lazy loads correctly
+- [ ] No unnecessary re-renders
+- [ ] Bundle size is acceptable
+- [ ] Performance is improved (if that was the goal)
+
+### Maintainability
+- [ ] Component is self-contained
+- [ ] Props interface is clear
+- [ ] Code is well-organized
+- [ ] Comments are added where needed
+- [ ] Component is testable
+- [ ] Services are mockable (DIP)
+
+## Validation Priority Order
+
+**ALWAYS validate in this order:**
+
+1. **Parent Structure** ← DO THIS FIRST (after removing large blocks)
+2. **JSX Structure** ← DO SECOND (balanced tags)
+3. **SRP Compliance** ← Check responsibilities
+4. **DIP Compliance** ← Check dependency injection
+5. **ISP Compliance** ← Check prop count and focus
+6. **TypeScript Types** ← Comprehensive audit
+7. **Runtime Functionality** ← Test in browser
+
+**Why this order matters:**
+- Structure issues cascade to other errors
+- SOLID violations cause maintainability issues
+- Type errors are easier to fix after structure is correct
+- Runtime testing is last because it requires everything else to work

@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
-import { createClient } from '@/utils/supabase/client'
+import { getOwnedCompanySubscriptionOverview } from '@/app/data-room/actions'
 import SubtleCircuitBackground from '@/components/ui/SubtleCircuitBackground'
 
 interface Company {
@@ -21,12 +21,10 @@ function SubscriptionRequiredInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
-  const supabase = createClient()
   
   const companyId = searchParams.get('company_id')
   
   const [company, setCompany] = useState<Company | null>(null)
-  const [ownedCompanies, setOwnedCompanies] = useState<Company[]>([])
   const [accessibleCompanies, setAccessibleCompanies] = useState<CompanyWithStatus[]>([])
   const [expiredCompanies, setExpiredCompanies] = useState<Company[]>([])
   const [selectedExpiredCompany, setSelectedExpiredCompany] = useState<string | null>(companyId)
@@ -39,86 +37,13 @@ function SubscriptionRequiredInner() {
       setIsLoading(true)
       
       try {
-        // Fetch specific company if provided
-        if (companyId) {
-          const { data } = await supabase
-            .from('companies')
-            .select('id, name')
-            .eq('id', companyId)
-            .single()
-          
-          if (data) {
-            setCompany(data)
-          }
-        }
-        
-        // Fetch all owned companies
-        const { data: companies } = await supabase
-          .from('companies')
-          .select('id, name')
-          .eq('user_id', user.id)
-        
-        setOwnedCompanies(companies || [])
-        
-        // Check subscription status for each company and categorize into active and expired
-        if (companies && companies.length > 0) {
-          const activeCompanies: CompanyWithStatus[] = []
-          const expiredCompaniesList: Company[] = []
-          
-          await Promise.all(
-            companies.map(async (company) => {
-              try {
-                const { data, error } = await supabase
-                  .rpc('check_company_subscription', { p_company_id: company.id })
-                  .single()
-                
-                if (!error && data) {
-                  const subscriptionData = data as {
-                    has_subscription: boolean
-                    tier: string
-                    is_trial: boolean
-                    trial_days_remaining: number
-                    user_limit: number
-                  }
-                  
-                  if (subscriptionData.has_subscription) {
-                    activeCompanies.push({
-                      ...company,
-                      status: subscriptionData.is_trial ? 'trial' : 'valid',
-                      isTrial: subscriptionData.is_trial,
-                      trialDaysRemaining: subscriptionData.trial_days_remaining,
-                    })
-                  } else {
-                    // Company has no active subscription - it's expired
-                    expiredCompaniesList.push(company)
-                  }
-                } else {
-                  // If error or no data, assume expired
-                  expiredCompaniesList.push(company)
-                }
-              } catch (err) {
-                console.error(`Error checking subscription for company ${company.id}:`, err)
-                // On error, assume expired
-                expiredCompaniesList.push(company)
-              }
-            })
-          )
-          
-          setAccessibleCompanies(activeCompanies)
-          setExpiredCompanies(expiredCompaniesList)
-          
-          // Set selected expired company to companyId if it exists in expired list, otherwise first expired company
-          if (companyId && expiredCompaniesList.some(c => c.id === companyId)) {
-            setSelectedExpiredCompany(companyId)
-          } else if (expiredCompaniesList.length > 0) {
-            setSelectedExpiredCompany(expiredCompaniesList[0].id)
-          } else {
-            setSelectedExpiredCompany(null)
-          }
-        } else {
-          setAccessibleCompanies([])
-          setExpiredCompanies([])
-          setSelectedExpiredCompany(null)
+        const result = await getOwnedCompanySubscriptionOverview(companyId)
+
+        if (result.success) {
+          setCompany(result.company ?? null)
+          setAccessibleCompanies(result.accessibleCompanies ?? [])
+          setExpiredCompanies(result.expiredCompanies ?? [])
+          setSelectedExpiredCompany(result.selectedExpiredCompanyId ?? null)
         }
       } catch (err) {
         console.error('Error fetching data:', err)
@@ -128,7 +53,7 @@ function SubscriptionRequiredInner() {
     }
     
     fetchData()
-  }, [user, authLoading, companyId, supabase])
+  }, [user, authLoading, companyId])
 
   // Redirect if not authenticated
   useEffect(() => {

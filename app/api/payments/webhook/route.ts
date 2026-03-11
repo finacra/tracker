@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
-import { createAdminClient } from '@/utils/supabase/admin'
+import { createServerContainer } from '@/lib/composition/server-container'
 import crypto from 'crypto'
 
 export async function POST(request: NextRequest) {
@@ -76,21 +75,20 @@ export async function POST(request: NextRequest) {
     console.log('[Webhook] Signature verified successfully')
 
     const event = JSON.parse(body)
-    const supabase = await createClient()
-    const adminSupabase: any = createAdminClient()
+    const { companyRepository, paymentRepository, subscriptionRepository } = createServerContainer()
 
     console.log(`[Webhook] Received event: ${event.event}, Event ID: ${request.headers.get('x-razorpay-event-id')}`)
 
     // Handle different event types
     switch (event.event) {
       case 'payment.captured':
-        await handlePaymentCaptured(event.payload, supabase, adminSupabase)
+        await handlePaymentCaptured(event.payload, paymentRepository, subscriptionRepository, companyRepository)
         break
       case 'payment.failed':
-        await handlePaymentFailed(event.payload, supabase)
+        await handlePaymentFailed(event.payload, paymentRepository)
         break
       case 'order.paid':
-        await handleOrderPaid(event.payload, supabase)
+        await handleOrderPaid(event.payload, paymentRepository)
         break
       default:
         console.log(`[Webhook] Unhandled webhook event: ${event.event}`)
@@ -106,7 +104,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handlePaymentCaptured(payload: any, supabase: any, adminSupabase: any) {
+async function handlePaymentCaptured(
+  payload: any,
+  paymentRepository: ReturnType<typeof createServerContainer>['paymentRepository'],
+  subscriptionRepository: ReturnType<typeof createServerContainer>['subscriptionRepository'],
+  companyRepository: ReturnType<typeof createServerContainer>['companyRepository']
+) {
   // Add null checks for payload structure
   if (!payload?.payment?.entity || !payload?.order?.entity) {
     console.error('[Webhook] Invalid payload structure for payment.captured:', payload)
@@ -115,27 +118,26 @@ async function handlePaymentCaptured(payload: any, supabase: any, adminSupabase:
 
   const payment = payload.payment.entity
   const order = payload.order.entity
+  const existingPayment = await paymentRepository.findByProviderOrderId(order.id)
 
   console.log(`[Webhook] Payment captured - Order ID: ${order.id}, Payment ID: ${payment.id}`)
 
   // Update payment status
-  const { data: updatedPayment, error: updateError } = await supabase
-    .from('payments')
-    .update({
-      provider_payment_id: payment.id,
-      payment_provider: 'razorpay',
-      status: 'completed',
-      amount_paid: payment.amount / 100, // Convert from paise to rupees
-      payment_method: payment.method,
-      paid_at: new Date(payment.created_at * 1000).toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('provider_order_id', order.id)
-    .select()
-    .single()
-
-  if (updateError) {
-    console.error('[Webhook] Error updating payment:', updateError)
+  if (existingPayment) {
+    try {
+      await paymentRepository.markCompleted(existingPayment.id, {
+        providerPaymentId: payment.id,
+        providerSignature: '',
+        paymentProvider: 'razorpay',
+        amountPaid: payment.amount / 100,
+        paidAt: new Date(payment.created_at * 1000).toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+    } catch (updateError) {
+      console.error('[Webhook] Error updating payment:', updateError)
+    }
+  } else {
+    console.error('[Webhook] Payment record not found for captured order:', order.id)
   }
 
   // Handle trial verification payments
@@ -147,65 +149,35 @@ async function handlePaymentCaptured(payload: any, supabase: any, adminSupabase:
     const refundScheduledAt = new Date()
     refundScheduledAt.setHours(refundScheduledAt.getHours() + 24)
 
-    await supabase
-      .from('payments')
-      .update({
-        refund_scheduled_at: refundScheduledAt.toISOString(),
-        refund_status: 'scheduled',
-      })
-      .eq('provider_order_id', order.id)
+    await paymentRepository.updateByProviderOrderId(order.id, {
+      refundScheduledAt: refundScheduledAt.toISOString(),
+      refundStatus: 'scheduled',
+      updatedAt: new Date().toISOString(),
+    })
 
     console.log(`[Webhook] Trial verification payment captured. Refund scheduled for: ${refundScheduledAt.toISOString()}`)
 
     // Create trial after payment verification (if payment record has user_id and company_id)
-    if (updatedPayment && notes.user_id) {
+    if (existingPayment && notes.user_id) {
       try {
         // If user has no companies, create user-level trial
-        const { data: userCompanies } = await adminSupabase
-          .from('companies')
-          .select('id')
-          .eq('user_id', notes.user_id)
-          .limit(1)
+        const userCompanies = await companyRepository.listOwnedByUser(notes.user_id)
 
-        if (!userCompanies || userCompanies.length === 0) {
+        if (userCompanies.length === 0) {
           console.log('[Webhook] User has no companies, creating user-level trial')
-          const { data: trialData, error: trialError } = await adminSupabase
-            .rpc('create_user_trial', { target_user_id: notes.user_id })
-
-          if (trialError) {
-            console.error('[Webhook] Error creating user trial:', trialError)
-          } else {
-            console.log('[Webhook] User-level trial created successfully')
-          }
+          await subscriptionRepository.createUserTrial(notes.user_id, existingPayment.appUserId)
+          console.log('[Webhook] User-level trial created successfully')
         } else if (notes.company_id) {
           // User has companies, create company-level trial
           console.log(`[Webhook] Creating company-level trial for company: ${notes.company_id}`)
-          const { data: trialData, error: trialError } = await adminSupabase
-            .rpc('create_company_trial', {
-              p_user_id: notes.user_id,
-              p_company_id: notes.company_id
-            })
-
-          if (trialError) {
-            console.error('[Webhook] Error creating company trial:', trialError)
-          } else {
-            console.log('[Webhook] Company-level trial created successfully')
-          }
+          await subscriptionRepository.createCompanyTrial(notes.user_id, notes.company_id, existingPayment.appUserId)
+          console.log('[Webhook] Company-level trial created successfully')
         } else {
           // No company_id in notes, try to get from payment record
-          if (updatedPayment.company_id) {
-            console.log(`[Webhook] Creating company-level trial from payment record for company: ${updatedPayment.company_id}`)
-            const { data: trialData, error: trialError } = await adminSupabase
-              .rpc('create_company_trial', {
-                p_user_id: notes.user_id,
-                p_company_id: updatedPayment.company_id
-              })
-
-            if (trialError) {
-              console.error('[Webhook] Error creating company trial from payment:', trialError)
-            } else {
-              console.log('[Webhook] Company-level trial created successfully from payment record')
-            }
+          if (existingPayment.companyId) {
+            console.log(`[Webhook] Creating company-level trial from payment record for company: ${existingPayment.companyId}`)
+            await subscriptionRepository.createCompanyTrial(notes.user_id, existingPayment.companyId, existingPayment.appUserId)
+            console.log('[Webhook] Company-level trial created successfully from payment record')
           }
         }
       } catch (trialErr) {
@@ -219,19 +191,41 @@ async function handlePaymentCaptured(payload: any, supabase: any, adminSupabase:
 
   // Handle subscription creation/update
   if (notes.user_id && notes.tier && notes.billing_cycle) {
-    await createOrUpdateSubscription(
-      notes.user_id,
-      notes.company_id || null,
-      notes.tier,
-      notes.billing_cycle,
-      payment.amount / 100,
-      payment.currency || 'INR',
-      supabase
-    )
+    const startDate = new Date()
+    const endDate = new Date(startDate)
+
+    switch (notes.billing_cycle) {
+      case 'monthly':
+        endDate.setMonth(endDate.getMonth() + 1)
+        break
+      case 'quarterly':
+        endDate.setMonth(endDate.getMonth() + 3)
+        break
+      case 'half-yearly':
+        endDate.setMonth(endDate.getMonth() + 6)
+        break
+      case 'annual':
+        endDate.setFullYear(endDate.getFullYear() + 1)
+        break
+    }
+
+    await subscriptionRepository.activatePaidSubscription({
+      userId: notes.user_id,
+      companyId: notes.company_id || null,
+      tier: notes.tier,
+      billingCycle: notes.billing_cycle,
+      amount: payment.amount / 100,
+      currency: payment.currency || 'INR',
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    })
   }
 }
 
-async function handlePaymentFailed(payload: any, supabase: any) {
+async function handlePaymentFailed(
+  payload: any,
+  paymentRepository: ReturnType<typeof createServerContainer>['paymentRepository']
+) {
   // Add null checks for payload structure
   if (!payload?.payment?.entity) {
     console.error('[Webhook] Invalid payload structure for payment.failed:', payload)
@@ -243,24 +237,24 @@ async function handlePaymentFailed(payload: any, supabase: any) {
 
   console.log(`[Webhook] Payment failed - Order ID: ${order?.id || 'unknown'}, Payment ID: ${payment.id}, Error: ${payment.error_description || 'unknown'}`)
 
-  const { error: updateError } = await supabase
-    .from('payments')
-    .update({
-      provider_payment_id: payment.id,
-      payment_provider: 'razorpay',
+  try {
+    await paymentRepository.updateByProviderOrderId(order?.id || payment.order_id || '', {
+      providerPaymentId: payment.id,
+      paymentProvider: 'razorpay',
       status: 'failed',
-      error_code: payment.error_code,
-      error_description: payment.error_description,
-      updated_at: new Date().toISOString(),
+      errorCode: payment.error_code,
+      errorDescription: payment.error_description,
+      updatedAt: new Date().toISOString(),
     })
-    .eq('provider_order_id', order?.id || payment.order_id || '')
-
-  if (updateError) {
+  } catch (updateError) {
     console.error('[Webhook] Error updating failed payment:', updateError)
   }
 }
 
-async function handleOrderPaid(payload: any, supabase: any) {
+async function handleOrderPaid(
+  payload: any,
+  paymentRepository: ReturnType<typeof createServerContainer>['paymentRepository']
+) {
   // Add null checks for payload structure
   if (!payload?.order?.entity) {
     console.error('[Webhook] Invalid payload structure for order.paid:', payload)
@@ -271,105 +265,10 @@ async function handleOrderPaid(payload: any, supabase: any) {
 
   console.log(`[Webhook] Order paid - Order ID: ${order.id}`)
 
-  await supabase
-    .from('payments')
-    .update({
-      status: 'completed',
-      amount_paid: order.amount_paid ? order.amount_paid / 100 : null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('provider_order_id', order.id)
+  await paymentRepository.updateByProviderOrderId(order.id, {
+    status: 'completed',
+    amountPaid: order.amount_paid ? order.amount_paid / 100 : null,
+    updatedAt: new Date().toISOString(),
+  })
 }
 
-async function createOrUpdateSubscription(
-  userId: string,
-  companyId: string | null,
-  tier: string,
-  billingCycle: string,
-  amount: number,
-  currency: string,
-  supabase: any
-) {
-  const startDate = new Date()
-  const endDate = new Date()
-
-  switch (billingCycle) {
-    case 'monthly':
-      endDate.setMonth(endDate.getMonth() + 1)
-      break
-    case 'quarterly':
-      endDate.setMonth(endDate.getMonth() + 3)
-      break
-    case 'half-yearly':
-      endDate.setMonth(endDate.getMonth() + 6)
-      break
-    case 'annual':
-      endDate.setFullYear(endDate.getFullYear() + 1)
-      break
-  }
-
-  // Determine subscription type based on tier
-  const subscriptionType = tier === 'enterprise' ? 'user' : 'company'
-  const finalCompanyId = tier === 'enterprise' ? null : companyId
-
-  // For Enterprise: check by user_id (user-first)
-  // For Starter/Professional: check by company_id (company-first)
-  let existing
-  if (subscriptionType === 'user') {
-    const { data } = await supabase
-      .from('subscriptions')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('subscription_type', 'user')
-      .eq('status', 'active')
-      .single()
-    existing = data
-  } else {
-    // Company-first: check by company_id
-    if (finalCompanyId) {
-      const { data } = await supabase
-        .from('subscriptions')
-        .select('id')
-        .eq('company_id', finalCompanyId)
-        .eq('subscription_type', 'company')
-        .eq('status', 'active')
-        .single()
-      existing = data
-    }
-  }
-
-  if (existing) {
-    await supabase
-      .from('subscriptions')
-      .update({
-        tier,
-        billing_cycle: billingCycle,
-        amount,
-        status: 'active',
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        current_period_start: startDate.toISOString(),
-        current_period_end: endDate.toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', existing.id)
-  } else {
-    await supabase
-      .from('subscriptions')
-      .insert({
-        user_id: userId,
-        company_id: finalCompanyId,
-        subscription_type: subscriptionType,
-        tier,
-        billing_cycle: billingCycle,
-        amount,
-        currency,
-        status: 'active',
-        payment_provider: 'razorpay',
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        current_period_start: startDate.toISOString(),
-        current_period_end: endDate.toISOString(),
-      })
-  }
-}

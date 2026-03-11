@@ -10,6 +10,7 @@ These schema files define the structure of various database components. They are
 
 - `schema-tracker-v2.sql` - Main compliance tracker schema
 - `schema-tracker-rbac.sql` - Role-based access control schema
+- `schema-app-identity.sql` - App-owned canonical user identity and provider mapping
 - `schema-subscriptions*.sql` - Various subscription-related schemas
 - `schema-compliance-vault.sql` - Compliance vault schema
 - `schema-email-*.sql` - Email-related schemas (batch queue, cron schedule, preferences, logs)

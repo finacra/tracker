@@ -4,17 +4,14 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter, usePathname } from 'next/navigation'
-import { createClient } from '@/utils/supabase/client'
 import { getNotifications, markNotificationsRead, markAllNotificationsRead, type Notification } from '@/app/data-room/actions'
+import { checkSuperadminStatus } from '@/app/admin/actions'
 import { trackNotificationClick } from '@/lib/tracking/kpi-tracker'
 
 const superadminStatusCache = new Map<string, boolean>()
 const superadminStatusPromiseCache = new Map<string, Promise<boolean>>()
 
-async function resolveSuperadminStatus(
-  supabase: ReturnType<typeof createClient>,
-  userId: string
-): Promise<boolean> {
+async function resolveSuperadminStatus(userId: string): Promise<boolean> {
   if (superadminStatusCache.has(userId)) {
     return superadminStatusCache.get(userId) ?? false
   }
@@ -26,31 +23,18 @@ async function resolveSuperadminStatus(
 
   const request = (async () => {
     try {
-      const { data: rpcData, error: rpcError } = await supabase.rpc('is_superadmin', {
-        p_user_id: userId
-      })
-
-      if (!rpcError && rpcData !== null) {
-        const isSuperadmin = !!rpcData
-        superadminStatusCache.set(userId, isSuperadmin)
-        return isSuperadmin
+      const result = await checkSuperadminStatus()
+      if (!result.success) {
+        console.error('[Header] Error resolving superadmin status:', result.error)
+        return false
       }
 
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role, company_id')
-        .eq('user_id', userId)
-        .eq('role', 'superadmin')
-
-      if (error) {
-        throw error
-      }
-
-      const isPlatformSuperadmin = Boolean(
-        data && data.some(role => role.company_id === null)
-      )
+      const isPlatformSuperadmin = result.isSuperadmin
       superadminStatusCache.set(userId, isPlatformSuperadmin)
       return isPlatformSuperadmin
+    } catch (error) {
+       console.error('[Header] Error resolving superadmin status:', error)
+       return false
     } finally {
       superadminStatusPromiseCache.delete(userId)
     }
@@ -70,10 +54,9 @@ export default function Header() {
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false)
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null)
   const [showAllNotifications, setShowAllNotifications] = useState(false)
-  const { user, signOut } = useAuth()
+  const { user, signOut, displayInitials, displayName, displayEmail } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
-  const supabase = useMemo(() => createClient(), [])
 
   const fetchUnreadCount = useCallback(async () => {
     if (!user) return
@@ -158,7 +141,7 @@ export default function Header() {
 
       const attemptCheck = async (attempt: number): Promise<void> => {
         try {
-          const nextValue = await resolveSuperadminStatus(supabase, user.id)
+          const nextValue = await resolveSuperadminStatus(user.id)
           if (isMounted) setIsSuperadmin(nextValue)
         } catch (error: any) {
           console.error(`[Header] Error checking superadmin (attempt ${attempt + 1}):`, error)
@@ -180,24 +163,12 @@ export default function Header() {
     return () => {
       isMounted = false
     }
-  }, [user, supabase])
+  }, [user])
 
   const handleSignOut = async () => {
     await signOut()
     router.push('/')
   }
-
-  const userInitials = user?.user_metadata?.full_name
-    ? user.user_metadata.full_name
-        .split(' ')
-        .map((n: string) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
-    : user?.email?.[0].toUpperCase() || 'U'
-
-  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'
-  const userEmail = user?.email || ''
 
   return (
     <header className="bg-primary-dark border-b border-gray-800/50 sticky top-0 z-50" style={{ overflow: 'visible' }}>
@@ -486,11 +457,11 @@ export default function Header() {
                 }}
               >
                 <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-800 border border-gray-700 rounded-full flex items-center justify-center text-white font-light text-xs sm:text-sm pointer-events-none">
-                {userInitials}
+                {displayInitials}
               </div>
                 <div className="hidden lg:block pointer-events-none">
-                <div className="text-white text-sm font-light">{userName}</div>
-                <div className="text-gray-400 text-xs font-light">{userEmail}</div>
+                <div className="text-white text-sm font-light">{displayName}</div>
+                <div className="text-gray-400 text-xs font-light">{displayEmail}</div>
               </div>
                 <svg 
                   className={`w-4 h-4 text-gray-500 transition-transform pointer-events-none ${showUserMenu ? 'rotate-180' : ''}`}
@@ -690,11 +661,11 @@ export default function Header() {
               <div className="border-t border-gray-800 p-4">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 bg-gray-800 border border-gray-700 rounded-full flex items-center justify-center text-white font-light text-sm">
-                    {userInitials}
+                    {displayInitials}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-white text-sm font-light truncate">{userName}</div>
-                    <div className="text-gray-400 text-xs truncate font-light">{userEmail}</div>
+                    <div className="text-white text-sm font-light truncate">{displayName}</div>
+                    <div className="text-gray-400 text-xs truncate font-light">{displayEmail}</div>
                   </div>
                 </div>
                 <button

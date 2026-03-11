@@ -1,26 +1,27 @@
-import { createServerClient } from '@supabase/ssr'
+import { SupabaseMiddlewareAuthCheck } from '@/infrastructure/auth/supabase/SupabaseMiddlewareAuthCheck'
+import { PassportMiddlewareAuthCheck } from '@/infrastructure/auth/passport/PassportMiddlewareAuthCheck'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export default async function proxy(request: NextRequest) {
-  let response = NextResponse.next({
-    request,
-  })
+// Composition: swap this to change auth provider for middleware
+// Choose based on AUTH_PROVIDER env var (default to Supabase for backward compatibility)
+const authProvider = process.env.AUTH_PROVIDER || 'supabase'
+const authCheck =
+  authProvider === 'passport'
+    ? new PassportMiddlewareAuthCheck()
+    : new SupabaseMiddlewareAuthCheck()
 
+export default async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const isServerAction = request.method === 'POST' && request.headers.has('next-action')
 
-  // Only log in development mode
   const isDev = process.env.NODE_ENV === 'development'
   if (isDev) {
-  console.log('[PROXY] Processing request:', {
-    pathname,
-    method: request.method,
-  })
+    console.log('[PROXY] Processing request:', { pathname, method: request.method })
   }
-  
+
   // Public routes that should be accessible without authentication
   const publicRoutes = ['/home', '/privacy-policy', '/terms-of-service', '/pricing', '/contact', '/login', '/compliance-tracker', '/company-onboarding', '/customers', '/auth/reset-password']
-  
+
   if (
     pathname === '/' ||
     isServerAction ||
@@ -32,63 +33,28 @@ export default async function proxy(request: NextRequest) {
     publicRoutes.includes(pathname)
   ) {
     // Server actions perform their own auth checks, so avoid duplicate middleware auth.
-    return response
+    return NextResponse.next({ request })
   }
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          // Set cookies efficiently - only update if changed
-          cookiesToSet.forEach(({ name, value, options }) => {
-            const existingCookie = request.cookies.get(name)
-            // Only set if value changed to prevent unnecessary cookie updates
-            if (!existingCookie || existingCookie.value !== value) {
-              request.cookies.set(name, value)
-              response.cookies.set(name, value, {
-                ...options,
-                // Optimize cookie settings
-                path: options?.path ?? '/',
-                sameSite: options?.sameSite ?? 'lax',
-                httpOnly: options?.httpOnly ?? true,
-                secure: options?.secure ?? process.env.NODE_ENV === 'production',
-              })
-            }
-          })
-        },
-      },
-    }
-  )
+  // Use the abstract auth check — no direct Supabase coupling here
+  const { result, response } = await authCheck.check(request)
 
-  // Check auth once for all routes
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  // Only log auth failures or in development
-  if (isDev && user) {
-  console.log('[PROXY] Auth check result:', {
-    pathname,
+  if (isDev && result.authenticated) {
+    console.log('[PROXY] Auth check result:', {
+      pathname,
       hasUser: true,
-    userId: user?.id,
-  })
+      userId: result.userId,
+    })
   }
 
   // Protect routes that require authentication
-  if (!user) {
-    // For subscribe page, redirect to login
+  if (!result.authenticated) {
     if (pathname === '/subscribe') {
       if (isDev) console.log('[PROXY] No user, redirecting /subscribe to /login')
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       return NextResponse.redirect(url)
     }
-    // For other protected routes, redirect to /home
     if (isDev) console.log('[PROXY] No user, redirecting to /home')
     const url = request.nextUrl.clone()
     url.pathname = '/home'
@@ -96,7 +62,7 @@ export default async function proxy(request: NextRequest) {
   }
 
   // Don't redirect /admin routes - allow them through
-  if (user && pathname.startsWith('/admin')) {
+  if (result.authenticated && pathname.startsWith('/admin')) {
     return response
   }
 

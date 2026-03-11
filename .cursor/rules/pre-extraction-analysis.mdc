@@ -1,0 +1,191 @@
+---
+description: Pre-extraction analysis checklist following SOLID principles
+globs: *.tsx,*.ts
+---
+
+# Pre-Extraction Analysis (SOLID-Compliant)
+
+## When to Refactor (SRP Triggers)
+
+Refactor when component violates Single Responsibility Principle:
+- Component exceeds 200 lines (UI) or 300 lines (Container)
+- Component has multiple distinct responsibilities
+- Component has performance issues (slow renders, large bundle size)
+- Component is difficult to maintain or test
+- Component has high coupling with parent (10+ props violates ISP)
+
+## Step 1: Identify Component Boundaries (SRP)
+
+**Before starting, clearly define what you're extracting:**
+
+```typescript
+// Example: Extracting a "TrackerTab" component
+// Start: Line 7608 - {activeTab === 'tracker' && (
+// End: Line 9809 - )}
+```
+
+**Questions to answer:**
+- What is the exact start and end of the JSX block?
+- Are there any conditional renders that affect boundaries?
+- Are there any shared modals/components that should stay in parent?
+- **Which modals belong to this tab vs. other tabs?** (Check state ownership - SRP)
+- **Are there any tracker-specific modals mixed in?** (Common SRP violation)
+
+## Step 2: Create Dependency Inventory (DIP Compliance)
+
+**Create a checklist before extraction following Dependency Inversion Principle:**
+
+```markdown
+## Dependency Inventory Template
+
+### State Variables (Identify ownership for SRP)
+- [ ] List all useState variables used
+- [ ] Identify owner: 'parent' | 'local' | 'shared'
+- [ ] List all useMemo values used
+- [ ] List all useCallback functions used
+- [ ] List all useRef values used
+
+### Functions (DIP: Identify if should be injected)
+- [ ] List all function calls (both defined and imported)
+- [ ] Mark: 'inject' | 'move' | 'keep'
+- [ ] List all event handlers
+- [ ] List all utility functions
+- [ ] List all helper functions defined inline
+
+### Imports (DIP: Should be services/interfaces)
+- [ ] List all imports needed
+- [ ] Check for server actions (should be services)
+- [ ] Check for utility functions
+- [ ] Check for hooks
+
+### Props from Parent (ISP: Max 10 props)
+- [ ] List all variables accessed from parent scope
+- [ ] Count total props needed
+- [ ] If > 10 props → Plan Context API or composition
+- [ ] List all functions called from parent
+- [ ] List all state setters needed
+
+### Constants & Arrays
+- [ ] List all constants defined inline
+- [ ] List all arrays defined inline (months, quarters, etc.)
+- [ ] List all configuration objects
+```
+
+## Step 3: Modal Ownership Analysis (SRP Critical)
+
+**For each modal, identify ownership to prevent SRP violations:**
+
+```typescript
+// For each modal in the JSX block:
+// 1. List all state variables it uses
+// 2. Check if those variables belong to this tab or another
+// 3. Example:
+//    Modal: "Document Upload Modal from Tracker"
+//    Uses: documentUploadModal, regulatoryRequirements, selectedRequirements
+//    These are tracker state → Modal belongs in TrackerTab, NOT DocumentsTab
+
+const modalOwnership = {
+  // Documents Tab Modals (use documents state):
+  'Export Modal': { state: ['vaultDocuments', 'isExportModalOpen'], owner: 'documents' },
+  'Send Documents Modal': { state: ['vaultDocuments', 'selectedDocumentsToSend'], owner: 'documents' },
+  
+  // Tracker Tab Modals (use tracker state):
+  'Document Upload Modal from Tracker': { state: ['documentUploadModal', 'regulatoryRequirements'], owner: 'tracker' }, // ❌ Don't extract to DocumentsTab
+  'Bulk Action Modal': { state: ['isBulkActionModalOpen', 'selectedRequirements'], owner: 'tracker' }, // ❌
+}
+```
+
+## Step 4: Create Dependency Map (DIP Preparation)
+
+**Document all dependencies in structured format:**
+
+```typescript
+// Example Dependency Map (prepared for DIP)
+const dependencies = {
+  state: [
+    { name: 'trackerView', owner: 'local', type: 'string' },
+    { name: 'isLoadingRequirements', owner: 'local', type: 'boolean' },
+    // ... all state variables with ownership
+  ],
+  setters: [
+    { name: 'setTrackerView', owner: 'local', type: 'function' },
+    // ... all state setters
+  ],
+  functions: [
+    { name: 'handleStatusChange', owner: 'parent', inject: true, type: 'async' },
+    { name: 'refreshRequirements', owner: 'parent', inject: true, type: 'async' },
+    // ... all functions marked for injection (DIP)
+  ],
+  services: [ // DIP: Services should be injected
+    { name: 'getRegulatoryRequirements', type: 'api', inject: true },
+    { name: 'updateRequirementStatus', type: 'api', inject: true },
+  ],
+  imports: [
+    { name: 'formatCurrency', type: 'utility', inject: false },
+    // ... all imports
+  ],
+  computed: [
+    { name: 'filteredRequirements', owner: 'local', type: 'useMemo' },
+    // ... all useMemo values
+  ],
+  props: [
+    { name: 'user', owner: 'parent', type: 'object' },
+    { name: 'currentCompany', owner: 'parent', type: 'object' },
+    // ... all props from parent
+  ]
+}
+```
+
+## Step 5: Plan Component Split (SRP)
+
+**For each responsibility, assign to correct layer:**
+
+- **UI Component**: Rendering only (max 200 lines)
+- **Custom Hook**: State + Logic (max 150 lines)
+- **Service**: API/Data operations (max 100 lines)
+- **Utility**: Pure transformations (max 100 lines)
+
+## Step 6: Props Interface Design (ISP)
+
+**If props > 10, use Context or composition:**
+
+```typescript
+// ❌ Violates ISP: Too many props
+interface DocumentsTabProps {
+  // 20+ props - components forced to depend on unused props
+}
+
+// ✅ Follows ISP: Segregated interfaces
+interface DocumentsTabContainerProps {
+  company: Company
+  user: User
+}
+
+interface DocumentListProps {
+  documents: Document[]
+  onSelect: (id: string) => void
+}
+
+interface DocumentFormProps {
+  onSubmit: (data: FormData) => void
+  onCancel: () => void
+}
+```
+
+## Pre-Extraction Checklist
+
+- [ ] Read the ENTIRE block to be extracted (all lines)
+- [ ] Identified exact component boundaries
+- [ ] Identified pattern (IIFE, inline, conditional)
+- [ ] Created complete dependency map/matrix
+- [ ] Listed all state variables (with ownership for SRP)
+- [ ] Identified modal ownership (SRP critical)
+- [ ] Listed all helper functions
+- [ ] Listed all calculations (useMemo/useCallback)
+- [ ] Listed all functions (marked for injection - DIP)
+- [ ] Listed all imports (marked as services/utilities - DIP)
+- [ ] Listed all inline definitions
+- [ ] Created props interface (max 10 props - ISP)
+- [ ] Planned extraction phases (for large blocks)
+- [ ] Planned where inline code will go (SRP)
+- [ ] Verified no tracker-specific code mixed in (SRP)

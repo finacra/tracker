@@ -5,13 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import CircuitBackground from '@/components/ui/CircuitBackground'
 import Header from '@/components/layout/Header'
 import { useAuth } from '@/hooks/useAuth'
-import { createClient } from '@/utils/supabase/client'
-import { updateCompany, getCompanyDirectors } from '@/app/onboarding/actions'
-import { verifyDIN, type DINDirectorData } from '@/lib/api/cin-din'
+import { updateCompany } from '@/app/onboarding/actions'
+import { getManageCompanyData } from '@/app/manage-company/actions'
+import { verifyDIN } from '@/lib/api/cin-din'
 import { trackCompanyEdit } from '@/lib/tracking/kpi-tracker'
 import { useCompanyCountry } from '@/hooks/useCompanyCountry'
-import { useCountryValidator } from '@/hooks/useCountryValidator'
-import { ManualVerificationNotice } from '@/components/features/ManualVerificationNotice'
 
 const INDUSTRY_CATEGORIES = [
   'Startups & MSMEs',
@@ -43,7 +41,6 @@ function ManageCompanyPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
-  const supabase = createClient()
 
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -58,7 +55,6 @@ function ManageCompanyPageInner() {
 
   // Get country configuration
   const { countryCode, countryConfig } = useCompanyCountry(currentCompany)
-  const countryValidator = useCountryValidator(countryCode)
 
   const [formData, setFormData] = useState({
     companyName: '',
@@ -91,99 +87,26 @@ function ManageCompanyPageInner() {
 
   const fetchCompanyData = async () => {
     try {
-      // Get company_id from URL params if available, otherwise fetch first company
       const companyIdParam = searchParams?.get('company_id') || searchParams?.get('company')
+      const result = await getManageCompanyData(companyIdParam)
 
-      let companyData: any = null
-
-      if (!companyIdParam) {
-        // If no company_id in URL, fetch first company owned by user
-        const { data, error } = await supabase
-          .from('companies')
-          .select('*')
-          .eq('user_id', user?.id)
-          .limit(1)
-          .single()
-
-        if (error) throw error
-        companyData = data
-      } else {
-        // If company_id is provided, check if user has access (owner or via user_roles)
-        // First check if user owns the company
-        const { data: ownedCompany, error: ownedError } = await supabase
-          .from('companies')
-          .select('*')
-          .eq('id', companyIdParam)
-          .eq('user_id', user?.id)
-          .single()
-
-        if (!ownedError && ownedCompany) {
-          // User owns the company
-          companyData = ownedCompany
-        } else {
-          // Check if user has access via user_roles
-          const { data: userRole, error: roleError } = await supabase
-            .from('user_roles')
-            .select('company_id')
-            .eq('user_id', user?.id)
-            .eq('company_id', companyIdParam)
-            .single()
-
-          if (roleError || !userRole) {
-            // User doesn't have access, redirect back
-            router.push('/data-room')
-            return
-          }
-
-          // User has access via role, fetch company details
-          const { data, error } = await supabase
-            .from('companies')
-            .select('*')
-            .eq('id', companyIdParam)
-            .single()
-
-          if (error) throw error
-          companyData = data
-        }
+      if (result.redirectTo) {
+        router.push(result.redirectTo)
+        return
       }
 
-      if (companyData) {
-        setCompanyId(companyData.id)
+      if (result.data) {
+        setCompanyId(result.data.id)
         setCurrentCompany({
-          id: companyData.id,
-          name: companyData.name || '',
-          type: companyData.type || '',
-          year: new Date(companyData.incorporation_date).getFullYear().toString(),
-          country_code: companyData.country_code || 'IN'
+          id: result.data.id,
+          name: result.data.name,
+          type: result.data.type,
+          year: result.data.year,
+          country_code: result.data.country_code,
         })
-        setFormData({
-          companyName: companyData.name || '',
-          companyType: companyData.type || '',
-          panNumber: companyData.tax_id || '',
-          cinNumber: companyData.registration_id || '',
-          industry: companyData.industry || '',
-          address: companyData.address || '',
-          city: companyData.city || '',
-          state: companyData.state || '',
-          pinCode: companyData.pin_code || '',
-          phoneNumber: companyData.phone_number || '',
-          email: companyData.email || '',
-          landline: companyData.landline || '',
-          other: companyData.other_info || '',
-          industryCategories: companyData.industry_categories || [],
-          otherIndustryCategory: companyData.other_industry_category || '',
-        })
-
-        // Set ex-directors if available
-        if (companyData.ex_directors && Array.isArray(companyData.ex_directors) && companyData.ex_directors.length > 0) {
-          setExDirectors(companyData.ex_directors.join(', '))
-        }
-
-        // Fetch directors
-        const directorsResult = await getCompanyDirectors(companyData.id)
-        if (directorsResult.success) {
-          setDirectors(directorsResult.directors)
-        }
+        setFormData(result.data.formData)
+        setExDirectors(result.data.exDirectors)
+        setDirectors(result.data.directors)
       }
     } catch (error) {
       console.error('Error fetching company:', error)

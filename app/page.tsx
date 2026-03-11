@@ -1,56 +1,22 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/utils/supabase/server'
+import { GetRootDestination } from '@/application/use-cases/navigation/GetRootDestination'
+import { createServerContainer } from '@/lib/composition/server-container'
 
-interface SubscriptionCheckResult {
-  has_subscription: boolean
-  is_trial: boolean
-  trial_days_remaining: number
-  tier: string
-}
+export const dynamic = 'force-dynamic'
 
 export default async function RootPage() {
-  const supabase = await createClient()
   let destination = '/home'
 
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { authService, companyRepository, subscriptionService } =
+      createServerContainer()
+    const useCase = new GetRootDestination(
+      authService,
+      companyRepository,
+      subscriptionService
+    )
 
-    if (user) {
-      const [{ data: ownedCompanies }, { data: userRoles }] = await Promise.all([
-        supabase
-          .from('companies')
-          .select('id')
-          .eq('user_id', user.id)
-          .limit(1),
-        supabase
-          .from('user_roles')
-          .select('company_id')
-          .eq('user_id', user.id)
-          .not('company_id', 'is', null)
-          .limit(1),
-      ])
-
-      const hasCompanies =
-        (ownedCompanies?.length ?? 0) > 0 || (userRoles?.length ?? 0) > 0
-
-      if (hasCompanies) {
-        destination = '/data-room'
-      } else {
-        const { data: subData } = await supabase
-          .rpc('check_user_subscription', { target_user_id: user.id })
-          .single()
-
-        const subInfo = subData as SubscriptionCheckResult | null
-        const hasActiveSubscription =
-          subInfo?.has_subscription === true ||
-          (subInfo?.is_trial === true &&
-            (subInfo?.trial_days_remaining ?? 0) > 0)
-
-        destination = hasActiveSubscription ? '/onboarding' : '/subscribe'
-      }
-    }
+    destination = await useCase.execute()
   } catch (error) {
     console.error('Error checking auth on root route:', error)
   }

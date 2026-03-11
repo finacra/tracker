@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/utils/supabase/client'
+import { getCompanyAccessStatuses } from '@/app/data-room/actions'
 
 interface Company {
   id: string
@@ -21,13 +21,6 @@ interface CompanySubscriptionStatus {
   tier?: string
 }
 
-interface SubscriptionRpcResult {
-  has_subscription: boolean
-  is_trial: boolean
-  trial_days_remaining: number
-  tier: string
-}
-
 interface CompanySelectorProps {
   companies: Company[]
   currentCompany: Company | null
@@ -39,7 +32,6 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
   const [isOpen, setIsOpen] = useState(false)
   const [subscriptionStatuses, setSubscriptionStatuses] = useState<Map<string, CompanySubscriptionStatus>>(new Map())
   const [isLoadingStatuses, setIsLoadingStatuses] = useState(false)
-  const supabase = useMemo(() => createClient(), [])
   const fetchedStatusIdsRef = useRef<Set<string>>(new Set())
 
   // Fetch the selected company's status first, then fetch the rest when the dropdown is opened.
@@ -60,84 +52,26 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
       setIsLoadingStatuses(true)
 
       try {
-        const { data: { user } } = await supabase.auth.getUser()
-        let userSubscription: SubscriptionRpcResult | null = null
-
-        if (user) {
-          const { data: userData, error: userError } = await supabase
-            .rpc('check_user_subscription', { target_user_id: user.id })
-            .single()
-
-          if (!userError && userData) {
-            userSubscription = userData as SubscriptionRpcResult
-          }
-        }
-
-        const statusPromises = companiesToCheck.map(async (company: Company) => {
-          try {
-            const { data: companyData, error: companyError } = await supabase
-              .rpc('check_company_subscription', { p_company_id: company.id })
-              .single()
-
-            const companySubscription = companyData as SubscriptionRpcResult | null
-            const hasCompanyAccess =
-              companySubscription?.has_subscription === true ||
-              (companySubscription?.is_trial === true &&
-                (companySubscription?.trial_days_remaining ?? 0) > 0)
-
-            if (!companyError && companySubscription && hasCompanyAccess) {
-              return {
-                companyId: company.id,
-                status: {
-                  companyId: company.id,
-                  hasSubscription: companySubscription.has_subscription,
-                  isTrial: companySubscription.is_trial,
-                  trialDaysRemaining: companySubscription.trial_days_remaining,
-                  tier: companySubscription.tier,
-                },
-              }
-            }
-
-            const hasUserAccess =
-              userSubscription?.has_subscription === true ||
-              (userSubscription?.is_trial === true &&
-                (userSubscription?.trial_days_remaining ?? 0) > 0)
-
-            if (hasUserAccess && userSubscription) {
-              return {
-                    companyId: company.id,
-                status: {
-                  companyId: company.id,
-                  hasSubscription: userSubscription.has_subscription,
-                  isTrial: userSubscription.is_trial,
-                  trialDaysRemaining: userSubscription.trial_days_remaining,
-                  tier: userSubscription.tier,
-                },
-              }
-            }
-
-            return {
+        const result = await getCompanyAccessStatuses(companiesToCheck.map((company) => company.id))
+        const statuses = result.success && result.statuses
+          ? result.statuses.map((status) => ({
+              companyId: status.companyId,
+              status: {
+                companyId: status.companyId,
+                hasSubscription: status.hasSubscription,
+                isTrial: status.isTrial,
+                trialDaysRemaining: status.trialDaysRemaining,
+                tier: status.tier ?? undefined,
+              },
+            }))
+          : companiesToCheck.map((company) => ({
               companyId: company.id,
               status: {
                 companyId: company.id,
                 hasSubscription: false,
                 isTrial: false,
               },
-            }
-          } catch (err) {
-            console.error(`Error checking subscription for company ${company.id}:`, err)
-            return {
-              companyId: company.id,
-              status: {
-                companyId: company.id,
-                hasSubscription: false,
-                isTrial: false,
-              },
-            }
-          }
-        })
-
-        const statuses = await Promise.all(statusPromises)
+            }))
 
         setSubscriptionStatuses((prev: Map<string, CompanySubscriptionStatus>) => {
           const next = new Map(prev)
@@ -155,7 +89,7 @@ export default function CompanySelector({ companies, currentCompany, onCompanyCh
     }
 
     fetchSubscriptionStatuses()
-  }, [companies, currentCompany, isOpen, supabase])
+  }, [companies, currentCompany, isOpen])
 
   const getSubscriptionStatus = (companyId: string): CompanySubscriptionStatus | null => {
     return subscriptionStatuses.get(companyId) || null

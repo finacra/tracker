@@ -2,12 +2,14 @@
 
 import { createContext, useContext } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
+import type { AppUser } from '@/domain/models/AppUser'
 
 export interface AuthContextValue {
-  user: User | null
-  session: Session | null
+  user: AppUser | null // Canonical user profile (replaces legacy Supabase user)
+  appUser: AppUser | null // Primary app-owned user profile
   loading: boolean
   signOut: () => Promise<void>
+  session: null // Retired in favor of canonical AppUser
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)

@@ -1,36 +1,32 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/utils/supabase/client'
+import { getTransactionHistory } from '@/app/admin/payments/actions'
 
 interface Payment {
   id: string
-  user_id: string
-  company_id: string | null
-  provider_order_id: string
-  provider_payment_id: string | null
+  userId: string
+  companyId: string | null
+  providerOrderId: string
+  providerPaymentId: string | null
   amount: number
-  amount_paid: number | null
+  amountPaid: number | null
   currency: string
-  status: 'pending' | 'completed' | 'failed'
+  status: 'pending' | 'completed' | 'failed' | 'refunded'
   tier: string | null
-  billing_cycle: string | null
+  billingCycle: string | null
   receipt: string | null
-  payment_method: string | null
-  paid_at: string | null
-  error_code: string | null
-  error_description: string | null
-  created_at: string
-  updated_at: string
-  user_email?: string
-  company_name?: string
+  paymentMethod: string | null
+  paidAt: string | null
+  errorCode: string | null
+  errorDescription: string | null
+  createdAt: string
+  updatedAt: string
+  userEmail?: string
+  companyName?: string | null
 }
 
-interface TransactionHistoryProps {
-  supabase: ReturnType<typeof createClient>
-}
-
-export default function TransactionHistory({ supabase }: TransactionHistoryProps) {
+export default function TransactionHistory() {
   const [payments, setPayments] = useState<Payment[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'completed' | 'pending' | 'failed'>('all')
@@ -45,66 +41,14 @@ export default function TransactionHistory({ supabase }: TransactionHistoryProps
   const loadPayments = async () => {
     setIsLoading(true)
     try {
-      let query = supabase
-        .from('payments')
-        .select('*')
-        .order(sortBy === 'date' ? 'created_at' : 'amount', { ascending: sortOrder === 'asc' })
+      const result = await getTransactionHistory({
+        status: filter,
+        sortBy,
+        sortOrder,
+      })
 
-      if (filter !== 'all') {
-        query = query.eq('status', filter)
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      // Fetch user emails and company names
-      const userIds = [...new Set((data || []).map(p => p.user_id))]
-      const companyIds = [...new Set((data || []).map(p => p.company_id).filter(Boolean))]
-
-      // Try to get user emails via RPC
-      let userEmailsMap: Record<string, string> = {}
-      try {
-        const { data: rpcData } = await supabase.rpc('get_users_by_ids', {
-          user_ids: userIds
-        })
-        if (rpcData && Array.isArray(rpcData)) {
-          rpcData.forEach((user: any) => {
-            if (user.id && user.email) {
-              userEmailsMap[user.id] = user.email
-            }
-          })
-        }
-      } catch (error) {
-        console.log('RPC get_users_by_ids not available, using user IDs')
-      }
-
-      // Get company names
-      let companyNamesMap: Record<string, string> = {}
-      if (companyIds.length > 0) {
-        try {
-          const { data: companyData } = await supabase
-            .from('companies')
-            .select('id, name')
-            .in('id', companyIds)
-
-          if (companyData) {
-            companyData.forEach((company: any) => {
-              companyNamesMap[company.id] = company.name
-            })
-          }
-        } catch (error) {
-          console.error('Error fetching company names:', error)
-        }
-      }
-
-      const enrichedPayments = (data || []).map((payment) => ({
-        ...payment,
-        user_email: userEmailsMap[payment.user_id] || payment.user_id.substring(0, 8) + '...',
-        company_name: payment.company_id ? (companyNamesMap[payment.company_id] || null) : null,
-      }))
-
-      setPayments(enrichedPayments)
+      if (!result.success) throw new Error(result.error || 'Failed to load transactions')
+      setPayments(result.payments as Payment[])
     } catch (error) {
       console.error('Error loading payments:', error)
     } finally {
@@ -116,10 +60,10 @@ export default function TransactionHistory({ supabase }: TransactionHistoryProps
     if (!searchQuery) return true
     const query = searchQuery.toLowerCase()
     return (
-      payment.provider_order_id?.toLowerCase().includes(query) ||
-      payment.provider_payment_id?.toLowerCase().includes(query) ||
-      payment.user_email?.toLowerCase().includes(query) ||
-      payment.company_name?.toLowerCase().includes(query) ||
+      payment.providerOrderId?.toLowerCase().includes(query) ||
+      payment.providerPaymentId?.toLowerCase().includes(query) ||
+      payment.userEmail?.toLowerCase().includes(query) ||
+      payment.companyName?.toLowerCase().includes(query) ||
       payment.receipt?.toLowerCase().includes(query)
     )
   })
@@ -131,7 +75,7 @@ export default function TransactionHistory({ supabase }: TransactionHistoryProps
     failed: payments.filter(p => p.status === 'failed').length,
     totalRevenue: payments
       .filter(p => p.status === 'completed')
-      .reduce((sum, p) => sum + (p.amount_paid || p.amount || 0), 0),
+      .reduce((sum, p) => sum + (p.amountPaid || p.amount || 0), 0),
   }
 
   const formatCurrency = (amount: number, currencyCode: string = 'INR') => {
@@ -263,32 +207,32 @@ export default function TransactionHistory({ supabase }: TransactionHistoryProps
                 {filteredPayments.map((payment) => (
                   <tr key={payment.id} className="hover:bg-gray-900/50 transition-colors border-t border-gray-800">
                     <td className="px-6 py-4 text-gray-300 text-sm">
-                      {formatDate(payment.created_at)}
+                      {formatDate(payment.createdAt)}
                     </td>
                     <td className="px-6 py-4 text-white text-sm">
-                      <div className="max-w-[200px] truncate" title={payment.user_email}>
-                        {payment.user_email || payment.user_id.substring(0, 8) + '...'}
+                      <div className="max-w-[200px] truncate" title={payment.userEmail}>
+                        {payment.userEmail || payment.userId.substring(0, 8) + '...'}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-300 text-sm">
-                      {payment.company_name || '-'}
+                      {payment.companyName || '-'}
                     </td>
                     <td className="px-6 py-4 text-gray-300 text-sm font-mono text-xs">
-                      <div className="max-w-[150px] truncate" title={payment.provider_order_id}>
-                        {payment.provider_order_id}
+                      <div className="max-w-[150px] truncate" title={payment.providerOrderId}>
+                        {payment.providerOrderId}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-300 text-sm font-mono text-xs">
-                      {payment.provider_payment_id ? (
-                        <div className="max-w-[150px] truncate" title={payment.provider_payment_id}>
-                          {payment.provider_payment_id}
+                      {payment.providerPaymentId ? (
+                        <div className="max-w-[150px] truncate" title={payment.providerPaymentId}>
+                          {payment.providerPaymentId}
                         </div>
                       ) : (
                         <span className="text-gray-500">-</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-white font-medium">
-                      {formatCurrency(payment.amount_paid || payment.amount || 0, payment.currency)}
+                      {formatCurrency(payment.amountPaid || payment.amount || 0, payment.currency)}
                     </td>
                     <td className="px-6 py-4">
                       {payment.tier ? (
@@ -300,9 +244,9 @@ export default function TransactionHistory({ supabase }: TransactionHistoryProps
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      {payment.billing_cycle ? (
+                      {payment.billingCycle ? (
                         <span className="px-2 py-1 rounded text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                          {payment.billing_cycle}
+                          {payment.billingCycle}
                         </span>
                       ) : (
                         <span className="text-gray-500 text-sm">-</span>
@@ -317,14 +261,14 @@ export default function TransactionHistory({ supabase }: TransactionHistoryProps
                         }`}>
                         {payment.status.toUpperCase()}
                       </span>
-                      {payment.error_description && (
-                        <div className="mt-1 text-xs text-red-400 max-w-[200px] truncate" title={payment.error_description}>
-                          {payment.error_description}
+                      {payment.errorDescription && (
+                        <div className="mt-1 text-xs text-red-400 max-w-[200px] truncate" title={payment.errorDescription}>
+                          {payment.errorDescription}
                         </div>
                       )}
                     </td>
                     <td className="px-6 py-4 text-gray-300 text-sm">
-                      {payment.payment_method || '-'}
+                      {payment.paymentMethod || '-'}
                     </td>
                   </tr>
                 ))}

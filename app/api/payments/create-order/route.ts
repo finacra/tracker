@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
+import { createServerContainer } from '@/lib/composition/server-container'
 import { getRazorpayInstance } from '@/lib/razorpay/client'
 import { calculatePricing, getTierById, type BillingCycle, type PricingTier } from '@/lib/pricing/tiers'
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const { authService, paymentRepository, companyRepository } = createServerContainer()
+    const user = await authService.getCurrentUser()
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -21,13 +23,9 @@ export async function POST(request: NextRequest) {
     // Get company country_code for currency
     let countryCode = 'IN'
     if (companyId) {
-      const { data: company } = await supabase
-        .from('companies')
-        .select('country_code')
-        .eq('id', companyId)
-        .single()
-      if (company?.country_code) {
-        countryCode = company.country_code
+      const code = await companyRepository.getCountryCode(companyId)
+      if (code) {
+        countryCode = code
       }
     }
 
@@ -85,29 +83,24 @@ export async function POST(request: NextRequest) {
     })
 
     // Store payment record in database
-    const { error: paymentError } = await supabase
-      .from('payments')
-      .insert({
-        user_id: user.id,
-        company_id: companyId || null,
-        provider_order_id: order.id,
-        payment_provider: 'razorpay',
+    try {
+      await paymentRepository.createPending({
+        userId: user.id,
+        appUserId: user.canonicalId,
+        companyId: companyId || null,
+        providerOrderId: order.id,
+        paymentProvider: 'razorpay',
         amount: pricing.price,
         currency: pricing.currency || 'INR',
-        status: 'pending',
-        tier: tier,
-        billing_cycle: billingCycle,
-        receipt: order.receipt,
-        notes: order.notes as any,
+        tier: tier as PricingTier,
+        billingCycle: billingCycle as BillingCycle,
+        receipt: order.receipt ?? null,
+        notes: (order.notes as Record<string, string> | undefined) ?? null,
       })
-
-    if (paymentError) {
+    } catch (paymentError: any) {
       console.error('Error storing payment:', paymentError)
       console.error('Payment error details:', {
-        code: paymentError.code,
-        message: paymentError.message,
-        details: paymentError.details,
-        hint: paymentError.hint,
+        message: paymentError?.message,
       })
       // Continue anyway - order is created in Razorpay
       // But log the error for debugging

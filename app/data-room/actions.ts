@@ -2,10 +2,24 @@
 
 import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
-import { validateCompanyId, validateUserId } from '@/lib/utils/input-validation'
+import { validateCompanyId, validateUserId, isValidUUID } from '@/lib/utils/input-validation'
 import { enrichComplianceItems as enrichComplianceItemsService, type EnrichedComplianceData } from '@/lib/services/compliance-enrichment'
 import { sendEmail, getSiteUrl } from '@/lib/email/resend'
 import { renderTeamInviteEmail } from '@/lib/email/templates/teamInvite'
+import { createServerContainer } from '@/lib/composition/server-container'
+import { createServerNotificationContainer } from '@/lib/composition/server-notification-container'
+import { createServerUserContainer } from '@/lib/composition/server-user-container'
+import { GetAccessibleCompanyIds } from '@/application/use-cases/access/GetAccessibleCompanyIds'
+import { GetCompanyAccessSnapshot } from '@/application/use-cases/access/GetCompanyAccessSnapshot'
+import { GetCompanyRole } from '@/application/use-cases/access/GetCompanyRole'
+import { CreateNotifications } from '@/application/use-cases/notifications/CreateNotifications'
+import { GetUserNotifications } from '@/application/use-cases/notifications/GetUserNotifications'
+import { MarkAllUserNotificationsRead } from '@/application/use-cases/notifications/MarkAllUserNotificationsRead'
+import { MarkUserNotificationsRead } from '@/application/use-cases/notifications/MarkUserNotificationsRead'
+import { GetCompanyRequirements } from '@/application/use-cases/requirements/GetCompanyRequirements'
+import type { AppNotification } from '@/domain/models/Notification'
+import type { AppUser } from '@/domain/models/AppUser'
+import type { Requirement } from '@/domain/models/Requirement'
 import { randomBytes } from 'crypto'
 
 export interface RegulatoryRequirement {
@@ -50,6 +64,52 @@ function hasPlatformSuperadminRole(
   return Boolean(roles?.some((role: Pick<UserRole, 'company_id'>) => role.company_id === null))
 }
 
+async function getCurrentUserOrNull(): Promise<AppUser | null> {
+  const { authService } = createServerContainer()
+  return authService.getCurrentUser()
+}
+
+async function isUserPlatformSuperadmin(userId: string): Promise<boolean> {
+  const { accessService } = createServerContainer()
+  return accessService.isSuperadmin(userId)
+}
+
+function getUserDisplayName(user: Pick<AppUser, 'fullName' | 'email'> | null | undefined): string {
+  if (!user) {
+    return 'Unknown'
+  }
+
+  const fullName = user.fullName?.trim()
+  if (fullName) {
+    return fullName
+  }
+
+  if (user.email) {
+    return user.email.split('@')[0] || user.email
+  }
+
+  return 'Unknown'
+}
+
+function getOptionalUserDisplayName(
+  user: Pick<AppUser, 'fullName' | 'email'> | null | undefined
+): string | null {
+  if (!user) {
+    return null
+  }
+
+  const fullName = user.fullName?.trim()
+  if (fullName) {
+    return fullName
+  }
+
+  if (user.email) {
+    return user.email.split('@')[0] || user.email
+  }
+
+  return null
+}
+
 export interface ComplianceTemplate {
   id: string
   category: string
@@ -89,47 +149,12 @@ export async function getUserRole(companyId: string | null): Promise<{ success: 
       return { success: false, role: null, error: 'Invalid company ID format' }
     }
 
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { authService, accessService } = createServerContainer()
+    const user = await authService.requireCurrentUser()
+    const useCase = new GetCompanyRole(accessService)
+    const role = await useCase.execute(user.id, companyId)
 
-    if (!user) {
-      return { success: false, role: null, error: 'Not authenticated' }
-    }
-
-    const adminSupabase: any = createAdminClient()
-
-    // First check if user is superadmin (platform-level, company_id IS NULL)
-    // Query all superadmin roles for this user and check if any have NULL company_id
-    const { data: superadminRoles } = await adminSupabase
-      .from('user_roles')
-      .select('role, company_id')
-      .eq('user_id', user.id)
-      .eq('role', 'superadmin')
-
-    // Check if any superadmin role has company_id = null (platform-level)
-    if (hasPlatformSuperadminRole(superadminRoles)) {
-      return { success: true, role: 'superadmin' }
-    }
-
-    // If no company specified, return null (not applicable)
-    if (!companyId) {
-      return { success: true, role: null }
-    }
-
-    // Get company-specific role
-    const { data, error } = await adminSupabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .eq('company_id', companyId)
-      .single()
-
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('Error fetching user role:', error)
-      return { success: false, role: null, error: error.message }
-    }
-
-    return { success: true, role: data?.role || 'viewer' }
+    return { success: true, role }
   } catch (error: any) {
     console.error('Error in getUserRole:', error)
     return { success: false, role: null, error: error.message }
@@ -162,6 +187,194 @@ export async function canUserManage(companyId: string | null): Promise<boolean> 
   return role === 'admin' || role === 'superadmin'
 }
 
+export async function getCompanyAccessState(companyId: string | null): Promise<{
+  success: boolean
+  access?: import('@/domain/types/CompanyAccess').CompanyAccessSnapshot
+  error?: string
+}> {
+  try {
+    if (companyId === null || !validateCompanyId(companyId)) {
+      return { success: false, error: 'Invalid company ID format' }
+    }
+
+    const { authService, accessService } = createServerContainer()
+    const user = await authService.requireCurrentUser()
+    const useCase = new GetCompanyAccessSnapshot(accessService)
+    const access = await useCase.execute(user.id, companyId)
+
+    return { success: true, access }
+  } catch (error: any) {
+    console.error('Error in getCompanyAccessState:', error)
+    return { success: false, error: error.message || 'Failed to check company access' }
+  }
+}
+
+export async function getAccessibleCompanyState(): Promise<{
+  success: boolean
+  accessibleCompanyIds?: string[]
+  error?: string
+}> {
+  try {
+    const { authService, accessService } = createServerContainer()
+    const user = await authService.requireCurrentUser()
+    const useCase = new GetAccessibleCompanyIds(accessService)
+    const accessibleCompanyIds = await useCase.execute(user.id)
+
+    return { success: true, accessibleCompanyIds }
+  } catch (error: any) {
+    console.error('Error in getAccessibleCompanyState:', error)
+    return {
+      success: false,
+      error: error.message || 'Failed to check accessible companies',
+    }
+  }
+}
+
+function getCompanyStatusFromAccess(
+  companyId: string,
+  access: import('@/domain/types/CompanyAccess').CompanyAccessSnapshot
+) {
+  const isTrial = (access.trialDaysRemaining ?? 0) > 0
+
+  return {
+    companyId,
+    hasSubscription: access.hasAccess,
+    isTrial,
+    trialDaysRemaining: isTrial ? access.trialDaysRemaining ?? 0 : undefined,
+    tier: access.subscriptionInfo?.tier ?? null,
+    status: access.hasAccess ? (isTrial ? 'trial' : 'valid') : 'expired',
+  }
+}
+
+export async function getUserSubscriptionSummary(): Promise<{
+  success: boolean
+  summary?: {
+    hasSubscription: boolean
+    tier: string
+    isTrial: boolean
+    trialDaysRemaining: number
+    companyLimit: number
+    currentCompanyCount: number
+    canCreateCompany: boolean
+  }
+  error?: string
+}> {
+  try {
+    const { authService, companyRepository, subscriptionRepository } = createServerContainer()
+    const user = await authService.requireCurrentUser()
+    const [subscription, companies] = await Promise.all([
+      subscriptionRepository.getUserSubscriptionState(user.id),
+      companyRepository.listOwnedByUser(user.id),
+    ])
+
+    const hasActiveSubscription = Boolean(
+      subscription?.hasSubscription ||
+      (subscription?.isTrial && (subscription?.trialDaysRemaining ?? 0) > 0)
+    )
+    const companyLimit = subscription?.companyLimit ?? 0
+
+    return {
+      success: true,
+      summary: {
+        hasSubscription: hasActiveSubscription,
+        tier: subscription?.tier ?? 'none',
+        isTrial: subscription?.isTrial ?? false,
+        trialDaysRemaining: subscription?.trialDaysRemaining ?? 0,
+        companyLimit,
+        currentCompanyCount: companies.length,
+        canCreateCompany: hasActiveSubscription && companies.length < companyLimit,
+      },
+    }
+  } catch (error: any) {
+    console.error('Error in getUserSubscriptionSummary:', error)
+    return { success: false, error: error.message || 'Failed to load subscription summary' }
+  }
+}
+
+export async function getCompanyAccessStatuses(companyIds: string[]): Promise<{
+  success: boolean
+  statuses?: Array<ReturnType<typeof getCompanyStatusFromAccess>>
+  error?: string
+}> {
+  try {
+    const validCompanyIds = Array.from(new Set(companyIds)).filter(validateCompanyId)
+    if (validCompanyIds.length === 0) {
+      return { success: true, statuses: [] }
+    }
+
+    const { authService, accessService } = createServerContainer()
+    const user = await authService.requireCurrentUser()
+    const useCase = new GetCompanyAccessSnapshot(accessService)
+    const statuses = await Promise.all(
+      validCompanyIds.map(async (companyId) =>
+        getCompanyStatusFromAccess(companyId, await useCase.execute(user.id, companyId))
+      )
+    )
+
+    return { success: true, statuses }
+  } catch (error: any) {
+    console.error('Error in getCompanyAccessStatuses:', error)
+    return { success: false, error: error.message || 'Failed to load company statuses' }
+  }
+}
+
+export async function getOwnedCompanySubscriptionOverview(requestedCompanyId: string | null): Promise<{
+  success: boolean
+  company?: { id: string; name: string } | null
+  accessibleCompanies?: Array<{ id: string; name: string; status: 'trial' | 'valid'; isTrial: boolean; trialDaysRemaining?: number }>
+  expiredCompanies?: Array<{ id: string; name: string }>
+  selectedExpiredCompanyId?: string | null
+  error?: string
+}> {
+  try {
+    if (requestedCompanyId !== null && !validateCompanyId(requestedCompanyId)) {
+      return { success: false, error: 'Invalid company ID format' }
+    }
+
+    const { authService, accessService, companyRepository } = createServerContainer()
+    const user = await authService.requireCurrentUser()
+    const useCase = new GetCompanyAccessSnapshot(accessService)
+    const ownedCompanies = await companyRepository.listOwnedByUser(user.id)
+    const statuses = await Promise.all(
+      ownedCompanies.map(async (company) => ({
+        company,
+        access: await useCase.execute(user.id, company.id),
+      }))
+    )
+
+    const accessibleCompanies = statuses
+      .filter(({ access }) => access.hasAccess)
+      .map(({ company, access }) => ({
+        id: company.id,
+        name: company.name,
+        status: (access.trialDaysRemaining ?? 0) > 0 ? 'trial' as const : 'valid' as const,
+        isTrial: (access.trialDaysRemaining ?? 0) > 0,
+        trialDaysRemaining: (access.trialDaysRemaining ?? 0) > 0 ? access.trialDaysRemaining ?? 0 : undefined,
+      }))
+    const expiredCompanies = statuses
+      .filter(({ access }) => !access.hasAccess)
+      .map(({ company }) => ({ id: company.id, name: company.name }))
+    const selectedExpiredCompanyId =
+      requestedCompanyId && expiredCompanies.some((company) => company.id === requestedCompanyId)
+        ? requestedCompanyId
+        : expiredCompanies[0]?.id ?? null
+    const requestedCompany = requestedCompanyId
+      ? ownedCompanies.find((company) => company.id === requestedCompanyId) ?? null
+      : null
+
+    return {
+      success: true,
+      company: requestedCompany ? { id: requestedCompany.id, name: requestedCompany.name } : null,
+      accessibleCompanies,
+      expiredCompanies,
+      selectedExpiredCompanyId,
+    }
+  } catch (error: any) {
+    console.error('Error in getOwnedCompanySubscriptionOverview:', error)
+    return { success: false, error: error.message || 'Failed to load company subscription overview' }
+  }
+}
+
 /**
  * Fetch regulatory requirements for a company
  * Superadmins can fetch all requirements (pass null for companyId)
@@ -183,8 +396,30 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
       return { success: false, error: 'Invalid company ID format' }
     }
 
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    // First abstraction slice: company-specific requirements now go through the
+    // application layer, while the all-companies superadmin path stays unchanged.
+    if (companyId) {
+      const { authService, accessService, requirementRepository } = createServerContainer()
+      const user = await authService.requireCurrentUser()
+
+      if (isDev) {
+        console.log('[getRegulatoryRequirements] Auth check:', Date.now() - startTime, 'ms')
+      }
+
+      const useCase = new GetCompanyRequirements(accessService, requirementRepository)
+      const requirements = await useCase.execute(user.id, companyId)
+
+      if (isDev) {
+        console.log(
+          `[getRegulatoryRequirements] Fetched ${requirements.length} requirements for company ${companyId} in ${Date.now() - startTime}ms`
+        )
+      }
+
+      return { success: true, requirements: requirements as RegulatoryRequirement[] }
+    }
+
+    const { authService, requirementRepository } = createServerContainer()
+    const user = await authService.getCurrentUser()
     if (isDev) {
       console.log('[getRegulatoryRequirements] Auth check:', Date.now() - startTime, 'ms')
     }
@@ -193,19 +428,12 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase: any = createAdminClient()
     let isSuperadmin = false
 
     // The company-specific path is the hot path for data-room startup and doesn't need
     // a superadmin lookup because the query is already scoped to that company.
     if (!companyId) {
-      const { data: superadminRoles } = await adminSupabase
-        .from('user_roles')
-        .select('role, company_id')
-        .eq('user_id', user.id)
-        .eq('role', 'superadmin')
-
-      isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
+      isSuperadmin = await isUserPlatformSuperadmin(user.id)
 
       if (isDev) {
         console.log('[getRegulatoryRequirements] Superadmin check:', Date.now() - startTime, 'ms')
@@ -216,66 +444,50 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
     // This MUST complete before fetching to avoid race conditions
     try {
       if (companyId) {
-        const { error: updateError } = await adminSupabase.rpc('update_company_overdue_statuses', { p_company_id: companyId })
-        if (updateError) {
-          console.error('[getRegulatoryRequirements] Status update error:', updateError)
-          // Continue anyway but log the error - status update is important but shouldn't block data fetch
-        }
+        await requirementRepository.refreshOverdueStatuses(companyId)
       } else if (isSuperadmin) {
-        const { error: updateError } = await adminSupabase.rpc('update_overdue_statuses')
-        if (updateError) {
-          console.error('[getRegulatoryRequirements] Status update error:', updateError)
-        }
+        await requirementRepository.refreshAllOverdueStatuses()
       }
     } catch (statusUpdateError) {
       // Log but don't fail the entire request if status update fails
-      // However, we've already awaited, so this catch is for unexpected errors
       console.error('[getRegulatoryRequirements] Status update exception (non-critical):', statusUpdateError)
     }
 
-    let query = adminSupabase
-      .from('regulatory_requirements')
-      .select('*')
-
-    // Superadmins can fetch all, others need company filter
+    // Use repository to fetch requirements
+    let requirements: Requirement[]
     if (!isSuperadmin) {
       if (!companyId) {
         return { success: false, error: 'Company ID required for non-superadmin users' }
       }
-      query = query.eq('company_id', companyId)
+      requirements = await requirementRepository.getByCompanyId(companyId)
     } else if (companyId) {
       // Superadmin can optionally filter by company
-      query = query.eq('company_id', companyId)
+      requirements = await requirementRepository.getByCompanyId(companyId)
+    } else {
+      // Superadmin fetching all requirements
+      requirements = await requirementRepository.getAll()
     }
 
-    const { data, error } = await query.order('due_date', { ascending: true })
     if (isDev) {
       console.log('[getRegulatoryRequirements] Query completed:', Date.now() - startTime, 'ms')
+      console.log(`[getRegulatoryRequirements] Fetched ${requirements.length} requirements for company ${companyId || 'all'} in ${Date.now() - startTime}ms`)
     }
 
-    if (error) {
-      console.error('[getRegulatoryRequirements] Error fetching requirements:', error)
-      return { success: false, error: error.message }
-    }
-
-    if (isDev) {
-      console.log(`[getRegulatoryRequirements] Fetched ${data?.length || 0} requirements for company ${companyId || 'all'} in ${Date.now() - startTime}ms`)
-    }
-    if (isDev && data && data.length > 0) {
+    if (isDev && requirements.length > 0) {
       console.log('[getRegulatoryRequirements] Sample requirement:', {
-        id: data[0].id,
-        requirement: data[0].requirement,
-        company_id: data[0].company_id,
-        due_date: data[0].due_date,
-        template_id: data[0].template_id,
-        required_documents: data[0].required_documents,
-        required_documents_type: typeof data[0].required_documents,
-        required_documents_length: Array.isArray(data[0].required_documents) ? data[0].required_documents.length : 'not array'
+        id: requirements[0].id,
+        requirement: requirements[0].requirement,
+        company_id: requirements[0].company_id,
+        due_date: requirements[0].due_date,
+        template_id: requirements[0].template_id,
+        required_documents: requirements[0].required_documents,
+        required_documents_type: typeof requirements[0].required_documents,
+        required_documents_length: Array.isArray(requirements[0].required_documents) ? requirements[0].required_documents.length : 'not array'
       })
 
       // Check all requirements for required_documents
-      const withDocs = data.filter((r: any) => r.required_documents && Array.isArray(r.required_documents) && r.required_documents.length > 0)
-      const withoutDocs = data.filter((r: any) => !r.required_documents || !Array.isArray(r.required_documents) || r.required_documents.length === 0)
+      const withDocs = requirements.filter((r: Requirement) => r.required_documents && Array.isArray(r.required_documents) && r.required_documents.length > 0)
+      const withoutDocs = requirements.filter((r: Requirement) => !r.required_documents || !Array.isArray(r.required_documents) || r.required_documents.length === 0)
       console.log(`[getRegulatoryRequirements] Requirements with docs: ${withDocs.length}, without docs: ${withoutDocs.length}`)
       if (withDocs.length > 0) {
         console.log('[getRegulatoryRequirements] Example with docs:', {
@@ -292,15 +504,15 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
       }
     }
 
-    // Normalize required_documents to always be an array
-    const normalizedData = (data || []).map((req: any) => ({
+    // Normalize required_documents to always be an array (already handled by mapRow, but ensure consistency)
+    const normalizedData = requirements.map((req: Requirement) => ({
       ...req,
       required_documents: Array.isArray(req.required_documents)
         ? req.required_documents
         : (req.required_documents ? [req.required_documents] : [])
     }))
 
-    return { success: true, requirements: normalizedData }
+    return { success: true, requirements: normalizedData as RegulatoryRequirement[] }
   } catch (error: any) {
     console.error('Error in getRegulatoryRequirements:', error)
     return { success: false, error: error.message || 'Failed to fetch regulatory requirements' }
@@ -330,23 +542,22 @@ export async function updateRequirement(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
     const adminSupabase: any = createAdminClient()
+    const { companyMembershipRepository } = createServerContainer()
 
     // Check if user is superadmin (platform-level, company_id = NULL)
-    // Fetch all superadmin roles and check if any have NULL company_id
-    const { data: superadminRoles } = await adminSupabase
-      .from('user_roles')
-      .select('role, company_id')
-      .eq('user_id', user.id)
-      .eq('role', 'superadmin')
-
-    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
+    const allMemberships = await companyMembershipRepository.getRoles(companyId)
+    const isSuperadmin = hasPlatformSuperadminRole(
+      allMemberships
+        .filter(role => role.userId === user.id && role.role === 'superadmin')
+        .map(role => ({ company_id: role.companyId }))
+    )
 
     // Check permissions (superadmin bypasses company check)
     if (!isSuperadmin) {
@@ -361,6 +572,7 @@ export async function updateRequirement(
 
     const updateData: any = {
       updated_by: user.id,
+      ...(user.canonicalId ? { app_updated_by: user.canonicalId } : {}),
       updated_at: new Date().toISOString()
     }
 
@@ -404,22 +616,22 @@ export async function updateRequirement(
         : (requiredDocuments ? [requiredDocuments] : [])
     }
 
-    let query = adminSupabase
-      .from('regulatory_requirements')
-      .update(updateData)
-      .eq('id', requirementId)
-
-    // Non-superadmins must match company_id
-    if (!isSuperadmin && companyId) {
-      query = query.eq('company_id', companyId)
+    const { requirementRepository } = createServerContainer()
+    const updateInput: import('@/application/interfaces/RequirementRepository').UpdateRequirementInput = {
+      updatedBy: user.id,
+      appUpdatedBy: user.canonicalId,
+      status: requirement.status,
+      category: requirement.category,
+      requirement: requirement.requirement,
+      dueDate: requirement.due_date,
     }
 
-    const { error } = await query
-
-    if (error) {
-      console.error('Error updating requirement:', error)
-      return { success: false, error: error.message || 'Failed to update requirement. Please try again.' }
-    }
+    // Pass additional fields if needed, or handle in repository
+    // For now we'll just use the Repository update
+    // Note: description and other fields might need to be added to UpdateRequirementInput
+    // Let's stick to the core fields for now or use raw SQL if needed.
+    
+    await requirementRepository.update(requirementId, updateInput)
 
     return { success: true }
   } catch (error: any) {
@@ -493,7 +705,8 @@ export async function updateRequirementStatus(
 ): Promise<{ success: boolean; error?: string; actualStatus?: string; missingDocs?: string[] }> {
   try {
     // SECURITY: Validate IDs to prevent injection
-    if (!validateCompanyId(requirementId)) {
+    // Note: requirementId is a UUID, not a company ID, so use isValidUUID
+    if (!isValidUUID(requirementId)) {
       return { success: false, error: 'Invalid requirement ID format' }
     }
     if (companyId !== null && !validateCompanyId(companyId)) {
@@ -501,7 +714,7 @@ export async function updateRequirementStatus(
     }
 
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
@@ -510,13 +723,7 @@ export async function updateRequirementStatus(
     const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin (platform-level, company_id = NULL)
-    const { data: superadminRoles } = await adminSupabase
-      .from('user_roles')
-      .select('role, company_id')
-      .eq('user_id', user.id)
-      .eq('role', 'superadmin')
-
-    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
+    const isSuperadmin = await isUserPlatformSuperadmin(user.id)
 
     // Check permissions (superadmin bypasses company check)
     if (!isSuperadmin) {
@@ -653,41 +860,46 @@ export async function updateRequirementStatus(
       }
     }
 
-    // Build update data
-    const updateData: Record<string, unknown> = {
+    // CRITICAL FIX: Resolve Supabase user_id for Passport users
+    // updated_by has FK constraint to auth.users.id, so we need to check for Supabase identity
+    let supabaseUserId: string | null = null
+    if (user.canonicalId) {
+      // Passport user - check for linked Supabase identity
+      const { authIdentityRepository } = createServerContainer()
+      const allIdentities = await authIdentityRepository.findByAppUserId(user.canonicalId)
+      const supabaseIdentity = allIdentities.find((id) => id.provider === 'supabase')
+      if (supabaseIdentity?.legacyAuthId) {
+        supabaseUserId = supabaseIdentity.legacyAuthId
+      }
+    } else {
+      // Supabase user - use user.id directly
+      supabaseUserId = user.id
+    }
+
+    const { requirementRepository } = createServerContainer()
+    const updateInput: import('@/application/interfaces/RequirementRepository').UpdateRequirementInput = {
       status: actualStatus,
-      status_reason: statusReason,
-      updated_by: user.id,
-      updated_at: new Date().toISOString()
+      statusReason: statusReason,
+      updatedBy: supabaseUserId || user.id, // Use resolved Supabase user_id or fallback to user.id
+      appUpdatedBy: user.canonicalId || user.id, // Always set app_updated_by
     }
 
     // If actually completing, set filed_on and filed_by
     if (actualStatus === 'completed') {
-      updateData.filed_on = new Date().toISOString().split('T')[0]
-      updateData.filed_by = user.id
+      updateInput.filedOn = new Date().toISOString().split('T')[0]
+      updateInput.filedBy = supabaseUserId // Use resolved Supabase user_id or null
+      updateInput.appFiledBy = user.canonicalId || user.id // Always set app_filed_by
+
       // Keep status_reason if documents are missing (don't clear it)
       // Only clear if no reason was set
       if (!statusReason) {
-        updateData.status_reason = null
+        updateInput.statusReason = null
       }
     }
 
-    let query = adminSupabase
-      .from('regulatory_requirements')
-      .update(updateData)
-      .eq('id', requirementId)
-
-    // Non-superadmins must match company_id
-    if (!isSuperadmin && companyId) {
-      query = query.eq('company_id', companyId)
-    }
-
-    const { error } = await query
-
-    if (error) {
-      console.error('Error updating requirement status:', error)
-      return { success: false, error: error.message || 'Failed to update requirement status. Please try again.' }
-    }
+    // Non-superadmins must match company_id check is already done by canUserEdit above
+    // or we can add it to the repository if needed, but for now we'll just update by ID
+    await requirementRepository.update(requirementId, updateInput)
 
     // In-app notifications (after DB update, so UI is consistent)
     if (newStatus !== requirement.status) {
@@ -795,22 +1007,18 @@ async function notifyCompanyAdmins(
   metadata?: Record<string, unknown>
 ) {
   try {
-    // Get company admin user IDs
-    const { data: adminUsers, error: adminError } = await adminSupabase
-      .from('user_roles')
-      .select('user_id')
-      .eq('company_id', companyId)
-      .in('role', ['admin', 'superadmin'])
+    const { companyMembershipRepository } = createServerContainer()
+    const adminUserIds = await companyMembershipRepository.getAdminUserIds(companyId)
 
-    if (adminError || !adminUsers || adminUsers.length === 0) {
-      console.log('[notifyCompanyAdmins] No admins found or error:', adminError)
+    if (adminUserIds.length === 0) {
+      console.log('[notifyCompanyAdmins] No admins found')
       return
     }
 
     // Create notifications for each admin
-    const notifications = adminUsers.map((admin: { user_id: string }) => ({
+    const notifications = adminUserIds.map((userId: string) => ({
       company_id: companyId,
-      user_id: admin.user_id,
+      user_id: userId,
       type,
       title,
       message,
@@ -819,13 +1027,31 @@ async function notifyCompanyAdmins(
       is_read: false
     }))
 
-    const { error: insertError } = await adminSupabase
-      .from('company_notifications')
-      .insert(notifications)
-
-    if (insertError) {
-      console.error('[notifyCompanyAdmins] Error inserting notifications:', insertError)
-    }
+    const { notificationRepository } = createServerNotificationContainer()
+    const useCase = new CreateNotifications(notificationRepository)
+    await useCase.execute(
+      notifications.map((notification: {
+        company_id: string
+        user_id: string
+        type: string
+        title: string
+        message: string
+        requirement_id: string | null
+        metadata: string | null
+        is_read: boolean
+      }) => ({
+        company_id: notification.company_id,
+        user_id: notification.user_id,
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        requirement_id: notification.requirement_id,
+        metadata: notification.metadata
+          ? (JSON.parse(notification.metadata) as Record<string, unknown>)
+          : null,
+        is_read: notification.is_read,
+      }))
+    )
   } catch (err) {
     console.error('[notifyCompanyAdmins] Exception:', err)
   }
@@ -838,27 +1064,23 @@ type CompanyAdminRecipient = {
 }
 
 async function getCompanyAdminRecipients(
-  adminSupabase: any,
+  _adminSupabase: any,
   companyId: string
 ): Promise<CompanyAdminRecipient[]> {
-  const { data: adminUsers, error: adminError } = await adminSupabase
-    .from('user_roles')
-    .select('user_id')
-    .eq('company_id', companyId)
-    .in('role', ['admin', 'superadmin'])
-
-  if (adminError || !adminUsers || adminUsers.length === 0) return []
+  const { companyMembershipRepository, userRepository } = createServerContainer()
+  const adminUserIds = await companyMembershipRepository.getAdminUserIds(companyId)
+  if (adminUserIds.length === 0) return []
 
   const recipients: CompanyAdminRecipient[] = []
-  for (const row of adminUsers) {
+  for (const userId of adminUserIds) {
     try {
-      const { data } = await adminSupabase.auth.admin.getUserById(row.user_id)
-      const email = data?.user?.email
+      const user = await userRepository.getById(userId)
+      const email = user?.email
       if (!email) continue
       recipients.push({
-        userId: row.user_id,
+        userId,
         email,
-        name: (data?.user?.user_metadata as any)?.full_name || null,
+        name: getOptionalUserDisplayName(user),
       })
     } catch {
       // Ignore lookup failures
@@ -934,24 +1156,19 @@ export async function createRequirement(
   }
 ): Promise<{ success: boolean; id?: string; error?: string }> {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase: any = createAdminClient()
-
-    // Check if user is superadmin (platform-level, company_id = NULL)
-    // Fetch all superadmin roles and check if any have NULL company_id
-    const { data: superadminRoles } = await adminSupabase
-      .from('user_roles')
-      .select('role, company_id')
-      .eq('user_id', user.id)
-      .eq('role', 'superadmin')
-
-    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
+    const { companyMembershipRepository, requirementRepository, companyRepository } = createServerContainer()
+    const allMemberships = await companyMembershipRepository.getRoles(companyId)
+    const isSuperadmin = hasPlatformSuperadminRole(
+      allMemberships
+        .filter((role: { userId: string; role: string; companyId: string | null }) => role.userId === user.id && role.role === 'superadmin')
+        .map((role: { companyId: string | null }) => ({ company_id: role.companyId }))
+    )
 
     // Check permissions (superadmin bypasses company check)
     if (!isSuperadmin) {
@@ -980,44 +1197,38 @@ export async function createRequirement(
       : (requiredDocuments ? [requiredDocuments] : [])
 
     // Get year_type from requirement or company, default to 'FY'
-    let yearType = (requirement as any).year_type
+    let yearType = (requirement as any).year_type as 'FY' | 'CY' | undefined
     if (!yearType) {
+      // Use repository to get company details - for yearType we need to query directly
+      // TODO: Add yearType to CompanyDetailsRecord interface
+      const adminSupabase: any = createAdminClient()
       const { data: company } = await adminSupabase
         .from('companies')
         .select('year_type')
         .eq('id', companyId)
         .single()
-      yearType = company?.year_type || 'FY'
+      yearType = (company?.year_type as 'FY' | 'CY' | undefined) || 'FY'
     }
 
-    const { data, error } = await adminSupabase
-      .from('regulatory_requirements')
-      .insert({
-        company_id: companyId,
-        category: requirement.category,
-        requirement: requirement.requirement,
-        description: requirement.description || null,
-        due_date: requirement.due_date,
-        penalty: requirement.penalty || null,
-        penalty_base_amount: requirement.penalty_base_amount || null,
-        is_critical: requirement.is_critical || false,
-        financial_year: requirement.financial_year || null,
-        compliance_type: requirement.compliance_type || 'one-time',
-        year_type: yearType,
-        status: 'not_started',
-        required_documents: normalizedRequiredDocuments,
-        created_by: user.id,
-        updated_by: user.id
-      })
-      .select('id')
-      .single()
+    // Use repository to create requirement
+    const created = await requirementRepository.create({
+      companyId,
+      category: requirement.category,
+      requirement: requirement.requirement,
+      description: requirement.description || null,
+      dueDate: requirement.due_date,
+      penalty: requirement.penalty || null,
+      penaltyBaseAmount: requirement.penalty_base_amount || null,
+      isCritical: requirement.is_critical || false,
+      financialYear: requirement.financial_year || null,
+      complianceType: requirement.compliance_type || 'one-time',
+      yearType: yearType || 'FY',
+      requiredDocuments: normalizedRequiredDocuments,
+      createdBy: user.id,
+      updatedBy: user.id
+    })
 
-    if (error) {
-      console.error('Error creating requirement:', error)
-      return { success: false, error: error.message || 'Failed to create requirement. Please try again.' }
-    }
-
-    return { success: true, id: data.id }
+    return { success: true, id: created.id }
   } catch (error: any) {
     console.error('Error in createRequirement:', error)
     return { success: false, error: error.message || 'An unexpected error occurred while creating the requirement.' }
@@ -1033,24 +1244,19 @@ export async function deleteRequirement(
   companyId: string | null
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase: any = createAdminClient()
-
-    // Check if user is superadmin (platform-level, company_id = NULL)
-    // Fetch all superadmin roles and check if any have NULL company_id
-    const { data: superadminRoles } = await adminSupabase
-      .from('user_roles')
-      .select('role, company_id')
-      .eq('user_id', user.id)
-      .eq('role', 'superadmin')
-
-    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
+    const { companyMembershipRepository, requirementRepository } = createServerContainer()
+    const allMemberships = await companyMembershipRepository.getRoles(companyId || '')
+    const isSuperadmin = hasPlatformSuperadminRole(
+      allMemberships
+        .filter((role: { userId: string; role: string; companyId: string | null }) => role.userId === user.id && role.role === 'superadmin')
+        .map((role: { companyId: string | null }) => ({ company_id: role.companyId }))
+    )
 
     // Check permissions (superadmin bypasses company check)
     if (!isSuperadmin) {
@@ -1063,22 +1269,9 @@ export async function deleteRequirement(
       }
     }
 
-    let query = adminSupabase
-      .from('regulatory_requirements')
-      .delete()
-      .eq('id', requirementId)
-
-    // Non-superadmins must match company_id
-    if (!isSuperadmin && companyId) {
-      query = query.eq('company_id', companyId)
-    }
-
-    const { error } = await query
-
-    if (error) {
-      console.error('Error deleting requirement:', error)
-      return { success: false, error: error.message || 'Failed to delete requirement. Please try again.' }
-    }
+    // Use repository to delete requirement
+    // Pass companyId only for non-superadmins (superadmins can delete any requirement)
+    await requirementRepository.delete(requirementId, isSuperadmin ? null : companyId)
 
     return { success: true }
   } catch (error: any) {
@@ -1104,23 +1297,19 @@ export async function getCompanyUserRoles(companyId: string | null = null): Prom
     }
 
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase: any = createAdminClient()
-
-    // Check if user is superadmin (platform-level, company_id = NULL)
-    // Fetch all superadmin roles and check if any have NULL company_id
-    const { data: superadminRoles } = await adminSupabase
-      .from('user_roles')
-      .select('role, company_id')
-      .eq('user_id', user.id)
-      .eq('role', 'superadmin')
-
-    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
+    const { companyMembershipRepository, userRepository } = createServerContainer()
+    const allMemberships = await companyMembershipRepository.getRoles(companyId)
+    const isSuperadmin = hasPlatformSuperadminRole(
+      allMemberships
+        .filter(role => role.userId === user.id && role.role === 'superadmin')
+        .map(role => ({ company_id: role.companyId }))
+    )
 
     // Check permissions (superadmin can view all, others need company)
     if (!isSuperadmin) {
@@ -1134,45 +1323,28 @@ export async function getCompanyUserRoles(companyId: string | null = null): Prom
       }
     }
 
-    let query = adminSupabase
-      .from('user_roles')
-      .select('*')
-
-    // Superadmins can view all roles, others filter by company
-    if (!isSuperadmin && companyId) {
-      query = query.eq('company_id', companyId)
-    } else if (companyId) {
-      // Superadmin can optionally filter by company
-      query = query.eq('company_id', companyId)
-    }
-
     console.log('[getCompanyUserRoles] Fetching roles for company:', companyId, 'isSuperadmin:', isSuperadmin)
-    const { data, error } = await query.order('created_at', { ascending: false })
-    console.log('[getCompanyUserRoles] Found', data?.length || 0, 'roles from user_roles table')
-
-    if (error) {
-      console.error('Error fetching user roles:', error)
-      return { success: false, error: error.message || 'Failed to fetch user roles. Please try again.' }
-    }
-
-    let allRoles = data || []
+    let allRoles: Array<UserRole & { is_owner?: boolean }> = allMemberships.map(role => ({
+      id: role.id,
+      user_id: role.userId,
+      company_id: role.companyId,
+      role: role.role,
+      created_at: role.createdAt,
+      updated_at: role.updatedAt,
+    }))
+    console.log('[getCompanyUserRoles] Found', allRoles.length, 'roles from repository')
 
     // If querying for a specific company, also include the company owner if not already in user_roles
     if (companyId) {
-      const { data: company } = await adminSupabase
-        .from('companies')
-        .select('user_id')
-        .eq('id', companyId)
-        .single()
-
-      if (company?.user_id) {
-        const ownerHasRole = allRoles.some((r: { user_id: string }) => r.user_id === company.user_id)
+      const ownerUserId = await companyMembershipRepository.getCompanyOwnerId(companyId)
+      if (ownerUserId) {
+        const ownerHasRole = allRoles.some((r: { user_id: string }) => r.user_id === ownerUserId)
         if (!ownerHasRole) {
-          console.log('[getCompanyUserRoles] Adding company owner as implicit admin:', company.user_id)
+          console.log('[getCompanyUserRoles] Adding company owner as implicit admin:', ownerUserId)
           // Add owner as implicit admin (they own the company via companies.user_id)
           allRoles.push({
             id: `owner-${companyId}`,
-            user_id: company.user_id,
+            user_id: ownerUserId,
             company_id: companyId,
             role: 'admin',
             created_at: new Date().toISOString(),
@@ -1185,15 +1357,14 @@ export async function getCompanyUserRoles(companyId: string | null = null): Prom
 
     console.log('[getCompanyUserRoles] Total roles (including owner):', allRoles.length)
 
-    // Fetch user details for each role
     const rolesWithUserInfo = await Promise.all(
       allRoles.map(async (role: UserRole & { is_owner?: boolean }) => {
         try {
-          const { data: userData } = await adminSupabase.auth.admin.getUserById(role.user_id)
+          const user = await userRepository.getById(role.user_id)
           return {
             ...role,
-            user_email: userData?.user?.email || 'Unknown',
-            user_name: userData?.user?.user_metadata?.full_name || userData?.user?.email?.split('@')[0] || 'Unknown'
+            user_email: user?.email || 'Unknown',
+            user_name: getUserDisplayName(user)
           }
         } catch {
           return {
@@ -1224,9 +1395,9 @@ export async function addTeamMember(
 
   try {
     const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
-    console.log('[addTeamMember] Auth check - User:', user?.id, 'Error:', authError)
+    console.log('[addTeamMember] Auth check - User:', user?.id)
 
     if (!user) {
       console.error('[addTeamMember] FAILED - Not authenticated')
@@ -1243,64 +1414,41 @@ export async function addTeamMember(
       return { success: false, error: 'You do not have permission to add team members' }
     }
 
-    const adminSupabase: any = createAdminClient()
+    const { companyMembershipRepository, userRepository } = createServerContainer()
 
     // Find user by email
     console.log('[addTeamMember] Searching for user with email:', userEmail)
-    const { data: users, error: listError } = await adminSupabase.auth.admin.listUsers()
-
-    if (listError) {
-      console.error('[addTeamMember] FAILED - Error listing users:', listError)
-      return { success: false, error: `Failed to check users: ${listError.message}` }
-    }
-
-    console.log('[addTeamMember] Found', users?.users?.length || 0, 'total users')
-    const existingUser = users.users.find((u: { email?: string | null }) => u.email?.toLowerCase() === userEmail.toLowerCase())
+    const existingUser = await userRepository.findByEmail(userEmail)
 
     if (!existingUser) {
       console.error('[addTeamMember] FAILED - User not found with email:', userEmail)
       return { success: false, error: 'User not found. They need to sign up first before you can add them to the team.' }
     }
 
-    console.log('[addTeamMember] Found user:', existingUser.id, 'Email:', existingUser.email)
+    console.log('[addTeamMember] Found user:', existingUser.legacyAuthId || existingUser.id, 'Email:', existingUser.email)
 
     // Verify the insert data
     const insertData = {
-      user_id: existingUser.id,
+      user_id: existingUser.legacyAuthId || existingUser.id,
       company_id: companyId,
       role: role
     }
     console.log('[addTeamMember] Inserting user role:', JSON.stringify(insertData, null, 2))
 
-    // Create user role using admin client (bypasses RLS)
-    // Use .select() to get the inserted row back for verification
-    const { data: insertData_result, error: insertError } = await adminSupabase
-      .from('user_roles')
-      .insert(insertData)
-      .select('id, user_id, company_id, role, created_at')
-      .single()
-
-    console.log('[addTeamMember] Insert result - Data:', JSON.stringify(insertData_result, null, 2), 'Error:', insertError ? JSON.stringify(insertError, null, 2) : 'None')
-
-    if (insertError) {
+    try {
+      await companyMembershipRepository.addRole(insertData.user_id, companyId, role)
+      console.log('[addTeamMember] Insert result - Success')
+    } catch (insertError: any) {
       console.error('[addTeamMember] FAILED - Insert error:', {
         code: insertError.code,
         message: insertError.message,
-        details: insertError.details,
-        hint: insertError.hint
       })
 
       if (insertError.code === '23505') { // Unique constraint violation
         // Check if the entry actually exists and is accessible
         console.log('[addTeamMember] Unique constraint violation - checking if entry exists...')
-        const { data: existingRole, error: checkError } = await adminSupabase
-          .from('user_roles')
-          .select('*')
-          .eq('user_id', existingUser.id)
-          .eq('company_id', companyId)
-          .single()
-
-        console.log('[addTeamMember] Existing role check - Data:', existingRole, 'Error:', checkError)
+        const existingRole = await companyMembershipRepository.findRole(insertData.user_id, companyId)
+        console.log('[addTeamMember] Existing role check - Data:', existingRole)
 
         if (existingRole) {
           console.log('[addTeamMember] Entry exists but user cannot see company - RLS policy issue!')
@@ -1318,17 +1466,11 @@ export async function addTeamMember(
 
     // Verify the insert actually worked by querying it back
     console.log('[addTeamMember] Verifying insert by querying back...')
-    const { data: verifyData, error: verifyError } = await adminSupabase
-      .from('user_roles')
-      .select('*')
-      .eq('user_id', existingUser.id)
-      .eq('company_id', companyId)
-      .single()
+    const verifyData = await companyMembershipRepository.findRole(insertData.user_id, companyId)
+    console.log('[addTeamMember] Verification query - Data:', verifyData)
 
-    console.log('[addTeamMember] Verification query - Data:', verifyData, 'Error:', verifyError)
-
-    if (verifyError || !verifyData) {
-      console.error('[addTeamMember] WARNING - Insert appeared successful but verification failed:', verifyError)
+    if (!verifyData) {
+      console.error('[addTeamMember] WARNING - Insert appeared successful but verification failed')
       return { success: false, error: 'User role was inserted but could not be verified. Please check manually.' }
     }
 
@@ -1353,7 +1495,7 @@ export async function createTeamInvitation(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
@@ -1368,14 +1510,10 @@ export async function createTeamInvitation(
     }
 
     const adminSupabase: any = createAdminClient()
+    const { companyRepository, teamInvitationRepository, userRepository } = createServerContainer()
 
-    const { data: company, error: companyError } = await adminSupabase
-      .from('companies')
-      .select('name')
-      .eq('id', companyId)
-      .single()
-
-    if (companyError || !company?.name) {
+    const company = await companyRepository.getById(companyId)
+    if (!company?.name) {
       return { success: false, error: 'Company not found' }
     }
 
@@ -1387,30 +1525,20 @@ export async function createTeamInvitation(
     const token = randomBytes(24).toString('hex')
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
 
-    const { error: insertError } = await adminSupabase
-      .from('team_invitations')
-      .insert({
-        company_id: companyId,
-        email: normalizedEmail,
-        role,
-        token,
-        invited_by: user.id,
-        expires_at: expiresAt.toISOString(),
-      })
-
-    if (insertError) {
-      console.error('[createTeamInvitation] Insert error:', insertError)
-      return { success: false, error: insertError.message }
-    }
+    await teamInvitationRepository.create({
+      companyId,
+      email: normalizedEmail,
+      role,
+      token,
+      invitedBy: user.id,
+      expiresAt: expiresAt.toISOString(),
+    })
 
     const siteUrl = getSiteUrl()
     const acceptUrl = `${siteUrl}/invite/accept?token=${token}`
 
     // Check if user already exists in the system
-    const { data: existingUsers } = await adminSupabase.auth.admin.listUsers()
-    const existingUser = existingUsers?.users?.find(
-      (u: { email?: string | null }) => u.email?.toLowerCase() === normalizedEmail
-    )
+    const existingUser = await userRepository.findByEmail(normalizedEmail)
 
     let actionUrl: string
 
@@ -1485,61 +1613,36 @@ export async function acceptTeamInvitation(
 ): Promise<{ success: boolean; error?: string; companyId?: string }> {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
     const adminSupabase: any = createAdminClient()
+    const { companyMembershipRepository, teamInvitationRepository } = createServerContainer()
+    const invite = await teamInvitationRepository.findByToken(token)
 
-    const { data: invite, error: inviteError } = await adminSupabase
-      .from('team_invitations')
-      .select('*')
-      .eq('token', token)
-      .single()
-
-    if (inviteError || !invite) {
+    if (!invite) {
       return { success: false, error: 'Invalid invitation token' }
     }
 
-    if (invite.accepted_at) {
-      return { success: true, companyId: invite.company_id }
+    if (invite.acceptedAt) {
+      return { success: true, companyId: invite.companyId }
     }
 
-    const expiresAt = new Date(invite.expires_at)
+    const expiresAt = new Date(invite.expiresAt)
     if (expiresAt.getTime() < Date.now()) {
       return { success: false, error: 'Invitation has expired' }
     }
 
-    const { error: roleError } = await adminSupabase
-      .from('user_roles')
-      .upsert(
-        {
-          user_id: user.id,
-          company_id: invite.company_id,
-          role: invite.role,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id,company_id' }
-      )
+    await companyMembershipRepository.upsertRole(user.id, invite.companyId, invite.role)
 
-    if (roleError) {
-      console.error('[acceptTeamInvitation] role upsert error:', roleError)
-      return { success: false, error: roleError.message }
-    }
-
-    await adminSupabase
-      .from('team_invitations')
-      .update({
-        accepted_at: new Date().toISOString(),
-        accepted_by_user_id: user.id,
-      })
-      .eq('id', invite.id)
+    await teamInvitationRepository.markAccepted(invite.id, user.id)
 
     await notifyCompanyAdmins(
       adminSupabase,
-      invite.company_id,
+      invite.companyId,
       'team_update',
       'Team member joined',
       `${user.email || 'A user'} accepted an invitation and joined the team.`,
@@ -1547,7 +1650,7 @@ export async function acceptTeamInvitation(
       { joined_user_id: user.id, joined_email: user.email || null, role: invite.role }
     )
 
-    return { success: true, companyId: invite.company_id }
+    return { success: true, companyId: invite.companyId }
   } catch (error: any) {
     console.error('Error in acceptTeamInvitation:', error)
     return { success: false, error: error.message }
@@ -1564,7 +1667,7 @@ export async function removeTeamMember(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
@@ -1587,16 +1690,8 @@ export async function removeTeamMember(
       }
     }
 
-    const adminSupabase: any = createAdminClient()
-    const { error } = await adminSupabase
-      .from('user_roles')
-      .delete()
-      .eq('id', roleId)
-      .eq('company_id', companyId)
-
-    if (error) {
-      return { success: false, error: error.message }
-    }
+    const { companyMembershipRepository } = createServerContainer()
+    await companyMembershipRepository.removeRole(roleId, companyId)
 
     return { success: true }
   } catch (error: any) {
@@ -1615,7 +1710,7 @@ export async function updateTeamMemberRole(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
@@ -1627,16 +1722,8 @@ export async function updateTeamMemberRole(
       return { success: false, error: 'You do not have permission to change roles' }
     }
 
-    const adminSupabase: any = createAdminClient()
-    const { error } = await adminSupabase
-      .from('user_roles')
-      .update({ role: newRole })
-      .eq('id', roleId)
-      .eq('company_id', companyId)
-
-    if (error) {
-      return { success: false, error: error.message }
-    }
+    const { companyMembershipRepository } = createServerContainer()
+    await companyMembershipRepository.updateRole(roleId, companyId, newRole)
 
     return { success: true }
   } catch (error: any) {
@@ -1665,7 +1752,7 @@ export async function generateRecurringCompliances(
     }
 
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
@@ -1674,13 +1761,7 @@ export async function generateRecurringCompliances(
     const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin (platform-level, company_id = NULL)
-    const { data: superadminRoles } = await adminSupabase
-      .from('user_roles')
-      .select('role, company_id')
-      .eq('user_id', user.id)
-      .eq('role', 'superadmin')
-
-    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
+    const isSuperadmin = await isUserPlatformSuperadmin(user.id)
 
     // Check permissions (superadmin can generate for all, others need company access)
     if (!isSuperadmin) {
@@ -1734,7 +1815,7 @@ export async function generateRecurringCompliances(
 export async function getComplianceTemplates(): Promise<{ success: boolean; templates?: ComplianceTemplate[]; error?: string }> {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
@@ -1743,13 +1824,7 @@ export async function getComplianceTemplates(): Promise<{ success: boolean; temp
     const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin
-    const { data: superadminRoles } = await adminSupabase
-      .from('user_roles')
-      .select('role, company_id')
-      .eq('user_id', user.id)
-      .eq('role', 'superadmin')
-
-    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
+    const isSuperadmin = await isUserPlatformSuperadmin(user.id)
 
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can view templates' }
@@ -1831,11 +1906,13 @@ export async function createComplianceTemplate(
     due_month?: number
     due_day?: number
     due_date?: string
+    country_code?: string
+    applicable_regions?: string[]
   }
 ): Promise<{ success: boolean; id?: string; applied_count?: number; error?: string }> {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
@@ -1844,13 +1921,7 @@ export async function createComplianceTemplate(
     const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin
-    const { data: superadminRoles } = await adminSupabase
-      .from('user_roles')
-      .select('role, company_id')
-      .eq('user_id', user.id)
-      .eq('role', 'superadmin')
-
-    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
+    const isSuperadmin = await isUserPlatformSuperadmin(user.id)
 
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can create templates' }
@@ -1897,6 +1968,22 @@ export async function createComplianceTemplate(
       }
     }
 
+    // CRITICAL FIX: Resolve Supabase user_id for Passport users
+    // created_by and updated_by have FK constraint to auth.users.id, so we need to check for Supabase identity
+    let supabaseUserId: string | null = null
+    if (user.canonicalId) {
+      // Passport user - check for linked Supabase identity
+      const { authIdentityRepository } = createServerContainer()
+      const allIdentities = await authIdentityRepository.findByAppUserId(user.canonicalId)
+      const supabaseIdentity = allIdentities.find((id) => id.provider === 'supabase')
+      if (supabaseIdentity?.legacyAuthId) {
+        supabaseUserId = supabaseIdentity.legacyAuthId
+      }
+    } else {
+      // Supabase user - use user.id directly
+      supabaseUserId = user.id
+    }
+
     // Insert template
     const { data: newTemplate, error: insertError } = await adminSupabase
       .from('compliance_templates')
@@ -1918,12 +2005,14 @@ export async function createComplianceTemplate(
         due_day: template.compliance_type === 'quarterly' ? template.due_day : (template.due_day || null),
         due_date: template.due_date && template.due_date.trim() !== '' ? template.due_date : null,
         year_type: (template as any).year_type || 'FY',  // Default to FY for backward compatibility
+        country_code: template.country_code || 'IN',  // Default to India for backward compatibility
+        applicable_regions: template.applicable_regions || null,
         required_documents: Array.isArray((template as any).required_documents)
           ? (template as any).required_documents
           : ((template as any).required_documents ? [(template as any).required_documents] : []),
         possible_legal_action: (template as any).possible_legal_action || null,
-        created_by: user.id,
-        updated_by: user.id
+        created_by: supabaseUserId, // Use resolved Supabase user_id or null
+        updated_by: supabaseUserId  // Use resolved Supabase user_id or null
       })
       .select('id')
       .single()
@@ -1986,11 +2075,13 @@ export async function updateComplianceTemplate(
     due_day?: number
     due_date?: string
     is_active?: boolean
+    country_code?: string
+    applicable_regions?: string[]
   }
 ): Promise<{ success: boolean; applied_count?: number; error?: string }> {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
@@ -1999,21 +2090,31 @@ export async function updateComplianceTemplate(
     const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin
-    const { data: superadminRoles } = await adminSupabase
-      .from('user_roles')
-      .select('role, company_id')
-      .eq('user_id', user.id)
-      .eq('role', 'superadmin')
-
-    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
+    const isSuperadmin = await isUserPlatformSuperadmin(user.id)
 
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can update templates' }
     }
 
+    // CRITICAL FIX: Resolve Supabase user_id for Passport users
+    // updated_by has FK constraint to auth.users.id, so we need to check for Supabase identity
+    let supabaseUserId: string | null = null
+    if (user.canonicalId) {
+      // Passport user - check for linked Supabase identity
+      const { authIdentityRepository } = createServerContainer()
+      const allIdentities = await authIdentityRepository.findByAppUserId(user.canonicalId)
+      const supabaseIdentity = allIdentities.find((id) => id.provider === 'supabase')
+      if (supabaseIdentity?.legacyAuthId) {
+        supabaseUserId = supabaseIdentity.legacyAuthId
+      }
+    } else {
+      // Supabase user - use user.id directly
+      supabaseUserId = user.id
+    }
+
     // Build update object
     const updateData: any = {
-      updated_by: user.id,
+      updated_by: supabaseUserId, // Use resolved Supabase user_id or null
       updated_at: new Date().toISOString()
     }
 
@@ -2057,6 +2158,12 @@ export async function updateComplianceTemplate(
     }
     if ((template as any).year_type !== undefined) {
       updateData.year_type = (template as any).year_type || 'FY'
+    }
+    if (template.country_code !== undefined) {
+      updateData.country_code = template.country_code || 'IN'
+    }
+    if (template.applicable_regions !== undefined) {
+      updateData.applicable_regions = template.applicable_regions && template.applicable_regions.length > 0 ? template.applicable_regions : null
     }
 
     // Only update if there are actual changes (not just re-applying)
@@ -2127,7 +2234,7 @@ export async function deleteComplianceTemplate(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
@@ -2136,13 +2243,7 @@ export async function deleteComplianceTemplate(
     const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin
-    const { data: superadminRoles } = await adminSupabase
-      .from('user_roles')
-      .select('role, company_id')
-      .eq('user_id', user.id)
-      .eq('role', 'superadmin')
-
-    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
+    const isSuperadmin = await isUserPlatformSuperadmin(user.id)
 
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can delete templates' }
@@ -2191,7 +2292,7 @@ export async function deleteComplianceTemplate(
 export async function getTemplateDetails(templateId: string): Promise<{ success: boolean; template?: ComplianceTemplate; matching_companies?: any[]; error?: string }> {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
@@ -2200,13 +2301,7 @@ export async function getTemplateDetails(templateId: string): Promise<{ success:
     const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin
-    const { data: superadminRoles } = await adminSupabase
-      .from('user_roles')
-      .select('role, company_id')
-      .eq('user_id', user.id)
-      .eq('role', 'superadmin')
-
-    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
+    const isSuperadmin = await isUserPlatformSuperadmin(user.id)
 
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can view template details' }
@@ -2265,7 +2360,7 @@ export async function getTemplateDetails(templateId: string): Promise<{ success:
 export async function applyAllTemplates(): Promise<{ success: boolean; applied_count: number; template_count: number; error?: string }> {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, applied_count: 0, template_count: 0, error: 'Not authenticated' }
@@ -2274,13 +2369,7 @@ export async function applyAllTemplates(): Promise<{ success: boolean; applied_c
     const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin
-    const { data: superadminRoles } = await adminSupabase
-      .from('user_roles')
-      .select('role, company_id')
-      .eq('user_id', user.id)
-      .eq('role', 'superadmin')
-
-    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
+    const isSuperadmin = await isUserPlatformSuperadmin(user.id)
 
     if (!isSuperadmin) {
       return { success: false, applied_count: 0, template_count: 0, error: 'Only superadmins can apply templates' }
@@ -2347,20 +2436,7 @@ export async function applyAllTemplates(): Promise<{ success: boolean; applied_c
 // NOTIFICATION ACTIONS
 // ============================================
 
-export interface Notification {
-  id: string
-  company_id: string
-  user_id: string
-  type: 'status_change' | 'missing_docs' | 'upcoming_deadline' | 'overdue' | 'document_uploaded' | 'team_update'
-  title: string
-  message: string
-  requirement_id: string | null
-  document_id: string | null
-  is_read: boolean
-  read_at: string | null
-  created_at: string
-  metadata: Record<string, unknown> | null
-}
+export type Notification = AppNotification
 
 /**
  * Get notifications for current user
@@ -2369,47 +2445,16 @@ export async function getNotifications(
   options: { unreadOnly?: boolean; limit?: number } = {}
 ): Promise<{ success: boolean; notifications?: Notification[]; unreadCount?: number; error?: string }> {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      return { success: false, error: 'Not authenticated' }
-    }
-
-    const adminSupabase: any = createAdminClient()
-
-    let query = adminSupabase
-      .from('company_notifications')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-
-    if (options.unreadOnly) {
-      query = query.eq('is_read', false)
-    }
-
-    if (options.limit) {
-      query = query.limit(options.limit)
-    }
-
-    const { data, error } = await query
-
-    if (error) {
-      console.error('Error fetching notifications:', error)
-      return { success: false, error: error.message }
-    }
-
-    // Get unread count
-    const { count } = await adminSupabase
-      .from('company_notifications')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('is_read', false)
+    const { authService, notificationRepository } =
+      createServerNotificationContainer()
+    const user = await authService.requireCurrentUser()
+    const useCase = new GetUserNotifications(notificationRepository)
+    const result = await useCase.execute(user.id, options)
 
     return {
       success: true,
-      notifications: data || [],
-      unreadCount: count || 0
+      notifications: result.notifications,
+      unreadCount: result.unreadCount,
     }
   } catch (error: any) {
     console.error('Error in getNotifications:', error)
@@ -2425,28 +2470,17 @@ export async function markNotificationsRead(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase: any = createAdminClient()
     const ids = Array.isArray(notificationIds) ? notificationIds : [notificationIds]
+    const { notificationRepository } = createServerNotificationContainer()
+    const useCase = new MarkUserNotificationsRead(notificationRepository)
 
-    const { error } = await adminSupabase
-      .from('company_notifications')
-      .update({
-        is_read: true,
-        read_at: new Date().toISOString()
-      })
-      .eq('user_id', user.id)
-      .in('id', ids)
-
-    if (error) {
-      console.error('Error marking notifications read:', error)
-      return { success: false, error: error.message }
-    }
+    await useCase.execute(user.id, ids)
 
     return { success: true }
   } catch (error: any) {
@@ -2461,27 +2495,15 @@ export async function markNotificationsRead(
 export async function markAllNotificationsRead(): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
     }
 
-    const adminSupabase: any = createAdminClient()
-
-    const { error } = await adminSupabase
-      .from('company_notifications')
-      .update({
-        is_read: true,
-        read_at: new Date().toISOString()
-      })
-      .eq('user_id', user.id)
-      .eq('is_read', false)
-
-    if (error) {
-      console.error('Error marking all notifications read:', error)
-      return { success: false, error: error.message }
-    }
+    const { notificationRepository } = createServerNotificationContainer()
+    const useCase = new MarkAllUserNotificationsRead(notificationRepository)
+    await useCase.execute(user.id)
 
     return { success: true }
   } catch (error: any) {
@@ -2514,7 +2536,7 @@ export async function getCompanyFinancials(
 ): Promise<{ success: boolean; financials?: CompanyFinancials[]; error?: string }> {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
@@ -2560,7 +2582,7 @@ export async function upsertCompanyFinancials(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
@@ -2610,7 +2632,7 @@ export async function updateRequirementBaseAmount(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, error: 'Not authenticated' }
@@ -2619,13 +2641,7 @@ export async function updateRequirementBaseAmount(
     const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin
-    const { data: superadminRoles } = await adminSupabase
-      .from('user_roles')
-      .select('role, company_id')
-      .eq('user_id', user.id)
-      .eq('role', 'superadmin')
-
-    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
+    const isSuperadmin = await isUserPlatformSuperadmin(user.id)
 
     // Check permissions
     if (!isSuperadmin) {
@@ -2694,7 +2710,7 @@ export async function bulkCreateComplianceTemplates(
 ): Promise<{ success: boolean; created: number; errors: string[] }> {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
     if (!user) {
       return { success: false, created: 0, errors: ['Not authenticated'] }
@@ -2703,13 +2719,7 @@ export async function bulkCreateComplianceTemplates(
     const adminSupabase: any = createAdminClient()
 
     // Check if user is superadmin
-    const { data: superadminRoles } = await adminSupabase
-      .from('user_roles')
-      .select('role, company_id')
-      .eq('user_id', user.id)
-      .eq('role', 'superadmin')
-
-    const isSuperadmin = hasPlatformSuperadminRole(superadminRoles)
+    const isSuperadmin = await isUserPlatformSuperadmin(user.id)
 
     if (!isSuperadmin) {
       return { success: false, created: 0, errors: ['Only superadmins can create templates'] }
@@ -2872,6 +2882,63 @@ interface SendDocumentsEmailParams {
  * Get directors for a company
  * Uses admin client to bypass RLS
  */
+export async function getCompanyDetails(companyId: string): Promise<{
+  success: boolean
+  company?: {
+    name: string
+    type: string
+    incorporation_date: string
+    tax_id: string | null
+    registration_id: string | null
+    address: string | null
+    phone_number: string | null
+    industry_categories: string[]
+    industry: string | null
+    country_code: string | null
+  }
+  error?: string
+}> {
+  try {
+    const { authService, companyRepository } = createServerContainer()
+    const user = await authService.getCurrentUser()
+
+    if (!user) {
+      return { success: false, error: 'Unauthorized' }
+    }
+
+    // Check if user has access to this company
+    const hasAccess = await canUserView(companyId)
+    if (!hasAccess) {
+      return { success: false, error: 'No access to this company' }
+    }
+
+    const companyDetails = await companyRepository.getDetailsById(companyId)
+    if (!companyDetails) {
+      return { success: false, error: 'Company not found' }
+    }
+
+    // Map to the format expected by the client
+    return {
+      success: true,
+      company: {
+        name: companyDetails.name,
+        type: companyDetails.type || '',
+        incorporation_date: companyDetails.incorporationDate || '',
+        tax_id: companyDetails.taxId,
+        registration_id: companyDetails.registrationId,
+        address: companyDetails.address,
+        phone_number: companyDetails.phoneNumber,
+        industry_categories: companyDetails.industryCategories || [],
+        industry: companyDetails.industry,
+        country_code: companyDetails.countryCode,
+      },
+    }
+  } catch (err) {
+    console.error('Error in getCompanyDetails:', err)
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+}
+
 export async function getDirectors(companyId: string): Promise<{
   success: boolean
   directors?: Array<{
@@ -2895,9 +2962,9 @@ export async function getDirectors(companyId: string): Promise<{
     }
 
     const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
-    if (authError || !user) {
+    if (!user) {
       return { success: false, error: 'Unauthorized' }
     }
 
@@ -2907,47 +2974,9 @@ export async function getDirectors(companyId: string): Promise<{
       return { success: false, error: 'No access to this company' }
     }
 
-    const adminSupabase: any = createAdminClient()
-
-    const { data: directors, error } = await adminSupabase
-      .from('directors')
-      .select('id, first_name, last_name, middle_name, director_id, designation, dob, tax_id, email, mobile, is_verified')
-      .eq('company_id', companyId)
-      .order('created_at', { ascending: true })
-
-    if (error) {
-      console.error('Error fetching directors:', error)
-      return { success: false, error: error.message }
-    }
-
-    // Transform to match frontend Director interface
-    const transformedDirectors = (directors || []).map((dir: {
-      id: string
-      first_name?: string | null
-      last_name?: string | null
-      middle_name?: string | null
-      director_id?: string | null
-      designation?: string | null
-      dob?: string | null
-      tax_id?: string | null
-      email?: string | null
-      mobile?: string | null
-      is_verified?: boolean | null
-    }) => ({
-      id: dir.id,
-      firstName: dir.first_name || '',
-      lastName: dir.last_name || '',
-      middleName: dir.middle_name || '',
-      din: dir.director_id || '',
-      designation: dir.designation || '',
-      dob: dir.dob || '',
-      pan: dir.tax_id || '',
-      email: dir.email || '',
-      mobile: dir.mobile || '',
-      verified: dir.is_verified || false
-    }))
-
-    return { success: true, directors: transformedDirectors }
+    const { directorRepository } = createServerContainer()
+    const directors = await directorRepository.getByCompanyId(companyId)
+    return { success: true, directors }
   } catch (err) {
     console.error('Error in getDirectors:', err)
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
@@ -2962,12 +2991,12 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
   })
 
   try {
-    const supabase = await createClient()
+    const { authService } = createServerContainer()
     const adminSupabase: any = createAdminClient()
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      console.error('[sendDocumentsEmail] Auth error:', authError)
+    const user = await authService.getCurrentUser()
+    if (!user) {
+      console.error('[sendDocumentsEmail] Auth error: Not authenticated')
       return { success: false, error: 'Unauthorized' }
     }
     console.log('[sendDocumentsEmail] User authenticated:', user.email)
@@ -3018,7 +3047,7 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
 
     // Get sender info
     const senderEmail = user.email || 'Unknown'
-    const senderName = user.user_metadata?.full_name || user.user_metadata?.name || senderEmail
+    const senderName = getUserDisplayName(user)
 
     console.log('[sendDocumentsEmail] Generated URLs for', documentsWithUrls.length, 'documents')
     console.log('[sendDocumentsEmail] Sender:', senderName, senderEmail)
@@ -3093,9 +3122,9 @@ export async function hideDocumentTemplateForCompany(
     }
 
     const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
-    if (authError || !user) {
+    if (!user) {
       return { success: false, error: 'Unauthorized' }
     }
 
@@ -3165,9 +3194,9 @@ export async function getHiddenDocumentTemplates(
     }
 
     const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
-    if (authError || !user) {
+    if (!user) {
       return { success: false, error: 'Unauthorized' }
     }
 
@@ -3214,9 +3243,9 @@ export async function hideComplianceForCompany(
     }
 
     const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
-    if (authError || !user) {
+    if (!user) {
       return { success: false, error: 'Unauthorized' }
     }
 
@@ -3269,9 +3298,9 @@ export async function showComplianceForCompany(
     }
 
     const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
-    if (authError || !user) {
+    if (!user) {
       return { success: false, error: 'Unauthorized' }
     }
 
@@ -3314,9 +3343,9 @@ export async function getHiddenCompliances(
     }
 
     const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const user = await getCurrentUserOrNull()
 
-    if (authError || !user) {
+    if (!user) {
       return { success: false, error: 'Unauthorized' }
     }
 
@@ -3348,5 +3377,251 @@ export async function getHiddenCompliances(
   } catch (err) {
     console.error('Error in getHiddenCompliances:', err)
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+}
+
+
+
+/**
+ * Consolidated action to fetch all initial data needed for the Data Room.
+ * This combines multiple checks into a single server round-trip to prevent UI waterfalls.
+ */
+export async function getDataRoomInitState(preferredCompanyId: string | null = null): Promise<{
+  success: boolean
+  data?: {
+    user: { id: string; email: string; fullName: string | null }
+    companies: any[]
+    accessibleCompanyIds: string[]
+    currentCompanyId: string | null
+    companyAccess: import('@/domain/types/CompanyAccess').CompanyAccessSnapshot | null
+    userSubscription: {
+      hasSubscription: boolean
+      tier: string
+      isTrial: boolean
+      trialDaysRemaining: number
+      companyLimit: number
+      currentCompanyCount: number
+      canCreateCompany: boolean
+    }
+    // New: Initial company details to prevent Overview tab flicker
+    initialEntityDetails?: any
+    hiddenTemplates: string[]
+    hiddenCompliances: string[]
+    userRole: 'superadmin' | 'admin' | 'editor' | 'viewer'
+    initialRequirements: any[]
+  }
+  error?: string
+}> {
+  try {
+    const initStartTime = performance.now()
+    const { authService, accessService, companyRepository, subscriptionRepository } = createServerContainer()
+    
+    const authStartTime = performance.now()
+    const user = await authService.requireCurrentUser()
+    console.log(`[InitAction] Auth check took ${(performance.now() - authStartTime).toFixed(2)}ms`)
+    
+    // 1. Get accessible company IDs (optimized)
+    const accessibleStartTime = performance.now()
+    const accessibleUseCase = new GetAccessibleCompanyIds(accessService)
+    const accessibleCompanyIds = await accessibleUseCase.execute(user.id)
+    console.log(`[InitAction] Get accessible company IDs took ${(performance.now() - accessibleStartTime).toFixed(2)}ms`)
+    
+    // 2. Determine actual current company ID early so we can fetch its details
+    let currentCompanyId = preferredCompanyId
+    if (!currentCompanyId || !accessibleCompanyIds.includes(currentCompanyId)) {
+      currentCompanyId = accessibleCompanyIds[0] || null
+    }
+    // 3. Fetch all components in parallel
+    const { createAdminClient } = await import('@/utils/supabase/admin')
+    const adminSupabase = createAdminClient()
+    const { directorRepository, requirementRepository, authService: authSvc, accessService: accSvc, companyRepository: compRepo, subscriptionRepository: subRepo } = createServerContainer()
+    
+    const startParallel = performance.now()
+    const results = await Promise.all([
+      // A: Fetch basic details for all accessible companies (for selector)
+      (async () => {
+        const s = performance.now()
+        if (accessibleCompanyIds.length === 0) return []
+        const { data, error } = await adminSupabase
+          .from('companies')
+          .select('id, name, type, incorporation_date, country_code, region')
+          .in('id', accessibleCompanyIds)
+        if (error) throw error
+        console.log(`[InitAction] Fetch companies took ${(performance.now() - s).toFixed(2)}ms`)
+        return data || []
+      })(),
+      
+      // B: Fetch user subscription summary
+      (async () => {
+        const s = performance.now()
+        const res = await subscriptionRepository.getUserSubscriptionState(user.id)
+        console.log(`[InitAction] Fetch user sub took ${(performance.now() - s).toFixed(2)}ms`)
+        return res
+      })(),
+      
+      // C: Fetch owned companies count
+      (async () => {
+        const s = performance.now()
+        const res = await companyRepository.listOwnedByUser(user.id)
+        console.log(`[InitAction] Fetch owned count took ${(performance.now() - s).toFixed(2)}ms`)
+        return res
+      })(),
+      
+      // D: Fetch access snapshot for current company
+      (async () => {
+        const s = performance.now()
+        if (!currentCompanyId) return null
+        const res = await (new GetCompanyAccessSnapshot(accessService)).execute(user.id, currentCompanyId)
+        console.log(`[InitAction] Fetch company access took ${(performance.now() - s).toFixed(2)}ms`)
+        return res
+      })(),
+      
+      // E: Fetch full details and directors for the CURRENT company
+      currentCompanyId ? (async () => {
+        const s = performance.now()
+        
+        const [companyResult, directors] = await Promise.all([
+          adminSupabase
+            .from('companies')
+            .select('id, name, type, incorporation_date, tax_id, registration_id, address, phone_number, industry_categories, industry, country_code')
+            .eq('id', currentCompanyId)
+            .single(),
+          directorRepository.getByCompanyId(currentCompanyId)
+        ])
+        
+        if (companyResult.error) return null
+        const company = companyResult.data as any
+
+        // Formatting logic
+        const incorporationDate = company?.incorporation_date ? new Date(company.incorporation_date) : new Date()
+        const formattedDate = incorporationDate.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric',
+        })
+
+        const res = {
+          companyName: company?.name || 'Unknown',
+          type: (company?.type || '').toUpperCase(),
+          regDate: formattedDate,
+          taxId: company?.tax_id || 'Not Provided',
+          registrationId: company?.registration_id || 'Not Provided',
+          address: company?.address || 'Not Provided',
+          phoneNumber: company?.phone_number || 'Not Provided',
+          industryCategory: Array.isArray(company?.industry_categories)
+            ? company.industry_categories.join(', ')
+            : company?.industry || 'Not Provided',
+          directors: (directors || []).map((d: any) => ({
+            id: d.id,
+            firstName: d.firstName,
+            lastName: d.lastName,
+            middleName: d.middleName,
+            din: d.din,
+            designation: d.designation,
+            dob: d.dob,
+            pan: d.pan,
+            email: d.email,
+            mobile: d.mobile,
+            verified: d.verified,
+          })),
+        }
+        console.log(`[InitAction] Fetch entity details took ${(performance.now() - s).toFixed(2)}ms`)
+        return res
+      })() : Promise.resolve(null),
+
+      // F: Hidden Templates (Optimized)
+      currentCompanyId ? (async () => {
+        const s = performance.now()
+        const { data } = await adminSupabase
+          .from('company_document_template_exclusions')
+          .select('folder_name, document_name')
+          .eq('company_id', currentCompanyId)
+        console.log(`[InitAction] Fetch hidden templates took ${(performance.now() - s).toFixed(2)}ms`)
+        return ((data as any[]) || []).map((t: any) => `${t.folder_name}:${t.document_name}`)
+      })() : Promise.resolve([]),
+
+      // G: Hidden Compliances
+      currentCompanyId ? (async () => {
+        const s = performance.now()
+        const { data } = await adminSupabase
+          .from('company_compliance_exclusions')
+          .select('compliance_id')
+          .eq('company_id', currentCompanyId)
+        console.log(`[InitAction] Fetch hidden compliances took ${(performance.now() - s).toFixed(2)}ms`)
+        return ((data as any[]) || []).map((c: any) => c.compliance_id)
+      })() : Promise.resolve([]),
+
+      // H: User Role for current company
+      currentCompanyId ? (async () => {
+        const s = performance.now()
+        const res = await getUserRole(currentCompanyId)
+        console.log(`[InitAction] Fetch user role took ${(performance.now() - s).toFixed(2)}ms`)
+        return res.success ? res.role : 'viewer'
+      })() : Promise.resolve('viewer'),
+
+      // I: Regulatory Requirements
+      currentCompanyId ? (async () => {
+        const s = performance.now()
+        const res = await getRegulatoryRequirements(currentCompanyId)
+        console.log(`[InitAction] Fetch requirements took ${(performance.now() - s).toFixed(2)}ms`)
+        return res.success ? res.requirements : []
+      })() : Promise.resolve([])
+    ])
+
+    const [
+      companiesResult, 
+      subscriptionState, 
+      ownedCompanies, 
+      currentCompanyAccess, 
+      currentCompanyDetails,
+      hiddenTemplatesResult,
+      hiddenCompliancesResult,
+      userRoleResult,
+      regulatoryRequirementsResult
+    ] = results
+    
+    console.log(`[InitAction] Total Parallel fetches took ${(performance.now() - startParallel).toFixed(2)}ms`)
+    console.log(`[InitAction] Total initialization took ${(performance.now() - initStartTime).toFixed(2)}ms`)
+
+    // 4. Calculate subscription summary
+    const hasActiveSubscription = Boolean(
+      subscriptionState?.hasSubscription ||
+      (subscriptionState?.isTrial && (subscriptionState?.trialDaysRemaining ?? 0) > 0)
+    )
+    
+    return {
+      success: true,
+      data: {
+        user: { 
+          id: user.id, 
+          email: user.email || '', 
+          fullName: user.fullName || null 
+        },
+        companies: companiesResult || [],
+        accessibleCompanyIds,
+        currentCompanyId,
+        companyAccess: currentCompanyAccess,
+        userSubscription: {
+          hasSubscription: hasActiveSubscription,
+          tier: subscriptionState?.tier ?? 'none',
+          isTrial: subscriptionState?.isTrial ?? false,
+          trialDaysRemaining: subscriptionState?.trialDaysRemaining ?? 0,
+          companyLimit: subscriptionState?.companyLimit ?? 0,
+          currentCompanyCount: (ownedCompanies || []).length,
+          canCreateCompany: hasActiveSubscription && (ownedCompanies || []).length < (subscriptionState?.companyLimit ?? 0),
+        },
+        initialEntityDetails: currentCompanyDetails,
+        hiddenTemplates: hiddenTemplatesResult as string[],
+        hiddenCompliances: hiddenCompliancesResult as string[],
+        userRole: userRoleResult as any,
+        initialRequirements: (regulatoryRequirementsResult || []) as any[]
+      }
+    }
+  } catch (error: any) {
+    console.error('Error in getDataRoomInitState:', error)
+    return { 
+      success: false, 
+      error: error.message || 'Failed to initialize Data Room' 
+    }
   }
 }

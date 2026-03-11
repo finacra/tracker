@@ -1,0 +1,156 @@
+---
+description: Step-by-step refactoring workflow following SOLID principles
+globs: *.tsx,*.ts
+---
+
+# Refactoring Workflow with SOLID Principles
+
+## Pre-Refactoring Analysis
+
+### Step 1: Identify Responsibilities
+Before refactoring, list ALL responsibilities:
+- [ ] UI Rendering
+- [ ] State Management
+- [ ] Business Logic
+- [ ] Data Fetching
+- [ ] Data Transformation
+- [ ] Event Handling
+- [ ] Form Validation
+- [ ] API Calls
+
+### Step 2: Plan Component Split
+For each responsibility, assign to:
+- **UI Component**: Rendering only
+- **Custom Hook**: State + Logic
+- **Service**: API/Data operations
+- **Utility**: Pure transformations
+
+## Refactoring Order (SRP First)
+
+### Phase 1: Extract Business Logic
+1. Create custom hooks for stateful logic
+2. Extract pure functions to utilities
+3. Move API calls to services
+
+### Phase 2: Extract UI Components
+1. Extract presentational components
+2. Extract reusable UI patterns
+3. Extract complex forms into sub-components
+
+### Phase 3: Refactor Container
+1. Use extracted hooks
+2. Compose presentational components
+3. Inject services via props/context
+
+## File Structure Pattern
+
+```
+components/
+  FeatureName/
+    FeatureNameTab.tsx          # Container (orchestration)
+    FeatureNameList.tsx         # Presentational
+    FeatureNameForm.tsx         # Presentational
+    FeatureNameModal.tsx        # Presentational
+    hooks/
+      useFeatureName.ts         # State + Business logic
+    services/
+      featureNameService.ts     # API calls
+    utils/
+      featureNameUtils.ts       # Pure functions
+```
+
+## Dependency Injection Pattern
+
+### ❌ Direct Imports (Violates DIP)
+```typescript
+import { uploadDocument } from '@/app/onboarding/actions'
+import { showToast } from '@/components/ui/Toast'
+
+function MyComponent() {
+  const handleUpload = () => {
+    uploadDocument(file)  // Direct dependency
+    showToast('Success')  // Direct dependency
+  }
+}
+```
+
+### ✅ Dependency Injection (Follows DIP)
+```typescript
+interface MyComponentProps {
+  documentService: DocumentService
+  toastService: ToastService
+}
+
+function MyComponent({ documentService, toastService }: MyComponentProps) {
+  const handleUpload = () => {
+    documentService.upload(file)  // Injected
+    toastService.show('Success')  // Injected
+  }
+}
+```
+
+## Interface Segregation
+
+### ❌ Large Interface (Violates ISP)
+```typescript
+interface DocumentsTabProps {
+  // 20+ props, many unused by child components
+  vaultDocuments: any[]
+  setVaultDocuments: (docs: any[]) => void
+  documentTemplates: any[]
+  // ... 17 more props
+}
+```
+
+### ✅ Segregated Interfaces (Follows ISP)
+```typescript
+// Container props
+interface DocumentsTabProps {
+  company: Company
+  user: User
+}
+
+// List component props
+interface DocumentListProps {
+  documents: Document[]
+  onSelect: (id: string) => void
+}
+
+// Form component props
+interface DocumentFormProps {
+  onSubmit: (data: FormData) => void
+  onCancel: () => void
+}
+```
+
+## Validation Checklist
+
+Before considering refactoring complete:
+
+### SRP Validation:
+- [ ] Component has single, clear responsibility
+- [ ] Business logic extracted to hooks/services
+- [ ] UI rendering separated from logic
+- [ ] Component under size limits
+
+### DIP Validation:
+- [ ] Dependencies injected, not imported directly
+- [ ] Services use interfaces, not concrete classes
+- [ ] Easy to mock for testing
+
+### ISP Validation:
+- [ ] Component props < 10
+- [ ] Props are focused and necessary
+- [ ] No unused props passed down
+
+### OCP Validation:
+- [ ] Component extensible via props/children
+- [ ] No hardcoded behavior
+- [ ] Uses composition over modification
+
+## Incremental Refactoring
+
+1. **Extract ONE responsibility at a time**
+2. **Test after each extraction**
+3. **Don't extract multiple responsibilities simultaneously**
+4. **Validate SOLID compliance after each step**

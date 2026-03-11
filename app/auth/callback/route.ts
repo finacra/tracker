@@ -1,12 +1,33 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { GetRootDestination } from '@/application/use-cases/navigation/GetRootDestination'
+import { resolvePostAuthRedirect } from '@/application/use-cases/navigation/resolvePostAuthRedirect'
 import { createClient } from '@/utils/supabase/server'
 import { trackLogin } from '@/lib/tracking/kpi-tracker'
+import { createServerContainer } from '@/lib/composition/server-container'
+import { cookies } from 'next/headers'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   const explicitNext = searchParams.get('next')
   
+  // Check which auth provider is configured
+  const authProvider = process.env.AUTH_PROVIDER || 'supabase'
+  
+  // If Passport is configured, handle Passport callback
+  if (authProvider === 'passport' && code) {
+    // Use Next.js cookies helper for better cookie handling
+    const cookieStore = await cookies()
+    const state = searchParams.get('state')
+    const storedState = cookieStore.get('passport_oauth_state')?.value
+    const redirectTo = cookieStore.get('passport_redirect_to')?.value || null
+    
+    // Import Passport callback handler logic
+    const { handlePassportCallback } = await import('@/lib/auth/passport-callback-handler')
+    return handlePassportCallback(request, code, explicitNext, storedState, redirectTo)
+  }
+  
+  // Supabase callback handling (existing logic)
   if (code) {
     const supabase = await createClient()
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
@@ -17,64 +38,18 @@ export async function GET(request: Request) {
     }
     
     if (data.session) {
-      // Check if user has companies (owned or via user_roles)
-      const { data: ownedCompanies } = await supabase
-        .from('companies')
-        .select('id')
-        .eq('user_id', data.session.user.id)
-        .limit(1)
-      
-      const { data: userRoles } = await supabase
-        .from('user_roles')
-        .select('company_id')
-        .eq('user_id', data.session.user.id)
-        .not('company_id', 'is', null)
-        .limit(1)
-      
-      const hasCompanies = (ownedCompanies && ownedCompanies.length > 0) || (userRoles && userRoles.length > 0)
-      
-      // Determine redirect destination
-      let next = '/data-room' // Default to data-room
-      
-      if (!hasCompanies) {
-        // Check if user has active subscription or trial
-        // Users with active trials should be able to create companies
-        const { data: subData, error: subError } = await supabase
-          .rpc('check_user_subscription', { target_user_id: data.session.user.id })
-          .single()
-        
-        const subInfo = subData as {
-          has_subscription: boolean
-          is_trial: boolean
-          trial_days_remaining: number
-          tier: string
-        } | null
-        
-        // Check for active subscription OR active trial (trial days remaining > 0)
-        const hasActiveSubscription = subInfo?.has_subscription === true || 
-                                     (subInfo?.is_trial === true && (subInfo?.trial_days_remaining ?? 0) > 0)
-        
-        if (hasActiveSubscription) {
-          next = '/onboarding'
-        } else {
-          next = '/subscribe'
-        }
-      }
-      
-      // If "next" is explicitly provided in params, honor invite-accept flows even for existing users.
-      if (explicitNext && explicitNext.startsWith('/')) {
-        const isInviteAccept =
-          explicitNext.startsWith('/invite/accept') ||
-          explicitNext.includes('/invite/accept') ||
-          explicitNext.includes('token=')
-
-        if (isInviteAccept) {
-          next = explicitNext
-        } else if (!hasCompanies) {
-          // Only use explicit next if user doesn't have companies (to allow onboarding for new companies)
-          next = explicitNext
-        }
-      }
+      const { authService, companyRepository, subscriptionService } =
+        createServerContainer()
+      const useCase = new GetRootDestination(
+        authService,
+        companyRepository,
+        subscriptionService
+      )
+      const next = resolvePostAuthRedirect({
+        baseDestination: await useCase.executeForUser(data.session.user.id),
+        overridePath: explicitNext,
+        allowOverrideForDataRoomUsers: false,
+      })
       
       // Create redirect response
       const forwardedHost = request.headers.get('x-forwarded-host')
@@ -89,7 +64,7 @@ export async function GET(request: Request) {
         redirectUrl = `${origin}${next}`
       }
       
-      console.log(`[AUTH CALLBACK] User ${data.session.user.id} has companies: ${hasCompanies}, redirecting to: ${next}`)
+      console.log(`[AUTH CALLBACK] User ${data.session.user.id} redirecting to: ${next}`)
       
       // Track login
       await trackLogin(data.session.user.id)

@@ -1,0 +1,252 @@
+---
+alwaysApply: true
+description: File creation workflow for large files to prevent timeouts and data loss - STRICTLY ENFORCED
+globs: *.tsx,*.ts
+---
+
+# File Creation Workflow (Large Files) - STRICTLY ENFORCED
+
+## ⚠️ CRITICAL: For Files 250+ Lines
+
+**NEVER write 250+ lines in a single operation!**
+
+**MANDATORY CHECKLIST BEFORE WRITING ANY FILE:**
+1. [ ] Estimate file size
+2. [ ] If > 250 lines → MUST use incremental creation
+3. [ ] Create skeleton first
+4. [ ] Save after each chunk (50-100 lines max)
+5. [ ] Validate after each chunk
+
+**VIOLATION = IMMEDIATE STOP AND RESTART**
+
+This prevents:
+- Tool timeouts
+- Losing entire file if process ends prematurely
+- Allows validation at each step
+- Easier to debug issues
+
+## Step-by-Step Process (MANDATORY FOR 250+ LINES)
+
+### Step 1: Create Empty Skeleton First (MANDATORY)
+
+**⚠️ BEFORE writing any code, create the file with minimal skeleton:**
+
+```typescript
+// app/data-room/components/LargeComponent.tsx
+'use client'
+
+export default function LargeComponent() {
+  return null
+}
+```
+
+**✅ SAVE THE FILE IMMEDIATELY** - This creates the file handle and prevents data loss.
+
+**❌ DO NOT proceed to Step 2 until file is saved!**
+
+### Step 2: Add Code Incrementally (50-100 Line Chunks MAX)
+
+**⚠️ MANDATORY: Add code in small, manageable chunks (MAX 100 lines per chunk):**
+
+**❌ NEVER write more than 100 lines in a single edit operation!**
+**✅ ALWAYS save after each chunk before proceeding!**
+
+#### Chunk 1: Imports and Interface (20-30 lines)
+```typescript
+'use client'
+
+import { useState } from 'react'
+import { SomeService } from '@/services/SomeService'
+
+interface LargeComponentProps {
+  // Props interface here
+}
+
+export default function LargeComponent() {
+  return null
+}
+```
+**Save after this chunk**
+
+#### Chunk 2: State Declarations (30-50 lines)
+```typescript
+export default function LargeComponent(props: LargeComponentProps) {
+  const [state1, setState1] = useState<string>('')
+  const [state2, setState2] = useState<number>(0)
+  // ... more state
+  return null
+}
+```
+**Save after this chunk**
+
+#### Chunk 3: Helper Functions (40-50 lines each)
+```typescript
+export default function LargeComponent(props: LargeComponentProps) {
+  // State declarations...
+  
+  // Helper function 1
+  const helperFunction1 = () => {
+    // Implementation
+  }
+  
+  return null
+}
+```
+**Save after each helper function**
+
+#### Chunk 4: Business Logic Hooks (50-100 lines)
+```typescript
+export default function LargeComponent(props: LargeComponentProps) {
+  // State...
+  // Helpers...
+  
+  // Custom hook or useMemo
+  const computedValue = useMemo(() => {
+    // Complex calculation
+  }, [deps])
+  
+  return null
+}
+```
+**Save after this chunk**
+
+#### Chunk 5: JSX Sections (100 lines each)
+```typescript
+export default function LargeComponent(props: LargeComponentProps) {
+  // All previous code...
+  
+  return (
+    <div>
+      {/* First JSX section */}
+    </div>
+  )
+}
+```
+**Save after each JSX section**
+
+## Example Workflow for 500-Line Component
+
+```
+1. Create file with skeleton → Save
+2. Add imports (20 lines) → Save
+3. Add interface (30 lines) → Save
+4. Add state (50 lines) → Save
+5. Add first helper function (40 lines) → Save
+6. Add second helper function (40 lines) → Save
+7. Add business logic hook (60 lines) → Save
+8. Add first JSX section (100 lines) → Save
+9. Add second JSX section (100 lines) → Save
+10. Add third JSX section (60 lines) → Save
+11. Final validation → Build
+```
+
+## Validation After Each Chunk
+
+**After saving each chunk:**
+- [ ] File syntax is valid
+- [ ] No obvious errors
+- [ ] Can build/compile (if possible)
+- [ ] Ready for next chunk
+
+## When to Use This Workflow
+
+**Always use for:**
+- Files > 250 lines
+- Complex components with multiple responsibilities
+- Files with many helper functions
+- Files with complex business logic
+
+**Optional for:**
+- Files 200-250 lines (if complex)
+- Files with many imports
+- Files with complex type definitions
+
+## Benefits
+
+1. **Prevents Data Loss**: If tool times out, you only lose the current chunk
+2. **Easier Debugging**: Can identify which chunk introduced issues
+3. **Better Validation**: Can validate incrementally
+4. **Reduces Errors**: Smaller changes are easier to review
+5. **Tool Stability**: Prevents tool timeouts on large operations
+
+## Anti-Pattern: Writing Everything at Once
+
+**❌ NEVER do this (VIOLATION):**
+```typescript
+// Writing 500+ lines in one operation - THIS IS FORBIDDEN
+'use client'
+import { ... } // 20 imports
+interface { ... } // 50 lines
+export default function Component() {
+  // 400+ lines of code
+  // If tool times out here, you lose EVERYTHING
+  // THIS WILL CAUSE DATA LOSS
+}
+```
+
+**✅ ALWAYS do this (REQUIRED):**
+```typescript
+// Step 1: Skeleton (MANDATORY FIRST STEP)
+export default function Component() {
+  return null
+}
+// ✅ SAVE IMMEDIATELY
+
+// Step 2: Add imports (20-30 lines max)
+import { useState } from 'react'
+// ✅ SAVE IMMEDIATELY
+
+// Step 3: Add interface (30-50 lines max)
+interface Props { ... }
+// ✅ SAVE IMMEDIATELY
+
+// Step 4: Add state (30-50 lines max)
+const [state, setState] = useState()
+// ✅ SAVE IMMEDIATELY
+
+// Step 5: Add first JSX section (50-100 lines max)
+return <div>...</div>
+// ✅ SAVE IMMEDIATELY
+
+// Continue incrementally...
+```
+
+## Enforcement Rules
+
+**Before ANY file write operation:**
+1. **Check estimated size** - If > 250 lines, MUST use incremental workflow
+2. **Create skeleton first** - Never skip this step
+3. **Save after each chunk** - Never write multiple chunks without saving
+4. **Validate after each chunk** - Check for errors before proceeding
+5. **Stop if violation detected** - If you wrote > 100 lines, STOP and restart
+
+**If you catch yourself writing > 100 lines:**
+- ❌ STOP immediately
+- ✅ Save what you have
+- ✅ Continue with next chunk
+- ✅ Never write > 100 lines in one operation
+
+## MANDATORY Checklist (Must Complete Before Writing)
+
+**Before creating ANY file:**
+- [ ] Estimated file size calculated
+- [ ] If > 250 lines → Incremental workflow required
+- [ ] Chunk breakdown planned (max 100 lines per chunk)
+- [ ] Skeleton created first (MANDATORY)
+- [ ] Skeleton saved (MANDATORY)
+- [ ] Ready to add chunks incrementally
+- [ ] Will save after each chunk (MANDATORY)
+- [ ] Will validate after each chunk (MANDATORY)
+- [ ] Will NEVER write > 100 lines in one operation
+
+**During file creation:**
+- [ ] Current chunk size < 100 lines
+- [ ] Saved after previous chunk
+- [ ] Validated previous chunk
+- [ ] Ready to add next chunk
+
+**After file creation:**
+- [ ] All chunks saved
+- [ ] File builds successfully
+- [ ] No TypeScript errors
+- [ ] No linter errors

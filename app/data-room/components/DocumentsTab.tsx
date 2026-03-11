@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
-import { uploadDocument, getCompanyDocuments, getDocumentTemplates, getDownloadUrl, deleteDocument } from '@/app/onboarding/actions'
+import { uploadDocument, getCompanyDocuments, getDocumentTemplates, getDownloadUrl, deleteDocument, uploadFileToStorage } from '@/app/onboarding/actions'
 import { sendDocumentsEmail, hideDocumentTemplateForCompany, getHiddenDocumentTemplates } from '@/app/data-room/actions'
 import { trackVaultFileExport, trackVaultFileUpload, trackDocumentUpload } from '@/lib/tracking/kpi-tracker'
 import { showToast } from '@/components/ui/Toast'
@@ -56,6 +56,32 @@ interface DocumentsTabProps {
     relevance: string
   }>
   getAuthorityForCategory: (category: string) => string | null
+  
+  // Document upload modal props from tracker
+  documentUploadModal?: {
+    isOpen: boolean
+    requirementId: string
+    requirement: string
+    category: string
+    documentName: string
+    complianceType: string
+    dueDate: string
+    financialYear: string | null
+    allRequiredDocs: string[]
+  } | null
+  uploadingDocument?: boolean
+  setUploadingDocument?: (uploading: boolean) => void
+  uploadFile?: File | null
+  setUploadFile?: (file: File | null) => void
+  uploadProgress?: number
+  setUploadProgress?: (progress: number) => void
+  uploadStage?: string
+  setUploadStage?: (stage: string) => void
+  previewFileUrl?: string | null
+  setPreviewFileUrl?: (url: string | null) => void
+  showToast?: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void
+  handleTrackerDocumentUpload?: () => Promise<void>
+  setDocumentUploadModal?: (modal: any) => void
 }
 
 export default function DocumentsTab({
@@ -83,6 +109,20 @@ export default function DocumentsTab({
   getFormFrequency,
   getRelevantLegalSections,
   getAuthorityForCategory,
+  documentUploadModal,
+  uploadingDocument = false,
+  setUploadingDocument,
+  uploadFile,
+  setUploadFile,
+  uploadProgress = 0,
+  setUploadProgress,
+  uploadStage = '',
+  setUploadStage,
+  previewFileUrl,
+  setPreviewFileUrl,
+  showToast,
+  handleTrackerDocumentUpload,
+  setDocumentUploadModal,
 }: DocumentsTabProps) {
   const router = useRouter()
   const supabase = createClient()
@@ -503,16 +543,19 @@ export default function DocumentsTab({
 
   const handlePreview = async (doc: any) => {
     try {
+      console.log('[handlePreview] Attempting to preview document:', doc.file_path)
       const result = await getDownloadUrl(doc.file_path)
+      console.log('[handlePreview] getDownloadUrl result:', result)
       if (result.success && result.url) {
         setPreviewDocument({ ...doc, previewUrl: result.url })
         setIsPreviewModalOpen(true)
       } else {
-        showToast('Failed to get document preview URL', 'error')
+        console.error('[handlePreview] Failed to get preview URL:', result.error)
+        showToast(`Failed to get document preview URL: ${result.error || 'Unknown error'}`, 'error')
       }
-    } catch (err) {
-      console.error('Preview error:', err)
-      showToast('Error loading document preview', 'error')
+    } catch (err: any) {
+      console.error('[handlePreview] Preview error:', err)
+      showToast(`Error loading document preview: ${err.message || 'Unknown error'}`, 'error')
     }
   }
 
@@ -570,12 +613,13 @@ export default function DocumentsTab({
       const fileName = `${uploadFormData.documentName.replace(/\s+/g, '_')}_${Date.now()}.${fileExt}`
       const filePath = `${user?.id}/${currentCompany.id}/${fileName}`
 
-      // 1. Upload to Storage
-      const { error: uploadError } = await supabase.storage
-        .from('company-documents')
-        .upload(filePath, uploadFormData.file)
+      // 1. Upload to Storage via server action (works for both Supabase and Passport users)
+      const fileArrayBuffer = await uploadFormData.file.arrayBuffer()
+      const uploadResult = await uploadFileToStorage(filePath, fileArrayBuffer, uploadFormData.file.type)
 
-      if (uploadError) throw uploadError
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Upload failed')
+      }
 
       // 2. Save metadata via Server Action
       const result = await uploadDocument(currentCompany.id, {
@@ -1149,8 +1193,8 @@ export default function DocumentsTab({
       {/* Expand/Collapse All Controls */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="text-sm text-gray-400">
-          {documentFolders.length} folders â€¢ {expandedFolders.size} expanded
-          {expandedDocumentVersions.size > 0 && ` â€¢ ${expandedDocumentVersions.size} document versions shown`}
+          {documentFolders.length} folders · {expandedFolders.size} expanded
+          {expandedDocumentVersions.size > 0 && ` · ${expandedDocumentVersions.size} document versions shown`}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
@@ -1362,7 +1406,7 @@ export default function DocumentsTab({
                     <h3 className="text-base sm:text-xl font-light text-white break-words">{folderName}</h3>
                     <p className="text-gray-400 text-xs sm:text-sm">
                       {uploadedCount} uploaded
-                      {pendingCount > 0 && ` â€¢ ${pendingCount} pending`}
+                      {pendingCount > 0 && ` · ${pendingCount} pending`}
                       {searchQuery && filteredFolderDocs.length !== folderDocs.length && (
                         <span className="ml-2 text-gray-500">
                           ({filteredFolderDocs.length} of {folderDocs.length} shown)
@@ -1606,7 +1650,7 @@ export default function DocumentsTab({
                                                             <span>{formatRelativeTime(version.created_at)}</span>
                                                           )}
                                                           {version.file_size && (
-                                                            <span>â€¢ {formatFileSize(version.file_size)}</span>
+                                                            <span>· {formatFileSize(version.file_size)}</span>
                                                           )}
                                                         </div>
                                                       </div>
@@ -1786,10 +1830,10 @@ export default function DocumentsTab({
                                     <span>Uploaded {formatRelativeTime(doc.created_at)}</span>
                                   )}
                                   {doc.file_size && (
-                                    <span>â€¢ {formatFileSize(doc.file_size)}</span>
+                                    <span>· {formatFileSize(doc.file_size)}</span>
                                   )}
                                   {doc.expiry_date && (
-                                    <span>â€¢ Expires: {formatDateForDisplay(doc.expiry_date)}</span>
+                                    <span>· Expires: {formatDateForDisplay(doc.expiry_date)}</span>
                                   )}
                                   {doc.requirement_id && (
                                     <button
@@ -2011,7 +2055,7 @@ export default function DocumentsTab({
                                       {formCount > 0 && <span>{formCount} forms</span>}
                                       {authority && (
                                         <span className="text-gray-500 hidden sm:inline">
-                                          â€¢ {authority.split('(')[0].trim()}
+                                          · {authority.split('(')[0].trim()}
                                         </span>
                                       )}
                                     </div>
@@ -2920,12 +2964,13 @@ export default function DocumentsTab({
                             const fileName = `${fileOptions.documentName.replace(/\s+/g, '_')}_${Date.now()}.${fileExt}`
                             const filePath = `${user?.id}/${currentCompany.id}/${fileName}`
     
-                            // Upload to Storage
-                            const { error: uploadError } = await supabase.storage
-                              .from('company-documents')
-                              .upload(filePath, file)
+                            // Upload to Storage via server action (works for both Supabase and Passport users)
+                            const fileArrayBuffer = await file.arrayBuffer()
+                            const uploadResult = await uploadFileToStorage(filePath, fileArrayBuffer, file.type)
     
-                            if (uploadError) throw uploadError
+                            if (!uploadResult.success) {
+                              throw new Error(uploadResult.error || 'Upload failed')
+                            }
     
                             // Save metadata with per-file options
                             const result = await uploadDocument(currentCompany.id, {
@@ -3660,9 +3705,9 @@ export default function DocumentsTab({
                     <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
                       <h3 className="text-yellow-400 font-medium mb-2">Cleanup Suggestions</h3>
                       <ul className="text-gray-300 text-sm space-y-1">
-                        <li>â€¢ Review expired documents for deletion</li>
-                        <li>â€¢ Archive old financial year documents</li>
-                        <li>â€¢ Remove duplicate files</li>
+                        <li>· Review expired documents for deletion</li>
+                        <li>· Archive old financial year documents</li>
+                        <li>· Remove duplicate files</li>
                       </ul>
                     </div>
     
@@ -3681,6 +3726,306 @@ export default function DocumentsTab({
               </div>
             </>
           )}
+
+      {/* Document Preview Modal */}
+      {isPreviewModalOpen && previewDocument && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
+            onClick={() => {
+              setIsPreviewModalOpen(false)
+              setPreviewDocument(null)
+            }}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+              style={{ backgroundColor: '#151515' }}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-800">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="text-gray-400 flex-shrink-0">
+                    {getFileTypeIcon(previewDocument.file_name || previewDocument.document_type)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-lg sm:text-xl font-light text-white truncate">{previewDocument.document_type || previewDocument.file_name}</h2>
+                    <p className="text-xs sm:text-sm text-gray-400 truncate">{previewDocument.folder_name}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => handleView(previewDocument.file_path)}
+                    className="px-3 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                  >
+                    Open Full
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsPreviewModalOpen(false)
+                      setPreviewDocument(null)
+                      setPreviewModalTab('preview')
+                    }}
+                    className="text-gray-400 hover:text-white transition-colors p-1"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Tab Navigation */}
+              <div className="border-b border-gray-800 flex">
+                <button
+                  onClick={() => setPreviewModalTab('preview')}
+                  className={`px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${previewModalTab === 'preview'
+                      ? 'text-white border-b-2 border-white'
+                      : 'text-gray-400 hover:text-gray-300'
+                    }`}
+                >
+                  Preview
+                </button>
+                <button
+                  onClick={() => setPreviewModalTab('compliance')}
+                  className={`px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${previewModalTab === 'compliance'
+                      ? 'text-white border-b-2 border-white'
+                      : 'text-gray-400 hover:text-gray-300'
+                    }`}
+                >
+                  Compliance Info
+                </button>
+              </div>
+
+              {/* Tab Content */}
+              <div className="flex-1 overflow-auto">
+                {previewModalTab === 'preview' ? (
+                  <div className="p-4 sm:p-6">
+                    {previewDocument.previewUrl ? (
+                      <iframe
+                        src={previewDocument.previewUrl}
+                        className="w-full h-full min-h-[500px] border border-gray-800 rounded-lg"
+                        title="Document Preview"
+                      />
+                    ) : (
+                      <div className="text-center text-gray-400 py-12">
+                        <p>Loading preview...</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-4 sm:p-6 text-gray-400">
+                    <p>Compliance information will be displayed here.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Document Upload Modal from Tracker */}
+      {documentUploadModal && documentUploadModal.isOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-800">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-light text-white">Upload Document</h3>
+                  <p className="text-sm text-gray-400 mt-1">Upload document for compliance requirement</p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (!uploadingDocument && setDocumentUploadModal) {
+                      setDocumentUploadModal(null)
+                      if (setUploadFile) setUploadFile(null)
+                      if (setUploadProgress) setUploadProgress(0)
+                      if (setUploadStage) setUploadStage('')
+                      if (setPreviewFileUrl) setPreviewFileUrl(null)
+                    }
+                  }}
+                  disabled={uploadingDocument}
+                  className="text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Requirement Info */}
+              <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">Requirement</label>
+                    <div className="text-white font-medium">{documentUploadModal.requirement}</div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">Document Type</label>
+                    <div className="text-blue-400 font-medium">{documentUploadModal.documentName}</div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">Category</label>
+                    <div className="text-gray-300 text-sm">{documentUploadModal.category}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* File Upload Area */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Select File</label>
+                <div
+                  className={`border-2 border-dashed rounded-lg p-6 transition-colors ${uploadFile
+                      ? 'border-green-500/50 bg-green-500/10'
+                      : 'border-gray-700 bg-gray-900/50 hover:border-gray-600'
+                    }`}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    const file = e.dataTransfer.files[0]
+                    if (file && setUploadFile) {
+                      setUploadFile(file)
+                    }
+                  }}
+                >
+                  {!uploadFile ? (
+                    <div className="text-center">
+                      <svg className="w-12 h-12 mx-auto text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      <p className="text-gray-400 text-sm mb-2">Drag and drop a file here, or click to browse</p>
+                      <p className="text-gray-500 text-xs">Supports: PDF, Images (JPG, PNG), Word (DOC, DOCX)</p>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file && setUploadFile) {
+                            setUploadFile(file)
+                          }
+                        }}
+                        className="hidden"
+                        id="tracker-file-upload-input"
+                      />
+                      <label
+                        htmlFor="tracker-file-upload-input"
+                        className="mt-3 inline-block px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors cursor-pointer text-sm font-medium"
+                      >
+                        Browse Files
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-white font-medium truncate">{uploadFile.name}</p>
+                              <p className="text-gray-400 text-xs mt-0.5">
+                                {(uploadFile.size / 1024 / 1024).toFixed(2)} MB • {uploadFile.type || 'Unknown type'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        {setUploadFile && (
+                          <button
+                            onClick={() => setUploadFile(null)}
+                            disabled={uploadingDocument}
+                            className="text-gray-400 hover:text-red-400 transition-colors disabled:opacity-50 ml-2"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Upload Progress */}
+              {uploadingDocument && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-400">{uploadStage || 'Uploading...'}</span>
+                    <span className="text-white font-medium">{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden">
+                    <div
+                      className="bg-white h-full rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="pt-4 border-t border-gray-800 flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    if (!uploadingDocument && setDocumentUploadModal) {
+                      setDocumentUploadModal(null)
+                      if (setUploadFile) setUploadFile(null)
+                      if (setUploadProgress) setUploadProgress(0)
+                      if (setUploadStage) setUploadStage('')
+                      if (setPreviewFileUrl) setPreviewFileUrl(null)
+                    }
+                  }}
+                  disabled={uploadingDocument}
+                  className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (handleTrackerDocumentUpload) {
+                      handleTrackerDocumentUpload().catch((err) => {
+                        console.error('Upload error:', err)
+                        if (showToast) {
+                          showToast('Upload failed: ' + (err.message || 'Unknown error'), 'error')
+                        }
+                      })
+                    } else {
+                      console.error('handleTrackerDocumentUpload is not available')
+                      if (showToast) {
+                        showToast('Upload handler is not available', 'error')
+                      }
+                    }
+                  }}
+                  disabled={!uploadFile || uploadingDocument || !handleTrackerDocumentUpload}
+                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
+                >
+                  {uploadingDocument ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                      {uploadStage || 'Uploading...'}
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      Upload Document
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

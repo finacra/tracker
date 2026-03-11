@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { createServerContainer } from '@/lib/composition/server-container'
 import crypto from 'crypto'
-import { calculatePricing, getTierById, type BillingCycle } from '@/lib/pricing/tiers'
+import { getTierById, type BillingCycle } from '@/lib/pricing/tiers'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const { authService, paymentRepository, subscriptionRepository } = createServerContainer()
+    const user = await authService.getCurrentUser()
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -48,28 +48,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Get payment record
-    const { data: payment, error: paymentError } = await supabase
-      .from('payments')
-      .select('*')
-      .eq('provider_order_id', razorpay_order_id)
-      .eq('user_id', user.id)
-      .single()
-
-    if (paymentError) {
+    let payment = null
+    try {
+      payment = await paymentRepository.findByProviderOrderIdForUser(razorpay_order_id, user.id)
+    } catch (paymentError) {
       console.error('[Payment Verify] Error fetching payment:', paymentError)
       console.error('[Payment Verify] Order ID:', razorpay_order_id)
       console.error('[Payment Verify] User ID:', user.id)
 
       // Try to find payment without user_id filter (for debugging)
-      const { data: allPayments } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('provider_order_id', razorpay_order_id)
+      const allPayments = await paymentRepository.findByProviderOrderId(razorpay_order_id)
 
       console.error('[Payment Verify] Payments found with order ID:', allPayments)
 
       return NextResponse.json(
-        { error: `Payment record not found: ${paymentError.message}` },
+        { error: `Payment record not found: ${paymentError instanceof Error ? paymentError.message : 'Unknown error'}` },
         { status: 404 }
       )
     }
@@ -86,20 +79,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Update payment status
-    const { error: updateError } = await supabase
-      .from('payments')
-      .update({
-        provider_payment_id: razorpay_payment_id,
-        provider_signature: razorpay_signature,
-        payment_provider: 'razorpay',
-        status: 'completed',
-        amount_paid: payment.amount,
-        paid_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+    try {
+      await paymentRepository.markCompleted(payment.id, {
+        providerPaymentId: razorpay_payment_id,
+        providerSignature: razorpay_signature,
+        paymentProvider: 'razorpay',
+        amountPaid: payment.amount,
+        paidAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       })
-      .eq('id', payment.id)
-
-    if (updateError) {
+    } catch (updateError) {
       console.error('Error updating payment:', updateError)
       return NextResponse.json(
         { error: 'Failed to update payment' },
@@ -109,7 +98,7 @@ export async function POST(request: NextRequest) {
 
     // If this is a trial verification payment, just verify and return
     // The trial will be created separately via createTrialAfterVerification
-    if (payment.payment_type === 'trial_verification') {
+    if (payment.paymentType === 'trial_verification') {
       return NextResponse.json({
         success: true,
         message: 'Trial verification payment confirmed',
@@ -118,7 +107,7 @@ export async function POST(request: NextRequest) {
     }
 
     // For regular subscription payments, create or update subscription
-    const tierConfig = getTierById(payment.tier as any)
+    const tierConfig = getTierById(payment.tier)
     if (!tierConfig) {
       return NextResponse.json(
         { error: 'Invalid tier configuration' },
@@ -129,7 +118,7 @@ export async function POST(request: NextRequest) {
     // Calculate subscription dates
     const startDate = new Date()
     const endDate = new Date()
-    const billingCycle = payment.billing_cycle as BillingCycle
+    const billingCycle = payment.billingCycle as BillingCycle
 
     switch (billingCycle) {
       case 'monthly':
@@ -146,55 +135,20 @@ export async function POST(request: NextRequest) {
         break
     }
 
-    // Check if subscription exists
-    const { data: existingSubscription } = await supabase
-      .from('subscriptions')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-      .single()
-
-    if (existingSubscription) {
-      // Update existing subscription
-      const { error: subUpdateError } = await supabase
-        .from('subscriptions')
-        .update({
-          tier: payment.tier,
-          billing_cycle: payment.billing_cycle,
-          amount: payment.amount,
-          status: 'active',
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
-          current_period_start: startDate.toISOString(),
-          current_period_end: endDate.toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existingSubscription.id)
-
-      if (subUpdateError) {
-        console.error('Error updating subscription:', subUpdateError)
-      }
-    } else {
-      // Create new subscription
-      const { error: subInsertError } = await supabase
-        .from('subscriptions')
-        .insert({
-          user_id: user.id,
-          company_id: payment.company_id,
-          tier: payment.tier,
-          billing_cycle: payment.billing_cycle,
-          amount: payment.amount,
-          currency: payment.currency,
-          status: 'active',
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString(),
-          current_period_start: startDate.toISOString(),
-          current_period_end: endDate.toISOString(),
-        })
-
-      if (subInsertError) {
-        console.error('Error creating subscription:', subInsertError)
-      }
+    try {
+      await subscriptionRepository.activatePaidSubscription({
+        userId: user.id,
+        appUserId: user.canonicalId,
+        companyId: payment.companyId,
+        tier: payment.tier,
+        billingCycle: payment.billingCycle,
+        amount: payment.amount,
+        currency: payment.currency,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      })
+    } catch (subscriptionError) {
+      console.error('Error activating subscription:', subscriptionError)
     }
 
     return NextResponse.json({

@@ -1,0 +1,297 @@
+---
+description: Common pitfalls and SOLID-compliant solutions
+globs: *.tsx,*.ts
+---
+
+# Common Pitfalls & SOLID-Compliant Solutions
+
+## Pitfall 1: Missing Props (ISP Violation)
+
+**Symptom:**
+```
+Type error: Cannot find name 'variableName'
+```
+
+**Solution:**
+1. Add to props interface (keep < 10 props - ISP)
+2. Add to component parameters
+3. Pass from parent
+4. If > 10 props, use Context API or composition
+
+**Prevention:**
+- Complete dependency analysis before extraction
+- Use TypeScript strict mode
+- Build after each major change
+- Plan props interface following ISP
+
+## Pitfall 2: Unbalanced JSX
+
+**Symptom:**
+```
+Parsing ecmascript source code failed
+Unterminated regexp literal
+```
+
+**Solution:**
+1. Count opening/closing tags
+2. Verify nesting structure
+3. Check for missing closing tags
+4. Use JSX formatter/linter
+
+**Prevention:**
+- Use a JSX validator
+- Extract in smaller chunks
+- Verify structure before moving on
+- **Validate parent structure IMMEDIATELY after large removals**
+
+## Pitfall 3: Direct Service Imports (DIP Violation)
+
+**Symptom:**
+```
+Cannot find module '@/path/to/service'
+Tight coupling to concrete implementations
+```
+
+**Solution:**
+```typescript
+// ❌ BAD: Direct import (violates DIP)
+import { uploadDocument } from '@/app/onboarding/actions'
+
+// ✅ GOOD: Dependency injection (follows DIP)
+interface ComponentProps {
+  documentService: DocumentService // Interface
+}
+
+function Component({ documentService }: ComponentProps) {
+  documentService.upload(file) // Injected
+}
+```
+
+**Prevention:**
+- Define service interfaces
+- Inject services via props
+- Use dependency injection pattern
+- Avoid direct imports of services
+
+## Pitfall 4: Too Many Props (ISP Violation)
+
+**Symptom:**
+```
+Component has 20+ props
+Components forced to depend on unused props
+```
+
+**Solution:**
+```typescript
+// ❌ BAD: Too many props (violates ISP)
+interface Props {
+  // 20+ props
+}
+
+// ✅ GOOD: Segregated interfaces (follows ISP)
+interface ContainerProps { /* 5 props */ }
+interface ListProps { /* 3 props */ }
+interface FormProps { /* 4 props */ }
+
+// OR use Context API
+const FeatureContext = createContext<FeatureContextType>()
+```
+
+**Prevention:**
+- Keep props < 10 per component
+- Split large interfaces
+- Use Context API for shared state
+- Use composition over prop drilling
+
+## Pitfall 5: God Component (SRP Violation)
+
+**Symptom:**
+```
+Component has 3000+ lines
+Component handles: UI + State + Business Logic + API calls
+```
+
+**Solution:**
+```typescript
+// ❌ BAD: God Component (violates SRP)
+function DocumentsTab() {
+  // 50+ state variables
+  // 20+ helper functions
+  // Complex business logic
+  // API calls
+  // Complex UI rendering
+  // ... 3000+ lines
+}
+
+// ✅ GOOD: Properly split (follows SRP)
+// Container: Orchestration only
+function DocumentsTab() {
+  const documents = useDocuments() // Hook: State + Logic
+  const { upload, delete } = useDocumentActions() // Hook: Actions
+  return <DocumentList documents={documents} onUpload={upload} /> // Presentational: UI
+}
+
+// Hook: Business logic
+function useDocuments() { /* state + logic */ }
+
+// Service: API calls
+class DocumentService { /* API methods */ }
+
+// Presentational: UI only
+function DocumentList({ documents, onUpload }) { /* render */ }
+```
+
+**Prevention:**
+- Extract business logic to hooks
+- Extract API calls to services
+- Extract UI to presentational components
+- Keep components under size limits
+
+## Pitfall 6: Tracker-Specific Code in Wrong Component (SRP Violation)
+
+**Symptom:**
+```
+Cannot find name 'documentUploadModal'
+Cannot find name 'regulatoryRequirements'
+Cannot find name 'selectedRequirements'
+```
+
+**Cause:**
+- Included modals/state from another tab (e.g., tracker modals in documents tab)
+- Didn't identify modal ownership during dependency analysis
+- Violates SRP (component has wrong responsibility)
+
+**Solution:**
+1. Identify which state each modal uses
+2. Check if that state belongs to this tab or another
+3. Remove modals that belong to other tabs
+4. Move modals to correct tab component
+
+**Prevention:**
+- **During dependency analysis, identify modal ownership**
+- For each modal, list all state variables it uses
+- Check if those variables belong to this tab
+- Document modal ownership in dependency map
+
+## Pitfall 7: TypeScript Implicit Any
+
+**Symptom:**
+```
+Parameter 'param' implicitly has an 'any' type
+```
+
+**Solution:**
+```typescript
+// ❌ BAD
+.map(item => item.value)
+.filter(cat => cat.active)
+setState(prev => ({ ...prev, value: newValue }))
+
+// ✅ GOOD
+.map((item: ItemType) => item.value)
+.filter((cat: CategoryType) => cat.active)
+setState((prev: StateType) => ({ ...prev, value: newValue }))
+```
+
+**Prevention:**
+- Enable TypeScript strict mode
+- Type all callback parameters
+- Use proper interfaces
+- **Do comprehensive type audit, not iterative fixes**
+
+## Pitfall 8: IIFE Pattern Extraction Order
+
+**Symptom:**
+```
+Cannot find name 'helperFunction'
+Unexpected token ')'
+```
+
+**Cause:**
+- Extracting JSX before helper functions in IIFE patterns
+- Removing IIFE wrapper before extracting all code
+- Not following proper extraction sequence
+
+**Solution:**
+```typescript
+// ❌ Wrong order:
+1. Extract JSX first
+2. Try to extract helpers (but they're still in parent)
+3. Remove IIFE wrapper
+4. Build fails
+
+// ✅ Correct order:
+1. Extract helper functions first
+2. Extract calculations second
+3. Extract JSX third
+4. Remove IIFE wrapper last
+5. Replace with component
+```
+
+## Pitfall 9: Parent Structure Not Validated After Extraction
+
+**Symptom:**
+```
+Parsing error after removing large JSX block
+Missing closing divs
+```
+
+**Cause:**
+- Removed 3,400+ lines of JSX from parent
+- Didn't immediately check if parent structure was still valid
+- Assumed parent structure was fine
+
+**Solution:**
+```markdown
+ALWAYS validate parent structure immediately after:
+1. Removing large JSX blocks (>500 lines)
+2. Extracting components
+3. Making structural changes
+
+Validation steps:
+1. Count opening/closing divs (should match)
+2. Check for orphaned closing tags
+3. Verify all containers are properly closed
+4. Fix parent issues BEFORE moving forward
+```
+
+**Prevention:**
+- **IMMEDIATELY validate parent structure after large removals**
+- Count all opening/closing tags
+- Verify all containers are properly closed
+- Don't assume parent structure is fine
+
+## Pitfall 10: Iterative TypeScript Fixes
+
+**Symptom:**
+```
+Multiple build iterations
+Fixing one type error at a time
+```
+
+**Cause:**
+- Fixed TypeScript errors one at a time as they appeared
+- Multiple build iterations
+- Could have been done in one comprehensive pass
+
+**Solution:**
+```typescript
+// ❌ Iterative approach (slow):
+npm run build → Fix periodType error
+npm run build → Fix form error
+npm run build → Fix pattern error
+// ... repeat 6+ times
+
+// ✅ Comprehensive approach (fast):
+1. Search for ALL implicit any patterns
+2. Fix ALL at once
+3. Check all state type definitions
+4. Verify all props types
+5. Build once
+```
+
+**Prevention:**
+- Do comprehensive type audit
+- Fix all types in one pass
+- Use grep to find all potential issues
+- Build once after comprehensive fixes

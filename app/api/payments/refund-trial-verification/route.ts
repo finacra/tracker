@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
 import { getRazorpayInstance } from '@/lib/razorpay/client'
+import { createServerContainer } from '@/lib/composition/server-container'
 
 /**
  * API endpoint to process refunds for trial verification payments
@@ -9,21 +9,15 @@ import { getRazorpayInstance } from '@/lib/razorpay/client'
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const { paymentRepository } = createServerContainer()
 
     // Get all trial verification payments that are scheduled for refund
     // and the scheduled time has passed
     const now = new Date().toISOString()
-    const { data: paymentsToRefund, error: fetchError } = await supabase
-      .from('payments')
-      .select('*')
-      .eq('payment_type', 'trial_verification')
-      .eq('status', 'completed')
-      .eq('refund_status', 'scheduled')
-      .lte('refund_scheduled_at', now)
-      .is('provider_refund_id', null)
-
-    if (fetchError) {
+    let paymentsToRefund
+    try {
+      paymentsToRefund = await paymentRepository.findScheduledTrialVerificationRefunds(now)
+    } catch (fetchError) {
       console.error('Error fetching payments to refund:', fetchError)
       return NextResponse.json(
         { error: 'Failed to fetch payments' },
@@ -45,13 +39,13 @@ export async function POST(request: NextRequest) {
     // Process refunds
     for (const payment of paymentsToRefund) {
       try {
-        if (!payment.provider_payment_id) {
+        if (!payment.providerPaymentId) {
           console.error(`Payment ${payment.id} missing provider_payment_id`)
           continue
         }
 
         // Create refund in Razorpay
-        const refund = await razorpay.payments.refund(payment.provider_payment_id, {
+        const refund = await razorpay.payments.refund(payment.providerPaymentId, {
           amount: payment.amount * 100, // Convert to paise
           notes: {
             reason: 'Trial verification refund - 24 hours after payment',
@@ -60,16 +54,13 @@ export async function POST(request: NextRequest) {
         })
 
         // Update payment record
-        await supabase
-          .from('payments')
-          .update({
-            provider_refund_id: refund.id,
-            refund_status: 'completed',
-            refunded_at: new Date().toISOString(),
-            refund_amount: payment.amount,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', payment.id)
+        await paymentRepository.updateById(payment.id, {
+          providerRefundId: refund.id,
+          refundStatus: 'completed',
+          refundedAt: new Date().toISOString(),
+          refundAmount: payment.amount,
+          updatedAt: new Date().toISOString(),
+        })
 
         refundedCount++
         console.log(`Refunded trial verification payment: ${payment.id}, Refund ID: ${refund.id}`)
@@ -79,14 +70,11 @@ export async function POST(request: NextRequest) {
 
         // Mark as failed if it's a permanent error
         if (error.statusCode === 400 || error.statusCode === 404) {
-          await supabase
-            .from('payments')
-            .update({
-              refund_status: 'failed',
-              refund_error: error.message,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', payment.id)
+          await paymentRepository.updateById(payment.id, {
+            refundStatus: 'failed',
+            refundError: error.message,
+            updatedAt: new Date().toISOString(),
+          })
         }
       }
     }

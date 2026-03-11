@@ -1,0 +1,123 @@
+---
+globs: *.tsx,*.ts
+description: Strict SRP enforcement for React components and hooks
+---
+
+# Single Responsibility Principle (SRP) Enforcement
+
+## Component Analysis Before Writing Code
+
+### Ask These Questions:
+1. **What is this component's ONE job?**
+   - If answer has "and" or "also" → Split it
+
+2. **What would cause this component to change?**
+   - If multiple reasons → Violates SRP
+
+3. **Can I test this component's responsibility in isolation?**
+   - If no → Too many responsibilities
+
+## Component Types & Responsibilities
+
+### 1. Presentational Components
+**Responsibility:** Render UI based on props
+- ✅ Receives data via props
+- ✅ Calls callbacks via props
+- ❌ No business logic
+- ❌ No API calls
+- ❌ No state management (except UI state like `isOpen`)
+
+### 2. Container Components
+**Responsibility:** Orchestrate data flow
+- ✅ Fetches data
+- ✅ Manages state
+- ✅ Passes data to presentational components
+- ❌ No complex business logic (extract to hooks)
+- ❌ No complex UI rendering (extract to presentational)
+
+### 3. Custom Hooks
+**Responsibility:** Encapsulate stateful logic
+- ✅ State management
+- ✅ Business logic calculations
+- ✅ Side effects (useEffect)
+- ❌ No UI rendering
+- ❌ No direct DOM manipulation
+
+### 4. Services/Utilities
+**Responsibility:** Pure functions or stateless operations
+- ✅ Data transformations
+- ✅ API calls
+- ✅ Validation logic
+- ❌ No React hooks
+- ❌ No component state
+
+## Refactoring Checklist
+
+Before extracting a component, verify:
+
+### Business Logic Extraction:
+- [ ] Are calculations/extracted to `useMemo` or custom hooks?
+- [ ] Are date/currency formatters in utility functions?
+- [ ] Are validation rules in separate validators?
+
+### State Management Extraction:
+- [ ] Is complex state in custom hooks?
+- [ ] Is shared state in Context (not prop drilling)?
+- [ ] Is form state in separate hooks (e.g., `useForm`)?
+
+### API/Data Extraction:
+- [ ] Are API calls in services/hooks?
+- [ ] Are data transformations in utilities?
+- [ ] Are data fetching hooks separate from UI?
+
+### UI Component Extraction:
+- [ ] Are repeated UI patterns extracted?
+- [ ] Are complex forms split into sub-components?
+- [ ] Are modals/dialogs separate components?
+
+## Anti-Patterns to Avoid
+
+### ❌ God Component
+```typescript
+// Component doing EVERYTHING
+function DocumentsTab() {
+  // 50+ state variables
+  // 20+ helper functions
+  // Complex business logic
+  // API calls
+  // Complex UI rendering
+  // Form handling
+  // Modal management
+  // ... 3000+ lines
+}
+```
+
+### ✅ Properly Split
+```typescript
+// Container: Orchestration only
+function DocumentsTab() {
+  const documents = useDocuments()
+  const { upload, delete } = useDocumentActions()
+  return <DocumentList documents={documents} onUpload={upload} />
+}
+
+// Hook: Business logic
+function useDocuments() { /* state + logic */ }
+
+// Service: API calls
+class DocumentService { /* API methods */ }
+
+// Presentational: UI only
+function DocumentList({ documents, onUpload }) { /* render */ }
+```
+
+## Maximum Complexity Limits
+
+| Component Type | Max Lines | Max Functions | Max State Vars |
+|---------------|-----------|---------------|----------------|
+| Presentational | 200 | 5 | 3 (UI only) |
+| Container | 300 | 10 | 10 |
+| Custom Hook | 150 | 8 | 8 |
+| Service | 100 | 10 | 0 |
+
+**If exceeded, split immediately.**

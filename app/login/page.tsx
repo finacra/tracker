@@ -3,7 +3,9 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { resolvePostAuthRedirect } from '@/application/use-cases/navigation/resolvePostAuthRedirect'
 import { createClient } from '@/utils/supabase/client'
+import { getPostAuthDestination, getOAuthLoginUrl } from './actions'
 
 function LoginPageInner() {
   const [isLoading, setIsLoading] = useState(false)
@@ -21,6 +23,8 @@ function LoginPageInner() {
   const returnTo = searchParams.get('returnTo')
 
   // Check if user is already logged in
+  // Only redirect if there's a returnTo parameter (deep linking) or if explicitly requested
+  // Otherwise, allow authenticated users to access the login page (e.g., to switch accounts)
   useEffect(() => {
     let isMounted = true
     
@@ -34,59 +38,22 @@ function LoginPageInner() {
       
       if (!isMounted) return
       
-      if (session) {
-        // Check if user has companies (owned or via user_roles)
-        const { data: ownedCompanies } = await supabase
-          .from('companies')
-          .select('id')
-          .eq('user_id', session.user.id)
-          .limit(1)
-        
-        const { data: userRoles } = await supabase
-          .from('user_roles')
-          .select('company_id')
-          .eq('user_id', session.user.id)
-          .not('company_id', 'is', null)
-          .limit(1)
-        
-        const hasCompanies = (ownedCompanies && ownedCompanies.length > 0) || (userRoles && userRoles.length > 0)
-        
-        console.log('🔍 [AUTH CHECK] Has companies:', hasCompanies)
-        
+      // Only redirect if there's a returnTo parameter (deep linking for invites, etc.)
+      // This allows authenticated users to access the login page to switch accounts
+      if (session && returnTo) {
         if (!isMounted) return
         
-        // If there's a returnTo parameter, redirect there (deep linking for invites, etc.)
-        if (returnTo) {
-          console.log('🔄 [AUTH CHECK] Redirecting to returnTo:', returnTo)
-          router.push(returnTo)
-        } else if (hasCompanies) {
-          console.log('🔄 [AUTH CHECK] Redirecting to /data-room')
-          router.push('/data-room')
-        } else {
-          // Check if user has active subscription or trial
-          const { data: subData } = await supabase
-            .rpc('check_user_subscription', { target_user_id: session.user.id })
-            .single()
-          
-          const subInfo = subData as {
-            has_subscription: boolean
-            is_trial: boolean
-            trial_days_remaining: number
-            tier: string
-          } | null
-          
-          // Check for active subscription OR active trial (trial days remaining > 0)
-          const hasActiveSubscription = subInfo?.has_subscription === true || 
-                                       (subInfo?.is_trial === true && (subInfo?.trial_days_remaining ?? 0) > 0)
-          
-          if (hasActiveSubscription) {
-            console.log('🔄 [AUTH CHECK] Has subscription/trial, redirecting to /onboarding')
-            router.push('/onboarding')
-          } else {
-            console.log('🔄 [AUTH CHECK] No subscription/trial, redirecting to /subscribe')
-            router.push('/subscribe')
-          }
-        }
+        const result = await getPostAuthDestination()
+        const baseDestination = result.success ? result.destination ?? '/home' : '/home'
+        const destination = resolvePostAuthRedirect({
+          baseDestination,
+          overridePath: returnTo,
+          allowOverrideForDataRoomUsers: true,
+        })
+        console.log('🔄 [AUTH CHECK] Redirecting to:', destination)
+        router.push(destination)
+      } else if (session) {
+        console.log('✅ [AUTH CHECK] Session exists but no returnTo - allowing access to login page')
       } else {
         console.log('✅ [AUTH CHECK] No session, staying on login page')
       }
@@ -103,25 +70,18 @@ function LoginPageInner() {
     setIsLoading(true)
     setError(null)
     try {
-      // Don't set a default next path - let the callback determine the appropriate redirect
-      // based on whether user has companies or not
-      const redirectTo = returnTo 
-        ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(returnTo)}`
-        : `${window.location.origin}/auth/callback`
+      // Use AuthGateway interface to get OAuth URL
+      const redirectTo = returnTo || undefined
+      const result = await getOAuthLoginUrl('google', redirectTo)
       
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo,
-        },
-      })
-      
-      if (error) {
-        console.error('Error signing in:', error)
-        setError(error.message)
+      if (!result.success || !result.url) {
+        setError(result.error || 'Failed to get OAuth login URL')
         setIsLoading(false)
+        return
       }
-      // The redirect will happen automatically
+      
+      // Redirect to OAuth URL
+      window.location.href = result.url
     } catch (error: any) {
       console.error('Error signing in:', error)
       setError(error.message || 'An error occurred')
@@ -166,52 +126,16 @@ function LoginPageInner() {
           setError(error.message)
           setIsLoading(false)
         } else if (data.session) {
-          // Check if user has companies (owned or via user_roles)
-          const { data: ownedCompanies } = await supabase
-            .from('companies')
-            .select('id')
-            .eq('user_id', data.session.user.id)
-            .limit(1)
+          let redirectTo = '/home'
+
+          const result = await getPostAuthDestination()
+          redirectTo = resolvePostAuthRedirect({
+            baseDestination: result.success ? result.destination ?? '/home' : '/home',
+            overridePath: returnTo,
+            allowOverrideForDataRoomUsers: true,
+          })
           
-          const { data: userRoles } = await supabase
-            .from('user_roles')
-            .select('company_id')
-            .eq('user_id', data.session.user.id)
-            .not('company_id', 'is', null)
-            .limit(1)
-          
-          const hasCompanies = (ownedCompanies && ownedCompanies.length > 0) || (userRoles && userRoles.length > 0)
-          
-          let redirectTo = '/data-room' // Default
-          
-          if (returnTo) {
-            // If there's a returnTo parameter, use it (for deep linking)
-            redirectTo = returnTo
-          } else if (!hasCompanies) {
-            // Check if user has active subscription or trial
-            const { data: subData } = await supabase
-              .rpc('check_user_subscription', { target_user_id: data.session.user.id })
-              .single()
-            
-            const subInfo = subData as {
-              has_subscription: boolean
-              is_trial: boolean
-              trial_days_remaining: number
-              tier: string
-            } | null
-            
-            // Check for active subscription OR active trial (trial days remaining > 0)
-            const hasActiveSubscription = subInfo?.has_subscription === true || 
-                                         (subInfo?.is_trial === true && (subInfo?.trial_days_remaining ?? 0) > 0)
-            
-            if (hasActiveSubscription) {
-              redirectTo = '/onboarding'
-            } else {
-              redirectTo = '/subscribe'
-            }
-          }
-          
-          console.log(`[EMAIL SIGN IN] User ${data.session.user.id} has companies: ${hasCompanies}, redirecting to: ${redirectTo}`)
+          console.log(`[EMAIL SIGN IN] User ${data.session.user.id} redirecting to: ${redirectTo}`)
           router.push(redirectTo)
         } else {
           // No session after sign in - should not happen, but handle it

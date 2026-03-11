@@ -1,13 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { SupabaseClient } from '@supabase/supabase-js'
+import { getAllUsersManagementData } from '@/app/admin/actions'
 
 interface Company {
   id: string
   name: string
   type: string
-  incorporation_date: string
+  incorporation_date: string | null
+  country_code: string | null
+  region: null
+  created_at: null
   user_id: string
 }
 
@@ -44,11 +47,10 @@ interface UserData {
 }
 
 interface AllUsersManagementProps {
-  supabase: SupabaseClient
   companies: Company[]
 }
 
-export default function AllUsersManagement({ supabase, companies }: AllUsersManagementProps) {
+export default function AllUsersManagement({ companies }: AllUsersManagementProps) {
   const [users, setUsers] = useState<UserData[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -57,106 +59,13 @@ export default function AllUsersManagement({ supabase, companies }: AllUsersMana
 
   useEffect(() => {
     loadAllUsers()
-  }, [])
+  }, [companies])
 
   const loadAllUsers = async () => {
     setIsLoading(true)
     try {
-      // Get all subscriptions
-      const { data: subscriptions, error: subError } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (subError) {
-        console.error('Error loading subscriptions:', subError)
-      }
-
-      // Get all user roles
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, company_id, role')
-
-      if (rolesError) {
-        console.error('Error loading user roles:', rolesError)
-      }
-
-      // Collect all unique user IDs from companies (owners), subscriptions, and user_roles
-      const allUserIds = new Set<string>()
-      
-      companies.forEach(c => allUserIds.add(c.user_id))
-      subscriptions?.forEach(s => allUserIds.add(s.user_id))
-      userRoles?.forEach(r => allUserIds.add(r.user_id))
-
-      // Build user data
-      const usersData: UserData[] = []
-      
-      for (const userId of allUserIds) {
-        // Get user's subscription (latest one)
-        const userSub = subscriptions?.find(s => s.user_id === userId) || null
-        
-        // Get companies owned by this user
-        const ownedCompanies = companies.filter(c => c.user_id === userId)
-        
-        // Get team memberships (where user has a role but doesn't own the company)
-        const teamMemberships = userRoles
-          ?.filter(r => r.user_id === userId && r.company_id && !ownedCompanies.some(c => c.id === r.company_id))
-          .map(r => ({
-            company_id: r.company_id,
-            company_name: companies.find(c => c.id === r.company_id)?.name || 'Unknown',
-            role: r.role
-          })) || []
-
-        usersData.push({
-          id: userId,
-          email: 'Loading...',
-          created_at: userSub?.created_at || '',
-          last_sign_in_at: null,
-          companies_owned: ownedCompanies,
-          team_memberships: teamMemberships,
-          subscription: userSub
-        })
-      }
-
-      // Try to get user emails from auth.users via RPC
-      try {
-        const { data: authUsers, error: authError } = await supabase
-          .rpc('get_users_by_ids', { user_ids: Array.from(allUserIds) })
-        
-        if (!authError && authUsers) {
-          authUsers.forEach((authUser: any) => {
-            const user = usersData.find(u => u.id === authUser.id)
-            if (user) {
-              user.email = authUser.email || user.id.substring(0, 8) + '...'
-              user.created_at = authUser.created_at || user.created_at
-              user.last_sign_in_at = authUser.last_sign_in_at
-            }
-          })
-        } else {
-          // RPC failed, use fallback
-          usersData.forEach(user => {
-            if (user.email === 'Loading...') {
-              user.email = user.id.substring(0, 8) + '...'
-            }
-          })
-        }
-      } catch (rpcError) {
-        console.log('RPC not available for user emails, using fallback')
-        usersData.forEach(user => {
-          if (user.email === 'Loading...') {
-            user.email = user.id.substring(0, 8) + '...'
-          }
-        })
-      }
-
-      // Sort by created_at descending
-      usersData.sort((a, b) => {
-        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
-        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
-        return dateB - dateA
-      })
-
-      setUsers(usersData)
+      const result = await getAllUsersManagementData(companies)
+      setUsers(result.users as UserData[])
     } catch (error) {
       console.error('Error loading users:', error)
     } finally {

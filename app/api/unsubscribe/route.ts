@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient } from '@/utils/supabase/admin'
+import { createServerContainer } from '@/lib/composition/server-container'
 import { verifyUnsubscribeToken, UnsubscribeType } from '@/lib/email/unsubscribe'
 
 /**
@@ -67,9 +67,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const supabase: any = createAdminClient()
+    const { emailPreferenceRepository } = createServerContainer()
 
-    // Upsert email preferences
     const updateData: Record<string, boolean> = {}
     if (decoded.type === 'all') {
       updateData.unsubscribe_all = true
@@ -81,25 +80,21 @@ export async function POST(request: NextRequest) {
       updateData.unsubscribe_team_updates = true
     }
 
-    const { error } = await supabase
-      .from('email_preferences')
-      .upsert(
-        {
-          user_id: decoded.userId,
-          ...updateData,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id' }
-      )
+    await emailPreferenceRepository.saveForUser(decoded.userId, {
+      unsubscribeAll: updateData.unsubscribe_all,
+      unsubscribeStatusChanges: updateData.unsubscribe_status_changes,
+      unsubscribeReminders: updateData.unsubscribe_reminders,
+      unsubscribeTeamUpdates: updateData.unsubscribe_team_updates,
+    })
+  } catch (err) {
+    console.error('[unsubscribe] Exception:', err)
+    return new NextResponse(renderPage('Error', 'Failed to update preferences. Please try again.', false), {
+      status: 500,
+      headers: { 'Content-Type': 'text/html' },
+    })
+  }
 
-    if (error) {
-      console.error('[unsubscribe] Error updating preferences:', error)
-      return new NextResponse(renderPage('Error', 'Failed to update preferences. Please try again.', false), {
-        status: 500,
-        headers: { 'Content-Type': 'text/html' },
-      })
-    }
-
+  try {
     const typeLabel = getTypeLabel(decoded.type)
     return new NextResponse(
       renderPage('Unsubscribed', `You have been unsubscribed from <strong>${typeLabel}</strong> emails.`, false, undefined, true),

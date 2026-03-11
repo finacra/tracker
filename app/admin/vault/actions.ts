@@ -2,8 +2,9 @@
 
 console.log('[VAULT ACTIONS] MODULE LOADED - actions.ts file loaded at:', new Date().toISOString())
 
-import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { createServerContainer } from '@/lib/composition/server-container'
+import type { VaultTemplateRecord } from '@/application/interfaces/VaultTemplateRepository'
 import { revalidatePath } from 'next/cache'
 import {
   parseFolderPath,
@@ -14,6 +15,12 @@ import {
   normalizeFolderPath,
 } from '@/lib/vault/folder-utils'
 import { sanitizeFolderPath, escapeLikePattern } from '@/lib/utils/input-validation'
+import type { AppUser } from '@/domain/models/AppUser'
+
+async function requireCurrentUser(): Promise<AppUser> {
+  const { authService } = createServerContainer()
+  return authService.requireCurrentUser()
+}
 
 export interface DocumentTemplate {
   id?: string
@@ -54,41 +61,45 @@ export async function getFolders(): Promise<{ success: boolean; folders?: Folder
   console.log('[VAULT ACTIONS] About to create clients...')
   
   try {
-    console.log('[VAULT ACTIONS] Creating supabase client...')
-    const supabase = await createClient()
-    console.log('[VAULT ACTIONS] Supabase client created, creating admin client...')
-    const adminSupabase: any = createAdminClient() // Use admin client to bypass RLS
-    console.log('[VAULT ACTIONS] Admin client created, getting user...')
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    console.log('[VAULT ACTIONS] Auth check - SERVER SIDE:', {
-      hasUser: !!user,
-      userId: user?.id,
-      authError: authError?.message,
-    })
-    
-    if (!user) {
+    const { vaultTemplateRepository, accessService } = createServerContainer()
+    console.log('[VAULT ACTIONS] Resolving current user...')
+    let user: AppUser
+    try {
+      user = await requireCurrentUser()
+    } catch (authError: any) {
+      console.log('[VAULT ACTIONS] Auth check - SERVER SIDE:', {
+        hasUser: false,
+        userId: null,
+        authError: authError?.message || 'Not authenticated',
+      })
       console.log('[VAULT ACTIONS] No user, returning unauthorized - SERVER SIDE')
       return { success: false, error: 'Unauthorized' }
     }
 
-    // Check if superadmin with timeout
+    console.log('[VAULT ACTIONS] Current user resolved, creating admin client...')
+    const adminSupabase: any = createAdminClient() // Use admin client to bypass RLS
+    
+    console.log('[VAULT ACTIONS] Auth check - SERVER SIDE:', {
+      hasUser: true,
+      userId: user.id,
+      authError: null,
+    })
+
+    // Check if superadmin
     console.log('[VAULT ACTIONS] Checking superadmin status for user:', user.id, '- SERVER SIDE')
     
     let isSuperadmin = false
     let rpcError = null
     
     try {
-      const rpcPromise = (adminSupabase as any).rpc('is_superadmin', { p_user_id: user.id })
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('RPC timeout after 10 seconds')), 10000)
+        setTimeout(() => reject(new Error('Check timeout after 10 seconds')), 10000)
       })
       
-      const rpcResult = await Promise.race([rpcPromise, timeoutPromise]) as { data: boolean | null; error: any }
-      isSuperadmin = rpcResult.data || false
-      rpcError = rpcResult.error
+      const checkPromise = accessService.isSuperadmin(user.legacyAuthId || user.id)
+      isSuperadmin = await Promise.race([checkPromise, timeoutPromise]) as boolean
     } catch (error: any) {
-      console.error('[VAULT ACTIONS] RPC call failed or timed out - SERVER SIDE:', error)
+      console.error('[VAULT ACTIONS] Superadmin check failed or timed out - SERVER SIDE:', error)
       rpcError = error
     }
     
@@ -105,26 +116,18 @@ export async function getFolders(): Promise<{ success: boolean; folders?: Folder
     // Test query to verify admin client works
     console.log('[VAULT ACTIONS] Testing admin client with simple query...')
     try {
-      // Access internal schema table
-      // Note: The internal schema must be exposed in Supabase API settings
-      // Go to Settings > API > Exposed Schemas and add 'internal'
-      const testQuery = adminSupabase
-        .from('document_templates_internal')
-        .select('id')
-        .limit(1)
-
       const testResult = await Promise.race([
-        testQuery,
+        vaultTemplateRepository.getFolderPaths(),
         new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Test query timeout')), 5000)
         )
-      ]) as { data: any; error: any }
+      ]) as string[]
 
       console.log('[VAULT ACTIONS] Test query result:', {
-        hasData: !!testResult.data,
-        hasError: !!testResult.error,
-        error: testResult.error?.message,
-        errorCode: testResult.error?.code,
+        hasData: Array.isArray(testResult),
+        hasError: false,
+        error: undefined,
+        errorCode: undefined,
       })
     } catch (testErr: any) {
       console.error('[VAULT ACTIONS] Test query failed - SERVER SIDE:', testErr)
@@ -138,22 +141,15 @@ export async function getFolders(): Promise<{ success: boolean; folders?: Folder
       serviceKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0,
     })
     
-    let folderData = null
-    let error = null
+    let folderData: string[] | null = null
+    let error: any = null
     
     try {
-      const queryPromise = adminSupabase
-        .from('document_templates_internal')
-        .select('folder_name')
-        .not('folder_name', 'is', null)
-      
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Database query timeout after 15 seconds')), 15000)
       })
       
-      const queryResult = await Promise.race([queryPromise, timeoutPromise]) as { data: any; error: any }
-      folderData = queryResult.data
-      error = queryResult.error
+      folderData = await Promise.race([vaultTemplateRepository.getFolderPaths(), timeoutPromise]) as string[]
     } catch (err: any) {
       console.error('[VAULT ACTIONS] Database query failed or timed out - SERVER SIDE:', err)
       error = err
@@ -198,11 +194,9 @@ export async function getFolders(): Promise<{ success: boolean; folders?: Folder
     const folderMap = new Map<string, number>()
     const allPaths = new Set<string>()
 
-    folderData?.forEach((row: { folder_name: string | null }) => {
-      if (row.folder_name) {
-        allPaths.add(row.folder_name)
-        folderMap.set(row.folder_name, (folderMap.get(row.folder_name) || 0) + 1)
-      }
+    folderData?.forEach((folderName: string) => {
+      allPaths.add(folderName)
+      folderMap.set(folderName, (folderMap.get(folderName) || 0) + 1)
     })
 
     // Build folder tree
@@ -293,17 +287,17 @@ export async function createFolder(
   description: string | null = null
 ): Promise<{ success: boolean; folder?: FolderInfo; error?: string }> {
   try {
-    const supabase = await createClient()
+    const { vaultFolderRepository, accessService } = createServerContainer()
     const adminSupabase: any = createAdminClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
+    let user: AppUser
+    try {
+      user = await requireCurrentUser()
+    } catch {
       return { success: false, error: 'Unauthorized' }
     }
 
     // Check if superadmin
-    const { data: isSuperadmin } = await adminSupabase
-      .rpc('is_superadmin' as any, { p_user_id: user.id } as any)
+    const isSuperadmin = await accessService.isSuperadmin(user.legacyAuthId || user.id)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can manage vault' }
@@ -325,29 +319,15 @@ export async function createFolder(
     }
 
     // Check if folder already exists
-    const { data: existing } = await adminSupabase
-      .from('document_templates_internal')
-      .select('folder_name')
-      .eq('folder_name', fullPath)
-      .limit(1)
-
-    if (existing && existing.length > 0) {
+    if (await vaultFolderRepository.folderExists(fullPath)) {
       return { success: false, error: 'A folder with this name already exists' }
     }
 
     // Create a placeholder document template to represent the folder
     // This ensures the folder appears in the system even if empty
-    const { error: insertError } = await adminSupabase
-      .from('document_templates_internal')
-      .insert({
-        document_name: `__FOLDER_PLACEHOLDER_${Date.now()}__`,
-        folder_name: fullPath,
-        default_frequency: 'one-time',
-        is_mandatory: false,
-        description: description || null,
-      })
-
-    if (insertError) {
+    try {
+      await vaultFolderRepository.createFolderPlaceholder(fullPath, description || null)
+    } catch (insertError: any) {
       // If unique constraint violation on document_name, folder might already exist via different template
       if (insertError.code === '23505') {
         return { success: false, error: 'Folder already exists' }
@@ -378,17 +358,17 @@ export async function updateFolder(
   description: string | null = null
 ): Promise<{ success: boolean; updatedCount?: number; error?: string }> {
   try {
-    const supabase = await createClient()
+    const { vaultFolderRepository, accessService } = createServerContainer()
     const adminSupabase: any = createAdminClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
+    let user: AppUser
+    try {
+      user = await requireCurrentUser()
+    } catch {
       return { success: false, error: 'Unauthorized' }
     }
 
     // Check if superadmin
-    const { data: isSuperadmin } = await adminSupabase
-      .rpc('is_superadmin' as any, { p_user_id: user.id } as any)
+    const isSuperadmin = await accessService.isSuperadmin(user.legacyAuthId || user.id)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can manage vault' }
@@ -405,44 +385,24 @@ export async function updateFolder(
     if (normalizedOldPath === normalizedNewPath) {
       // Only update description if path hasn't changed
       if (description !== null) {
-        const { error } = await adminSupabase
-          .from('document_templates_internal')
-          .update({ description })
-          .eq('folder_name', normalizedOldPath)
-
-        if (error) throw error
+        await vaultFolderRepository.updateFolderDescription(normalizedOldPath, description)
       }
       return { success: true, updatedCount: 0 }
     }
 
     // Check if new path already exists
-    const { data: existing } = await adminSupabase
-      .from('document_templates_internal')
-      .select('folder_name')
-      .eq('folder_name', normalizedNewPath)
-      .limit(1)
-
-    if (existing && existing.length > 0) {
+    if (await vaultFolderRepository.folderExists(normalizedNewPath)) {
       return { success: false, error: 'A folder with the new name already exists' }
     }
 
     // Use cascade function to rename folder
-    const { data: updatedCount, error } = await adminSupabase
-      .rpc('update_folder_name_cascade', {
-        old_folder_path: normalizedOldPath,
-        new_folder_path: normalizedNewPath,
-      })
-
-    if (error) throw error
+    const updatedCount = await vaultFolderRepository.renameFolder(normalizedOldPath, normalizedNewPath)
 
     // Update description if provided
     if (description !== null) {
-      const { error: descError } = await adminSupabase
-        .from('document_templates_internal')
-        .update({ description })
-        .eq('folder_name', normalizedNewPath)
-
-      if (descError) {
+      try {
+        await vaultFolderRepository.updateFolderDescription(normalizedNewPath, description)
+      } catch (descError) {
         console.error('Error updating description:', descError)
         // Don't fail the whole operation if description update fails
       }
@@ -458,17 +418,17 @@ export async function updateFolder(
 
 export async function deleteFolder(path: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient()
+    const { vaultFolderRepository, accessService } = createServerContainer()
     const adminSupabase: any = createAdminClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
+    let user: AppUser
+    try {
+      user = await requireCurrentUser()
+    } catch {
       return { success: false, error: 'Unauthorized' }
     }
 
     // Check if superadmin
-    const { data: isSuperadmin } = await adminSupabase
-      .rpc('is_superadmin' as any, { p_user_id: user.id } as any)
+    const isSuperadmin = await accessService.isSuperadmin(user.legacyAuthId || user.id)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can manage vault' }
@@ -482,28 +442,19 @@ export async function deleteFolder(path: string): Promise<{ success: boolean; er
     }
 
     // Check if folder has documents in company_documents_internal
-    const { data: hasDocs } = await adminSupabase
-      .rpc('folder_has_documents', { folder_path: normalizedPath })
-
-    if (hasDocs) {
+    if (await vaultFolderRepository.folderHasDocuments(normalizedPath)) {
       return { success: false, error: 'Cannot delete folder: it contains documents in company vaults' }
     }
 
     // Check if folder has subfolders with documents
     // SECURITY: Escape LIKE pattern to prevent injection
     const likePattern = `${escapeLikePattern(normalizedPath)}/%`
-    const { data: subfolders } = await adminSupabase
-      .from('document_templates_internal')
-      .select('folder_name')
-      .like('folder_name', likePattern)
+    const subfolders = await vaultFolderRepository.getSubfolderPaths(normalizedPath)
 
-    if (subfolders && subfolders.length > 0) {
+    if (subfolders.length > 0) {
       // Check each subfolder for documents
       for (const subfolder of subfolders) {
-        const { data: subHasDocs } = await adminSupabase
-          .rpc('folder_has_documents', { folder_path: subfolder.folder_name })
-        
-        if (subHasDocs) {
+        if (await vaultFolderRepository.folderHasDocuments(subfolder)) {
           return { success: false, error: 'Cannot delete folder: it contains subfolders with documents' }
         }
       }
@@ -512,21 +463,11 @@ export async function deleteFolder(path: string): Promise<{ success: boolean; er
     // Delete all document templates in this folder and subfolders
     // SECURITY: Use separate queries instead of .or() with string interpolation to prevent SQL injection
     // First delete exact matches
-    const { error: exactError } = await adminSupabase
-      .from('document_templates_internal')
-      .delete()
-      .eq('folder_name', normalizedPath)
-    
-    if (exactError) throw exactError
+    await vaultFolderRepository.deleteFolderPath(normalizedPath)
     
     // Then delete subfolders (using .like() which is safe with parameterized queries)
     // SECURITY: Escape LIKE pattern to prevent injection (reuse the pattern from above)
-    const { error: likeError } = await adminSupabase
-      .from('document_templates_internal')
-      .delete()
-      .like('folder_name', likePattern)
-    
-    if (likeError) throw likeError
+    await vaultFolderRepository.deleteSubfolderPaths(likePattern)
 
     revalidatePath('/admin')
     return { success: true }
@@ -549,80 +490,60 @@ export async function getDocumentTemplates(
   console.log('[VAULT ACTIONS] About to create clients...')
   
   try {
-    console.log('[VAULT ACTIONS] Creating supabase client...')
-    const supabase = await createClient()
-    console.log('[VAULT ACTIONS] Supabase client created, creating admin client...')
-    const adminSupabase: any = createAdminClient()
-    console.log('[VAULT ACTIONS] Admin client created, getting user...')
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
+    const { vaultTemplateRepository, accessService } = createServerContainer()
+    console.log('[VAULT ACTIONS] Resolving current user...')
+    let user: AppUser
+    try {
+      user = await requireCurrentUser()
+    } catch {
       return { success: false, error: 'Unauthorized' }
     }
 
+    console.log('[VAULT ACTIONS] Current user resolved, creating admin client...')
+    const adminSupabase: any = createAdminClient()
+
     // Check if superadmin
-    const { data: isSuperadmin } = await adminSupabase
-      .rpc('is_superadmin' as any, { p_user_id: user.id } as any)
+    const isSuperadmin = await accessService.isSuperadmin(user.legacyAuthId || user.id)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can access vault' }
     }
 
-    // Build query based on folder path
-    // Root level (null) = templates with no folder_name
-    // Specific folder = templates matching that folder path
-    let query = adminSupabase
-      .from('document_templates_internal')
-      .select('*')
-      .order('document_name', { ascending: true })
-
     if (folderPath === null) {
-      // Root level: get templates with null folder_name
-      // If no templates have null folder_name, this will return empty array (which is correct)
-      query = query.is('folder_name', null)
       console.log('[VAULT ACTIONS] Querying root level templates (folder_name IS NULL) - SERVER SIDE')
     } else {
-      // Specific folder: get templates matching the folder path
       const normalizedPath = normalizeFolderPath(folderPath)
       if (!normalizedPath) {
         console.error('[VAULT ACTIONS] Invalid folder path provided:', folderPath, '- SERVER SIDE')
         return { success: false, error: 'Invalid folder path' }
       }
-      query = query.eq('folder_name', normalizedPath)
+      folderPath = normalizedPath
       console.log('[VAULT ACTIONS] Querying templates for folder:', normalizedPath, '- SERVER SIDE')
     }
 
     console.log('[VAULT ACTIONS] Executing query for folderPath:', folderPath, '- SERVER SIDE')
-    const { data: templates, error } = await query
-
-    console.log('[VAULT ACTIONS] Query result - SERVER SIDE:', {
-      hasData: !!templates,
-      templateCount: templates?.length || 0,
-      hasError: !!error,
-      error: error?.message,
-      errorCode: error?.code,
-    })
-
-    if (error) {
-      console.error('[VAULT ACTIONS] Query error - SERVER SIDE:', error)
-      throw error
-    }
+    const templates = await vaultTemplateRepository.getTemplates(folderPath)
 
     // Filter out placeholder documents
-    const realTemplates = (templates || []).filter(
-      (t: DocumentTemplate) => !t.document_name?.startsWith('__FOLDER_PLACEHOLDER__')
-    ) as DocumentTemplate[]
+    const realTemplates = templates.filter(
+      template => !template.documentName.startsWith('__FOLDER_PLACEHOLDER__')
+    )
 
     console.log('[VAULT ACTIONS] After filtering placeholders - SERVER SIDE:', {
-      originalCount: templates?.length || 0,
+      originalCount: templates.length,
       realTemplatesCount: realTemplates.length,
     })
 
     // Normalize frequency values (annually -> yearly)
-    const normalizedTemplates: DocumentTemplate[] = realTemplates.map((t: DocumentTemplate) => ({
-      ...t,
-      default_frequency: (t.default_frequency === 'annually' ? 'yearly' : t.default_frequency) as 'one-time' | 'monthly' | 'quarterly' | 'yearly',
-    }))
+    const normalizedTemplates: DocumentTemplate[] = realTemplates.map((t: VaultTemplateRecord) => ({
+      id: t.id,
+      document_name: t.documentName,
+      folder_name: t.folderName,
+      default_frequency: (t.defaultFrequency === 'annually' ? 'yearly' : t.defaultFrequency) as 'one-time' | 'monthly' | 'quarterly' | 'yearly',
+      category: t.category,
+      description: t.description,
+      is_mandatory: t.isMandatory,
+    })) as DocumentTemplate[]
 
     console.log('[VAULT ACTIONS] Returning templates - SERVER SIDE:', {
       count: normalizedTemplates.length,
@@ -650,17 +571,17 @@ export async function createDocumentTemplate(
   isMandatory: boolean = false
 ): Promise<{ success: boolean; template?: DocumentTemplate; error?: string }> {
   try {
-    const supabase = await createClient()
+    const { vaultTemplateManagementRepository, accessService } = createServerContainer()
     const adminSupabase: any = createAdminClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
+    let user: AppUser
+    try {
+      user = await requireCurrentUser()
+    } catch {
       return { success: false, error: 'Unauthorized' }
     }
 
     // Check if superadmin
-    const { data: isSuperadmin } = await adminSupabase
-      .rpc('is_superadmin' as any, { p_user_id: user.id } as any)
+    const isSuperadmin = await accessService.isSuperadmin(user.legacyAuthId || user.id)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can manage vault' }
@@ -677,38 +598,30 @@ export async function createDocumentTemplate(
     // Normalize frequency (yearly -> annually for database)
     const dbFrequency = frequency === 'yearly' ? 'annually' : frequency
 
-    // Check if template already exists
-    const { data: existing } = await adminSupabase
-      .from('document_templates_internal')
-      .select('id')
-      .eq('document_name', normalizedName)
-      .single()
-
-    if (existing) {
+    if (await vaultTemplateManagementRepository.existsByName(normalizedName)) {
       return { success: false, error: 'A document template with this name already exists' }
     }
 
-    const { data: template, error } = await adminSupabase
-      .from('document_templates_internal')
-      .insert({
-        document_name: normalizedName,
-        folder_name: normalizedFolderPath,
-        default_frequency: dbFrequency,
-        category,
-        description,
-        is_mandatory: isMandatory,
-      })
-      .select()
-      .single()
-
-    if (error) throw error
+    const template = await vaultTemplateManagementRepository.create({
+      documentName: normalizedName,
+      folderName: normalizedFolderPath,
+      defaultFrequency: dbFrequency,
+      category,
+      description,
+      isMandatory,
+    })
 
     revalidatePath('/admin')
     return { 
       success: true, 
       template: {
-        ...template,
-        default_frequency: (template.default_frequency === 'annually' ? 'yearly' : template.default_frequency) as 'one-time' | 'monthly' | 'quarterly' | 'yearly',
+        id: template.id,
+        document_name: template.documentName,
+        folder_name: template.folderName,
+        default_frequency: (template.defaultFrequency === 'annually' ? 'yearly' : template.defaultFrequency) as 'one-time' | 'monthly' | 'quarterly' | 'yearly',
+        category: template.category,
+        description: template.description,
+        is_mandatory: template.isMandatory,
       } as DocumentTemplate
     }
   } catch (error: any) {
@@ -727,17 +640,17 @@ export async function updateDocumentTemplate(
   isMandatory: boolean = false
 ): Promise<{ success: boolean; template?: DocumentTemplate; error?: string }> {
   try {
-    const supabase = await createClient()
+    const { vaultDocumentUsageRepository, vaultTemplateManagementRepository, accessService } = createServerContainer()
     const adminSupabase: any = createAdminClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
+    let user: AppUser
+    try {
+      user = await requireCurrentUser()
+    } catch {
       return { success: false, error: 'Unauthorized' }
     }
 
     // Check if superadmin
-    const { data: isSuperadmin } = await adminSupabase
-      .rpc('is_superadmin' as any, { p_user_id: user.id } as any)
+    const isSuperadmin = await accessService.isSuperadmin(user.legacyAuthId || user.id)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can manage vault' }
@@ -754,50 +667,31 @@ export async function updateDocumentTemplate(
     // Normalize frequency
     const dbFrequency = frequency === 'yearly' ? 'annually' : frequency
 
-    // Check if another template with same name exists
-    const { data: existing } = await adminSupabase
-      .from('document_templates_internal')
-      .select('id')
-      .eq('document_name', normalizedName)
-      .neq('id', id)
-      .single()
-
-    if (existing) {
+    if (await vaultTemplateManagementRepository.existsByName(normalizedName, id)) {
       return { success: false, error: 'A document template with this name already exists' }
     }
 
     // Get old template to check if folder changed
-    const { data: oldTemplate } = await adminSupabase
-      .from('document_templates_internal')
-      .select('folder_name, document_name')
-      .eq('id', id)
-      .single()
+    const oldTemplate = await vaultTemplateManagementRepository.getById(id)
 
     if (!oldTemplate) {
       return { success: false, error: 'Document template not found' }
     }
 
     // Update template
-    const { data: template, error } = await adminSupabase
-      .from('document_templates_internal')
-      .update({
-        document_name: normalizedName,
-        folder_name: normalizedFolderPath,
-        default_frequency: dbFrequency,
-        category,
-        description,
-        is_mandatory: isMandatory,
-      })
-      .eq('id', id)
-      .select()
-      .single()
-
-    if (error) throw error
+    const template = await vaultTemplateManagementRepository.update(id, {
+      documentName: normalizedName,
+      folderName: normalizedFolderPath,
+      defaultFrequency: dbFrequency,
+      category,
+      description,
+      isMandatory,
+    })
 
     // Cascade changes to company_documents for all users
     // When superadmin changes a template, it affects all companies using that template
-    const oldFolder = normalizeFolderPath(oldTemplate.folder_name)
-    const oldName = oldTemplate.document_name
+    const oldFolder = normalizeFolderPath(oldTemplate.folderName)
+    const oldName = oldTemplate.documentName
     
     // If folder changed, update all company documents that use this template
     if (oldFolder !== normalizedFolderPath) {
@@ -808,16 +702,12 @@ export async function updateDocumentTemplate(
       })
       
       // Update company documents with matching document_name (template name)
-      const { error: updateError } = await adminSupabase
-        .from('company_documents_internal')
-        .update({ folder_name: normalizedFolderPath })
-        .eq('document_type', normalizedName)
-
-      if (updateError) {
+      try {
+        await vaultDocumentUsageRepository.updateDocumentsFolderByType(normalizedName, normalizedFolderPath)
+        console.log('[VAULT ACTIONS] Successfully updated company documents folder - SERVER SIDE')
+      } catch (updateError) {
         console.error('[VAULT ACTIONS] Error updating company documents folder - SERVER SIDE:', updateError)
         // Don't fail the whole operation, but log it
-      } else {
-        console.log('[VAULT ACTIONS] Successfully updated company documents folder - SERVER SIDE')
       }
     }
 
@@ -828,16 +718,12 @@ export async function updateDocumentTemplate(
         newName: normalizedName,
       })
       
-      const { error: nameUpdateError } = await adminSupabase
-        .from('company_documents_internal')
-        .update({ document_type: normalizedName })
-        .eq('document_type', oldName)
-
-      if (nameUpdateError) {
+      try {
+        await vaultDocumentUsageRepository.renameDocumentsByType(oldName, normalizedName)
+        console.log('[VAULT ACTIONS] Successfully updated company documents name - SERVER SIDE')
+      } catch (nameUpdateError) {
         console.error('[VAULT ACTIONS] Error updating company documents name - SERVER SIDE:', nameUpdateError)
         // Don't fail the whole operation
-      } else {
-        console.log('[VAULT ACTIONS] Successfully updated company documents name - SERVER SIDE')
       }
     }
 
@@ -845,8 +731,13 @@ export async function updateDocumentTemplate(
     return { 
       success: true, 
       template: {
-        ...template,
-        default_frequency: (template.default_frequency === 'annually' ? 'yearly' : template.default_frequency) as 'one-time' | 'monthly' | 'quarterly' | 'yearly',
+        id: template.id,
+        document_name: template.documentName,
+        folder_name: template.folderName,
+        default_frequency: (template.defaultFrequency === 'annually' ? 'yearly' : template.defaultFrequency) as 'one-time' | 'monthly' | 'quarterly' | 'yearly',
+        category: template.category,
+        description: template.description,
+        is_mandatory: template.isMandatory,
       } as DocumentTemplate
     }
   } catch (error: any) {
@@ -857,51 +748,36 @@ export async function updateDocumentTemplate(
 
 export async function deleteDocumentTemplate(id: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient()
+    const { vaultDocumentUsageRepository, vaultTemplateManagementRepository, accessService } = createServerContainer()
     const adminSupabase: any = createAdminClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
+    let user: AppUser
+    try {
+      user = await requireCurrentUser()
+    } catch {
       return { success: false, error: 'Unauthorized' }
     }
 
     // Check if superadmin
-    const { data: isSuperadmin } = await adminSupabase
-      .rpc('is_superadmin' as any, { p_user_id: user.id } as any)
+    const isSuperadmin = await accessService.isSuperadmin(user.legacyAuthId || user.id)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can manage vault' }
     }
 
     // Get template to check if it's used
-    const { data: template } = await adminSupabase
-      .from('document_templates_internal')
-      .select('document_name')
-      .eq('id', id)
-      .single()
+    const template = await vaultTemplateManagementRepository.getById(id)
 
     if (!template) {
       return { success: false, error: 'Document template not found' }
     }
 
     // Check if template is used by any company documents
-    const { data: usedDocs } = await adminSupabase
-      .from('company_documents_internal')
-      .select('id')
-      .eq('document_type', template.document_name)
-      .limit(1)
-
-    if (usedDocs && usedDocs.length > 0) {
+    if (await vaultDocumentUsageRepository.hasDocumentsForTemplateName(template.documentName)) {
       return { success: false, error: 'Cannot delete template: it is used by company documents' }
     }
 
     // Delete template
-    const { error } = await adminSupabase
-      .from('document_templates_internal')
-      .delete()
-      .eq('id', id)
-
-    if (error) throw error
+    await vaultTemplateManagementRepository.delete(id)
 
     revalidatePath('/admin')
     return { success: true }
