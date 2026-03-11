@@ -17,7 +17,14 @@ export async function GET(request: NextRequest) {
     // Passport's authenticate() middleware doesn't work directly in App Router
     const clientId = process.env.GOOGLE_CLIENT_ID
     const callbackUrl = process.env.NEXT_PUBLIC_PASSPORT_CALLBACK_URL || 'http://localhost:3000/auth/callback'
-    const origin = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || 'http://localhost:3000'
+    let origin = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || 'http://localhost:3000'
+    
+    // Normalize origin: remove www. prefix to ensure consistent callback URL
+    // This prevents www vs non-www mismatch with Google OAuth redirect URIs
+    if (origin.includes('://www.')) {
+      origin = origin.replace('://www.', '://')
+    }
+    
     const fullCallbackUrl = `${origin}${callbackUrl.replace(/^https?:\/\/[^/]+/, '')}`
 
     // Generate state for CSRF protection

@@ -35,7 +35,13 @@ export interface PassportSessionUser {
 export function initializePassport() {
   const clientId = process.env.GOOGLE_CLIENT_ID
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-  const callbackUrl = process.env.NEXT_PUBLIC_PASSPORT_CALLBACK_URL || 'http://localhost:3000/auth/callback'
+  let callbackUrl = process.env.NEXT_PUBLIC_PASSPORT_CALLBACK_URL || 'http://localhost:3000/auth/callback'
+  
+  // Normalize callback URL: remove www. prefix to ensure consistent redirect URI
+  // This prevents www vs non-www mismatch with Google OAuth redirect URIs
+  if (callbackUrl.includes('://www.')) {
+    callbackUrl = callbackUrl.replace('://www.', '://')
+  }
 
   if (!clientId || !clientSecret) {
     throw new Error('GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set in environment variables')
