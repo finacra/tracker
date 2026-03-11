@@ -384,6 +384,13 @@ function DataRoomPageInner() {
 
         const { data } = result;
         
+        // FAST-PATH: Immediate redirect if subscription expired (skip loading all data)
+        if (data.redirectTo) {
+          console.log("[DataRoomInit] Subscription expired, redirecting immediately to:", data.redirectTo);
+          router.replace(data.redirectTo);
+          return; // Exit early, don't load any data
+        }
+        
         updateLoadingMessage("📊 Loading company information...");
         
         // 1. Format and set companies

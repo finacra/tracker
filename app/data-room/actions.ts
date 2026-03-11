@@ -441,16 +441,16 @@ export async function getRegulatoryRequirements(companyId: string | null = null)
     }
 
     // Update overdue statuses before fetching to ensure data consistency
-    // This MUST complete before fetching to avoid race conditions
-    try {
-      if (companyId) {
-        await requirementRepository.refreshOverdueStatuses(companyId)
-      } else if (isSuperadmin) {
-        await requirementRepository.refreshAllOverdueStatuses()
-      }
-    } catch (statusUpdateError) {
-      // Log but don't fail the entire request if status update fails
-      console.error('[getRegulatoryRequirements] Status update exception (non-critical):', statusUpdateError)
+    // OPTIMIZATION: Make this non-blocking to improve load times
+    // The status will be updated in the background, and the next fetch will have correct status
+    if (companyId) {
+      requirementRepository.refreshOverdueStatuses(companyId).catch((err) => {
+        console.error('[getRegulatoryRequirements] Background status update failed (non-critical):', err)
+      })
+    } else if (isSuperadmin) {
+      requirementRepository.refreshAllOverdueStatuses().catch((err) => {
+        console.error('[getRegulatoryRequirements] Background status update failed (non-critical):', err)
+      })
     }
 
     // Use repository to fetch requirements
@@ -3409,6 +3409,8 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     hiddenCompliances: string[]
     userRole: 'superadmin' | 'admin' | 'editor' | 'viewer'
     initialRequirements: any[]
+    // Fast-path redirect flag
+    redirectTo?: string
   }
   error?: string
 }> {
@@ -3430,6 +3432,48 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     let currentCompanyId = preferredCompanyId
     if (!currentCompanyId || !accessibleCompanyIds.includes(currentCompanyId)) {
       currentCompanyId = accessibleCompanyIds[0] || null
+    }
+    
+    // FAST-PATH: Check subscription status FIRST before loading heavy data
+    // This allows immediate redirect if subscription is expired
+    let fastAccessSnapshot: import('@/domain/types/CompanyAccess').CompanyAccessSnapshot | null = null
+    if (currentCompanyId) {
+      const fastAccessCheckStart = performance.now()
+      fastAccessSnapshot = await (new GetCompanyAccessSnapshot(accessService)).execute(user.id, currentCompanyId)
+      console.log(`[InitAction] Fast access check took ${(performance.now() - fastAccessCheckStart).toFixed(2)}ms`)
+      
+      // If subscription expired, return early with redirect flag (skip loading all data)
+      if (fastAccessSnapshot.ownerSubscriptionExpired) {
+        const company = await companyRepository.getById(currentCompanyId)
+        const isOwner = company && (company.ownerUserId === user.id || company.ownerAppUserId === user.id)
+        
+        return {
+          success: true,
+          data: {
+            user: { id: user.id, email: user.email || '', fullName: user.fullName || null },
+            companies: [],
+            accessibleCompanyIds: [],
+            currentCompanyId: null,
+            companyAccess: fastAccessSnapshot,
+            userSubscription: {
+              hasSubscription: false,
+              tier: 'none',
+              isTrial: false,
+              trialDaysRemaining: 0,
+              companyLimit: 0,
+              currentCompanyCount: 0,
+              canCreateCompany: false,
+            },
+            hiddenTemplates: [],
+            hiddenCompliances: [],
+            userRole: 'viewer',
+            initialRequirements: [],
+            redirectTo: isOwner 
+              ? `/subscription-required?company_id=${currentCompanyId}`
+              : `/owner-subscription-expired?company_id=${currentCompanyId}`,
+          }
+        }
+      }
     }
     // 3. Fetch all components in parallel
     const { createAdminClient } = await import('@/utils/supabase/admin')
@@ -3467,14 +3511,8 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         return res
       })(),
       
-      // D: Fetch access snapshot for current company
-      (async () => {
-        const s = performance.now()
-        if (!currentCompanyId) return null
-        const res = await (new GetCompanyAccessSnapshot(accessService)).execute(user.id, currentCompanyId)
-        console.log(`[InitAction] Fetch company access took ${(performance.now() - s).toFixed(2)}ms`)
-        return res
-      })(),
+      // D: Reuse fast-path access snapshot (already fetched above)
+      Promise.resolve(fastAccessSnapshot),
       
       // E: Fetch full details and directors for the CURRENT company
       currentCompanyId ? (async () => {
@@ -3614,7 +3652,8 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         hiddenTemplates: hiddenTemplatesResult as string[],
         hiddenCompliances: hiddenCompliancesResult as string[],
         userRole: userRoleResult as any,
-        initialRequirements: (regulatoryRequirementsResult || []) as any[]
+        initialRequirements: (regulatoryRequirementsResult || []) as any[],
+        redirectTo: undefined // No redirect needed if we got here
       }
     }
   } catch (error: any) {
