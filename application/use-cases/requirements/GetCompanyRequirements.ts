@@ -17,9 +17,13 @@ export class GetCompanyRequirements {
       throw new Error('Unauthorized')
     }
 
+    // OPTIMIZATION: Make refreshOverdueStatuses non-blocking to speed up initial load
+    // The status will be updated in the background, and the next fetch will have correct status
     const refreshStartTime = performance.now()
-    await this.requirementRepository.refreshOverdueStatuses(companyId)
-    console.log(`[GetCompanyRequirements] Refresh overdue statuses took ${(performance.now() - refreshStartTime).toFixed(2)}ms`)
+    this.requirementRepository.refreshOverdueStatuses(companyId).catch((err) => {
+      console.error('[GetCompanyRequirements] Background status update failed (non-critical):', err)
+    })
+    // Don't await - let it run in background
     
     const fetchStartTime = performance.now()
     const requirements = await this.requirementRepository.getByCompanyId(companyId)

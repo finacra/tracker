@@ -18,24 +18,19 @@ export class RepositoryAccessService implements AccessService {
     }
 
     async getRoleForCompany(userId: string, companyId: string): Promise<AppRole | null> {
-        if (await this.isSuperadmin(userId)) {
+        // OPTIMIZATION: Check superadmin and company ownership in parallel
+        const [isSuperadminResult, company] = await Promise.all([
+            this.isSuperadmin(userId),
+            this.companyRepository.getById(companyId)
+        ])
+        
+        if (isSuperadminResult) {
             return 'superadmin'
         }
-
-        const company = await this.companyRepository.getById(companyId)
         
         // Check if user is owner - handle both Passport and Supabase users
-        let isOwner = false
-        if (company) {
-            // Check both Supabase user_id and Passport app_user_id
-            if (company.ownerUserId === userId || company.ownerAppUserId === userId) {
-                isOwner = true
-            } else {
-                // Fallback: Check if userId is a Passport user and matches app_user_id
-                const ownedCompanies = await this.companyRepository.listOwnedByUser(userId)
-                isOwner = ownedCompanies.some(c => c.id === companyId)
-            }
-        }
+        // OPTIMIZATION: Don't call listOwnedByUser - just check the company record directly
+        const isOwner = company && (company.ownerUserId === userId || company.ownerAppUserId === userId)
         
         if (isOwner) {
             return 'admin'
@@ -226,10 +221,11 @@ export class RepositoryAccessService implements AccessService {
         const startTime = performance.now()
         
         if (await this.isSuperadmin(userId)) {
-            // For superadmins, we return all company IDs
-            const allCompanies = await this.companyRepository.listAll()
-            console.log(`[getAccessibleCompanyIds] Superadmin - took ${(performance.now() - startTime).toFixed(2)}ms`)
-            return allCompanies.map(c => c.id)
+            // OPTIMIZATION: For superadmins, just get company IDs (not full records)
+            // This is much faster than fetching all company data
+            const allCompanyIds = await this.companyRepository.listAllCompanyIds()
+            console.log(`[getAccessibleCompanyIds] Superadmin - took ${(performance.now() - startTime).toFixed(2)}ms, found ${allCompanyIds.length} companies`)
+            return allCompanyIds
         }
 
         const accessibleIds: string[] = []

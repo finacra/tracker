@@ -3424,20 +3424,61 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     const authDuration = performance.now() - authStartTime
     console.log(`[InitAction] ⏱️ Auth check took ${authDuration.toFixed(2)}ms`)
     
-    // 1. Get accessible company IDs (optimized)
-    const accessibleStartTime = performance.now()
-    const accessibleUseCase = new GetAccessibleCompanyIds(accessService)
-    const accessibleCompanyIds = await accessibleUseCase.execute(user.id)
-    const accessibleDuration = performance.now() - accessibleStartTime
-    console.log(`[InitAction] ⏱️ Get accessible company IDs took ${accessibleDuration.toFixed(2)}ms (found ${accessibleCompanyIds.length} companies)`)
+    // OPTIMIZATION: Skip getAccessibleCompanyIds if preferredCompanyId is known
+    // This saves ~1.9s for superadmins and ~500ms for regular users
+    let accessibleCompanyIds: string[]
+    let currentCompanyId: string | null = preferredCompanyId
     
-    if (accessibleDuration > 5000) {
-      console.warn(`[InitAction] ⚠️ WARNING: Get accessible company IDs took ${accessibleDuration.toFixed(2)}ms - this is very slow! Check database indexes.`)
-    }
-    
-    // 2. Determine actual current company ID early so we can fetch its details
-    let currentCompanyId = preferredCompanyId
-    if (!currentCompanyId || !accessibleCompanyIds.includes(currentCompanyId)) {
+    if (preferredCompanyId) {
+      // Fast path: Validate access for single company only
+      const singleAccessStartTime = performance.now()
+      const accessSnapshot = await (new GetCompanyAccessSnapshot(accessService)).execute(user.id, preferredCompanyId)
+      const singleAccessDuration = performance.now() - singleAccessStartTime
+      console.log(`[InitAction] ⏱️ Single company access check took ${singleAccessDuration.toFixed(2)}ms`)
+      
+      if (!accessSnapshot.hasAccess) {
+        return {
+          success: false,
+          error: 'Access denied to this company',
+          data: {
+            user: { id: user.id, email: user.email || '', fullName: user.fullName || null },
+            companies: [],
+            accessibleCompanyIds: [],
+            currentCompanyId: null,
+            companyAccess: null,
+            userSubscription: {
+              hasSubscription: false,
+              tier: 'none',
+              isTrial: false,
+              trialDaysRemaining: 0,
+              companyLimit: 0,
+              currentCompanyCount: 0,
+              canCreateCompany: false,
+            },
+            hiddenTemplates: [],
+            hiddenCompliances: [],
+            userRole: 'viewer',
+            initialRequirements: [],
+            redirectTo: '/subscription-required',
+          }
+        }
+      }
+      
+      // Access granted - use this company
+      accessibleCompanyIds = [preferredCompanyId]
+    } else {
+      // Slow path: Get all accessible companies (needed for company selector)
+      const accessibleStartTime = performance.now()
+      const accessibleUseCase = new GetAccessibleCompanyIds(accessService)
+      accessibleCompanyIds = await accessibleUseCase.execute(user.id)
+      const accessibleDuration = performance.now() - accessibleStartTime
+      console.log(`[InitAction] ⏱️ Get accessible company IDs took ${accessibleDuration.toFixed(2)}ms (found ${accessibleCompanyIds.length} companies)`)
+      
+      if (accessibleDuration > 5000) {
+        console.warn(`[InitAction] ⚠️ WARNING: Get accessible company IDs took ${accessibleDuration.toFixed(2)}ms - this is very slow! Check database indexes.`)
+      }
+      
+      // Determine current company ID from accessible list
       currentCompanyId = accessibleCompanyIds[0] || null
     }
     

@@ -215,4 +215,13 @@ export class PrismaCompanyRepository implements CompanyRepository {
       ownerUserId: r.user_id,
     }))
   }
+
+  // OPTIMIZED: Just get IDs for superadmin (much faster)
+  async listAllCompanyIds(): Promise<string[]> {
+    const rows = await prisma.company.findMany({
+      select: { id: true },
+      orderBy: { created_at: 'desc' },
+    })
+    return rows.map((r: { id: string }) => r.id)
+  }
 }

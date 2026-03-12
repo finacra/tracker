@@ -81,4 +81,5 @@ export interface CompanyRepository {
   update(companyId: string, input: UpdateCompanyInput): Promise<void>
   getCountryCode(companyId: string): Promise<string | null>
   listAll(): Promise<CompanyRecord[]>
+  listAllCompanyIds(): Promise<string[]>
 }

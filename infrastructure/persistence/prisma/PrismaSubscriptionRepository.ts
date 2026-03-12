@@ -162,8 +162,10 @@ export class PrismaSubscriptionRepository implements SubscriptionRepository {
     }
 
     async getUserSubscriptionState(userId: string): Promise<UserSubscriptionState | null> {
-        // Optimized: Single query using UNION to check both Passport and Supabase users
-        // This avoids multiple sequential queries
+        // OPTIMIZED: Use UNION query - now fast with idx_subscriptions_app_user_active index
+        // This is more robust than conditional logic and handles all identity paths correctly
+        const startTime = performance.now()
+        
         const subs = await prisma.$queryRaw<any[]>`
             SELECT * FROM (
                 SELECT s.*
@@ -190,7 +192,11 @@ export class PrismaSubscriptionRepository implements SubscriptionRepository {
             LIMIT 1
         `
         const sub = subs.length > 0 ? subs[0] : null
-
+        const duration = performance.now() - startTime
+        if (duration > 1000) {
+            console.warn(`[PrismaSubscriptionRepository] getUserSubscriptionState took ${duration.toFixed(2)}ms - slow! Check idx_subscriptions_app_user_active index.`)
+        }
+        
         if (!sub) {
             return {
                 hasSubscription: false,
@@ -201,10 +207,17 @@ export class PrismaSubscriptionRepository implements SubscriptionRepository {
                 userLimit: 0,
             }
         }
-
+        
+        return this.mapSubscriptionToState(sub)
+    }
+    
+    private mapSubscriptionToState(sub: any): UserSubscriptionState {
         const now = new Date()
-        const endDate = sub.is_trial ? (sub.trial_ends_at || sub.end_date) : sub.end_date
-        const isExpired = endDate < now || sub.status === 'expired'
+        // Handle date conversion from database
+        const trialEndsAt = sub.trial_ends_at ? new Date(sub.trial_ends_at) : null
+        const endDateValue = sub.end_date ? new Date(sub.end_date) : null
+        const endDate = sub.is_trial ? (trialEndsAt || endDateValue) : endDateValue
+        const isExpired = !endDate || endDate < now || sub.status === 'expired'
         const trialDaysRemaining = sub.is_trial && !isExpired
             ? Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
             : 0
