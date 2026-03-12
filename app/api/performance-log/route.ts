@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import fs from 'fs/promises'
-import path from 'path'
 
 /**
  * API route to receive performance logs from client-side
- * Writes them to log files for analysis
+ * In production (Vercel), only logs to console (filesystem is read-only)
+ * In development, writes to log files for analysis
  */
 export async function POST(request: NextRequest) {
   try {
@@ -15,25 +14,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid metric format' }, { status: 400 })
     }
 
-    // Create logs directory if it doesn't exist
-    const logDir = path.join(process.cwd(), 'logs')
-    await fs.mkdir(logDir, { recursive: true })
+    // Log to console (works in all environments)
+    const logMessage = `[PERF] ${metric.component}::${metric.operation} - ${metric.duration}ms${metric.metadata ? ' | ' + JSON.stringify(metric.metadata) : ''}`
+    console.log(logMessage)
 
-    // Write to daily log file
-    const logFile = path.join(logDir, `performance-${new Date().toISOString().split('T')[0]}.log`)
-    const logLine = `[${metric.timestamp}] ${metric.component}::${metric.operation} - ${metric.duration}ms${metric.metadata ? ' | ' + JSON.stringify(metric.metadata) : ''}\n`
+    // Only write to files in development (Vercel filesystem is read-only)
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        const fs = await import('fs/promises')
+        const path = await import('path')
 
-    await fs.appendFile(logFile, logLine, 'utf-8')
+        // Create logs directory if it doesn't exist
+        const logDir = path.join(process.cwd(), 'logs')
+        await fs.mkdir(logDir, { recursive: true })
 
-    // Also log to console for immediate visibility in terminal
-    console.log(`[PERF] ${metric.component}::${metric.operation} - ${metric.duration}ms${metric.metadata ? ' | ' + JSON.stringify(metric.metadata) : ''}`)
+        // Write to daily log file
+        const logFile = path.join(logDir, `performance-${new Date().toISOString().split('T')[0]}.log`)
+        const logLine = `[${metric.timestamp}] ${metric.component}::${metric.operation} - ${metric.duration}ms${metric.metadata ? ' | ' + JSON.stringify(metric.metadata) : ''}\n`
+
+        await fs.appendFile(logFile, logLine, 'utf-8')
+      } catch (fileError) {
+        // Silently fail file writes - console logging is sufficient
+        // This prevents errors in serverless environments
+        console.warn('[PerformanceLog API] Could not write to file (this is normal in production):', fileError)
+      }
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    // Don't return 500 - just log and return success
+    // Performance logging failures shouldn't break the app
     console.error('[PerformanceLog API] Error:', error)
-    return NextResponse.json(
-      { error: 'Failed to log performance metric' },
-      { status: 500 }
-    )
+    return NextResponse.json({ success: true }) // Return success to prevent client retries
   }
 }
