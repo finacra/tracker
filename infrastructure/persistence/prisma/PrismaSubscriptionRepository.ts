@@ -220,19 +220,17 @@ export class PrismaSubscriptionRepository implements SubscriptionRepository {
     }
 
     async getCompanySubscriptionState(companyId: string): Promise<CompanySubscriptionState | null> {
-        // Find subscriptions for this company
-        // Trials are subscriptions with is_trial = true, not a separate status
-        const sub = await prisma.subscription.findFirst({
-            where: {
-                company_id: companyId,
-                subscription_type: 'company',
-                OR: [
-                    { status: 'active' },
-                    { is_trial: true }
-                ]
-            },
-            orderBy: { created_at: 'desc' },
-        })
+        // OPTIMIZED: Use raw SQL to ensure index usage (idx_subscriptions_company_status_trial)
+        // Prisma's findFirst with OR might not use the composite index optimally
+        const subs = await prisma.$queryRaw<any[]>`
+            SELECT * FROM subscriptions
+            WHERE company_id::uuid = ${companyId}::uuid
+            AND subscription_type = 'company'
+            AND (status = 'active' OR is_trial = true)
+            ORDER BY created_at DESC
+            LIMIT 1
+        `
+        const sub = subs.length > 0 ? subs[0] : null
 
         console.log('[PrismaSubscriptionRepository] getCompanySubscriptionState:', {
             companyId,
