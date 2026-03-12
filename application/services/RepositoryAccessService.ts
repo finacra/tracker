@@ -51,10 +51,17 @@ export class RepositoryAccessService implements AccessService {
         return access.hasAccess
     }
 
-    async getCompanyAccessSnapshot(userId: string, companyId: string): Promise<CompanyAccessSnapshot> {
-        // Optimized: Fetch all independent data in parallel
-        const [isSuperadmin, company, userRole] = await Promise.all([
-            this.isSuperadmin(userId),
+    async getCompanyAccessSnapshot(userId: string, companyId: string, isSuperadminCache?: boolean): Promise<CompanyAccessSnapshot> {
+        // OPTIMIZATION: Accept isSuperadminCache to avoid duplicate calls
+        let isSuperadmin: boolean
+        if (isSuperadminCache !== undefined) {
+            isSuperadmin = isSuperadminCache
+        } else {
+            isSuperadmin = await this.isSuperadmin(userId)
+        }
+        
+        // Fetch company and userRole in parallel
+        const [company, userRole] = await Promise.all([
             this.companyRepository.getById(companyId),
             this.companyMembershipRepository.findRole(userId, companyId)
         ])
@@ -87,14 +94,13 @@ export class RepositoryAccessService implements AccessService {
 
         // Invited members (team members/admins) - they can only access if owner has active subscription
         if (userRole && !userIsOwner) {
-            // Optimized: Check both company and owner subscriptions in parallel
-            const [companySub, ownerSubByAppId, ownerSubByUserId] = await Promise.all([
+            // OPTIMIZED: getUserSubscriptionState already handles both app_user_id and user_id via UNION
+            // Only call it once with the owner ID (prefer app_user_id, fallback to user_id)
+            const ownerId = company?.ownerAppUserId || company?.ownerUserId
+            const [companySub, ownerSub] = await Promise.all([
                 this.subscriptionRepository.getCompanySubscriptionState(companyId),
-                company?.ownerAppUserId ? this.subscriptionRepository.getUserSubscriptionState(company.ownerAppUserId) : Promise.resolve(null),
-                company?.ownerUserId ? this.subscriptionRepository.getUserSubscriptionState(company.ownerUserId) : Promise.resolve(null)
+                ownerId ? this.subscriptionRepository.getUserSubscriptionState(ownerId) : Promise.resolve(null)
             ])
-            
-            const ownerSub = ownerSubByAppId || ownerSubByUserId
             
             console.log('[RepositoryAccessService] Invited member - Company subscription:', {
                 hasSubscription: companySub?.hasSubscription,

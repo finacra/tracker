@@ -5,6 +5,6 @@ export interface AccessService {
   isSuperadmin(userId: string): Promise<boolean>
   getRoleForCompany(userId: string, companyId: string, isSuperadminCache?: boolean): Promise<AppRole | null>
   canViewCompany(userId: string, companyId: string): Promise<boolean>
-  getCompanyAccessSnapshot(userId: string, companyId: string): Promise<CompanyAccessSnapshot>
+  getCompanyAccessSnapshot(userId: string, companyId: string, isSuperadminCache?: boolean): Promise<CompanyAccessSnapshot>
   getAccessibleCompanyIds(userId: string): Promise<string[]>
 }

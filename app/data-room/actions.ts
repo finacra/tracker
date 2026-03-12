@@ -3432,8 +3432,10 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     
     if (preferredCompanyId) {
       // Fast path: Validate access for single company only
+      // OPTIMIZATION: Check superadmin once and pass to getCompanyAccessSnapshot
       const singleAccessStartTime = performance.now()
-      const accessSnapshot = await (new GetCompanyAccessSnapshot(accessService)).execute(user.id, preferredCompanyId)
+      const isSuperadminResult = await accessService.isSuperadmin(user.id)
+      const accessSnapshot = await accessService.getCompanyAccessSnapshot(user.id, preferredCompanyId, isSuperadminResult)
       accessibleDuration = performance.now() - singleAccessStartTime
       console.log(`[InitAction] ⏱️ Single company access check took ${accessibleDuration.toFixed(2)}ms`)
       
@@ -3558,10 +3560,13 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     
     // FAST-PATH: Full access snapshot (only if subscription is active)
     // This is still needed for proper access type determination, but subscription check already passed
+    // OPTIMIZATION: Reuse superadmin check from earlier (if we already have it)
     let fastAccessSnapshot: import('@/domain/types/CompanyAccess').CompanyAccessSnapshot | null = null
     if (currentCompanyId) {
       const fastAccessCheckStart = performance.now()
-      fastAccessSnapshot = await (new GetCompanyAccessSnapshot(accessService)).execute(user.id, currentCompanyId)
+      // Check superadmin once and pass to getCompanyAccessSnapshot to avoid duplicate call
+      const isSuperadminForAccess = await accessService.isSuperadmin(user.id)
+      fastAccessSnapshot = await accessService.getCompanyAccessSnapshot(user.id, currentCompanyId, isSuperadminForAccess)
       console.log(`[InitAction] Full access check took ${(performance.now() - fastAccessCheckStart).toFixed(2)}ms`)
     }
     // 3. Fetch all components in parallel
