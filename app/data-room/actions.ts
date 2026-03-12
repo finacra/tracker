@@ -3412,7 +3412,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
           SELECT folder_name, document_name FROM company_document_template_exclusions WHERE company_id = ${currentCompanyId}::uuid
         ),
         hc_exclude AS (
-          SELECT compliance_id FROM company_compliance_exclusions WHERE company_id = ${currentCompanyId}::uuid
+          SELECT requirement_id FROM company_compliance_exclusions WHERE company_id = ${currentCompanyId}::uuid
         ),
         all_metadata AS (
           SELECT id, name, type, incorporation_date, country_code, region 
@@ -3506,7 +3506,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         },
         initialEntityDetails: formattedDetails,
         hiddenTemplates: (snap.hidden_templates || []).map((t: any) => `${t.folder_name}:${t.document_name}`),
-        hiddenCompliances: (snap.hidden_compliances || []).map((c: any) => c.compliance_id),
+        hiddenCompliances: (snap.hidden_compliances || []).map((c: any) => c.requirement_id),
         userRole: (isSuperadminResult ? 'superadmin' : snap.role || 'viewer') as any,
         initialRequirements: (snap.requirements || []) as any[],
         _debug: {
