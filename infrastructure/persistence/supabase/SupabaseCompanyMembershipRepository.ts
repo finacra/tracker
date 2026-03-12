@@ -118,4 +118,29 @@ export class SupabaseCompanyMembershipRepository implements CompanyMembershipRep
     const { error } = await adminSupabase.from('user_roles').update({ role }).eq('id', roleId).eq('company_id', companyId)
     if (error) throw new Error(error.message)
   }
+  
+  async isSuperadmin(userId: string): Promise<boolean> {
+    const adminSupabase: any = createAdminClient()
+    const { data, error } = await adminSupabase
+      .from('user_roles')
+      .select('id')
+      .eq('app_user_id', userId)
+      .is('company_id', null)
+      .eq('role', 'superadmin')
+      .limit(1)
+      .maybeSingle()
+
+    if (data) return true
+
+    const { data: dataLegacy } = await adminSupabase
+      .from('user_roles')
+      .select('id')
+      .eq('user_id', userId)
+      .is('company_id', null)
+      .eq('role', 'superadmin')
+      .limit(1)
+      .maybeSingle()
+
+    return !!dataLegacy
+  }
 }
