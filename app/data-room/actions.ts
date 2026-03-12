@@ -3416,17 +3416,24 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
 }> {
   try {
     const initStartTime = performance.now()
+    console.log(`[InitAction] ===== STARTING INITIALIZATION =====`)
     const { authService, accessService, companyRepository, subscriptionRepository } = createServerContainer()
     
     const authStartTime = performance.now()
     const user = await authService.requireCurrentUser()
-    console.log(`[InitAction] Auth check took ${(performance.now() - authStartTime).toFixed(2)}ms`)
+    const authDuration = performance.now() - authStartTime
+    console.log(`[InitAction] ⏱️ Auth check took ${authDuration.toFixed(2)}ms`)
     
     // 1. Get accessible company IDs (optimized)
     const accessibleStartTime = performance.now()
     const accessibleUseCase = new GetAccessibleCompanyIds(accessService)
     const accessibleCompanyIds = await accessibleUseCase.execute(user.id)
-    console.log(`[InitAction] Get accessible company IDs took ${(performance.now() - accessibleStartTime).toFixed(2)}ms`)
+    const accessibleDuration = performance.now() - accessibleStartTime
+    console.log(`[InitAction] ⏱️ Get accessible company IDs took ${accessibleDuration.toFixed(2)}ms (found ${accessibleCompanyIds.length} companies)`)
+    
+    if (accessibleDuration > 5000) {
+      console.warn(`[InitAction] ⚠️ WARNING: Get accessible company IDs took ${accessibleDuration.toFixed(2)}ms - this is very slow! Check database indexes.`)
+    }
     
     // 2. Determine actual current company ID early so we can fetch its details
     let currentCompanyId = preferredCompanyId
@@ -3462,12 +3469,17 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
             (ownerUserSub && ownerUserSub.hasSubscription)
           )
           
-          console.log(`[InitAction] Ultra-fast subscription check took ${(performance.now() - ultraFastCheckStart).toFixed(2)}ms`, {
+          const ultraFastDuration = performance.now() - ultraFastCheckStart
+          console.log(`[InitAction] ⏱️ Ultra-fast subscription check took ${ultraFastDuration.toFixed(2)}ms`, {
             hasActiveSubscription,
             isOwner,
             companySub: companySub?.hasSubscription,
             ownerUserSub: ownerUserSub?.hasSubscription
           })
+          
+          if (ultraFastDuration > 5000) {
+            console.warn(`[InitAction] ⚠️ WARNING: Ultra-fast subscription check took ${ultraFastDuration.toFixed(2)}ms - this is very slow! Check database indexes on subscriptions table.`)
+          }
           
           // If NO active subscription, redirect immediately (skip all other data loading)
           if (!hasActiveSubscription) {
@@ -3653,8 +3665,16 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
       regulatoryRequirementsResult
     ] = results
     
-    console.log(`[InitAction] Total Parallel fetches took ${(performance.now() - startParallel).toFixed(2)}ms`)
-    console.log(`[InitAction] Total initialization took ${(performance.now() - initStartTime).toFixed(2)}ms`)
+    const parallelDuration = performance.now() - startParallel
+    const totalDuration = performance.now() - initStartTime
+    console.log(`[InitAction] ⏱️ Total Parallel fetches took ${parallelDuration.toFixed(2)}ms`)
+    console.log(`[InitAction] ⏱️ Total initialization took ${totalDuration.toFixed(2)}ms`)
+    console.log(`[InitAction] ===== INITIALIZATION COMPLETE =====`)
+    
+    if (totalDuration > 10000) {
+      console.error(`[InitAction] ❌ CRITICAL: Total initialization took ${totalDuration.toFixed(2)}ms (${(totalDuration/1000).toFixed(1)}s) - this is extremely slow!`)
+      console.error(`[InitAction] Breakdown: Auth=${authDuration.toFixed(0)}ms, Accessible=${accessibleDuration.toFixed(0)}ms, Parallel=${parallelDuration.toFixed(0)}ms`)
+    }
 
     // 4. Calculate subscription summary
     const hasActiveSubscription = Boolean(

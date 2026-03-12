@@ -376,7 +376,14 @@ function DataRoomPageInner() {
       
       try {
         updateLoadingMessage("🔐 Verifying access permissions...");
+        const initStartTime = performance.now()
         const result = await getDataRoomInitState(initialCompanyId);
+        const initDuration = performance.now() - initStartTime
+        console.log(`[DataRoomInit] ⏱️ getDataRoomInitState took ${initDuration.toFixed(2)}ms (${(initDuration/1000).toFixed(1)}s)`)
+        
+        if (initDuration > 10000) {
+          console.error(`[DataRoomInit] ❌ CRITICAL: Initialization took ${(initDuration/1000).toFixed(1)}s - check server logs for breakdown`)
+        }
         
         if (!result.success || !result.data) {
           throw new Error(result.error || "Failed to initialize Data Room");
