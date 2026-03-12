@@ -79,7 +79,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const response = await fetch('/api/auth/profile', {
+      // Use window.location.origin to ensure absolute path if reachable, 
+      // but relative path is generally safer for same-origin in Next.js
+      const profileUrl = typeof window !== 'undefined' 
+        ? `${window.location.origin}/api/auth/profile`
+        : '/api/auth/profile';
+
+      const response = await fetch(profileUrl, {
         method: 'GET',
         cache: 'no-store',
       })
@@ -97,8 +103,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
       resolvedAppUserIdRef.current = session.userId
       setAppUser(nextAppUser)
       return nextAppUser
-    } catch (error) {
-      console.error('Error resolving canonical auth profile:', error)
+    } catch (error: any) {
+      // Handle the "Failed to fetch" error specifically
+      const isNetworkError = error instanceof TypeError || error.message?.includes('fetch');
+      
+      if (isNetworkError) {
+        console.warn('[Providers] Network error syncing profile, using fallback:', error.message)
+      } else {
+        console.error('Error resolving canonical auth profile:', error)
+      }
 
       if (requestId !== appUserRequestIdRef.current) {
         return null

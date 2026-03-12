@@ -24,17 +24,20 @@ export class PassportClientAuthAdapter implements ClientAuthAdapter {
 
       const data = await response.json()
 
-      if (!data.session) {
+      if (!data?.session) {
         return null
       }
 
       return {
         userId: data.session.appUserId,
         email: data.session.email,
-        accessToken: null, // Passport doesn't use access tokens in the same way
+        accessToken: null,
       }
     } catch (error) {
-      console.error('[PassportClientAuthAdapter] Error getting session:', error)
+      // Quiet down network errors for non-active providers
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('[PassportClientAuthAdapter] No session found or endpoint unreachable')
+      }
       return null
     }
   }
@@ -42,34 +45,40 @@ export class PassportClientAuthAdapter implements ClientAuthAdapter {
   onAuthStateChange(
     callback: (event: string, session: ClientAuthSession | null) => void
   ): { unsubscribe: () => void } {
-    // For Passport, we'll poll the session endpoint
-    // In a production app, you might want to use Server-Sent Events or WebSockets
     let intervalId: NodeJS.Timeout | null = null
     let lastSession: ClientAuthSession | null = null
+    let isInitialCheck = true
 
     const checkSession = async () => {
-      const session = await this.getSession()
+      try {
+        const session = await this.getSession()
 
-      // Only fire callback if session state changed
-      if (
-        (session?.userId !== lastSession?.userId) ||
-        (session === null && lastSession !== null) ||
-        (session !== null && lastSession === null)
-      ) {
-        const event = session ? 'SIGNED_IN' : 'SIGNED_OUT'
-        callback(event, session)
-        lastSession = session
+        // Only fire callback if session state changed
+        const sessionChanged = 
+          (session?.userId !== lastSession?.userId) ||
+          (session === null && lastSession !== null) ||
+          (session !== null && lastSession === null)
+
+        if (sessionChanged || isInitialCheck) {
+          isInitialCheck = false
+          const event = session ? 'SIGNED_IN' : 'SIGNED_OUT'
+          callback(event, session)
+          lastSession = session
+        }
+      } catch (e) {
+        // Suppress errors during polling
       }
     }
 
-    // Check immediately
-    checkSession()
+    // Initial check with a small delay to avoid race conditions during page load
+    const timeoutId = setTimeout(checkSession, 500)
 
     // Poll every 5 seconds
     intervalId = setInterval(checkSession, 5000)
 
     return {
       unsubscribe: () => {
+        clearTimeout(timeoutId)
         if (intervalId) {
           clearInterval(intervalId)
           intervalId = null
@@ -85,7 +94,7 @@ export class PassportClientAuthAdapter implements ClientAuthAdapter {
         credentials: 'include',
       })
     } catch (error) {
-      console.error('[PassportClientAuthAdapter] Error signing out:', error)
+      // Quiet down
     }
   }
 }

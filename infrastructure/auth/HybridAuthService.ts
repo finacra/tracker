@@ -8,10 +8,19 @@ export class HybridAuthService implements AuthService {
   ) {}
 
   async getCurrentUser(): Promise<AppUser | null> {
-    const user = await this.primary.getCurrentUser()
-    if (user) return user
+    try {
+      const user = await this.primary.getCurrentUser()
+      if (user) return user
+    } catch (error) {
+      console.error('[HybridAuthService] Primary provider error:', error)
+    }
     
-    return this.secondary.getCurrentUser()
+    try {
+      return await this.secondary.getCurrentUser()
+    } catch (error) {
+      console.error('[HybridAuthService] Secondary provider error:', error)
+      return null
+    }
   }
 
   async requireCurrentUser(): Promise<AppUser> {
