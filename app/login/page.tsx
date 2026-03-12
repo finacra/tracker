@@ -42,8 +42,8 @@ function LoginPageInner() {
       if (session) {
         if (!isMounted) return
         
-        const result = await getPostAuthDestination()
-        const baseDestination = result.success ? result.destination ?? '/home' : '/home'
+        const result = await getPostAuthDestination(session.user.id)
+        const baseDestination = result.success ? result.destination ?? '/subscribe' : '/subscribe'
         const destination = resolvePostAuthRedirect({
           baseDestination,
           overridePath: returnTo,
@@ -108,6 +108,16 @@ function LoginPageInner() {
         if (error) {
           setError(error.message)
           setIsLoading(false)
+        } else if (data.session) {
+          // If auto-confirm is enabled, it might return a session immediately
+          const result = await getPostAuthDestination(data.session.user.id)
+          const redirectTo = resolvePostAuthRedirect({
+            baseDestination: result.success ? result.destination ?? '/subscribe' : '/subscribe',
+            overridePath: returnTo,
+            allowOverrideForDataRoomUsers: true,
+          })
+          console.log(`[EMAIL SIGN UP] Auto-logged in, redirecting to: ${redirectTo}`)
+          router.push(redirectTo)
         } else {
           setMessage('Check your email to confirm your account!')
           setIsLoading(false)
@@ -123,11 +133,9 @@ function LoginPageInner() {
           setError(error.message)
           setIsLoading(false)
         } else if (data.session) {
-          let redirectTo = '/home'
-
-          const result = await getPostAuthDestination()
-          redirectTo = resolvePostAuthRedirect({
-            baseDestination: result.success ? result.destination ?? '/home' : '/home',
+          const result = await getPostAuthDestination(data.session.user.id)
+          const redirectTo = resolvePostAuthRedirect({
+            baseDestination: result.success ? result.destination ?? '/subscribe' : '/subscribe',
             overridePath: returnTo,
             allowOverrideForDataRoomUsers: true,
           })

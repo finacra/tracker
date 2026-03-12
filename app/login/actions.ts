@@ -3,7 +3,7 @@
 import { GetRootDestination } from '@/application/use-cases/navigation/GetRootDestination'
 import { createServerContainer } from '@/lib/composition/server-container'
 
-export async function getPostAuthDestination(): Promise<{
+export async function getPostAuthDestination(userId?: string): Promise<{
   success: boolean
   destination?: string
   error?: string
@@ -11,7 +11,10 @@ export async function getPostAuthDestination(): Promise<{
   try {
     const { authService, companyRepository, subscriptionService } =
       createServerContainer()
-    const user = await authService.requireCurrentUser()
+    
+    // Use provided userId or get from current session
+    const effectiveUserId = userId || (await authService.requireCurrentUser()).id
+    
     const useCase = new GetRootDestination(
       authService,
       companyRepository,
@@ -20,7 +23,7 @@ export async function getPostAuthDestination(): Promise<{
 
     return {
       success: true,
-      destination: await useCase.executeForUser(user.id),
+      destination: await useCase.executeForUser(effectiveUserId),
     }
   } catch (error: any) {
     console.error('Error in getPostAuthDestination:', error)
