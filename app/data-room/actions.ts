@@ -3338,103 +3338,107 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
 }> {
   try {
     const initStartTime = performance.now()
-    const { accessService } = createServerContainer()
     
-    // 1. PHASE 1: Combined Auth & Identity Setup (1 Roundtrip)
-    const phase1Start = performance.now()
+    // 1. FAST COOKIE AUTH
     const session = await getSession()
     if (!session) {
       throw new Error('Not authenticated')
     }
 
-    const authSnapshot = await prisma.$queryRaw<any[]>`
-      SELECT 
-        (SELECT row_to_json(u) FROM (
-          SELECT id, primary_email as email, full_name as "fullName" 
-          FROM app_users 
-          WHERE id = ${session.appUserId}::uuid
-        ) u) as user_row,
-        (SELECT EXISTS (
-          SELECT 1 FROM user_roles 
-          WHERE (app_user_id = ${session.appUserId}::uuid OR user_id = ${session.appUserId}::uuid) 
-          AND company_id IS NULL AND role = 'superadmin'
-        )) as is_superadmin
-    `
-    const { user_row: user, is_superadmin: isSuperadminResult } = authSnapshot[0] || {}
-    if (!user) throw new Error('User record not found')
-    
-    user.id = session.appUserId
-    const authDuration = performance.now() - phase1Start
-
-    // 2. PHASE 2: Access Resolution (1 Roundtrip)
-    const accStartTime = performance.now()
-    const accessibleCompanyIds = await accessService.getAccessibleCompanyIds(user.id, isSuperadminResult)
-    const accessibleDuration = performance.now() - accStartTime
-    
-    let currentCompanyId = preferredCompanyId
-    if (preferredCompanyId) {
-      if (!accessibleCompanyIds.includes(preferredCompanyId)) {
-        return { success: false, error: 'Access denied' }
-      }
-    } else {
-      currentCompanyId = accessibleCompanyIds[0] || null
-    }
-
-    // 3. PHASE 3: THE MEGA-SNAPSHOT (1 Roundtrip)
-    const megaStart = performance.now()
-    const snapshotRaw = await prisma.$queryRaw<any[]>`
+    // 2. THE ATOMIC PULSE: Everything in exactly one database roundtrip
+    // This SQL resolves Auth, Accessibility, Meta-data, and the Full Snapshot for the selected company.
+    const atomicStart = performance.now()
+    const pulseRaw = await prisma.$queryRaw<any[]>`
       WITH 
-        target_sub AS (
-          SELECT s.* FROM subscriptions s
-          WHERE s.subscription_type = 'user' AND (s.status = 'active' OR s.is_trial = true)
-          AND (s.app_user_id = ${user.id}::uuid OR s.user_id = ${user.id}::uuid)
+        params AS (SELECT ${session.appUserId}::uuid as uid),
+        -- Identity & Auth
+        user_info AS (SELECT id, primary_email as email, full_name as "fullName" FROM app_users WHERE id = (SELECT uid FROM params)),
+        is_sa AS (
+          SELECT EXISTS (
+            SELECT 1 FROM user_roles 
+            WHERE (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params)) 
+            AND company_id IS NULL AND role = 'superadmin'
+          ) as val
+        ),
+        -- Discovery of personal/user-level subscription
+        personal_sub AS (
+          SELECT * FROM subscriptions 
+          WHERE subscription_type = 'user' AND (status = 'active' OR is_trial = true)
+          AND (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params))
           ORDER BY created_at DESC LIMIT 1
         ),
-        count_owned AS (
-          SELECT count(*) as total FROM companies WHERE app_user_id = ${user.id}::uuid OR user_id = ${user.id}::uuid
+        -- THE ACCESS ENGINE: Calculate all IDs this user can legally see
+        acc_ids AS (
+           -- Rule 1: Superadmins see everything
+           SELECT id FROM companies WHERE (SELECT val FROM is_sa) IS TRUE
+           UNION
+           -- Rule 2: Explicit invitations (team members)
+           SELECT company_id as id FROM user_roles 
+           WHERE (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params)) 
+           AND company_id IS NOT NULL
+           UNION
+           -- Rule 3: Owners with active personal plans
+           SELECT id FROM companies 
+           WHERE (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params))
+           AND EXISTS (SELECT 1 FROM personal_sub)
+           UNION
+           -- Rule 4: Owners with company-specific plans
+           SELECT c.id FROM companies c
+           INNER JOIN subscriptions s ON s.company_id = c.id
+           WHERE (c.app_user_id = (SELECT uid FROM params) OR c.user_id = (SELECT uid FROM params))
+           AND s.subscription_type = 'company' AND (s.status = 'active' OR s.is_trial = true)
         ),
-        current_comp AS (
-          SELECT * FROM companies WHERE id = ${currentCompanyId}::uuid LIMIT 1
+        -- Determine final company selection (Target -> First Accessible -> NULL)
+        target_selection AS (
+           SELECT id FROM acc_ids WHERE id = ${preferredCompanyId}::uuid
+           UNION ALL
+           SELECT id FROM acc_ids LIMIT 1
         ),
-        directors_list AS (
-          SELECT * FROM directors WHERE company_id = ${currentCompanyId}::uuid ORDER BY created_at ASC
-        ),
-        r_val AS (
-          SELECT role FROM user_roles 
-          WHERE (app_user_id = ${user.id}::uuid OR user_id = ${user.id}::uuid) 
-          AND company_id = ${currentCompanyId}::uuid
-          LIMIT 1
-        ),
-        reqs_list AS (
-          SELECT * FROM regulatory_requirements WHERE company_id = ${currentCompanyId}::uuid ORDER BY due_date ASC
-        ),
-        ht_exclude AS (
-          SELECT folder_name, document_name FROM company_document_template_exclusions WHERE company_id = ${currentCompanyId}::uuid
-        ),
-        hc_exclude AS (
-          SELECT requirement_id FROM company_compliance_exclusions WHERE company_id = ${currentCompanyId}::uuid
-        ),
-        all_metadata AS (
+        final_target_id AS (SELECT id FROM target_selection LIMIT 1),
+        -- META-DATA: All accessible companies for sidebar
+        sidebar_meta AS (
           SELECT id, name, type, incorporation_date, country_code, region 
-          FROM companies 
-          WHERE id::text = ANY(${accessibleCompanyIds})
-        )
+          FROM companies WHERE id IN (SELECT id FROM acc_ids)
+        ),
+        -- THE SNAPSHOT (The payload for the selected company)
+        comp_snapshot AS (SELECT * FROM companies WHERE id = (SELECT id FROM final_target_id)),
+        directors_snapshot AS (SELECT * FROM directors WHERE company_id = (SELECT id FROM final_target_id) ORDER BY created_at ASC),
+        reqs_snapshot AS (SELECT * FROM regulatory_requirements WHERE company_id = (SELECT id FROM final_target_id) ORDER BY due_date ASC),
+        role_snapshot AS (
+           SELECT role FROM user_roles 
+           WHERE (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params)) 
+           AND company_id = (SELECT id FROM final_target_id) LIMIT 1
+        ),
+        excluded_t AS (SELECT folder_name, document_name FROM company_document_template_exclusions WHERE company_id = (SELECT id FROM final_target_id)),
+        excluded_c AS (SELECT requirement_id FROM company_compliance_exclusions WHERE company_id = (SELECT id FROM final_target_id))
+      
       SELECT 
-        (SELECT row_to_json(target_sub) FROM target_sub) as subscription,
-        (SELECT total FROM count_owned) as owned_count,
-        (SELECT row_to_json(current_comp) FROM current_comp) as company,
-        (SELECT json_agg(dl) FROM directors_list dl) as directors,
-        (SELECT role FROM r_val) as role,
-        (SELECT json_agg(rl) FROM reqs_list rl) as requirements,
-        (SELECT json_agg(ht) FROM ht_exclude ht) as hidden_templates,
-        (SELECT json_agg(hc) FROM hc_exclude hc) as hidden_compliances,
-        (SELECT json_agg(am) FROM all_metadata am) as companies_metadata
+        (SELECT row_to_json(u) FROM user_info u) as user,
+        (SELECT val FROM is_sa) as is_superadmin,
+        (SELECT row_to_json(s) FROM personal_sub s) as personal_sub,
+        (SELECT json_agg(id) FROM acc_ids) as accessible_ids,
+        (SELECT json_agg(sm) FROM sidebar_meta sm) as companies_metadata,
+        (SELECT row_to_json(cs) FROM comp_snapshot cs) as current_company,
+        (SELECT json_agg(ds) FROM directors_snapshot ds) as directors,
+        (SELECT json_agg(rs) FROM reqs_snapshot rs) as requirements,
+        (SELECT role FROM role_snapshot) as explicit_role,
+        (SELECT json_agg(et) FROM excluded_t et) as hidden_templates,
+        (SELECT json_agg(ec) FROM excluded_c ec) as hidden_compliances,
+        (SELECT count(*) FROM companies WHERE app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params)) as owned_count
     `
-    const snap = snapshotRaw[0] || {}
-    const megaDuration = performance.now() - megaStart
+    const pulse = pulseRaw[0] || {}
+    const atomicDuration = performance.now() - atomicStart
 
-    // MAPPING
-    const sub = snap.subscription
+    if (!pulse.user) throw new Error('User record not found')
+    
+    // MAPPING & LOGIC
+    const user = pulse.user as any
+    const isSuperadminResult = pulse.is_superadmin as boolean
+    const accessibleCompanyIds = (pulse.accessible_ids || []) as string[]
+    const currentCompanyId = pulse.current_company?.id || null
+
+    // 1. Subscription Logic
+    const sub = pulse.personal_sub
     const now = new Date()
     const trialEndsAt = sub?.trial_ends_at ? new Date(sub.trial_ends_at) : null
     const endDateRaw = sub?.end_date ? new Date(sub.end_date) : null
@@ -3452,7 +3456,8 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
       companyLimit: sub?.tier === 'enterprise' ? 100 : sub?.tier === 'professional' ? 20 : 5,
     }
 
-    const company = snap.company || {}
+    // 2. Formatting Details
+    const company = pulse.current_company || {}
     const formattedDetails = currentCompanyId ? {
       companyName: company.name || 'Unknown',
       type: (company.type || '').toUpperCase(),
@@ -3462,7 +3467,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
       address: company.address || 'Not Provided',
       phoneNumber: company.phone_number || 'Not Provided',
       industryCategory: Array.isArray(company.industry_categories) ? company.industry_categories.join(', ') : company.industry || 'Not Provided',
-      directors: (snap.directors || []).map((d: any) => ({
+      directors: (pulse.directors || []).map((d: any) => ({
         id: d.id, firstName: d.first_name, lastName: d.last_name, middleName: d.middle_name, din: d.director_id,
         designation: d.designation, dob: d.dob, pan: d.tax_id, email: d.email, mobile: d.mobile, verified: d.is_verified,
       })),
@@ -3470,8 +3475,11 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
 
     const hasActiveSub = subState.hasSubscription || (subState.isTrial && subState.trialDaysRemaining > 0)
     
-    // Quick redirect check
-    if (!isSuperadminResult && currentCompanyId && !hasActiveSub) {
+    // 3. Subscription Check for non-superadmins
+    if (!isSuperadminResult && preferredCompanyId && !hasActiveSub) {
+      // Check if specifically this company has its own subscription (Rule 4 check already done for discovery, 
+      // but if user passed a preferred ID that isn't accessible, they'd have failed already).
+      // If they passed an ID they own but have no active plan, we redirect.
       return {
         success: true,
         data: {
@@ -3479,19 +3487,19 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
           companies: [], accessibleCompanyIds: [], currentCompanyId: null, companyAccess: null,
           userSubscription: { hasSubscription: false, tier: 'none', isTrial: false, trialDaysRemaining: 0, companyLimit: 0, currentCompanyCount: 0, canCreateCompany: false },
           hiddenTemplates: [], hiddenCompliances: [], userRole: 'viewer', initialRequirements: [],
-          redirectTo: `/subscription-required?company_id=${currentCompanyId}`
+          redirectTo: `/subscription-required?company_id=${preferredCompanyId}`
         }
       }
     }
 
     const totalDuration = performance.now() - initStartTime
-    console.log(`[InitAction] ⏱️ TOTAL INITIALIZATION TOOK ${totalDuration.toFixed(2)}ms (Mega: ${megaDuration.toFixed(0)}ms)`)
+    console.log(`[InitAction] ⚛️ ATOMIC PULSE COMPLETE: ${totalDuration.toFixed(2)}ms (DB: ${atomicDuration.toFixed(0)}ms)`)
 
     return {
       success: true,
       data: {
         user: { id: user.id, email: user.email || '', fullName: user.fullName || null },
-        companies: snap.companies_metadata || [],
+        companies: pulse.companies_metadata || [],
         accessibleCompanyIds,
         currentCompanyId,
         companyAccess: isSuperadminResult ? { hasAccess: true, accessType: 'superadmin', trialDaysRemaining: null, isOwner: false, subscriptionInfo: null, ownerSubscriptionExpired: false } : null,
@@ -3501,17 +3509,17 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
           isTrial: subState.isTrial,
           trialDaysRemaining: subState.trialDaysRemaining,
           companyLimit: subState.companyLimit,
-          currentCompanyCount: Number(snap.owned_count || 0),
-          canCreateCompany: hasActiveSub && Number(snap.owned_count || 0) < subState.companyLimit,
+          currentCompanyCount: Number(pulse.owned_count || 0),
+          canCreateCompany: hasActiveSub && Number(pulse.owned_count || 0) < subState.companyLimit,
         },
         initialEntityDetails: formattedDetails,
-        hiddenTemplates: (snap.hidden_templates || []).map((t: any) => `${t.folder_name}:${t.document_name}`),
-        hiddenCompliances: (snap.hidden_compliances || []).map((c: any) => c.requirement_id),
-        userRole: (isSuperadminResult ? 'superadmin' : snap.role || 'viewer') as any,
-        initialRequirements: (snap.requirements || []) as any[],
+        hiddenTemplates: (pulse.hidden_templates || []).map((t: any) => `${t.folder_name}:${t.document_name}`),
+        hiddenCompliances: (pulse.hidden_compliances || []).map((c: any) => c.requirement_id),
+        userRole: (isSuperadminResult ? 'superadmin' : pulse.explicit_role || 'viewer') as any,
+        initialRequirements: (pulse.requirements || []) as any[],
         _debug: {
             authProvider: 'passport',
-            timings: { phase1: authDuration, phase2: accessibleDuration, phase3: megaDuration },
+            timings: { atomic: atomicDuration },
             totalDuration
         }
       }
