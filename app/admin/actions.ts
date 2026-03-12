@@ -28,9 +28,17 @@ async function getUserEmailMap(userIds: string[]) {
   const { userRepository } = createServerContainer()
   const users = await userRepository.listByIds(userIds)
 
-  return new Map(
-    users.map((user) => [user.id, user.email || `${user.id.substring(0, 8)}...`])
-  )
+  const map = new Map<string, string>()
+  for (const user of users) {
+    const emailStr = user.email || `${user.id.substring(0, 8)}...`
+    // Map by canonical ID
+    map.set(user.id, emailStr)
+    // Map by legacy ID if present
+    if (user.legacyAuthId) {
+      map.set(user.legacyAuthId, emailStr)
+    }
+  }
+  return map
 }
 
 export async function getUsersManagementData(companies: AdminCompanyInput[]) {
