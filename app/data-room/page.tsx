@@ -391,6 +391,10 @@ function DataRoomPageInner() {
 
         const { data } = result;
         
+        if (data._debug) {
+            console.log("[DataRoomInit] 🔍 SERVER-SIDE BREAKDOWN:", data._debug);
+        }
+        
         // FAST-PATH: Immediate redirect if subscription expired (skip loading all data)
         if (data.redirectTo) {
           console.log("[DataRoomInit] Subscription expired, redirecting immediately to:", data.redirectTo);

@@ -3333,6 +3333,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     initialRequirements: any[]
     // Fast-path redirect flag
     redirectTo?: string
+    _debug?: any
   }
   error?: string
 }> {
@@ -3459,30 +3460,50 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     // 5. PARALLEL FETCH: All remaining data for the Data Room
     const startParallel = performance.now()
     const adminSupabase = createAdminClient()
+    const taskTimings: Record<string, number> = {}
 
     const results = await Promise.all([
       // A: Accessible companies metadata
       (async () => {
+        const start = performance.now()
         if (accessibleCompanyIds.length === 0) return []
         const { data, error } = await adminSupabase
           .from('companies')
           .select('id, name, type, incorporation_date, country_code, region')
           .in('id', accessibleCompanyIds)
         if (error) throw error
+        taskTimings['fetchCompanies'] = performance.now() - start
         return data || []
       })(),
       
       // B: User's own subscription state
-      subscriptionRepository.getUserSubscriptionState(user.id),
+      (async () => {
+        const start = performance.now()
+        const res = await subscriptionRepository.getUserSubscriptionState(user.id)
+        taskTimings['fetchUserSub'] = performance.now() - start
+        return res
+      })(),
       
       // C: Count of companies owned by user
-      companyRepository.listOwnedByUser(user.id),
+      (async () => {
+        const start = performance.now()
+        const res = await companyRepository.listOwnedByUser(user.id)
+        taskTimings['fetchOwnedCount'] = performance.now() - start
+        return res
+      })(),
       
       // D: Full access snapshot (reusing superadmin status)
-      currentCompanyId ? accessService.getCompanyAccessSnapshot(user.id, currentCompanyId, isSuperadminResult) : Promise.resolve(null),
+      (async () => {
+        const start = performance.now()
+        const res = currentCompanyId ? await accessService.getCompanyAccessSnapshot(user.id, currentCompanyId, isSuperadminResult) : null
+        taskTimings['fetchAccessSnapshot'] = performance.now() - start
+        return res
+      })(),
       
       // E: Current company details and directors
-      currentCompanyId ? (async () => {
+      (async () => {
+        const start = performance.now()
+        if (!currentCompanyId) return null
         const [companyResult, directors] = await Promise.all([
           adminSupabase
             .from('companies')
@@ -3500,7 +3521,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
           day: '2-digit', month: 'long', year: 'numeric',
         })
 
-        return {
+        const res = {
           companyName: company?.name || 'Unknown',
           type: (company?.type || '').toUpperCase(),
           regDate: formattedDate,
@@ -3516,25 +3537,41 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
             designation: d.designation, dob: d.dob, pan: d.pan, email: d.email, mobile: d.mobile, verified: d.verified,
           })),
         }
-      })() : Promise.resolve(null),
+        taskTimings['fetchDetails'] = performance.now() - start
+        return res
+      })(),
 
       // F: Hidden items
-      currentCompanyId ? (async () => {
+      (async () => {
+        const start = performance.now()
+        if (!currentCompanyId) return { templates: [], compliances: [] }
         const [templates, compliances] = await Promise.all([
           adminSupabase.from('company_document_template_exclusions').select('folder_name, document_name').eq('company_id', currentCompanyId),
           adminSupabase.from('company_compliance_exclusions').select('compliance_id').eq('company_id', currentCompanyId)
         ])
-        return {
+        const res = {
           templates: ((templates.data as any[]) || []).map(t => `${t.folder_name}:${t.document_name}`),
           compliances: ((compliances.data as any[]) || []).map(c => c.compliance_id)
         }
-      })() : Promise.resolve({ templates: [], compliances: [] }),
+        taskTimings['fetchHidden'] = performance.now() - start
+        return res
+      })(),
 
-      // G: User Role (Optimized: use already fetched user and superadmin status)
-      currentCompanyId ? getUserRole(currentCompanyId, user, isSuperadminResult) : Promise.resolve({ success: true, role: 'viewer' }),
+      // G: User Role
+      (async () => {
+        const start = performance.now()
+        const res = currentCompanyId ? await getUserRole(currentCompanyId, user, isSuperadminResult) : { success: true, role: 'viewer' }
+        taskTimings['fetchRole'] = performance.now() - start
+        return res
+      })(),
 
-      // H: Regulatory Requirements (Optimized: use already fetched user and superadmin status)
-      currentCompanyId ? getRegulatoryRequirements(currentCompanyId, user, isSuperadminResult) : Promise.resolve({ success: true, requirements: [] })
+      // H: Regulatory Requirements
+      (async () => {
+        const start = performance.now()
+        const res = currentCompanyId ? await getRegulatoryRequirements(currentCompanyId, user, isSuperadminResult) : { success: true, requirements: [] }
+        taskTimings['fetchReqs'] = performance.now() - start
+        return res
+      })()
     ])
 
     const [
@@ -3550,7 +3587,9 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     
     const parallelDuration = performance.now() - startParallel
     const totalDuration = performance.now() - initStartTime
+    
     console.log(`[InitAction] ⏱️ Parallel fetches completed in ${parallelDuration.toFixed(2)}ms`)
+    console.log(`[InitAction] ⏱️ TASK BREAKDOWN (AuthProvider: ${process.env.AUTH_PROVIDER || 'supabase'}):`, taskTimings)
     console.log(`[InitAction] ⏱️ Total initialization took ${totalDuration.toFixed(2)}ms`)
     
     if (totalDuration > 15000) {
@@ -3584,6 +3623,14 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         hiddenCompliances: hiddenItems.compliances,
         userRole: (roleResult.success ? roleResult.role : 'viewer') as any,
         initialRequirements: (reqsResult.success ? reqsResult.requirements : []) as any[],
+        // Expose timings to client for easier debugging
+        _debug: {
+          authProvider: process.env.AUTH_PROVIDER || 'supabase',
+          timings: taskTimings,
+          authDuration: authDuration,
+          parallelDuration: parallelDuration,
+          totalDuration: totalDuration,
+        }
       }
     }
   } catch (error: any) {
