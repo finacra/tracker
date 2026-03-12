@@ -7,4 +7,5 @@ export interface UserRepository {
     provider: AppUser['legacyAuthProvider'],
     legacyAuthId: string
   ): Promise<AppUser | null>
+  listByIds(userIds: string[]): Promise<AppUser[]>
 }

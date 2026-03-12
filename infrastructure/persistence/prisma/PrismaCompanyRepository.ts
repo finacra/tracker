@@ -211,4 +211,39 @@ export class PrismaCompanyRepository implements CompanyRepository {
     })
     return rows.map((r: { id: string }) => r.id)
   }
+
+  async listAllWithDetails(): Promise<CompanyDetailsRecord[]> {
+    const rows = await prisma.$queryRaw<any[]>`
+      SELECT id, name, user_id, app_user_id, type, incorporation_date, tax_id, registration_id,
+             industry, address, city, state, pin_code, phone_number, email, landline,
+             other_info, industry_categories, other_industry_category, ex_directors, country_code,
+             created_at
+      FROM companies 
+      ORDER BY created_at DESC
+    `
+    return rows.map((data) => ({
+      id: data.id,
+      name: data.name,
+      ownerUserId: data.user_id,
+      ownerAppUserId: data.app_user_id || null,
+      type: data.type ?? null,
+      incorporationDate: data.incorporation_date ?? null,
+      taxId: data.tax_id ?? null,
+      registrationId: data.registration_id ?? null,
+      industry: data.industry ?? null,
+      address: data.address ?? null,
+      city: data.city ?? null,
+      state: data.state ?? null,
+      pinCode: data.pin_code ?? null,
+      phoneNumber: data.phone_number ?? null,
+      email: data.email ?? null,
+      landline: data.landline ?? null,
+      otherInfo: data.other_info ?? null,
+      industryCategories: Array.isArray(data.industry_categories) ? data.industry_categories : [],
+      otherIndustryCategory: data.other_industry_category ?? null,
+      exDirectors: Array.isArray(data.ex_directors) ? data.ex_directors : [],
+      countryCode: data.country_code ?? null,
+      createdAt: data.created_at ? data.created_at.toISOString() : null,
+    }))
+  }
 }

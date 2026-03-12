@@ -117,4 +117,47 @@ export class PrismaUserRepository implements UserRepository {
       identity.legacy_auth_id ?? legacyAuthId
     )
   }
+
+  async listByIds(userIds: string[]): Promise<AppUser[]> {
+    if (userIds.length === 0) return []
+
+    // 1. Find all canonical users
+    const appUsers = await prisma.appUser.findMany({
+      where: { id: { in: userIds } },
+      select: {
+        id: true,
+        primary_email: true,
+        full_name: true,
+      },
+    })
+
+    const results = appUsers.map(u => this.mapCanonicalUser(u, 'supabase', null))
+    const foundCanonicalIds = new Set(results.map(r => r.id))
+
+    // 2. Find missing ones by legacy identity
+    const missingIds = userIds.filter(id => !foundCanonicalIds.has(id))
+    if (missingIds.length > 0) {
+      const legacyIdentities = await prisma.authIdentity.findMany({
+        where: {
+          provider: 'supabase',
+          legacy_auth_id: { in: missingIds }
+        },
+        include: {
+          appUser: true
+        }
+      })
+
+      for (const ident of legacyIdentities) {
+        if (ident.appUser) {
+          results.push(this.mapCanonicalUser(
+            ident.appUser,
+            'supabase',
+            ident.legacy_auth_id
+          ))
+        }
+      }
+    }
+
+    return results
+  }
 }

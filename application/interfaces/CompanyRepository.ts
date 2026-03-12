@@ -23,6 +23,7 @@ export interface CompanyDetailsRecord extends CompanyRecord {
   otherIndustryCategory: string | null
   exDirectors: string[]
   countryCode: string | null
+  createdAt?: string | null
 }
 
 export interface CreateCompanyInput {
@@ -82,4 +83,5 @@ export interface CompanyRepository {
   getCountryCode(companyId: string): Promise<string | null>
   listAll(): Promise<CompanyRecord[]>
   listAllCompanyIds(): Promise<string[]>
+  listAllWithDetails(): Promise<CompanyDetailsRecord[]>
 }

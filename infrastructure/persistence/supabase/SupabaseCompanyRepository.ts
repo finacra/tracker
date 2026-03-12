@@ -237,4 +237,40 @@ export class SupabaseCompanyRepository implements CompanyRepository {
 
     return (data ?? []).map((company: { id: string }) => company.id)
   }
+
+  async listAllWithDetails(): Promise<CompanyDetailsRecord[]> {
+    const adminSupabase: any = createAdminClient()
+    const { data, error } = await adminSupabase
+      .from('companies')
+      .select(
+        'id, name, user_id, type, incorporation_date, tax_id, registration_id, industry, address, city, state, pin_code, phone_number, email, landline, other_info, industry_categories, other_industry_category, ex_directors, country_code, created_at'
+      )
+      .order('created_at', { ascending: false })
+
+    if (error) throw new Error(error.message)
+
+    return (data ?? []).map((data: any) => ({
+      id: data.id,
+      name: data.name,
+      ownerUserId: data.user_id,
+      type: data.type ?? null,
+      incorporationDate: data.incorporation_date ?? null,
+      taxId: data.tax_id ?? null,
+      registrationId: data.registration_id ?? null,
+      industry: data.industry ?? null,
+      address: data.address ?? null,
+      city: data.city ?? null,
+      state: data.state ?? null,
+      pinCode: data.pin_code ?? null,
+      phoneNumber: data.phone_number ?? null,
+      email: data.email ?? null,
+      landline: data.landline ?? null,
+      otherInfo: data.other_info ?? null,
+      industryCategories: Array.isArray(data.industry_categories) ? data.industry_categories : [],
+      otherIndustryCategory: data.other_industry_category ?? null,
+      exDirectors: Array.isArray(data.ex_directors) ? data.ex_directors : [],
+      countryCode: data.country_code ?? null,
+      createdAt: data.created_at ?? null,
+    }))
+  }
 }

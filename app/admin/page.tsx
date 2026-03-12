@@ -13,7 +13,7 @@ import UsersManagement from '@/components/admin/UsersManagement'
 import AllUsersManagement from '@/components/admin/AllUsersManagement'
 import TransactionHistory from '@/components/admin/TransactionHistory'
 import { explainKPIData, chatWithKPIData, getKPIAggregations, getKPIMetrics, type KPIAggregation, type KPIMetric } from '@/app/admin/tracking/actions'
-import { checkSuperadminStatus, getAllCompaniesForAdmin } from '@/app/admin/actions'
+import { checkSuperadminStatus, getAllCompaniesForAdmin, type AdminCompanyInput as Company } from '@/app/admin/actions'
 import { InlineMath, BlockMath } from 'react-katex'
 import 'katex/dist/katex.min.css'
 import {
@@ -45,17 +45,6 @@ import {
   formatPercent,
   type CustomerMix
 } from '@/lib/pricing/calculator'
-
-interface Company {
-  id: string
-  name: string
-  type: string
-  incorporation_date: string | null
-  country_code: string | null
-  region: null
-  created_at: null
-  user_id: string
-}
 
 interface Requirement {
   id: string

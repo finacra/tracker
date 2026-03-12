@@ -3,14 +3,14 @@
 import { createServerContainer } from '@/lib/composition/server-container'
 import type { SubscriptionRecord } from '@/application/interfaces/SubscriptionRepository'
 
-type AdminCompanyInput = {
+export type AdminCompanyInput = {
   id: string
   name: string
   type: string
   incorporation_date: string | null
   country_code: string | null
-  region: null
-  created_at: null
+  region: string | null
+  created_at: string | null
   user_id: string
 }
 
@@ -26,12 +26,10 @@ function getSubscriptionPriority(subscription: SubscriptionRecord | null): numbe
 
 async function getUserEmailMap(userIds: string[]) {
   const { userRepository } = createServerContainer()
-  const entries = await Promise.all(
-    userIds.map(async (userId) => [userId, await userRepository.getById(userId)] as const)
-  )
+  const users = await userRepository.listByIds(userIds)
 
   return new Map(
-    entries.map(([userId, user]) => [userId, user?.email || `${userId.substring(0, 8)}...`])
+    users.map((user) => [user.id, user.email || `${user.id.substring(0, 8)}...`])
   )
 }
 
@@ -249,30 +247,24 @@ export async function getAllCompaniesForAdmin() {
       }
     }
     
-    // Get all companies (superadmin only)
-    const companies = await companyRepository.listAll()
+    // Get all companies with full details in ONE query
+    const results = await companyRepository.listAllWithDetails()
     
-    // Get details for each company to get full data
-    const companiesWithDetails = await Promise.all(
-      companies.map(async (c) => {
-        const details = await companyRepository.getDetailsById(c.id)
-        return {
-          id: c.id,
-          name: c.name,
-          type: details?.type || 'company',
-          incorporation_date: details?.incorporationDate || null,
-          country_code: details?.countryCode || null,
-          region: null, // Not in CompanyDetailsRecord
-          created_at: null, // Not in CompanyDetailsRecord
-          user_id: c.ownerUserId,
-        }
-      })
-    )
+    // Format the results
+    const companiesWithDetails = results.map((c) => ({
+      id: c.id,
+      name: c.name,
+      type: c.type || 'company',
+      incorporation_date: c.incorporationDate || null,
+      country_code: c.countryCode || null,
+      region: null,
+      created_at: c.createdAt || null,
+      user_id: c.ownerUserId,
+    }))
     
     return {
       success: true,
       companies: companiesWithDetails.sort((a, b) => {
-        // Sort by created_at if available, otherwise by name
         if (a.created_at && b.created_at) {
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         }

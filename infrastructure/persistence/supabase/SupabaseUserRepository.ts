@@ -116,4 +116,42 @@ export class SupabaseUserRepository implements UserRepository {
       legacy_auth_id: (data.legacy_auth_id as string | null) ?? legacyAuthId,
     })
   }
+
+  async listByIds(userIds: string[]): Promise<AppUser[]> {
+    if (userIds.length === 0) return []
+
+    const adminSupabase: any = createAdminClient()
+    
+    // 1. Get canonical users
+    const { data: appUsers, error: appUsersError } = await adminSupabase
+      .from('app_users')
+      .select('id, primary_email, full_name')
+      .in('id', userIds)
+
+    if (appUsersError) throw new Error(appUsersError.message)
+
+    const results: AppUser[] = (appUsers ?? []).map((u: AppUserRow) => 
+      this.mapCanonicalUser(u, 'supabase', null)
+    )
+    const foundIds = new Set(results.map(r => r.id))
+    const missingIds = userIds.filter(id => !foundIds.has(id))
+
+    // 2. Get legacy users for missing IDs
+    if (missingIds.length > 0) {
+      const { data: identities, error: identError } = await adminSupabase
+        .from('auth_identities')
+        .select('legacy_auth_id, provider, app_users!inner(id, primary_email, full_name)')
+        .eq('provider', 'supabase')
+        .in('legacy_auth_id', missingIds)
+
+      if (!identError && identities) {
+        identities.forEach((ident: any) => {
+          const user = this.mapIdentityRow(ident as IdentityRow)
+          if (user) results.push(user)
+        })
+      }
+    }
+
+    return results
+  }
 }

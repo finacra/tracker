@@ -1,18 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getAllUsersManagementData } from '@/app/admin/actions'
-
-interface Company {
-  id: string
-  name: string
-  type: string
-  incorporation_date: string | null
-  country_code: string | null
-  region: null
-  created_at: null
-  user_id: string
-}
+import { getAllUsersManagementData, type AdminCompanyInput as Company } from '@/app/admin/actions'
 
 interface UserSubscription {
   id: string

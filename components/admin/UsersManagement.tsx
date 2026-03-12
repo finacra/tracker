@@ -8,19 +8,9 @@ import {
   revokeSubscriptionAction, 
   grantEnterpriseTrialAction, 
   grantCompanyTrialAction, 
-  changeSubscriptionTierAction 
+  changeSubscriptionTierAction,
+  type AdminCompanyInput as Company
 } from '@/app/admin/actions'
-
-interface Company {
-  id: string
-  name: string
-  type: string
-  incorporation_date: string | null
-  country_code: string | null
-  region: null
-  created_at: null
-  user_id: string
-}
 
 interface UserSubscription {
   id: string
