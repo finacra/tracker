@@ -12,6 +12,7 @@ export type AdminCompanyInput = {
   region: string | null
   created_at: string | null
   user_id: string
+  owner_email?: string
 }
 
 function getSubscriptionPriority(subscription: SubscriptionRecord | null): number {
@@ -258,6 +259,10 @@ export async function getAllCompaniesForAdmin() {
     // Get all companies with full details in ONE query
     const results = await companyRepository.listAllWithDetails()
     
+    // Batch fetch owner emails to avoid N+1 and preserve performance
+    const ownerIds = Array.from(new Set(results.map(r => r.ownerUserId)))
+    const emailMap = await getUserEmailMap(ownerIds)
+    
     // Format the results
     const companiesWithDetails = results.map((c) => ({
       id: c.id,
@@ -268,6 +273,7 @@ export async function getAllCompaniesForAdmin() {
       region: null,
       created_at: c.createdAt || null,
       user_id: c.ownerUserId,
+      owner_email: emailMap.get(c.ownerUserId) || 'Unknown'
     }))
     
     return {

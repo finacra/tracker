@@ -241,6 +241,7 @@ function DataRoomPageInner() {
   );
   // Pre-fetched results from initialization to skip hook-driven loading flickers
   const [initDataResults, setInitDataResults] = useState<{
+    companyId: string | null;
     hasAnyAccess: boolean;
     hasSubscription: boolean;
     accessibleCompanyIds: string[];
@@ -289,8 +290,8 @@ function DataRoomPageInner() {
     loading: roleLoading,
     setRole,
   } = useUserRole(currentCompany?.id || null, { 
-    enabled: !isDataRoomInitLoading && !initDataResults,
-    initialData: initDataResults?.userRole
+    enabled: !isDataRoomInitLoading,
+    initialData: (initDataResults && currentCompany?.id === initDataResults.companyId) ? initDataResults.userRole : undefined
   });
 
   const {
@@ -302,8 +303,8 @@ function DataRoomPageInner() {
     ownerSubscriptionExpired,
     error: accessError,
   } = useCompanyAccess(currentCompany?.id || null, { 
-    enabled: !isDataRoomInitLoading && !initDataResults,
-    initialData: initDataResults?.companyAccess
+    enabled: !isDataRoomInitLoading,
+    initialData: (initDataResults && currentCompany?.id === initDataResults.companyId) ? initDataResults.companyAccess : undefined
   });
 
   const {
@@ -311,7 +312,7 @@ function DataRoomPageInner() {
     accessibleCompanyIds,
     isLoading: anyAccessLoading,
   } = useAnyCompanyAccess({ 
-    enabled: !isDataRoomInitLoading && !initDataResults,
+    enabled: !isDataRoomInitLoading,
     initialData: initDataResults ? {
         hasAnyAccess: initDataResults.hasAnyAccess,
         accessibleCompanyIds: initDataResults.accessibleCompanyIds
@@ -321,7 +322,7 @@ function DataRoomPageInner() {
     hasSubscription: userHasSubscription,
     isLoading: userSubscriptionLoading,
   } = useUserSubscription({ 
-    enabled: !isDataRoomInitLoading && !!initDataResults,
+    enabled: !isDataRoomInitLoading,
     initialData: initDataResults?.userSubscription
   });
 
@@ -454,6 +455,7 @@ function DataRoomPageInner() {
 
         // 6. Finalize Init State to trigger hooks
         setInitDataResults({
+            companyId: selected?.id || null,
             hasAnyAccess: data.accessibleCompanyIds.length > 0,
             hasSubscription: data.userSubscription.hasSubscription,
             accessibleCompanyIds: data.accessibleCompanyIds,
@@ -559,8 +561,9 @@ function DataRoomPageInner() {
   // CRITICAL: If subscription/trial expired, NO ONE (not even team members) should access data-room
   useEffect(() => {
     // Determine if we are still loading access. 
-    // If we have initDataResults, we trust it and don't care if the hooks are still "loading" their own check.
-    const isActuallyLoadingAccess = !initDataResults && accessLoading;
+    // If we have matching initDataResults, we trust it and don't care if the hooks are still "loading" their own check.
+    const isMatchingInit = initDataResults && currentCompany?.id === initDataResults.companyId;
+    const isActuallyLoadingAccess = isMatchingInit ? false : accessLoading;
     
     // Wait for all loading states to complete
     if (isActuallyLoadingAccess || authLoading || accessError) return;
@@ -568,16 +571,15 @@ function DataRoomPageInner() {
     // If no company selected, don't check access yet
     if (!currentCompany) return;
 
-    // Use derived values from priority: initDataResults > Hooks
-    const finalOwnerSubscriptionExpired = initDataResults?.companyAccess 
+    const finalOwnerSubscriptionExpired = isMatchingInit 
       ? initDataResults.companyAccess.ownerSubscriptionExpired 
       : ownerSubscriptionExpired;
       
-    const finalIsOwner = initDataResults?.companyAccess 
+    const finalIsOwner = isMatchingInit 
       ? initDataResults.companyAccess.isOwner 
       : isOwner;
       
-    const finalHasAccess = initDataResults?.companyAccess 
+    const finalHasAccess = isMatchingInit 
       ? initDataResults.companyAccess.hasAccess 
       : hasAccess;
 

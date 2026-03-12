@@ -909,7 +909,8 @@ export default function AdminPage() {
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Company Name</th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Type</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Incorporation Date</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Country</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Owner Email</th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
                   </tr>
                 </thead>
@@ -919,7 +920,10 @@ export default function AdminPage() {
                       <td className="px-6 py-4 text-white font-medium">{company.name}</td>
                       <td className="px-6 py-4 text-gray-300">{company.type}</td>
                       <td className="px-6 py-4 text-gray-300">
-                        {company.incorporation_date ? new Date(company.incorporation_date).toLocaleDateString() : 'N/A'}
+                        {company.country_code || 'IN'}
+                      </td>
+                      <td className="px-6 py-4 text-gray-300 truncate max-w-[200px]" title={company.owner_email}>
+                        {company.owner_email || 'Unknown'}
                       </td>
                       <td className="px-6 py-4">
                         <button
