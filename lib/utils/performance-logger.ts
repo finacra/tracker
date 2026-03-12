@@ -45,8 +45,13 @@ class PerformanceLogger {
       metadata,
     }
 
-    // Client-side: send to API
+    // Client-side: log to browser console AND send to API
     if (typeof window !== 'undefined') {
+      // Log directly to browser console for immediate visibility
+      const logMessage = `[PERF] ${component}::${operation} - ${duration.toFixed(2)}ms${metadata ? ' | ' + JSON.stringify(metadata) : ''}`
+      console.log(logMessage)
+      
+      // Also send to API for server-side logging
       this.sendToAPI(metric)
     } else {
       // Server-side: queue for file write
