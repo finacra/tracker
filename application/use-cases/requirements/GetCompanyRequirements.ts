@@ -9,12 +9,20 @@ export class GetCompanyRequirements {
   ) {}
 
   async execute(userId: string, companyId: string, isSuperadminCache?: boolean): Promise<Requirement[]> {
-    const startTime = performance.now()
-    const canView = await this.accessService.canViewCompany(userId, companyId, isSuperadminCache)
-    console.log(`[GetCompanyRequirements] Access check took ${(performance.now() - startTime).toFixed(2)}ms`)
+    const totalStartTime = performance.now() // Renamed to avoid conflict with access check specific timer
 
-    if (!canView) {
-      throw new Error('Unauthorized')
+    // OPTIMIZATION: Skip access check if we already know user is superadmin
+    if (!isSuperadminCache) {
+      const accessCheckStartTime = performance.now()
+      const canView = await this.accessService.canViewCompany(userId, companyId, isSuperadminCache)
+      const accessCheckDuration = performance.now() - accessCheckStartTime
+      console.log(`[GetCompanyRequirements] Access check took ${accessCheckDuration.toFixed(2)}ms`)
+
+      if (!canView) {
+        throw new Error('Access denied')
+      }
+    } else {
+      console.log('[GetCompanyRequirements] User is superadmin, skipping access check')
     }
 
     // OPTIMIZATION: Make refreshOverdueStatuses non-blocking to speed up initial load
@@ -28,7 +36,7 @@ export class GetCompanyRequirements {
     const fetchStartTime = performance.now()
     const requirements = await this.requirementRepository.getByCompanyId(companyId)
     console.log(`[GetCompanyRequirements] Fetch requirements took ${(performance.now() - fetchStartTime).toFixed(2)}ms`)
-    console.log(`[GetCompanyRequirements] Total took ${(performance.now() - startTime).toFixed(2)}ms`)
+    console.log(`[GetCompanyRequirements] Total took ${(performance.now() - totalStartTime).toFixed(2)}ms`)
     
     return requirements
   }

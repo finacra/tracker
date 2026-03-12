@@ -3401,7 +3401,8 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     console.log(`[InitAction] ⏱️ Access resolution took ${accessibleDuration.toFixed(2)}ms (found ${accessibleCompanyIds.length} companies)`)
 
     // 4. ULTRA-FAST-PATH: Lightweight subscription check for the target company
-    if (currentCompanyId) {
+    // Skip for superadmins as they bypass these checks anyway
+    if (currentCompanyId && !isSuperadminResult) {
       const ultraFastCheckStart = performance.now()
       const company = await companyRepository.getById(currentCompanyId)
       
@@ -3419,9 +3420,10 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
             (ownerUserSub && ownerUserSub.hasSubscription)
           )
           
-          console.log(`[InitAction] ⏱️ Ultra-fast subscription check took ${(performance.now() - ultraFastCheckStart).toFixed(2)}ms`)
+          const ultraFastDuration = performance.now() - ultraFastCheckStart
+          console.log(`[InitAction] ⏱️ Ultra-fast subscription check took ${ultraFastDuration.toFixed(2)}ms`)
           
-          if (!hasActiveSubscription && !isSuperadminResult) {
+          if (!hasActiveSubscription) {
             const isOwner = company.ownerUserId === user.id || company.ownerAppUserId === user.id
             return {
               success: true,

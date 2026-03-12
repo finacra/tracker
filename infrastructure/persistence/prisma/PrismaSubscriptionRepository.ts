@@ -167,27 +167,25 @@ export class PrismaSubscriptionRepository implements SubscriptionRepository {
         const startTime = performance.now()
         
         const subs = await prisma.$queryRaw<any[]>`
-            SELECT * FROM (
-                SELECT s.*
-                FROM subscriptions s
-                WHERE s.subscription_type = 'user'
-                AND (s.status = 'active' OR s.is_trial = true)
-                AND s.app_user_id = ${userId}::uuid
-                UNION
-                SELECT s.*
-                FROM subscriptions s
-                INNER JOIN auth_identities ai ON ai.legacy_auth_id = s.user_id::text
-                WHERE s.subscription_type = 'user'
-                AND (s.status = 'active' OR s.is_trial = true)
-                AND ai.app_user_id = ${userId}::uuid AND ai.provider = 'supabase'
-                UNION
-                SELECT s.*
-                FROM subscriptions s
-                WHERE s.subscription_type = 'user'
-                AND (s.status = 'active' OR s.is_trial = true)
-                AND s.user_id = ${userId}::uuid
-                AND NOT EXISTS (SELECT 1 FROM app_users WHERE id = ${userId}::uuid)
-            ) AS combined
+            SELECT s.*
+            FROM subscriptions s
+            WHERE s.subscription_type = 'user'
+            AND (s.status = 'active' OR s.is_trial = true)
+            AND s.app_user_id = ${userId}::uuid
+            UNION ALL
+            SELECT s.*
+            FROM subscriptions s
+            INNER JOIN auth_identities ai ON ai.legacy_auth_id = s.user_id::text
+            WHERE s.subscription_type = 'user'
+            AND (s.status = 'active' OR s.is_trial = true)
+            AND ai.app_user_id = ${userId}::uuid AND ai.provider = 'supabase'
+            UNION ALL
+            SELECT s.*
+            FROM subscriptions s
+            WHERE s.subscription_type = 'user'
+            AND (s.status = 'active' OR s.is_trial = true)
+            AND s.user_id = ${userId}::uuid
+            AND NOT EXISTS (SELECT 1 FROM app_users WHERE id = ${userId}::uuid)
             ORDER BY created_at DESC
             LIMIT 1
         `

@@ -41,21 +41,19 @@ export class PrismaCompanyMembershipRepository implements CompanyMembershipRepos
         // Optimized: Single query using UNION to check both Passport and Supabase users
         // This avoids multiple sequential queries
         const rows = await prisma.$queryRaw<any[]>`
-            SELECT * FROM (
-                SELECT ur.*
-                FROM user_roles ur
-                WHERE ur.app_user_id = ${userId}::uuid
-                UNION
-                SELECT ur.*
-                FROM user_roles ur
-                INNER JOIN auth_identities ai ON ai.legacy_auth_id = ur.user_id::text
-                WHERE ai.app_user_id = ${userId}::uuid AND ai.provider = 'supabase'
-                UNION
-                SELECT ur.*
-                FROM user_roles ur
-                WHERE ur.user_id = ${userId}::uuid
-                AND NOT EXISTS (SELECT 1 FROM app_users WHERE id = ${userId}::uuid)
-            ) AS combined
+            SELECT ur.*
+            FROM user_roles ur
+            WHERE ur.app_user_id = ${userId}::uuid
+            UNION ALL
+            SELECT ur.*
+            FROM user_roles ur
+            INNER JOIN auth_identities ai ON ai.legacy_auth_id = ur.user_id::text
+            WHERE ai.app_user_id = ${userId}::uuid AND ai.provider = 'supabase'
+            UNION ALL
+            SELECT ur.*
+            FROM user_roles ur
+            WHERE ur.user_id = ${userId}::uuid
+            AND NOT EXISTS (SELECT 1 FROM app_users WHERE id = ${userId}::uuid)
             ORDER BY created_at DESC
         `
         return rows.map((row) => this.mapRow(row))
@@ -73,24 +71,22 @@ export class PrismaCompanyMembershipRepository implements CompanyMembershipRepos
         // Optimized: Single query using UNION to check both Passport and Supabase users
         // This avoids multiple sequential queries
         const rows = await prisma.$queryRaw<any[]>`
-            SELECT * FROM (
-                SELECT ur.*
-                FROM user_roles ur
-                WHERE ur.company_id = ${companyId}::uuid
-                AND ur.app_user_id = ${userId}::uuid
-                UNION
-                SELECT ur.*
-                FROM user_roles ur
-                INNER JOIN auth_identities ai ON ai.legacy_auth_id = ur.user_id::text
-                WHERE ur.company_id = ${companyId}::uuid
-                AND ai.app_user_id = ${userId}::uuid AND ai.provider = 'supabase'
-                UNION
-                SELECT ur.*
-                FROM user_roles ur
-                WHERE ur.company_id = ${companyId}::uuid
-                AND ur.user_id = ${userId}::uuid
-                AND NOT EXISTS (SELECT 1 FROM app_users WHERE id = ${userId}::uuid)
-            ) AS combined
+            SELECT ur.*
+            FROM user_roles ur
+            WHERE ur.company_id = ${companyId}::uuid
+            AND ur.app_user_id = ${userId}::uuid
+            UNION ALL
+            SELECT ur.*
+            FROM user_roles ur
+            INNER JOIN auth_identities ai ON ai.legacy_auth_id = ur.user_id::text
+            WHERE ur.company_id = ${companyId}::uuid
+            AND ai.app_user_id = ${userId}::uuid AND ai.provider = 'supabase'
+            UNION ALL
+            SELECT ur.*
+            FROM user_roles ur
+            WHERE ur.company_id = ${companyId}::uuid
+            AND ur.user_id = ${userId}::uuid
+            AND NOT EXISTS (SELECT 1 FROM app_users WHERE id = ${userId}::uuid)
             LIMIT 1
         `
         return rows.length > 0 ? this.mapRow(rows[0]) : null
@@ -157,5 +153,27 @@ export class PrismaCompanyMembershipRepository implements CompanyMembershipRepos
                 updated_at: new Date(),
             },
         })
+    }
+    
+    async isSuperadmin(userId: string): Promise<boolean> {
+        const rows = await prisma.$queryRaw<any[]>`
+            SELECT 1 FROM user_roles
+            WHERE app_user_id = ${userId}::uuid
+            AND company_id IS NULL
+            AND role = 'superadmin'
+            LIMIT 1
+        `
+        if (rows.length > 0) return true
+
+        const rowsLegacy = await prisma.$queryRaw<any[]>`
+            SELECT 1 FROM user_roles ur
+            INNER JOIN auth_identities ai ON ai.legacy_auth_id = ur.user_id::text
+            WHERE ai.app_user_id = ${userId}::uuid
+            AND ai.provider = 'supabase'
+            AND ur.company_id IS NULL
+            AND ur.role = 'superadmin'
+            LIMIT 1
+        `
+        return rowsLegacy.length > 0
     }
 }

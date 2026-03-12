@@ -13,8 +13,7 @@ export class RepositoryAccessService implements AccessService {
     ) { }
 
     async isSuperadmin(userId: string): Promise<boolean> {
-        const roles = await this.companyMembershipRepository.getRolesByUserId(userId)
-        return roles.some((r) => r.companyId === null && r.role === 'superadmin')
+        return this.companyMembershipRepository.isSuperadmin(userId)
     }
 
     async getRoleForCompany(userId: string, companyId: string, isSuperadminCache?: boolean): Promise<AppRole | null> {
@@ -55,12 +54,6 @@ export class RepositoryAccessService implements AccessService {
             isSuperadmin = await this.isSuperadmin(userId)
         }
         
-        // Fetch company and userRole in parallel
-        const [company, userRole] = await Promise.all([
-            this.companyRepository.getById(companyId),
-            this.companyMembershipRepository.findRole(userId, companyId)
-        ])
-        
         if (isSuperadmin) {
             return {
                 hasAccess: true,
@@ -71,6 +64,12 @@ export class RepositoryAccessService implements AccessService {
                 ownerSubscriptionExpired: false,
             }
         }
+
+        // Fetch company and userRole in parallel ONLY for regular users
+        const [company, userRole] = await Promise.all([
+            this.companyRepository.getById(companyId),
+            this.companyMembershipRepository.findRole(userId, companyId)
+        ])
 
         const userIsOwner = Boolean(company && (company.ownerUserId === userId || company.ownerAppUserId === userId))
 

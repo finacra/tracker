@@ -15,6 +15,7 @@ export interface CompanyMembershipRepository {
   getRolesByUserId(userId: string): Promise<CompanyMembership[]>
   getCompanyOwnerId(companyId: string): Promise<string | null>
   findRole(userId: string, companyId: string): Promise<CompanyMembership | null>
+  isSuperadmin(userId: string): Promise<boolean>
   addRole(userId: string, companyId: string, role: Exclude<AppRole, 'superadmin'>, appUserId?: string | null): Promise<void>
   upsertRole(userId: string, companyId: string, role: Exclude<AppRole, 'superadmin'>, appUserId?: string | null): Promise<void>
   removeRole(roleId: string, companyId: string): Promise<void>
