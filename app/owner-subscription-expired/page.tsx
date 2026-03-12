@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
-import { createClient } from '@/utils/supabase/client'
+import { getOwnerExpiredInfo } from './actions'
 import SubtleCircuitBackground from '@/components/ui/SubtleCircuitBackground'
 
 interface OwnerInfo {
@@ -16,7 +16,6 @@ function OwnerExpiredPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
-  const supabase = createClient()
   
   const companyId = searchParams.get('company_id')
   const [ownerInfo, setOwnerInfo] = useState<OwnerInfo | null>(null)
@@ -30,19 +29,11 @@ function OwnerExpiredPageInner() {
       }
 
       try {
-        // Get company and owner info
-        const { data: company } = await supabase
-          .from('companies')
-          .select('name, user_id')
-          .eq('id', companyId)
-          .single()
-
-        if (company) {
-          // Get owner's email from auth.users via a server action or RPC
-          // For now, we'll just show the company name
+        const result = await getOwnerExpiredInfo(companyId)
+        if (result.success && result.companyName) {
           setOwnerInfo({
-            email: '', // We'll update this with actual owner email
-            companyName: company.name,
+            email: '',
+            companyName: result.companyName,
           })
         }
       } catch (err) {
@@ -55,7 +46,7 @@ function OwnerExpiredPageInner() {
     if (!authLoading) {
       fetchOwnerInfo()
     }
-  }, [companyId, authLoading, supabase])
+  }, [companyId, authLoading])
 
   // Redirect if not authenticated
   useEffect(() => {

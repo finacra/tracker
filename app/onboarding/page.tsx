@@ -10,7 +10,6 @@ import {
 } from '@/lib/utils/entity-detection'
 import { useAuth } from '@/hooks/useAuth'
 import { useUserSubscription } from '@/hooks/useCompanyAccess'
-import { createClient } from '@/utils/supabase/client'
 import { completeOnboarding, uploadFileToStorage } from './actions'
 import { INDUSTRIES } from '@/lib/compliance/csv-template'
 import { useCountryConfig } from '@/hooks/useCountryConfig'
@@ -38,8 +37,6 @@ export default function OnboardingPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
   const { hasSubscription, isTrial, trialDaysRemaining, companyLimit, currentCompanyCount, canCreateCompany, tier, isLoading: subLoading } = useUserSubscription()
-  // Memoize supabase client to prevent infinite re-renders
-  const supabase = useMemo(() => createClient(), [])
   
   // All hooks must be called before any conditional returns
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -753,7 +750,7 @@ export default function OnboardingPage() {
     }
 
     setIsSubmitting(true)
-    const supabase = createClient()
+    // No changes needed here
     
     try {
       // 1. Upload files to Storage first

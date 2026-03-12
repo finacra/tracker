@@ -1,12 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { createClient } from '@/utils/supabase/client'
-import { SupabaseClientAuthAdapter } from '@/infrastructure/auth/supabase/SupabaseClientAuthAdapter'
 import { PassportClientAuthAdapter } from '@/infrastructure/auth/passport/PassportClientAuthAdapter'
 import type { ClientAuthSession } from '@/application/interfaces/ClientAuthAdapter'
 import { trackLogin } from '@/lib/tracking/kpi-tracker'
-import { HybridClientAuthAdapter } from '@/infrastructure/auth/HybridClientAuthAdapter'
 import { AuthProvider, type AuthContextValue } from '@/contexts/AuthContext'
 import type { AppUser } from '@/domain/models/AppUser'
 
@@ -15,13 +12,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   
   // Choose auth provider based on environment variable (default to Supabase for backward compatibility)
-  const authProvider = process.env.NEXT_PUBLIC_AUTH_PROVIDER || 'supabase'
-  const supabase = useMemo(() => createClient(), [])
-  
-  // Composition: Hybrid adapter supports both Passport and Supabase
+  // Composition: Only use Passport now
   const authAdapter = useMemo(() => {
-    return new HybridClientAuthAdapter(supabase)
-  }, [supabase])
+    return new PassportClientAuthAdapter()
+  }, [])
   const trackedLoginUserIdRef = useRef<string | null>(null)
   const appUserRequestIdRef = useRef(0)
   const resolvedAppUserIdRef = useRef<string | null>(null)
@@ -31,36 +25,29 @@ export function Providers({ children }: { children: React.ReactNode }) {
     canonicalId: null,
     email: session.email ?? '',
     fullName: null,
-    legacyAuthProvider: authProvider === 'passport' ? 'passport' : 'supabase',
+    legacyAuthProvider: 'passport',
     legacyAuthId: session.userId,
   })
 
   const trackLoginOnce = async (session: ClientAuthSession | null, event?: string, resolvedAppUser?: AppUser | null) => {
     if (!session?.userId) return
-    if (trackedLoginUserIdRef.current === session.userId) return
+    if (trackedLoginUserIdRef.current === session?.userId) return
 
     if (!event || event === 'SIGNED_IN') {
-      trackedLoginUserIdRef.current = session.userId
+      trackedLoginUserIdRef.current = session?.userId ?? null
       
-      // For Passport users, use the API endpoint that handles Supabase identity lookup
-      // For Supabase users, use the direct trackLogin function
-      if (authProvider === 'passport') {
-        // Get app_user_id from the resolved appUser or use session.userId
-        const appUserId = resolvedAppUser?.canonicalId || resolvedAppUser?.id || session.userId
-        
-        try {
-          await fetch('/api/auth/track-login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ appUserId }),
-          })
-        } catch (error) {
-          console.error('Error tracking login:', error)
-          // Don't throw - tracking failures shouldn't break the app
-        }
-      } else {
-        // Supabase user - use direct tracking
-      trackLogin(session.userId)
+      // For Passport users, always use the API endpoint
+      const appUserId = resolvedAppUser?.canonicalId || resolvedAppUser?.id || session?.userId
+      
+      try {
+        await fetch('/api/auth/track-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ appUserId }),
+        })
+      } catch (error) {
+        console.error('Error tracking login:', error)
+        // Don't throw - tracking failures shouldn't break the app
       }
     }
   }
@@ -79,13 +66,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      // Use window.location.origin to ensure absolute path if reachable, 
-      // but relative path is generally safer for same-origin in Next.js
-      const profileUrl = typeof window !== 'undefined' 
-        ? `${window.location.origin}/api/auth/profile`
-        : '/api/auth/profile';
-
-      const response = await fetch(profileUrl, {
+      const response = await fetch('/api/auth/profile', {
         method: 'GET',
         cache: 'no-store',
       })
@@ -104,12 +85,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       setAppUser(nextAppUser)
       return nextAppUser
     } catch (error: any) {
-      // Handle the "Failed to fetch" error specifically
-      const isNetworkError = error instanceof TypeError || error.message?.includes('fetch');
+      // Catch "Failed to fetch" silently to avoid console flooding during page transitions
+      const isNetworkError = error.name === 'TypeError' || error.message?.includes('fetch')
       
-      if (isNetworkError) {
-        console.warn('[Providers] Network error syncing profile, using fallback:', error.message)
-      } else {
+      if (!isNetworkError) {
         console.error('Error resolving canonical auth profile:', error)
       }
 

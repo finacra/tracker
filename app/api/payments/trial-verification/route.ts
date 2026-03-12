@@ -8,8 +8,7 @@ const TRIAL_VERIFICATION_AMOUNT = 200
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { authService, paymentRepository } = createServerContainer()
+    const { authService, paymentRepository, companyRepository } = createServerContainer()
     const user = await authService.getCurrentUser()
 
     if (!user) {
@@ -29,22 +28,14 @@ export async function POST(request: NextRequest) {
     let amountSmallest = 200 // Default 200 paise
 
     if (companyId) {
-      const { data: company } = await supabase
-        .from('companies')
-        .select('country_code')
-        .eq('id', companyId)
-        .single()
-
-      if (company?.country_code) {
-        countryCode = company.country_code
+      const countryCodeFetched = await companyRepository.getCountryCode(companyId)
+      if (countryCodeFetched) {
+        countryCode = countryCodeFetched
         try {
           const { CountryRegistry } = require('@/lib/countries')
           const country = CountryRegistry.get(countryCode)
           if (country) {
             currency = country.currency.code
-            // Adjust amount for non-INR if needed? 
-            // For now, let's stick to small amount. 2 units of local currency for verification?
-            // Or keep it simple.
           }
         } catch (e) { }
       }

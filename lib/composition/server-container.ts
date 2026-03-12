@@ -1,10 +1,6 @@
-import { SupabaseAuthGateway } from '@/infrastructure/auth/supabase/SupabaseAuthGateway'
-import { SupabaseAuthService } from '@/infrastructure/auth/supabase/SupabaseAuthService'
-import { SupabaseSessionProvider } from '@/infrastructure/auth/supabase/SupabaseSessionProvider'
 import { PassportAuthGateway } from '@/infrastructure/auth/passport/PassportAuthGateway'
 import { PassportAuthService } from '@/infrastructure/auth/passport/PassportAuthService'
 import { PassportSessionProvider } from '@/infrastructure/auth/passport/PassportSessionProvider'
-import { HybridAuthService } from '@/infrastructure/auth/HybridAuthService'
 import { RepositoryAccessService } from '@/application/services/RepositoryAccessService'
 import { RepositorySubscriptionService } from '@/application/services/RepositorySubscriptionService'
 import { PrismaUserRepository } from '@/infrastructure/persistence/prisma/PrismaUserRepository'
@@ -45,25 +41,9 @@ export function createServerContainer() {
   // Choose auth provider based on environment variable (default to Supabase for backward compatibility)
   const authProvider = process.env.AUTH_PROVIDER || 'supabase'
 
-  // Create BOTH services for hybrid support
-  const supabaseAuthService = new SupabaseAuthService(userRepository)
-  const passportAuthService = new PassportAuthService(userRepository)
-
-  // Use Hybrid by default to support both Supabase (email) and Passport (Google)
-  const authService = new HybridAuthService(
-    authProvider === 'passport' ? passportAuthService : supabaseAuthService,
-    authProvider === 'passport' ? supabaseAuthService : passportAuthService
-  )
-
-  const authGateway =
-    authProvider === 'passport'
-      ? new PassportAuthGateway()
-      : new SupabaseAuthGateway()
-
-  const sessionProvider =
-    authProvider === 'passport'
-      ? new PassportSessionProvider()
-      : new SupabaseSessionProvider()
+  const authService = new PassportAuthService(userRepository)
+  const authGateway = new PassportAuthGateway()
+  const sessionProvider = new PassportSessionProvider()
 
   return {
     authService,

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter, usePathname } from 'next/navigation'
-import { getNotifications, markNotificationsRead, markAllNotificationsRead, type Notification } from '@/app/data-room/actions'
+import { getNotifications, markNotificationsRead, markAllNotificationsRead, type Notification } from '@/app/data-room/notification-actions'
 import { checkSuperadminStatus } from '@/app/admin/actions'
 import { trackNotificationClick } from '@/lib/tracking/kpi-tracker'
 

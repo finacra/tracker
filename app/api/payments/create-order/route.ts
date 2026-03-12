@@ -6,7 +6,6 @@ import { calculatePricing, getTierById, type BillingCycle, type PricingTier } fr
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
     const { authService, paymentRepository, companyRepository } = createServerContainer()
     const user = await authService.getCurrentUser()
 

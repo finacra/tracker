@@ -1,7 +1,6 @@
 'use server'
 
 import { createAdminClient } from '@/utils/supabase/admin'
-import { createClient } from '@/utils/supabase/server'
 import { createServerContainer } from '@/lib/composition/server-container'
 import { generateEmbedding } from '@/lib/utils/embeddings'
 import { processDocumentContent } from '@/lib/utils/document-processor'

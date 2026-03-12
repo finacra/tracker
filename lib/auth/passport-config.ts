@@ -5,6 +5,9 @@
 
 import passport from 'passport'
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20'
+import { Strategy as LocalStrategy } from 'passport-local'
+import bcrypt from 'bcryptjs'
+
 type PassportUser = any // Passport user type
 import { createServerContainer } from '@/lib/composition/server-container'
 import { prisma } from '@/lib/prisma'
@@ -104,11 +107,8 @@ export function initializePassport() {
           let identity = await authIdentityRepository.findByLegacyAuthId('passport', googleId)
 
           if (identity) {
-            // Existing Passport user - return their app_user
             const appUser = await userRepository.getById(identity.appUserId)
-            if (!appUser) {
-              return done(new Error('Identity found but app_user not found'), undefined)
-            }
+            if (!appUser) return done(new Error('App user not found'), undefined)
 
             const sessionUser: PassportSessionUser = {
               appUserId: appUser.id,
@@ -119,17 +119,16 @@ export function initializePassport() {
             return done(null, sessionUser)
           }
 
-          // 2. Check if user exists by email (match existing Supabase users)
+          // 2. Check by email
           let appUser = await userRepository.findByEmail(email)
 
           if (appUser) {
-            // Existing user - create Passport identity linked to existing app_user
             identity = await authIdentityRepository.create({
               appUserId: appUser.id,
               provider: 'passport',
               legacyAuthId: googleId,
               email: email,
-              isPrimary: false, // Keep Supabase as primary during transition
+              isPrimary: false,
               metadata: {
                 googleProfile: {
                   displayName: profile.displayName,
@@ -147,8 +146,7 @@ export function initializePassport() {
             return done(null, sessionUser)
           }
 
-          // 3. New user - create app_user and Passport identity
-          // Note: This should ideally go through a signup flow, but for OAuth we'll create them
+          // 3. New user
           const newAppUserRow = await prisma.appUser.create({
             data: {
               primary_email: email,
@@ -157,21 +155,12 @@ export function initializePassport() {
             },
           })
 
-          appUser = {
-            id: newAppUserRow.id,
-            canonicalId: newAppUserRow.id,
-            email: newAppUserRow.primary_email,
-            fullName: newAppUserRow.full_name,
-            legacyAuthProvider: 'passport',
-            legacyAuthId: googleId,
-          }
-
           identity = await authIdentityRepository.create({
-            appUserId: appUser.id,
+            appUserId: newAppUserRow.id,
             provider: 'passport',
             legacyAuthId: googleId,
             email: email,
-            isPrimary: true, // First identity is primary
+            isPrimary: true,
             metadata: {
               googleProfile: {
                 displayName: profile.displayName,
@@ -181,8 +170,8 @@ export function initializePassport() {
           })
 
           const sessionUser: PassportSessionUser = {
-            appUserId: appUser.id,
-            email: appUser.email,
+            appUserId: newAppUserRow.id,
+            email: newAppUserRow.primary_email,
             googleId,
           }
 
@@ -190,6 +179,90 @@ export function initializePassport() {
         } catch (error) {
           console.error('[Passport] Google strategy error:', error)
           return done(error as Error, undefined)
+        }
+      }
+    )
+  )
+
+  // Configure Local strategy (Email/Password)
+  passport.use(
+    new LocalStrategy(
+      {
+        usernameField: 'email',
+        passwordField: 'password',
+      },
+      async (email, password, done) => {
+        try {
+          const { userRepository } = createServerContainer()
+          
+          // 1. Find user by email (from app_users)
+          const appUserRow = await prisma.appUser.findFirst({
+            where: {
+              primary_email: {
+                equals: email.trim(),
+                mode: 'insensitive',
+              },
+            },
+          })
+
+          if (!appUserRow) {
+            return done(null, false, { message: 'User not found' })
+          }
+
+          // 2. Check if they have a local password_hash
+          const userWithHash = appUserRow as any
+          if (userWithHash.password_hash) {
+            const isValid = await bcrypt.compare(password, userWithHash.password_hash)
+            if (isValid) {
+              const sessionUser: PassportSessionUser = {
+                appUserId: appUserRow.id,
+                email: appUserRow.primary_email,
+                googleId: '', // No google ID for local
+              }
+              return done(null, sessionUser)
+            } else {
+              return done(null, false, { message: 'Invalid password' })
+            }
+          }
+
+          // 3. LEGACY MIGRATION: No local password yet. Try verifying against Supabase Auth.
+          // This allows users to keep their current passwords during the transition.
+          console.log(`[Passport] Attempting legacy migration for ${email}`)
+          try {
+            const { createClient } = await import('@/utils/supabase/server')
+            const supabase = await createClient()
+            const { data, error } = await supabase.auth.signInWithPassword({
+              email,
+              password,
+            })
+
+            if (!error && data.user) {
+              // Migration SUCCESS!
+              // Store the password hash locally so we don't need Supabase Auth anymore for this user
+              const salt = await bcrypt.genSalt(10)
+              const hash = await bcrypt.hash(password, salt)
+              
+              await prisma.appUser.update({
+                where: { id: appUserRow.id },
+                data: { password_hash: hash } as any
+              })
+
+              console.log(`[Passport] Legacy migration successful for ${email}`)
+              
+              const sessionUser: PassportSessionUser = {
+                appUserId: appUserRow.id,
+                email: appUserRow.primary_email,
+                googleId: '',
+              }
+              return done(null, sessionUser)
+            }
+          } catch (supaError) {
+            console.error('[Passport] Supabase migration proxy error:', supaError)
+          }
+
+          return done(null, false, { message: 'Invalid credentials or migration failed' })
+        } catch (error) {
+          return done(error)
         }
       }
     )

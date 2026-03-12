@@ -4,7 +4,6 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { resolvePostAuthRedirect } from '@/application/use-cases/navigation/resolvePostAuthRedirect'
-import { createClient } from '@/utils/supabase/client'
 import { getPostAuthDestination, getOAuthLoginUrl } from './actions'
 
 function LoginPageInner() {
@@ -17,42 +16,42 @@ function LoginPageInner() {
   const [message, setMessage] = useState<string | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const supabase = createClient()
   
   // Get returnTo from URL params for deep linking (e.g., invite acceptance)
   const returnTo = searchParams.get('returnTo')
 
-  // Check if user is already logged in
-  // Only redirect if there's a returnTo parameter (deep linking) or if explicitly requested
-  // Otherwise, allow authenticated users to access the login page (e.g., to switch accounts)
+  // Check if user is already logged in using Passport session API
   useEffect(() => {
     let isMounted = true
     
     const checkSession = async () => {
       if (!isMounted) return
       
-      console.log('🔍 [AUTH CHECK] Checking session on login page...')
+      console.log('🔍 [PASSPORT AUTH CHECK] Checking session on login page...')
       
-      const { data: { session } } = await supabase.auth.getSession()
-      console.log('🔍 [AUTH CHECK] Session exists:', !!session)
-      
-      if (!isMounted) return
-      
-      // Redirect authenticated users to their destination
-      if (session) {
+      try {
+        const res = await fetch('/api/auth/passport/session')
+        const data = await res.json()
+        const session = data?.session
+
+        console.log('🔍 [PASSPORT AUTH CHECK] Session exists:', !!session)
+        
         if (!isMounted) return
         
-        const result = await getPostAuthDestination(session.user.id)
-        const baseDestination = result.success ? result.destination ?? '/subscribe' : '/subscribe'
-        const destination = resolvePostAuthRedirect({
-          baseDestination,
-          overridePath: returnTo,
-          allowOverrideForDataRoomUsers: true,
-        })
-        console.log('🔄 [AUTH CHECK] Session exists, redirecting to:', destination)
-        router.push(destination)
-      } else {
-        console.log('✅ [AUTH CHECK] No session, staying on login page')
+        // Redirect authenticated users to their destination
+        if (session) {
+          const result = await getPostAuthDestination(session.appUserId)
+          const baseDestination = result.success ? result.destination ?? '/subscribe' : '/subscribe'
+          const destination = resolvePostAuthRedirect({
+            baseDestination,
+            overridePath: returnTo,
+            allowOverrideForDataRoomUsers: true,
+          })
+          console.log('🔄 [PASSPORT AUTH CHECK] Session exists, forcing reload to:', destination)
+          window.location.href = destination
+        }
+      } catch (err) {
+        console.error('Error checking passport session:', err)
       }
     }
     
@@ -61,7 +60,7 @@ function LoginPageInner() {
     return () => {
       isMounted = false
     }
-  }, [router, supabase, returnTo])
+  }, [router, returnTo])
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
@@ -81,9 +80,7 @@ function LoginPageInner() {
       window.location.href = result.url
     } catch (error: any) {
       console.error('Error signing in:', error)
-      // Handle UnrecognizedActionError (stale build)
       if (error.message?.includes('UnrecognizedActionError') || error.message?.includes('404')) {
-        console.warn('[handleGoogleSignIn] Stale build or action not found, reloading...');
         window.location.reload();
         return;
       }
@@ -99,109 +96,46 @@ function LoginPageInner() {
     setMessage(null)
 
     try {
-      if (isSignUp) {
-        // Sign up
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: returnTo 
-              ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(returnTo)}`
-              : `${window.location.origin}/auth/callback`,
-          },
-        })
+      const endpoint = isSignUp ? '/api/auth/passport/register' : '/api/auth/passport/login'
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
 
-        if (error) {
-          setError(error.message)
-          setIsLoading(false)
-        } else if (data.session) {
-          // If auto-confirm is enabled, it might return a session immediately
-          const result = await getPostAuthDestination(data.session.user.id);
-          const baseDestination = result.success ? result.destination ?? '/subscribe' : '/subscribe';
-          const redirectTo = resolvePostAuthRedirect({
-            baseDestination,
-            overridePath: returnTo,
-            allowOverrideForDataRoomUsers: true,
-          })
-          console.log(`[EMAIL SIGN UP] Auto-logged in, redirecting to: ${redirectTo}`)
-          router.push(redirectTo)
-        } else {
-          setMessage('Check your email to confirm your account!')
-          setIsLoading(false)
-        }
-      } else {
-        // Sign in
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
+      const result = await response.json()
 
-        if (error) {
-          setError(error.message)
-          setIsLoading(false)
-        } else if (data.session) {
-          try {
-            const result = await getPostAuthDestination(data.session.user.id)
-            const baseDestination = result.success ? result.destination ?? '/subscribe' : '/subscribe';
-            const redirectTo = resolvePostAuthRedirect({
-              baseDestination,
-              overridePath: returnTo,
-              allowOverrideForDataRoomUsers: true,
-            })
-            
-            console.log(`[EMAIL SIGN IN] User ${data.session.user.id} redirecting to: ${redirectTo}`)
-            router.push(redirectTo)
-          } catch (destErr: any) {
-            console.error('Error resolving destination:', destErr)
-            // Fallback to /subscribe if resolution fails
-            router.push('/subscribe')
-          }
-        } else {
-          // No session after sign in - should not happen, but handle it
-          setError('Sign in failed. Please try again.')
-          setIsLoading(false)
-        }
+      if (!response.ok) {
+        setError(result.error || 'Authentication failed')
+        setIsLoading(false)
+        return
+      }
+
+      // Success! User is now logged in via Passport session cookie
+      try {
+        const destResult = await getPostAuthDestination(result.user.id)
+        const baseDestination = destResult.success ? destResult.destination ?? '/subscribe' : '/subscribe';
+        const redirectTo = resolvePostAuthRedirect({
+          baseDestination,
+          overridePath: returnTo,
+          allowOverrideForDataRoomUsers: true,
+        })
+        
+        console.log(`[PASSPORT EMAIL ${isSignUp ? 'SIGN UP' : 'SIGN IN'}] User ${result.user.id} forcing reload to: ${redirectTo}`)
+        window.location.href = redirectTo
+      } catch (destErr: any) {
+        console.error('Error resolving destination:', destErr)
+        window.location.href = '/subscribe'
       }
     } catch (error: any) {
       console.error('Error with email auth:', error)
-      // Handle UnrecognizedActionError (stale build)
-      if (error.message?.includes('UnrecognizedActionError') || error.message?.includes('404')) {
-        console.warn('[handleEmailAuth] Stale build or action not found, reloading...');
-        window.location.reload();
-        return;
-      }
       setError(error.message || 'An error occurred')
       setIsLoading(false)
     }
   }
 
   const handlePasswordReset = async () => {
-    if (!email) {
-      setError('Please enter your email address first')
-      return
-    }
-
-    setIsLoading(true)
-    setError(null)
-    setMessage(null)
-
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-      })
-
-      if (error) {
-        setError(error.message)
-        setIsLoading(false)
-      } else {
-        setMessage('Password reset email sent! Check your inbox.')
-        setIsLoading(false)
-      }
-    } catch (error: any) {
-      console.error('Error sending password reset:', error)
-      setError(error.message || 'An error occurred')
-      setIsLoading(false)
-    }
+    setError('Password reset is currently disabled as we transition to our new authentication system. Please contact support.')
   }
 
   return (

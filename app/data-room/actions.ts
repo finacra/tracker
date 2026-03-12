@@ -1,7 +1,6 @@
 'use server'
 
 import { createAdminClient } from '@/utils/supabase/admin'
-import { createClient } from '@/utils/supabase/server'
 import { validateCompanyId, validateUserId, isValidUUID } from '@/lib/utils/input-validation'
 import { enrichComplianceItems as enrichComplianceItemsService, type EnrichedComplianceData } from '@/lib/services/compliance-enrichment'
 import { sendEmail, getSiteUrl } from '@/lib/email/resend'
@@ -23,7 +22,7 @@ import type { Requirement } from '@/domain/models/Requirement'
 import { randomBytes } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth/passport-session'
-import { performance } from 'perf_hooks'
+// performance is available globally in Node.js
 
 export interface RegulatoryRequirement {
   id: string
@@ -470,7 +469,6 @@ export async function updateRequirement(
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -642,7 +640,6 @@ export async function updateRequirementStatus(
       return { success: false, error: 'Invalid company ID format' }
     }
 
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -1225,7 +1222,6 @@ export async function getCompanyUserRoles(companyId: string | null = null): Prom
       return { success: false, error: 'Invalid company ID format' }
     }
 
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -1323,7 +1319,6 @@ export async function addTeamMember(
   console.log('[addTeamMember] START - Company:', companyId, 'Email:', userEmail, 'Role:', role)
 
   try {
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     console.log('[addTeamMember] Auth check - User:', user?.id)
@@ -1423,7 +1418,6 @@ export async function createTeamInvitation(
   inviteeName?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -1541,7 +1535,6 @@ export async function acceptTeamInvitation(
   token: string
 ): Promise<{ success: boolean; error?: string; companyId?: string }> {
   try {
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -1595,7 +1588,6 @@ export async function removeTeamMember(
   memberUserId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -1638,7 +1630,6 @@ export async function updateTeamMemberRole(
   newRole: 'viewer' | 'editor' | 'admin'
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -1680,7 +1671,6 @@ export async function generateRecurringCompliances(
       return { success: false, error: 'Invalid months ahead value' }
     }
 
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -1743,7 +1733,6 @@ export async function generateRecurringCompliances(
  */
 export async function getComplianceTemplates(): Promise<{ success: boolean; templates?: ComplianceTemplate[]; error?: string }> {
   try {
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -1840,7 +1829,6 @@ export async function createComplianceTemplate(
   }
 ): Promise<{ success: boolean; id?: string; applied_count?: number; error?: string }> {
   try {
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -2009,7 +1997,6 @@ export async function updateComplianceTemplate(
   }
 ): Promise<{ success: boolean; applied_count?: number; error?: string }> {
   try {
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -2162,7 +2149,6 @@ export async function deleteComplianceTemplate(
   deleteRequirements: boolean = false
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -2220,7 +2206,6 @@ export async function deleteComplianceTemplate(
  */
 export async function getTemplateDetails(templateId: string): Promise<{ success: boolean; template?: ComplianceTemplate; matching_companies?: any[]; error?: string }> {
   try {
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -2288,7 +2273,6 @@ export async function getTemplateDetails(templateId: string): Promise<{ success:
  */
 export async function applyAllTemplates(): Promise<{ success: boolean; applied_count: number; template_count: number; error?: string }> {
   try {
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -2361,85 +2345,7 @@ export async function applyAllTemplates(): Promise<{ success: boolean; applied_c
   }
 }
 
-// ============================================
-// NOTIFICATION ACTIONS
-// ============================================
-
-export type Notification = AppNotification
-
-/**
- * Get notifications for current user
- */
-export async function getNotifications(
-  options: { unreadOnly?: boolean; limit?: number } = {}
-): Promise<{ success: boolean; notifications?: Notification[]; unreadCount?: number; error?: string }> {
-  try {
-    const { authService, notificationRepository } =
-      createServerNotificationContainer()
-    const user = await authService.requireCurrentUser()
-    const useCase = new GetUserNotifications(notificationRepository)
-    const result = await useCase.execute(user.id, options)
-
-    return {
-      success: true,
-      notifications: result.notifications,
-      unreadCount: result.unreadCount,
-    }
-  } catch (error: any) {
-    console.error('Error in getNotifications:', error)
-    return { success: false, error: error.message }
-  }
-}
-
-/**
- * Mark notification(s) as read
- */
-export async function markNotificationsRead(
-  notificationIds: string | string[]
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const supabase = await createClient()
-    const user = await getCurrentUserOrNull()
-
-    if (!user) {
-      return { success: false, error: 'Not authenticated' }
-    }
-
-    const ids = Array.isArray(notificationIds) ? notificationIds : [notificationIds]
-    const { notificationRepository } = createServerNotificationContainer()
-    const useCase = new MarkUserNotificationsRead(notificationRepository)
-
-    await useCase.execute(user.id, ids)
-
-    return { success: true }
-  } catch (error: any) {
-    console.error('Error in markNotificationsRead:', error)
-    return { success: false, error: error.message }
-  }
-}
-
-/**
- * Mark all notifications as read for current user
- */
-export async function markAllNotificationsRead(): Promise<{ success: boolean; error?: string }> {
-  try {
-    const supabase = await createClient()
-    const user = await getCurrentUserOrNull()
-
-    if (!user) {
-      return { success: false, error: 'Not authenticated' }
-    }
-
-    const { notificationRepository } = createServerNotificationContainer()
-    const useCase = new MarkAllUserNotificationsRead(notificationRepository)
-    await useCase.execute(user.id)
-
-    return { success: true }
-  } catch (error: any) {
-    console.error('Error in markAllNotificationsRead:', error)
-    return { success: false, error: error.message }
-  }
-}
+// Notification actions moved to notification-actions.ts
 
 // ============================================
 // COMPANY FINANCIALS ACTIONS
@@ -2464,7 +2370,6 @@ export async function getCompanyFinancials(
   financialYear?: string
 ): Promise<{ success: boolean; financials?: CompanyFinancials[]; error?: string }> {
   try {
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -2510,7 +2415,6 @@ export async function upsertCompanyFinancials(
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -2560,7 +2464,6 @@ export async function updateRequirementBaseAmount(
   baseAmount: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -2638,7 +2541,6 @@ export async function bulkCreateComplianceTemplates(
   applicableRegions?: string[]
 ): Promise<{ success: boolean; created: number; errors: string[] }> {
   try {
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -2890,7 +2792,6 @@ export async function getDirectors(companyId: string): Promise<{
       return { success: false, error: 'Invalid company ID format' }
     }
 
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -3050,7 +2951,6 @@ export async function hideDocumentTemplateForCompany(
       return { success: false, error: 'Invalid company ID format' }
     }
 
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -3122,7 +3022,6 @@ export async function getHiddenDocumentTemplates(
       return { success: false, error: 'Invalid company ID format' }
     }
 
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -3171,7 +3070,6 @@ export async function hideComplianceForCompany(
       return { success: false, error: 'Invalid company ID format' }
     }
 
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -3226,7 +3124,6 @@ export async function showComplianceForCompany(
       return { success: false, error: 'Invalid company ID format' }
     }
 
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -3271,7 +3168,6 @@ export async function getHiddenCompliances(
       return { success: false, error: 'Invalid company ID format' }
     }
 
-    const supabase = await createClient()
     const user = await getCurrentUserOrNull()
 
     if (!user) {
@@ -3511,7 +3407,10 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     // 4. Early Redirect Logic: If subscription is EXPIRED, we don't return data, we return a redirect.
     // For Owners: Check their active sub. 
     // For Team Members: Check if the owner's sub is expired.
-    if (!isSuperadminResult && preferredCompanyId && ownerSubscriptionExpired) {
+    // SECURITY: Only redirect to subscription-required if the user actually HAS access to that company
+    const hasAccessToPreferred = preferredCompanyId && currentCompanyId === preferredCompanyId;
+    
+    if (!isSuperadminResult && preferredCompanyId && hasAccessToPreferred && ownerSubscriptionExpired) {
         // If ownerSubscriptionExpired is true, it means NEITHER the company nor the owner has an active plan.
         // Therefore, NO ONE gets in.
         return {

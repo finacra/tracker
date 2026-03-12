@@ -12,6 +12,7 @@ model AppUser {
   id             String         @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   primary_email  String
   full_name      String?
+  password_hash  String?
   status         String         @default("active")
   created_at     DateTime       @default(now()) @db.Timestamptz
   updated_at     DateTime       @default(now()) @db.Timestamptz
@@ -291,4 +292,21 @@ model DocumentTemplate {
   updated_at        DateTime? @default(now()) @db.Timestamptz
 
   @@map("document_templates_internal")
+}
+
+model ContactSubmission {
+  id         String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  name       String
+  email      String
+  company    String?
+  phone      String?
+  message    String
+  status     String?   @default("new")
+  notes      String?
+  replied_at DateTime? @db.Timestamptz
+  replied_by String?   @db.Uuid
+  created_at DateTime? @default(now()) @db.Timestamptz
+  updated_at DateTime? @default(now()) @db.Timestamptz
+
+  @@map("contact_submissions")
 }

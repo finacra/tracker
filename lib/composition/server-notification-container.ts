@@ -1,16 +1,12 @@
-import { SupabaseAuthService } from '@/infrastructure/auth/supabase/SupabaseAuthService'
+import { PassportAuthService } from '@/infrastructure/auth/passport/PassportAuthService'
 import { PrismaNotificationRepository } from '@/infrastructure/persistence/prisma/PrismaNotificationRepository'
-import { SupabaseUserRepository } from '@/infrastructure/persistence/supabase/SupabaseUserRepository'
-
-// Prisma Pilot: NotificationRepository is the first repository swapped to Prisma.
-// To revert, replace PrismaNotificationRepository with SupabaseNotificationRepository.
-// import { SupabaseNotificationRepository } from '@/infrastructure/persistence/supabase/SupabaseNotificationRepository'
+import { PrismaUserRepository } from '@/infrastructure/persistence/prisma/PrismaUserRepository'
 
 export function createServerNotificationContainer() {
-  const userRepository = new SupabaseUserRepository()
+  const userRepository = new PrismaUserRepository()
 
   return {
-    authService: new SupabaseAuthService(userRepository),
+    authService: new PassportAuthService(userRepository),
     notificationRepository: new PrismaNotificationRepository(),
     userRepository,
   }

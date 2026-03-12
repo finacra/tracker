@@ -62,7 +62,7 @@ export async function recordKPIMetric(
   metricData?: Record<string, any>
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     
     // If userId is provided, check if it's app_users.id (Passport) or auth.users.id (Supabase)
     // If it's app_users.id, resolve to Supabase identity if available
@@ -101,8 +101,8 @@ export async function recordKPIMetric(
       }
     }
     
-    const { error } = await supabase
-      .from('kpi_metrics')
+    const { error } = await (supabase
+      .from('kpi_metrics') as any)
       .insert({
         kpi_name: kpiName,
         category: category,

@@ -1,7 +1,7 @@
-import { SupabaseUserRepository } from '@/infrastructure/persistence/supabase/SupabaseUserRepository'
+import { PrismaUserRepository } from '@/infrastructure/persistence/prisma/PrismaUserRepository'
 
 export function createServerUserContainer() {
   return {
-    userRepository: new SupabaseUserRepository(),
+    userRepository: new PrismaUserRepository(),
   }
 }
