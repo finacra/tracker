@@ -3428,13 +3428,14 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     // This saves ~1.9s for superadmins and ~500ms for regular users
     let accessibleCompanyIds: string[]
     let currentCompanyId: string | null = preferredCompanyId
+    let accessibleDuration = 0 // Track duration for logging
     
     if (preferredCompanyId) {
       // Fast path: Validate access for single company only
       const singleAccessStartTime = performance.now()
       const accessSnapshot = await (new GetCompanyAccessSnapshot(accessService)).execute(user.id, preferredCompanyId)
-      const singleAccessDuration = performance.now() - singleAccessStartTime
-      console.log(`[InitAction] ⏱️ Single company access check took ${singleAccessDuration.toFixed(2)}ms`)
+      accessibleDuration = performance.now() - singleAccessStartTime
+      console.log(`[InitAction] ⏱️ Single company access check took ${accessibleDuration.toFixed(2)}ms`)
       
       if (!accessSnapshot.hasAccess) {
         return {
@@ -3471,7 +3472,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
       const accessibleStartTime = performance.now()
       const accessibleUseCase = new GetAccessibleCompanyIds(accessService)
       accessibleCompanyIds = await accessibleUseCase.execute(user.id)
-      const accessibleDuration = performance.now() - accessibleStartTime
+      accessibleDuration = performance.now() - accessibleStartTime
       console.log(`[InitAction] ⏱️ Get accessible company IDs took ${accessibleDuration.toFixed(2)}ms (found ${accessibleCompanyIds.length} companies)`)
       
       if (accessibleDuration > 5000) {
