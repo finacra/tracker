@@ -224,4 +224,17 @@ export class SupabaseCompanyRepository implements CompanyRepository {
       ownerUserId: company.user_id,
     }))
   }
+
+  // OPTIMIZED: Just get IDs for superadmin (much faster)
+  async listAllCompanyIds(): Promise<string[]> {
+    const adminSupabase: any = createAdminClient()
+    const { data, error } = await adminSupabase
+      .from('companies')
+      .select('id')
+      .order('created_at', { ascending: false })
+
+    if (error) throw new Error(error.message)
+
+    return (data ?? []).map((company: { id: string }) => company.id)
+  }
 }
