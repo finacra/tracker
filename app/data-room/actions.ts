@@ -21,6 +21,9 @@ import type { AppNotification } from '@/domain/models/Notification'
 import type { AppUser } from '@/domain/models/AppUser'
 import type { Requirement } from '@/domain/models/Requirement'
 import { randomBytes } from 'crypto'
+import { prisma } from '@/lib/prisma'
+import { getSession } from '@/lib/auth/passport-session'
+import { performance } from 'perf_hooks'
 
 export interface RegulatoryRequirement {
   id: string
@@ -3299,15 +3302,13 @@ export async function getHiddenCompliances(
     }
 
     const hiddenIds = (exclusions || []).map((ex: { requirement_id: string }) => ex.requirement_id)
+
     return { success: true, hiddenComplianceIds: hiddenIds }
   } catch (err) {
     console.error('Error in getHiddenCompliances:', err)
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
   }
 }
-
-
-
 export async function getDataRoomInitState(preferredCompanyId: string | null = null): Promise<{
   success: boolean
   data?: {
@@ -3325,13 +3326,11 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
       currentCompanyCount: number
       canCreateCompany: boolean
     }
-    // New: Initial company details to prevent Overview tab flicker
     initialEntityDetails?: any
     hiddenTemplates: string[]
     hiddenCompliances: string[]
     userRole: 'superadmin' | 'admin' | 'editor' | 'viewer'
     initialRequirements: any[]
-    // Fast-path redirect flag
     redirectTo?: string
     _debug?: any
   }
@@ -3339,303 +3338,181 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
 }> {
   try {
     const initStartTime = performance.now()
-    console.log(`[InitAction] ===== STARTING INITIALIZATION =====`)
+    const { accessService } = createServerContainer()
     
-    // 1. Initial Container and Auth Setup
-    const container = createServerContainer()
-    const { authService, accessService, companyRepository, subscriptionRepository, requirementRepository, directorRepository, companyMembershipRepository } = container
+    // 1. PHASE 1: Combined Auth & Identity Setup (1 Roundtrip)
+    const phase1Start = performance.now()
+    const session = await getSession()
+    if (!session) {
+      throw new Error('Not authenticated')
+    }
+
+    const authSnapshot = await prisma.$queryRaw<any[]>`
+      SELECT 
+        (SELECT row_to_json(u) FROM (
+          SELECT id, primary_email as email, full_name as "fullName" 
+          FROM app_users 
+          WHERE id = ${session.appUserId}::uuid
+        ) u) as user_row,
+        (SELECT EXISTS (
+          SELECT 1 FROM user_roles 
+          WHERE (app_user_id = ${session.appUserId}::uuid OR user_id = ${session.appUserId}::uuid) 
+          AND company_id IS NULL AND role = 'superadmin'
+        )) as is_superadmin
+    `
+    const { user_row: user, is_superadmin: isSuperadminResult } = authSnapshot[0] || {}
+    if (!user) throw new Error('User record not found')
     
-    // 2. CONSOLDIDATED AUTH: Fetch user and superadmin status ONCE
-    const user = await authService.requireCurrentUser()
-    const isSuperadminResult = await accessService.isSuperadmin(user.id)
-    const authDuration = performance.now() - initStartTime
-    console.log(`[InitAction] ⏱️ Consolidated Auth check took ${authDuration.toFixed(2)}ms (isSuperadmin: ${isSuperadminResult})`)
+    user.id = session.appUserId
+    const authDuration = performance.now() - phase1Start
+
+    // 2. PHASE 2: Access Resolution (1 Roundtrip)
+    const accStartTime = performance.now()
+    const accessibleCompanyIds = await accessService.getAccessibleCompanyIds(user.id, isSuperadminResult)
+    const accessibleDuration = performance.now() - accStartTime
     
-    let accessibleCompanyIds: string[]
-    let currentCompanyId: string | null = preferredCompanyId
-    let accessibleDuration = 0
-    
-    // 3. SECURE START: Determine which company to load
+    let currentCompanyId = preferredCompanyId
     if (preferredCompanyId) {
-      // Fast path: Validate access for preferred company
-      const singleAccessStartTime = performance.now()
-      const accessSnapshot = await accessService.getCompanyAccessSnapshot(user.id, preferredCompanyId, isSuperadminResult)
-      accessibleDuration = performance.now() - singleAccessStartTime
-      
-      if (!accessSnapshot.hasAccess) {
-        return {
-          success: false,
-          error: 'Access denied to this company',
-          data: {
-            user: { id: user.id, email: user.email || '', fullName: user.fullName || null },
-            companies: [],
-            accessibleCompanyIds: [],
-            currentCompanyId: null,
-            companyAccess: null,
-            userSubscription: {
-              hasSubscription: false,
-              tier: 'none',
-              isTrial: false,
-              trialDaysRemaining: 0,
-              companyLimit: 0,
-              currentCompanyCount: 0,
-              canCreateCompany: false,
-            },
-            hiddenTemplates: [],
-            hiddenCompliances: [],
-            userRole: 'viewer',
-            initialRequirements: [],
-            redirectTo: '/subscription-required',
-          }
-        }
+      if (!accessibleCompanyIds.includes(preferredCompanyId)) {
+        return { success: false, error: 'Access denied' }
       }
-      accessibleCompanyIds = [preferredCompanyId]
     } else {
-      // Slow path: Get all accessible companies
-      const accessibleStartTime = performance.now()
-      // Optimized: RepositoryAccessService handles superadmin optimization correctly
-      accessibleCompanyIds = await accessService.getAccessibleCompanyIds(user.id, isSuperadminResult)
-      accessibleDuration = performance.now() - accessibleStartTime
       currentCompanyId = accessibleCompanyIds[0] || null
     }
 
-    console.log(`[InitAction] ⏱️ Access resolution took ${accessibleDuration.toFixed(2)}ms (found ${accessibleCompanyIds.length} companies)`)
+    // 3. PHASE 3: THE MEGA-SNAPSHOT (1 Roundtrip)
+    const megaStart = performance.now()
+    const snapshotRaw = await prisma.$queryRaw<any[]>`
+      WITH 
+        target_sub AS (
+          SELECT s.* FROM subscriptions s
+          WHERE s.subscription_type = 'user' AND (s.status = 'active' OR s.is_trial = true)
+          AND (s.app_user_id = ${user.id}::uuid OR s.user_id = ${user.id}::uuid)
+          ORDER BY created_at DESC LIMIT 1
+        ),
+        count_owned AS (
+          SELECT count(*) as total FROM companies WHERE app_user_id = ${user.id}::uuid OR user_id = ${user.id}::uuid
+        ),
+        current_comp AS (
+          SELECT * FROM companies WHERE id = ${currentCompanyId}::uuid LIMIT 1
+        ),
+        directors_list AS (
+          SELECT * FROM directors WHERE company_id = ${currentCompanyId}::uuid ORDER BY created_at ASC
+        ),
+        r_val AS (
+          SELECT role FROM user_roles 
+          WHERE (app_user_id = ${user.id}::uuid OR user_id = ${user.id}::uuid) 
+          AND company_id = ${currentCompanyId}::uuid
+          LIMIT 1
+        ),
+        reqs_list AS (
+          SELECT * FROM regulatory_requirements WHERE company_id = ${currentCompanyId}::uuid ORDER BY due_date ASC
+        ),
+        ht_exclude AS (
+          SELECT folder_name, document_name FROM company_document_template_exclusions WHERE company_id = ${currentCompanyId}::uuid
+        ),
+        hc_exclude AS (
+          SELECT compliance_id FROM company_compliance_exclusions WHERE company_id = ${currentCompanyId}::uuid
+        ),
+        all_metadata AS (
+          SELECT id, name, type, incorporation_date, country_code, region 
+          FROM companies 
+          WHERE id::text = ANY(${accessibleCompanyIds})
+        )
+      SELECT 
+        (SELECT row_to_json(target_sub) FROM target_sub) as subscription,
+        (SELECT total FROM count_owned) as owned_count,
+        (SELECT row_to_json(current_comp) FROM current_comp) as company,
+        (SELECT json_agg(dl) FROM directors_list dl) as directors,
+        (SELECT role FROM r_val) as role,
+        (SELECT json_agg(rl) FROM reqs_list rl) as requirements,
+        (SELECT json_agg(ht) FROM ht_exclude ht) as hidden_templates,
+        (SELECT json_agg(hc) FROM hc_exclude hc) as hidden_compliances,
+        (SELECT json_agg(am) FROM all_metadata am) as companies_metadata
+    `
+    const snap = snapshotRaw[0] || {}
+    const megaDuration = performance.now() - megaStart
 
-    // 4. ULTRA-FAST-PATH: Lightweight subscription check for the target company
-    // Skip for superadmins as they bypass these checks anyway
-    if (currentCompanyId && !isSuperadminResult) {
-      const ultraFastCheckStart = performance.now()
-      const company = await companyRepository.getById(currentCompanyId)
-      
-      if (company) {
-        const ownerId = company.ownerAppUserId || company.ownerUserId
-        if (ownerId) {
-          // Parallel check of company and owner subscription
-          const [companySub, ownerUserSub] = await Promise.all([
-            subscriptionRepository.getCompanySubscriptionState(currentCompanyId),
-            subscriptionRepository.getUserSubscriptionState(ownerId)
-          ])
-          
-          const hasActiveSubscription = Boolean(
-            (companySub && companySub.hasSubscription) ||
-            (ownerUserSub && ownerUserSub.hasSubscription)
-          )
-          
-          const ultraFastDuration = performance.now() - ultraFastCheckStart
-          console.log(`[InitAction] ⏱️ Ultra-fast subscription check took ${ultraFastDuration.toFixed(2)}ms`)
-          
-          if (!hasActiveSubscription) {
-            const isOwner = company.ownerUserId === user.id || company.ownerAppUserId === user.id
-            return {
-              success: true,
-              data: {
-                user: { id: user.id, email: user.email || '', fullName: user.fullName || null },
-                companies: [],
-                accessibleCompanyIds: [],
-                currentCompanyId: null,
-                companyAccess: null,
-                userSubscription: {
-                  hasSubscription: false,
-                  tier: 'none',
-                  isTrial: false,
-                  trialDaysRemaining: 0,
-                  companyLimit: 0,
-                  currentCompanyCount: 0,
-                  canCreateCompany: false,
-                },
-                hiddenTemplates: [],
-                hiddenCompliances: [],
-                userRole: 'viewer',
-                initialRequirements: [],
-                redirectTo: isOwner 
-                  ? `/subscription-required?company_id=${currentCompanyId}`
-                  : `/owner-subscription-expired?company_id=${currentCompanyId}`,
-              }
-            }
-          }
+    // MAPPING
+    const sub = snap.subscription
+    const now = new Date()
+    const trialEndsAt = sub?.trial_ends_at ? new Date(sub.trial_ends_at) : null
+    const endDateRaw = sub?.end_date ? new Date(sub.end_date) : null
+    const endDate = sub?.is_trial ? (trialEndsAt || endDateRaw) : endDateRaw
+    const isExpired = !endDate || endDate < now || sub?.status === 'expired'
+    const trialDaysRemaining = sub?.is_trial && !isExpired
+        ? Math.max(0, Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+        : 0
+
+    const subState = {
+      hasSubscription: !isExpired,
+      tier: sub?.tier ?? 'none',
+      isTrial: Boolean(sub?.is_trial),
+      trialDaysRemaining,
+      companyLimit: sub?.tier === 'enterprise' ? 100 : sub?.tier === 'professional' ? 20 : 5,
+    }
+
+    const company = snap.company || {}
+    const formattedDetails = currentCompanyId ? {
+      companyName: company.name || 'Unknown',
+      type: (company.type || '').toUpperCase(),
+      regDate: company.incorporation_date ? new Date(company.incorporation_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A',
+      taxId: company.tax_id || 'Not Provided',
+      registrationId: company.registration_id || 'Not Provided',
+      address: company.address || 'Not Provided',
+      phoneNumber: company.phone_number || 'Not Provided',
+      industryCategory: Array.isArray(company.industry_categories) ? company.industry_categories.join(', ') : company.industry || 'Not Provided',
+      directors: (snap.directors || []).map((d: any) => ({
+        id: d.id, firstName: d.first_name, lastName: d.last_name, middleName: d.middle_name, din: d.director_id,
+        designation: d.designation, dob: d.dob, pan: d.tax_id, email: d.email, mobile: d.mobile, verified: d.is_verified,
+      })),
+    } : null
+
+    const hasActiveSub = subState.hasSubscription || (subState.isTrial && subState.trialDaysRemaining > 0)
+    
+    // Quick redirect check
+    if (!isSuperadminResult && currentCompanyId && !hasActiveSub) {
+      return {
+        success: true,
+        data: {
+          user: { id: user.id, email: user.email || '', fullName: user.fullName || null },
+          companies: [], accessibleCompanyIds: [], currentCompanyId: null, companyAccess: null,
+          userSubscription: { hasSubscription: false, tier: 'none', isTrial: false, trialDaysRemaining: 0, companyLimit: 0, currentCompanyCount: 0, canCreateCompany: false },
+          hiddenTemplates: [], hiddenCompliances: [], userRole: 'viewer', initialRequirements: [],
+          redirectTo: `/subscription-required?company_id=${currentCompanyId}`
         }
       }
     }
-    
-    // 5. PARALLEL FETCH: All remaining data for the Data Room
-    const startParallel = performance.now()
-    const adminSupabase = createAdminClient()
-    const taskTimings: Record<string, number> = {}
 
-    const results = await Promise.all([
-      // A: Accessible companies metadata
-      (async () => {
-        const start = performance.now()
-        if (accessibleCompanyIds.length === 0) return []
-        const { data, error } = await adminSupabase
-          .from('companies')
-          .select('id, name, type, incorporation_date, country_code, region')
-          .in('id', accessibleCompanyIds)
-        if (error) throw error
-        taskTimings['fetchCompanies'] = performance.now() - start
-        return data || []
-      })(),
-      
-      // B: User's own subscription state
-      (async () => {
-        const start = performance.now()
-        const res = await subscriptionRepository.getUserSubscriptionState(user.id)
-        taskTimings['fetchUserSub'] = performance.now() - start
-        return res
-      })(),
-      
-      // C: Count of companies owned by user
-      (async () => {
-        const start = performance.now()
-        const res = await companyRepository.listOwnedByUser(user.id)
-        taskTimings['fetchOwnedCount'] = performance.now() - start
-        return res
-      })(),
-      
-      // D: Full access snapshot (reusing superadmin status)
-      (async () => {
-        const start = performance.now()
-        const res = currentCompanyId ? await accessService.getCompanyAccessSnapshot(user.id, currentCompanyId, isSuperadminResult) : null
-        taskTimings['fetchAccessSnapshot'] = performance.now() - start
-        return res
-      })(),
-      
-      // E: Current company details and directors
-      (async () => {
-        const start = performance.now()
-        if (!currentCompanyId) return null
-        const [companyResult, directors] = await Promise.all([
-          adminSupabase
-            .from('companies')
-            .select('id, name, type, incorporation_date, tax_id, registration_id, address, phone_number, industry_categories, industry, country_code')
-            .eq('id', currentCompanyId)
-            .single(),
-          directorRepository.getByCompanyId(currentCompanyId)
-        ])
-        
-        if (companyResult.error) return null
-        const company = companyResult.data as any
-
-        const incorporationDate = company?.incorporation_date ? new Date(company.incorporation_date) : new Date()
-        const formattedDate = incorporationDate.toLocaleDateString('en-GB', {
-          day: '2-digit', month: 'long', year: 'numeric',
-        })
-
-        const res = {
-          companyName: company?.name || 'Unknown',
-          type: (company?.type || '').toUpperCase(),
-          regDate: formattedDate,
-          taxId: company?.tax_id || 'Not Provided',
-          registrationId: company?.registration_id || 'Not Provided',
-          address: company?.address || 'Not Provided',
-          phoneNumber: company?.phone_number || 'Not Provided',
-          industryCategory: Array.isArray(company?.industry_categories)
-            ? company.industry_categories.join(', ')
-            : company?.industry || 'Not Provided',
-          directors: (directors || []).map((d: any) => ({
-            id: d.id, firstName: d.firstName, lastName: d.lastName, middleName: d.middleName, din: d.din,
-            designation: d.designation, dob: d.dob, pan: d.pan, email: d.email, mobile: d.mobile, verified: d.verified,
-          })),
-        }
-        taskTimings['fetchDetails'] = performance.now() - start
-        return res
-      })(),
-
-      // F: Hidden items
-      (async () => {
-        const start = performance.now()
-        if (!currentCompanyId) return { templates: [], compliances: [] }
-        const [templates, compliances] = await Promise.all([
-          adminSupabase.from('company_document_template_exclusions').select('folder_name, document_name').eq('company_id', currentCompanyId),
-          adminSupabase.from('company_compliance_exclusions').select('compliance_id').eq('company_id', currentCompanyId)
-        ])
-        const res = {
-          templates: ((templates.data as any[]) || []).map(t => `${t.folder_name}:${t.document_name}`),
-          compliances: ((compliances.data as any[]) || []).map(c => c.compliance_id)
-        }
-        taskTimings['fetchHidden'] = performance.now() - start
-        return res
-      })(),
-
-      // G: User Role
-      (async () => {
-        const start = performance.now()
-        const res = currentCompanyId ? await getUserRole(currentCompanyId, user, isSuperadminResult) : { success: true, role: 'viewer' }
-        taskTimings['fetchRole'] = performance.now() - start
-        return res
-      })(),
-
-      // H: Regulatory Requirements
-      (async () => {
-        const start = performance.now()
-        const res = currentCompanyId ? await getRegulatoryRequirements(currentCompanyId, user, isSuperadminResult) : { success: true, requirements: [] }
-        taskTimings['fetchReqs'] = performance.now() - start
-        return res
-      })()
-    ])
-
-    const [
-      companiesResult, 
-      subscriptionState, 
-      ownedCompanies, 
-      currentCompanyAccess, 
-      currentCompanyDetails,
-      hiddenItems,
-      roleResult,
-      reqsResult
-    ] = results
-    
-    const parallelDuration = performance.now() - startParallel
     const totalDuration = performance.now() - initStartTime
-    
-    console.log(`[InitAction] ⏱️ Parallel fetches completed in ${parallelDuration.toFixed(2)}ms (AuthProvider: ${process.env.AUTH_PROVIDER || 'supabase'})`)
-    
-    // Sort timings to find the slowest
-    const sortedTimings = Object.entries(taskTimings)
-      .sort((a, b) => b[1] - a[1])
-      .map(([k, v]) => `${k}:${v.toFixed(0)}ms`);
-    
-    console.log(`[InitAction] ⏱️ SLOWEST TASKS: ${sortedTimings.slice(0, 5).join(', ')}`)
-    console.log(`[InitAction] ⏱️ TOTAL: ${totalDuration.toFixed(1)}ms`)
-    
-    if (totalDuration > 8000) {
-      console.warn(`[InitAction] ⚠️ Initialization took ${(totalDuration/1000).toFixed(1)}s - bottleneck breakdown:`, taskTimings)
-    }
+    console.log(`[InitAction] ⏱️ TOTAL INITIALIZATION TOOK ${totalDuration.toFixed(2)}ms (Mega: ${megaDuration.toFixed(0)}ms)`)
 
-    const hasActiveSubscription = Boolean(
-      subscriptionState?.hasSubscription ||
-      (subscriptionState?.isTrial && (subscriptionState?.trialDaysRemaining ?? 0) > 0)
-    )
-    
     return {
       success: true,
       data: {
         user: { id: user.id, email: user.email || '', fullName: user.fullName || null },
-        companies: companiesResult || [],
+        companies: snap.companies_metadata || [],
         accessibleCompanyIds,
         currentCompanyId,
-        companyAccess: currentCompanyAccess,
+        companyAccess: isSuperadminResult ? { hasAccess: true, accessType: 'superadmin', trialDaysRemaining: null, isOwner: false, subscriptionInfo: null, ownerSubscriptionExpired: false } : null,
         userSubscription: {
-          hasSubscription: hasActiveSubscription,
-          tier: subscriptionState?.tier ?? 'none',
-          isTrial: subscriptionState?.isTrial ?? false,
-          trialDaysRemaining: subscriptionState?.trialDaysRemaining ?? 0,
-          companyLimit: subscriptionState?.companyLimit ?? 0,
-          currentCompanyCount: (ownedCompanies || []).length,
-          canCreateCompany: hasActiveSubscription && (ownedCompanies || []).length < (subscriptionState?.companyLimit ?? 0),
+          hasSubscription: hasActiveSub,
+          tier: subState.tier,
+          isTrial: subState.isTrial,
+          trialDaysRemaining: subState.trialDaysRemaining,
+          companyLimit: subState.companyLimit,
+          currentCompanyCount: Number(snap.owned_count || 0),
+          canCreateCompany: hasActiveSub && Number(snap.owned_count || 0) < subState.companyLimit,
         },
-        initialEntityDetails: currentCompanyDetails,
-        hiddenTemplates: hiddenItems.templates,
-        hiddenCompliances: hiddenItems.compliances,
-        userRole: (roleResult.success ? roleResult.role : 'viewer') as any,
-        initialRequirements: (reqsResult.success ? reqsResult.requirements : []) as any[],
-        // Expose timings to client for easier debugging
+        initialEntityDetails: formattedDetails,
+        hiddenTemplates: (snap.hidden_templates || []).map((t: any) => `${t.folder_name}:${t.document_name}`),
+        hiddenCompliances: (snap.hidden_compliances || []).map((c: any) => c.compliance_id),
+        userRole: (isSuperadminResult ? 'superadmin' : snap.role || 'viewer') as any,
+        initialRequirements: (snap.requirements || []) as any[],
         _debug: {
-          authProvider: process.env.AUTH_PROVIDER || 'supabase',
-          timings: taskTimings,
-          authDuration: authDuration,
-          parallelDuration: parallelDuration,
-          totalDuration: totalDuration,
+            authProvider: 'passport',
+            timings: { phase1: authDuration, phase2: accessibleDuration, phase3: megaDuration },
+            totalDuration
         }
       }
     }
