@@ -3588,12 +3588,18 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     const parallelDuration = performance.now() - startParallel
     const totalDuration = performance.now() - initStartTime
     
-    console.log(`[InitAction] ⏱️ Parallel fetches completed in ${parallelDuration.toFixed(2)}ms`)
-    console.log(`[InitAction] ⏱️ TASK BREAKDOWN (AuthProvider: ${process.env.AUTH_PROVIDER || 'supabase'}):`, taskTimings)
-    console.log(`[InitAction] ⏱️ Total initialization took ${totalDuration.toFixed(2)}ms`)
+    console.log(`[InitAction] ⏱️ Parallel fetches completed in ${parallelDuration.toFixed(2)}ms (AuthProvider: ${process.env.AUTH_PROVIDER || 'supabase'})`)
     
-    if (totalDuration > 15000) {
-      console.warn(`[InitAction] ❌ CRITICAL: Total initialization took ${(totalDuration/1000).toFixed(1)}s - bottleneck still present.`)
+    // Sort timings to find the slowest
+    const sortedTimings = Object.entries(taskTimings)
+      .sort((a, b) => b[1] - a[1])
+      .map(([k, v]) => `${k}:${v.toFixed(0)}ms`);
+    
+    console.log(`[InitAction] ⏱️ SLOWEST TASKS: ${sortedTimings.slice(0, 5).join(', ')}`)
+    console.log(`[InitAction] ⏱️ TOTAL: ${totalDuration.toFixed(1)}ms`)
+    
+    if (totalDuration > 8000) {
+      console.warn(`[InitAction] ⚠️ Initialization took ${(totalDuration/1000).toFixed(1)}s - bottleneck breakdown:`, taskTimings)
     }
 
     const hasActiveSubscription = Boolean(

@@ -60,19 +60,15 @@ export class PrismaCompanyRepository implements CompanyRepository {
   }
 
   async listOwnedByUser(userId: string): Promise<CompanyRecord[]> {
-    // Optimized: Single query using UNION to check both Passport and Supabase users
-    // This avoids multiple sequential queries
     const rows = await prisma.$queryRaw<any[]>`
-      SELECT * FROM (
-        SELECT c.id, c.name, c.user_id, c.app_user_id, c.created_at
-        FROM companies c
-        WHERE c.app_user_id::uuid = ${userId}::uuid
-        UNION
-        SELECT c.id, c.name, c.user_id, c.app_user_id, c.created_at
-        FROM companies c
-        WHERE c.user_id::uuid = ${userId}::uuid
-        AND NOT EXISTS (SELECT 1 FROM app_users WHERE id::uuid = ${userId}::uuid)
-      ) AS combined
+      SELECT c.id, c.name, c.user_id, c.app_user_id, c.created_at
+      FROM companies c
+      WHERE c.app_user_id::uuid = ${userId}::uuid
+      UNION ALL
+      SELECT c.id, c.name, c.user_id, c.app_user_id, c.created_at
+      FROM companies c
+      WHERE c.user_id::uuid = ${userId}::uuid
+      AND NOT EXISTS (SELECT 1 FROM app_users WHERE id::uuid = ${userId}::uuid)
       ORDER BY created_at DESC
     `
     return rows.map((r: any) => ({
@@ -100,37 +96,28 @@ export class PrismaCompanyRepository implements CompanyRepository {
   }
 
   async hasAnyAccessibleCompany(userId: string): Promise<boolean> {
-    // OPTIMIZED: Single UNION query to check all possibilities at once
-    // This avoids sequential queries and is much faster
     const result = await prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(*) as count FROM (
-        -- Check if user owns any companies (Passport)
-        SELECT 1 FROM companies WHERE app_user_id::uuid = ${userId}::uuid
-        UNION
-        -- Check if user owns any companies (Supabase)
-        SELECT 1 FROM companies c
-        WHERE c.user_id::uuid = ${userId}::uuid
-        AND NOT EXISTS (SELECT 1 FROM app_users WHERE id::uuid = ${userId}::uuid)
-        UNION
-        -- Check if user has roles in any companies (Passport)
-        SELECT 1 FROM user_roles WHERE app_user_id::uuid = ${userId}::uuid AND company_id IS NOT NULL
-        UNION
-        -- Check if user has roles via linked Supabase identity
-        SELECT 1 FROM user_roles ur
-        INNER JOIN auth_identities ai ON ai.legacy_auth_id::uuid = ur.user_id::uuid
-        WHERE ai.app_user_id::uuid = ${userId}::uuid 
-        AND ai.provider = 'supabase'
-        AND ur.company_id IS NOT NULL
-        UNION
-        -- Check if user has roles directly (Supabase, no Passport link)
-        SELECT 1 FROM user_roles ur
-        WHERE ur.user_id::uuid = ${userId}::uuid
-        AND ur.company_id IS NOT NULL
-        AND NOT EXISTS (SELECT 1 FROM app_users WHERE id::uuid = ${userId}::uuid)
-      ) AS accessible
+      SELECT 1 FROM companies WHERE app_user_id::uuid = ${userId}::uuid
+      UNION ALL
+      SELECT 1 FROM companies c
+      WHERE c.user_id::uuid = ${userId}::uuid
+      AND NOT EXISTS (SELECT 1 FROM app_users WHERE id::uuid = ${userId}::uuid)
+      UNION ALL
+      SELECT 1 FROM user_roles WHERE app_user_id::uuid = ${userId}::uuid AND company_id IS NOT NULL
+      UNION ALL
+      SELECT 1 FROM user_roles ur
+      INNER JOIN auth_identities ai ON ai.legacy_auth_id::uuid = ur.user_id::uuid
+      WHERE ai.app_user_id::uuid = ${userId}::uuid 
+      AND ai.provider = 'supabase'
+      AND ur.company_id IS NOT NULL
+      UNION ALL
+      SELECT 1 FROM user_roles ur
+      WHERE ur.user_id::uuid = ${userId}::uuid
+      AND ur.company_id IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM app_users WHERE id::uuid = ${userId}::uuid)
       LIMIT 1
     `
-    return result.length > 0 && Number(result[0].count) > 0
+    return result.length > 0
   }
 
   async create(input: import('@/application/interfaces/CompanyRepository').CreateCompanyInput): Promise<CompanyRecord> {

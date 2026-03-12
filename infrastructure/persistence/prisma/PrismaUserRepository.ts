@@ -19,13 +19,7 @@ export class PrismaUserRepository implements UserRepository {
   }
 
   async getById(userId: string): Promise<AppUser | null> {
-    // First try finding by legacy identity (matches SupabaseUserRepository logic)
-    const byLegacyIdentity = await this.getByLegacyAuthIdentity('supabase', userId)
-    if (byLegacyIdentity) {
-      return byLegacyIdentity
-    }
-
-    // Fallback to finding by canonical id
+    // 1. Try finding by canonical id first (FASTEST for Passport and modern app logic)
     const appUserRow = await prisma.appUser.findUnique({
       where: { id: userId },
       select: {
@@ -35,11 +29,17 @@ export class PrismaUserRepository implements UserRepository {
       },
     })
 
-    if (!appUserRow) {
-      return null
+    if (appUserRow) {
+      return this.mapCanonicalUser(appUserRow, 'supabase', null)
     }
 
-    return this.mapCanonicalUser(appUserRow, 'supabase', null)
+    // 2. Fallback to finding by legacy identity (compatibility)
+    const byLegacyIdentity = await this.getByLegacyAuthIdentity('supabase', userId)
+    if (byLegacyIdentity) {
+      return byLegacyIdentity
+    }
+
+    return null
   }
 
   async findByEmail(email: string): Promise<AppUser | null> {
