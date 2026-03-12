@@ -15,7 +15,8 @@ export class GetCompanyRole {
       return null
     }
 
-    const role = await this.accessService.getRoleForCompany(userId, companyId)
+    // OPTIMIZATION: Pass isSuperadmin result to avoid duplicate call
+    const role = await this.accessService.getRoleForCompany(userId, companyId, isSuperadmin)
 
     // Preserve the existing action-layer contract for now: company-scoped role
     // checks default to `viewer` when no explicit row is found.

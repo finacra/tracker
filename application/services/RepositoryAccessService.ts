@@ -17,16 +17,22 @@ export class RepositoryAccessService implements AccessService {
         return roles.some((r) => r.companyId === null && r.role === 'superadmin')
     }
 
-    async getRoleForCompany(userId: string, companyId: string): Promise<AppRole | null> {
-        // OPTIMIZATION: Check superadmin and company ownership in parallel
-        const [isSuperadminResult, company] = await Promise.all([
-            this.isSuperadmin(userId),
-            this.companyRepository.getById(companyId)
-        ])
+    async getRoleForCompany(userId: string, companyId: string, isSuperadminCache?: boolean): Promise<AppRole | null> {
+        // OPTIMIZATION: Accept isSuperadminCache to avoid duplicate calls
+        // If caller already checked superadmin status, pass it here
+        let isSuperadminResult: boolean
+        if (isSuperadminCache !== undefined) {
+            isSuperadminResult = isSuperadminCache
+        } else {
+            isSuperadminResult = await this.isSuperadmin(userId)
+        }
         
         if (isSuperadminResult) {
             return 'superadmin'
         }
+        
+        // Fetch company in parallel with superadmin check (if not cached)
+        const company = await this.companyRepository.getById(companyId)
         
         // Check if user is owner - handle both Passport and Supabase users
         // OPTIMIZATION: Don't call listOwnedByUser - just check the company record directly
