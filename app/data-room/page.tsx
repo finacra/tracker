@@ -438,10 +438,16 @@ function DataRoomPageInner() {
         
         updateLoadingMessage("⚖️ Loading compliance requirements...");
         
-        // 5. Populate requirements if available for the selected company
-        if (data.initialRequirements && selected?.id === data.currentCompanyId) {
-            setRegulatoryRequirements(data.initialRequirements);
-            requirementsFetchedRef.current = selected.id;
+        // 5. Populate requirements and documents if available for the selected company
+        if (selected?.id === data.currentCompanyId) {
+            if (data.initialRequirements) {
+                setRegulatoryRequirements(data.initialRequirements);
+                requirementsFetchedRef.current = selected.id;
+            }
+            if (data.initialVaultDocuments) {
+                setVaultDocuments(data.initialVaultDocuments);
+                vaultDocumentsFetchedRef.current = selected.id;
+            }
         }
 
         updateLoadingMessage("✨ Finalizing your workspace...");

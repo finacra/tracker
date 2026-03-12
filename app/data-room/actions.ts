@@ -3331,6 +3331,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     hiddenCompliances: string[]
     userRole: 'superadmin' | 'admin' | 'editor' | 'viewer'
     initialRequirements: any[]
+    initialVaultDocuments: any[]
     redirectTo?: string
     _debug?: any
   }
@@ -3346,7 +3347,6 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     }
 
     // 2. THE ATOMIC PULSE: Everything in exactly one database roundtrip
-    // This SQL resolves Auth, Accessibility, Meta-data, and the Full Snapshot for the selected company.
     const atomicStart = performance.now()
     const pulseRaw = await prisma.$queryRaw<any[]>`
       WITH 
@@ -3367,35 +3367,31 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
           AND (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params))
           ORDER BY created_at DESC LIMIT 1
         ),
-        -- THE ACCESS ENGINE: Calculate all IDs this user can legally see
+        -- THE ACCESS ENGINE
         acc_ids AS (
-           -- Rule 1: Superadmins see everything
            SELECT id FROM companies WHERE (SELECT val FROM is_sa) IS TRUE
            UNION
-           -- Rule 2: Explicit invitations (team members)
            SELECT company_id as id FROM user_roles 
            WHERE (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params)) 
            AND company_id IS NOT NULL
            UNION
-           -- Rule 3: Owners with active personal plans
            SELECT id FROM companies 
            WHERE (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params))
            AND EXISTS (SELECT 1 FROM personal_sub)
            UNION
-           -- Rule 4: Owners with company-specific plans
            SELECT c.id FROM companies c
            INNER JOIN subscriptions s ON s.company_id = c.id
            WHERE (c.app_user_id = (SELECT uid FROM params) OR c.user_id = (SELECT uid FROM params))
            AND s.subscription_type = 'company' AND (s.status = 'active' OR s.is_trial = true)
         ),
-        -- Determine final company selection (Target -> First Accessible -> NULL)
+        -- Determine final company selection
         target_selection AS (
            SELECT id FROM acc_ids WHERE id = ${preferredCompanyId}::uuid
            UNION ALL
            SELECT id FROM acc_ids LIMIT 1
         ),
         final_target_id AS (SELECT id FROM target_selection LIMIT 1),
-        -- META-DATA: All accessible companies for sidebar
+        -- META-DATA
         sidebar_meta AS (
           SELECT id, name, type, incorporation_date, country_code, region 
           FROM companies WHERE id IN (SELECT id FROM acc_ids)
@@ -3404,6 +3400,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         comp_snapshot AS (SELECT * FROM companies WHERE id = (SELECT id FROM final_target_id)),
         directors_snapshot AS (SELECT * FROM directors WHERE company_id = (SELECT id FROM final_target_id) ORDER BY created_at ASC),
         reqs_snapshot AS (SELECT * FROM regulatory_requirements WHERE company_id = (SELECT id FROM final_target_id) ORDER BY due_date ASC),
+        docs_snapshot AS (SELECT * FROM company_documents_internal WHERE company_id = (SELECT id FROM final_target_id) ORDER BY created_at DESC),
         role_snapshot AS (
            SELECT role FROM user_roles 
            WHERE (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params)) 
@@ -3421,6 +3418,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         (SELECT row_to_json(cs) FROM comp_snapshot cs) as current_company,
         (SELECT json_agg(ds) FROM directors_snapshot ds) as directors,
         (SELECT json_agg(rs) FROM reqs_snapshot rs) as requirements,
+        (SELECT json_agg(ds2) FROM docs_snapshot ds2) as documents,
         (SELECT role FROM role_snapshot) as explicit_role,
         (SELECT json_agg(et) FROM excluded_t et) as hidden_templates,
         (SELECT json_agg(ec) FROM excluded_c ec) as hidden_compliances,
@@ -3475,18 +3473,33 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
 
     const hasActiveSub = subState.hasSubscription || (subState.isTrial && subState.trialDaysRemaining > 0)
     
+    const formattedDocs = (pulse.documents || []).map((doc: any) => ({
+      id: doc.id,
+      company_id: doc.company_id,
+      document_type: doc.document_type,
+      folder_name: doc.folder_name,
+      file_path: doc.file_path,
+      file_name: doc.file_name,
+      created_at: doc.created_at,
+      registration_date: doc.registration_date || null,
+      expiry_date: doc.expiry_date || null,
+      period_type: doc.period_type || null,
+      period_financial_year: doc.period_financial_year || null,
+      period_key: doc.period_key || null,
+      period_start: doc.period_start || null,
+      period_end: doc.period_end || null,
+      requirement_id: doc.requirement_id || null,
+    }));
+
     // 3. Subscription Check for non-superadmins
     if (!isSuperadminResult && preferredCompanyId && !hasActiveSub) {
-      // Check if specifically this company has its own subscription (Rule 4 check already done for discovery, 
-      // but if user passed a preferred ID that isn't accessible, they'd have failed already).
-      // If they passed an ID they own but have no active plan, we redirect.
       return {
         success: true,
         data: {
           user: { id: user.id, email: user.email || '', fullName: user.fullName || null },
           companies: [], accessibleCompanyIds: [], currentCompanyId: null, companyAccess: null,
           userSubscription: { hasSubscription: false, tier: 'none', isTrial: false, trialDaysRemaining: 0, companyLimit: 0, currentCompanyCount: 0, canCreateCompany: false },
-          hiddenTemplates: [], hiddenCompliances: [], userRole: 'viewer', initialRequirements: [],
+          hiddenTemplates: [], hiddenCompliances: [], userRole: 'viewer', initialRequirements: [], initialVaultDocuments: [],
           redirectTo: `/subscription-required?company_id=${preferredCompanyId}`
         }
       }
@@ -3517,6 +3530,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         hiddenCompliances: (pulse.hidden_compliances || []).map((c: any) => c.requirement_id),
         userRole: (isSuperadminResult ? 'superadmin' : pulse.explicit_role || 'viewer') as any,
         initialRequirements: (pulse.requirements || []) as any[],
+        initialVaultDocuments: formattedDocs,
         _debug: {
             authProvider: 'passport',
             timings: { atomic: atomicDuration },
