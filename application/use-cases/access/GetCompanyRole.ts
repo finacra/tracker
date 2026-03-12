@@ -4,8 +4,8 @@ import type { AppRole } from '@/domain/types/Role'
 export class GetCompanyRole {
   constructor(private readonly accessService: AccessService) {}
 
-  async execute(userId: string, companyId: string | null): Promise<AppRole | null> {
-    const isSuperadmin = await this.accessService.isSuperadmin(userId)
+  async execute(userId: string, companyId: string | null, isSuperadminCache?: boolean): Promise<AppRole | null> {
+    const isSuperadmin = isSuperadminCache !== undefined ? isSuperadminCache : await this.accessService.isSuperadmin(userId)
 
     if (isSuperadmin) {
       return 'superadmin'

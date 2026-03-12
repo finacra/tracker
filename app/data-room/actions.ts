@@ -142,7 +142,11 @@ export interface ComplianceTemplate {
  * Get user's role for a company
  * Superadmin is platform-level (company_id = NULL)
  */
-export async function getUserRole(companyId: string | null): Promise<{ success: boolean; role: string | null; error?: string }> {
+export async function getUserRole(
+  companyId: string | null,
+  providedUser?: AppUser | null,
+  providedIsSuperadmin?: boolean
+): Promise<{ success: boolean; role: string | null; error?: string }> {
   try {
     // SECURITY: Validate companyId if provided
     if (companyId !== null && !validateCompanyId(companyId)) {
@@ -150,9 +154,9 @@ export async function getUserRole(companyId: string | null): Promise<{ success: 
     }
 
     const { authService, accessService } = createServerContainer()
-    const user = await authService.requireCurrentUser()
+    const user = providedUser || await authService.requireCurrentUser()
     const useCase = new GetCompanyRole(accessService)
-    const role = await useCase.execute(user.id, companyId)
+    const role = await useCase.execute(user.id, companyId, providedIsSuperadmin)
 
     return { success: true, role }
   } catch (error: any) {
@@ -379,133 +383,55 @@ export async function getOwnedCompanySubscriptionOverview(requestedCompanyId: st
  * Fetch regulatory requirements for a company
  * Superadmins can fetch all requirements (pass null for companyId)
  */
-export async function getRegulatoryRequirements(companyId: string | null = null): Promise<{
+export async function getRegulatoryRequirements(
+  companyId: string | null = null,
+  providedUser?: AppUser | null,
+  providedIsSuperadmin?: boolean
+): Promise<{
   success: boolean
   requirements?: RegulatoryRequirement[]
   error?: string
 }> {
   const startTime = Date.now()
   const isDev = process.env.NODE_ENV === 'development'
-  if (isDev) {
-    console.log('[getRegulatoryRequirements] START - companyId:', companyId)
-  }
-
+  
   try {
     // SECURITY: Validate companyId if provided
     if (companyId !== null && !validateCompanyId(companyId)) {
       return { success: false, error: 'Invalid company ID format' }
     }
 
+    const { authService, accessService, requirementRepository } = createServerContainer()
+    const user = providedUser || await authService.requireCurrentUser()
+
     // First abstraction slice: company-specific requirements now go through the
     // application layer, while the all-companies superadmin path stays unchanged.
     if (companyId) {
-      const { authService, accessService, requirementRepository } = createServerContainer()
-      const user = await authService.requireCurrentUser()
-
-      if (isDev) {
-        console.log('[getRegulatoryRequirements] Auth check:', Date.now() - startTime, 'ms')
-      }
-
       const useCase = new GetCompanyRequirements(accessService, requirementRepository)
-      const requirements = await useCase.execute(user.id, companyId)
-
-      if (isDev) {
-        console.log(
-          `[getRegulatoryRequirements] Fetched ${requirements.length} requirements for company ${companyId} in ${Date.now() - startTime}ms`
-        )
-      }
+      const requirements = await useCase.execute(user.id, companyId, providedIsSuperadmin)
 
       return { success: true, requirements: requirements as RegulatoryRequirement[] }
     }
 
-    const { authService, requirementRepository } = createServerContainer()
-    const user = await authService.getCurrentUser()
-    if (isDev) {
-      console.log('[getRegulatoryRequirements] Auth check:', Date.now() - startTime, 'ms')
+    // Superadmin path for ALL companies
+    let isSuperadmin = providedIsSuperadmin ?? false
+    if (providedIsSuperadmin === undefined) {
+      isSuperadmin = await accessService.isSuperadmin(user.id)
     }
 
-    if (!user) {
-      return { success: false, error: 'Not authenticated' }
-    }
-
-    let isSuperadmin = false
-
-    // The company-specific path is the hot path for data-room startup and doesn't need
-    // a superadmin lookup because the query is already scoped to that company.
-    if (!companyId) {
-      isSuperadmin = await isUserPlatformSuperadmin(user.id)
-
-      if (isDev) {
-        console.log('[getRegulatoryRequirements] Superadmin check:', Date.now() - startTime, 'ms')
-      }
+    if (!isSuperadmin) {
+      return { success: false, error: 'Company ID required for non-superadmin users' }
     }
 
     // Update overdue statuses before fetching to ensure data consistency
-    // OPTIMIZATION: Make this non-blocking to improve load times
-    // The status will be updated in the background, and the next fetch will have correct status
-    if (companyId) {
-      requirementRepository.refreshOverdueStatuses(companyId).catch((err) => {
-        console.error('[getRegulatoryRequirements] Background status update failed (non-critical):', err)
-      })
-    } else if (isSuperadmin) {
-      requirementRepository.refreshAllOverdueStatuses().catch((err) => {
-        console.error('[getRegulatoryRequirements] Background status update failed (non-critical):', err)
-      })
-    }
+    requirementRepository.refreshAllOverdueStatuses().catch((err) => {
+      console.error('[getRegulatoryRequirements] Background status refresh failed:', err)
+    })
 
-    // Use repository to fetch requirements
-    let requirements: Requirement[]
-    if (!isSuperadmin) {
-      if (!companyId) {
-        return { success: false, error: 'Company ID required for non-superadmin users' }
-      }
-      requirements = await requirementRepository.getByCompanyId(companyId)
-    } else if (companyId) {
-      // Superadmin can optionally filter by company
-      requirements = await requirementRepository.getByCompanyId(companyId)
-    } else {
-      // Superadmin fetching all requirements
-      requirements = await requirementRepository.getAll()
-    }
+    const requirements = await requirementRepository.getAll()
 
-    if (isDev) {
-      console.log('[getRegulatoryRequirements] Query completed:', Date.now() - startTime, 'ms')
-      console.log(`[getRegulatoryRequirements] Fetched ${requirements.length} requirements for company ${companyId || 'all'} in ${Date.now() - startTime}ms`)
-    }
-
-    if (isDev && requirements.length > 0) {
-      console.log('[getRegulatoryRequirements] Sample requirement:', {
-        id: requirements[0].id,
-        requirement: requirements[0].requirement,
-        company_id: requirements[0].company_id,
-        due_date: requirements[0].due_date,
-        template_id: requirements[0].template_id,
-        required_documents: requirements[0].required_documents,
-        required_documents_type: typeof requirements[0].required_documents,
-        required_documents_length: Array.isArray(requirements[0].required_documents) ? requirements[0].required_documents.length : 'not array'
-      })
-
-      // Check all requirements for required_documents
-      const withDocs = requirements.filter((r: Requirement) => r.required_documents && Array.isArray(r.required_documents) && r.required_documents.length > 0)
-      const withoutDocs = requirements.filter((r: Requirement) => !r.required_documents || !Array.isArray(r.required_documents) || r.required_documents.length === 0)
-      console.log(`[getRegulatoryRequirements] Requirements with docs: ${withDocs.length}, without docs: ${withoutDocs.length}`)
-      if (withDocs.length > 0) {
-        console.log('[getRegulatoryRequirements] Example with docs:', {
-          requirement: withDocs[0].requirement,
-          required_documents: withDocs[0].required_documents
-        })
-      }
-      if (withoutDocs.length > 0) {
-        console.log('[getRegulatoryRequirements] Example without docs:', {
-          requirement: withoutDocs[0].requirement,
-          required_documents: withoutDocs[0].required_documents,
-          has_field: 'required_documents' in withoutDocs[0]
-        })
-      }
-    }
-
-    // Normalize required_documents to always be an array (already handled by mapRow, but ensure consistency)
-    const normalizedData = requirements.map((req: Requirement) => ({
+    // Normalize required_documents to always be an array
+    const normalizedData = (requirements || []).map((req: Requirement) => ({
       ...req,
       required_documents: Array.isArray(req.required_documents)
         ? req.required_documents
@@ -3382,10 +3308,6 @@ export async function getHiddenCompliances(
 
 
 
-/**
- * Consolidated action to fetch all initial data needed for the Data Room.
- * This combines multiple checks into a single server round-trip to prevent UI waterfalls.
- */
 export async function getDataRoomInitState(preferredCompanyId: string | null = null): Promise<{
   success: boolean
   data?: {
@@ -3417,27 +3339,27 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
   try {
     const initStartTime = performance.now()
     console.log(`[InitAction] ===== STARTING INITIALIZATION =====`)
-    const { authService, accessService, companyRepository, subscriptionRepository } = createServerContainer()
     
-    const authStartTime = performance.now()
+    // 1. Initial Container and Auth Setup
+    const container = createServerContainer()
+    const { authService, accessService, companyRepository, subscriptionRepository, requirementRepository, directorRepository, companyMembershipRepository } = container
+    
+    // 2. CONSOLDIDATED AUTH: Fetch user and superadmin status ONCE
     const user = await authService.requireCurrentUser()
-    const authDuration = performance.now() - authStartTime
-    console.log(`[InitAction] ⏱️ Auth check took ${authDuration.toFixed(2)}ms`)
+    const isSuperadminResult = await accessService.isSuperadmin(user.id)
+    const authDuration = performance.now() - initStartTime
+    console.log(`[InitAction] ⏱️ Consolidated Auth check took ${authDuration.toFixed(2)}ms (isSuperadmin: ${isSuperadminResult})`)
     
-    // OPTIMIZATION: Skip getAccessibleCompanyIds if preferredCompanyId is known
-    // This saves ~1.9s for superadmins and ~500ms for regular users
     let accessibleCompanyIds: string[]
     let currentCompanyId: string | null = preferredCompanyId
-    let accessibleDuration = 0 // Track duration for logging
+    let accessibleDuration = 0
     
+    // 3. SECURE START: Determine which company to load
     if (preferredCompanyId) {
-      // Fast path: Validate access for single company only
-      // OPTIMIZATION: Check superadmin once and pass to getCompanyAccessSnapshot
+      // Fast path: Validate access for preferred company
       const singleAccessStartTime = performance.now()
-      const isSuperadminResult = await accessService.isSuperadmin(user.id)
       const accessSnapshot = await accessService.getCompanyAccessSnapshot(user.id, preferredCompanyId, isSuperadminResult)
       accessibleDuration = performance.now() - singleAccessStartTime
-      console.log(`[InitAction] ⏱️ Single company access check took ${accessibleDuration.toFixed(2)}ms`)
       
       if (!accessSnapshot.hasAccess) {
         return {
@@ -3466,43 +3388,27 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
           }
         }
       }
-      
-      // Access granted - use this company
       accessibleCompanyIds = [preferredCompanyId]
     } else {
-      // Slow path: Get all accessible companies (needed for company selector)
+      // Slow path: Get all accessible companies
       const accessibleStartTime = performance.now()
-      const accessibleUseCase = new GetAccessibleCompanyIds(accessService)
-      accessibleCompanyIds = await accessibleUseCase.execute(user.id)
+      // Optimized: RepositoryAccessService handles superadmin optimization correctly
+      accessibleCompanyIds = await accessService.getAccessibleCompanyIds(user.id, isSuperadminResult)
       accessibleDuration = performance.now() - accessibleStartTime
-      console.log(`[InitAction] ⏱️ Get accessible company IDs took ${accessibleDuration.toFixed(2)}ms (found ${accessibleCompanyIds.length} companies)`)
-      
-      if (accessibleDuration > 5000) {
-        console.warn(`[InitAction] ⚠️ WARNING: Get accessible company IDs took ${accessibleDuration.toFixed(2)}ms - this is very slow! Check database indexes.`)
-      }
-      
-      // Determine current company ID from accessible list
       currentCompanyId = accessibleCompanyIds[0] || null
     }
-    
-    // ULTRA-FAST-PATH: Lightweight subscription check FIRST (before full access snapshot)
-    // This is much faster than GetCompanyAccessSnapshot because it only checks subscription, not roles/permissions
+
+    console.log(`[InitAction] ⏱️ Access resolution took ${accessibleDuration.toFixed(2)}ms (found ${accessibleCompanyIds.length} companies)`)
+
+    // 4. ULTRA-FAST-PATH: Lightweight subscription check for the target company
     if (currentCompanyId) {
       const ultraFastCheckStart = performance.now()
-      
-      // Get company to find owner (lightweight query)
       const company = await companyRepository.getById(currentCompanyId)
-      if (!company) {
-        // Company doesn't exist, skip fast-path
-      } else {
-        const isOwner = company.ownerUserId === user.id || company.ownerAppUserId === user.id
-        
-        // For owners: check their subscription (company or user)
-        // For invited members: check owner's subscription
+      
+      if (company) {
         const ownerId = company.ownerAppUserId || company.ownerUserId
-        
         if (ownerId) {
-          // Parallel: Check both company subscription and owner's user subscription
+          // Parallel check of company and owner subscription
           const [companySub, ownerUserSub] = await Promise.all([
             subscriptionRepository.getCompanySubscriptionState(currentCompanyId),
             subscriptionRepository.getUserSubscriptionState(ownerId)
@@ -3513,20 +3419,10 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
             (ownerUserSub && ownerUserSub.hasSubscription)
           )
           
-          const ultraFastDuration = performance.now() - ultraFastCheckStart
-          console.log(`[InitAction] ⏱️ Ultra-fast subscription check took ${ultraFastDuration.toFixed(2)}ms`, {
-            hasActiveSubscription,
-            isOwner,
-            companySub: companySub?.hasSubscription,
-            ownerUserSub: ownerUserSub?.hasSubscription
-          })
+          console.log(`[InitAction] ⏱️ Ultra-fast subscription check took ${(performance.now() - ultraFastCheckStart).toFixed(2)}ms`)
           
-          if (ultraFastDuration > 5000) {
-            console.warn(`[InitAction] ⚠️ WARNING: Ultra-fast subscription check took ${ultraFastDuration.toFixed(2)}ms - this is very slow! Check database indexes on subscriptions table.`)
-          }
-          
-          // If NO active subscription, redirect immediately (skip all other data loading)
-          if (!hasActiveSubscription) {
+          if (!hasActiveSubscription && !isSuperadminResult) {
+            const isOwner = company.ownerUserId === user.id || company.ownerAppUserId === user.id
             return {
               success: true,
               data: {
@@ -3558,60 +3454,33 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
       }
     }
     
-    // FAST-PATH: Full access snapshot (only if subscription is active)
-    // This is still needed for proper access type determination, but subscription check already passed
-    // OPTIMIZATION: Reuse superadmin check from earlier (if we already have it)
-    let fastAccessSnapshot: import('@/domain/types/CompanyAccess').CompanyAccessSnapshot | null = null
-    if (currentCompanyId) {
-      const fastAccessCheckStart = performance.now()
-      // Check superadmin once and pass to getCompanyAccessSnapshot to avoid duplicate call
-      const isSuperadminForAccess = await accessService.isSuperadmin(user.id)
-      fastAccessSnapshot = await accessService.getCompanyAccessSnapshot(user.id, currentCompanyId, isSuperadminForAccess)
-      console.log(`[InitAction] Full access check took ${(performance.now() - fastAccessCheckStart).toFixed(2)}ms`)
-    }
-    // 3. Fetch all components in parallel
-    const { createAdminClient } = await import('@/utils/supabase/admin')
-    const adminSupabase = createAdminClient()
-    const { directorRepository, requirementRepository, authService: authSvc, accessService: accSvc, companyRepository: compRepo, subscriptionRepository: subRepo } = createServerContainer()
-    
+    // 5. PARALLEL FETCH: All remaining data for the Data Room
     const startParallel = performance.now()
+    const adminSupabase = createAdminClient()
+
     const results = await Promise.all([
-      // A: Fetch basic details for all accessible companies (for selector)
+      // A: Accessible companies metadata
       (async () => {
-        const s = performance.now()
         if (accessibleCompanyIds.length === 0) return []
         const { data, error } = await adminSupabase
           .from('companies')
           .select('id, name, type, incorporation_date, country_code, region')
           .in('id', accessibleCompanyIds)
         if (error) throw error
-        console.log(`[InitAction] Fetch companies took ${(performance.now() - s).toFixed(2)}ms`)
         return data || []
       })(),
       
-      // B: Fetch user subscription summary
-      (async () => {
-        const s = performance.now()
-        const res = await subscriptionRepository.getUserSubscriptionState(user.id)
-        console.log(`[InitAction] Fetch user sub took ${(performance.now() - s).toFixed(2)}ms`)
-        return res
-      })(),
+      // B: User's own subscription state
+      subscriptionRepository.getUserSubscriptionState(user.id),
       
-      // C: Fetch owned companies count
-      (async () => {
-        const s = performance.now()
-        const res = await companyRepository.listOwnedByUser(user.id)
-        console.log(`[InitAction] Fetch owned count took ${(performance.now() - s).toFixed(2)}ms`)
-        return res
-      })(),
+      // C: Count of companies owned by user
+      companyRepository.listOwnedByUser(user.id),
       
-      // D: Reuse fast-path access snapshot (already fetched above)
-      Promise.resolve(fastAccessSnapshot),
+      // D: Full access snapshot (reusing superadmin status)
+      currentCompanyId ? accessService.getCompanyAccessSnapshot(user.id, currentCompanyId, isSuperadminResult) : Promise.resolve(null),
       
-      // E: Fetch full details and directors for the CURRENT company
+      // E: Current company details and directors
       currentCompanyId ? (async () => {
-        const s = performance.now()
-        
         const [companyResult, directors] = await Promise.all([
           adminSupabase
             .from('companies')
@@ -3624,15 +3493,12 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         if (companyResult.error) return null
         const company = companyResult.data as any
 
-        // Formatting logic
         const incorporationDate = company?.incorporation_date ? new Date(company.incorporation_date) : new Date()
         const formattedDate = incorporationDate.toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'long',
-          year: 'numeric',
+          day: '2-digit', month: 'long', year: 'numeric',
         })
 
-        const res = {
+        return {
           companyName: company?.name || 'Unknown',
           type: (company?.type || '').toUpperCase(),
           regDate: formattedDate,
@@ -3644,60 +3510,29 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
             ? company.industry_categories.join(', ')
             : company?.industry || 'Not Provided',
           directors: (directors || []).map((d: any) => ({
-            id: d.id,
-            firstName: d.firstName,
-            lastName: d.lastName,
-            middleName: d.middleName,
-            din: d.din,
-            designation: d.designation,
-            dob: d.dob,
-            pan: d.pan,
-            email: d.email,
-            mobile: d.mobile,
-            verified: d.verified,
+            id: d.id, firstName: d.firstName, lastName: d.lastName, middleName: d.middleName, din: d.din,
+            designation: d.designation, dob: d.dob, pan: d.pan, email: d.email, mobile: d.mobile, verified: d.verified,
           })),
         }
-        console.log(`[InitAction] Fetch entity details took ${(performance.now() - s).toFixed(2)}ms`)
-        return res
       })() : Promise.resolve(null),
 
-      // F: Hidden Templates (Optimized)
+      // F: Hidden items
       currentCompanyId ? (async () => {
-        const s = performance.now()
-        const { data } = await adminSupabase
-          .from('company_document_template_exclusions')
-          .select('folder_name, document_name')
-          .eq('company_id', currentCompanyId)
-        console.log(`[InitAction] Fetch hidden templates took ${(performance.now() - s).toFixed(2)}ms`)
-        return ((data as any[]) || []).map((t: any) => `${t.folder_name}:${t.document_name}`)
-      })() : Promise.resolve([]),
+        const [templates, compliances] = await Promise.all([
+          adminSupabase.from('company_document_template_exclusions').select('folder_name, document_name').eq('company_id', currentCompanyId),
+          adminSupabase.from('company_compliance_exclusions').select('compliance_id').eq('company_id', currentCompanyId)
+        ])
+        return {
+          templates: ((templates.data as any[]) || []).map(t => `${t.folder_name}:${t.document_name}`),
+          compliances: ((compliances.data as any[]) || []).map(c => c.compliance_id)
+        }
+      })() : Promise.resolve({ templates: [], compliances: [] }),
 
-      // G: Hidden Compliances
-      currentCompanyId ? (async () => {
-        const s = performance.now()
-        const { data } = await adminSupabase
-          .from('company_compliance_exclusions')
-          .select('compliance_id')
-          .eq('company_id', currentCompanyId)
-        console.log(`[InitAction] Fetch hidden compliances took ${(performance.now() - s).toFixed(2)}ms`)
-        return ((data as any[]) || []).map((c: any) => c.compliance_id)
-      })() : Promise.resolve([]),
+      // G: User Role (Optimized: use already fetched user and superadmin status)
+      currentCompanyId ? getUserRole(currentCompanyId, user, isSuperadminResult) : Promise.resolve({ success: true, role: 'viewer' }),
 
-      // H: User Role for current company
-      currentCompanyId ? (async () => {
-        const s = performance.now()
-        const res = await getUserRole(currentCompanyId)
-        console.log(`[InitAction] Fetch user role took ${(performance.now() - s).toFixed(2)}ms`)
-        return res.success ? res.role : 'viewer'
-      })() : Promise.resolve('viewer'),
-
-      // I: Regulatory Requirements
-      currentCompanyId ? (async () => {
-        const s = performance.now()
-        const res = await getRegulatoryRequirements(currentCompanyId)
-        console.log(`[InitAction] Fetch requirements took ${(performance.now() - s).toFixed(2)}ms`)
-        return res.success ? res.requirements : []
-      })() : Promise.resolve([])
+      // H: Regulatory Requirements (Optimized: use already fetched user and superadmin status)
+      currentCompanyId ? getRegulatoryRequirements(currentCompanyId, user, isSuperadminResult) : Promise.resolve({ success: true, requirements: [] })
     ])
 
     const [
@@ -3706,24 +3541,20 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
       ownedCompanies, 
       currentCompanyAccess, 
       currentCompanyDetails,
-      hiddenTemplatesResult,
-      hiddenCompliancesResult,
-      userRoleResult,
-      regulatoryRequirementsResult
+      hiddenItems,
+      roleResult,
+      reqsResult
     ] = results
     
     const parallelDuration = performance.now() - startParallel
     const totalDuration = performance.now() - initStartTime
-    console.log(`[InitAction] ⏱️ Total Parallel fetches took ${parallelDuration.toFixed(2)}ms`)
+    console.log(`[InitAction] ⏱️ Parallel fetches completed in ${parallelDuration.toFixed(2)}ms`)
     console.log(`[InitAction] ⏱️ Total initialization took ${totalDuration.toFixed(2)}ms`)
-    console.log(`[InitAction] ===== INITIALIZATION COMPLETE =====`)
     
-    if (totalDuration > 10000) {
-      console.error(`[InitAction] ❌ CRITICAL: Total initialization took ${totalDuration.toFixed(2)}ms (${(totalDuration/1000).toFixed(1)}s) - this is extremely slow!`)
-      console.error(`[InitAction] Breakdown: Auth=${authDuration.toFixed(0)}ms, Accessible=${accessibleDuration.toFixed(0)}ms, Parallel=${parallelDuration.toFixed(0)}ms`)
+    if (totalDuration > 15000) {
+      console.warn(`[InitAction] ❌ CRITICAL: Total initialization took ${(totalDuration/1000).toFixed(1)}s - bottleneck still present.`)
     }
 
-    // 4. Calculate subscription summary
     const hasActiveSubscription = Boolean(
       subscriptionState?.hasSubscription ||
       (subscriptionState?.isTrial && (subscriptionState?.trialDaysRemaining ?? 0) > 0)
@@ -3732,11 +3563,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     return {
       success: true,
       data: {
-        user: { 
-          id: user.id, 
-          email: user.email || '', 
-          fullName: user.fullName || null 
-        },
+        user: { id: user.id, email: user.email || '', fullName: user.fullName || null },
         companies: companiesResult || [],
         accessibleCompanyIds,
         currentCompanyId,
@@ -3751,18 +3578,14 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
           canCreateCompany: hasActiveSubscription && (ownedCompanies || []).length < (subscriptionState?.companyLimit ?? 0),
         },
         initialEntityDetails: currentCompanyDetails,
-        hiddenTemplates: hiddenTemplatesResult as string[],
-        hiddenCompliances: hiddenCompliancesResult as string[],
-        userRole: userRoleResult as any,
-        initialRequirements: (regulatoryRequirementsResult || []) as any[],
-        redirectTo: undefined // No redirect needed if we got here
+        hiddenTemplates: hiddenItems.templates,
+        hiddenCompliances: hiddenItems.compliances,
+        userRole: (roleResult.success ? roleResult.role : 'viewer') as any,
+        initialRequirements: (reqsResult.success ? reqsResult.requirements : []) as any[],
       }
     }
   } catch (error: any) {
     console.error('Error in getDataRoomInitState:', error)
-    return { 
-      success: false, 
-      error: error.message || 'Failed to initialize Data Room' 
-    }
+    return { success: false, error: error.message || 'Failed to initialize Data Room' }
   }
 }

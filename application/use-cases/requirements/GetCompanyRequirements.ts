@@ -8,9 +8,9 @@ export class GetCompanyRequirements {
     private readonly requirementRepository: RequirementRepository
   ) {}
 
-  async execute(userId: string, companyId: string): Promise<Requirement[]> {
+  async execute(userId: string, companyId: string, isSuperadminCache?: boolean): Promise<Requirement[]> {
     const startTime = performance.now()
-    const canView = await this.accessService.canViewCompany(userId, companyId)
+    const canView = await this.accessService.canViewCompany(userId, companyId, isSuperadminCache)
     console.log(`[GetCompanyRequirements] Access check took ${(performance.now() - startTime).toFixed(2)}ms`)
 
     if (!canView) {

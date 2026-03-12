@@ -44,17 +44,17 @@ export class PrismaCompanyMembershipRepository implements CompanyMembershipRepos
             SELECT * FROM (
                 SELECT ur.*
                 FROM user_roles ur
-                WHERE ur.app_user_id::uuid = ${userId}::uuid
+                WHERE ur.app_user_id = ${userId}::uuid
                 UNION
                 SELECT ur.*
                 FROM user_roles ur
-                INNER JOIN auth_identities ai ON ai.legacy_auth_id::uuid = ur.user_id::uuid
-                WHERE ai.app_user_id::uuid = ${userId}::uuid AND ai.provider = 'supabase'
+                INNER JOIN auth_identities ai ON ai.legacy_auth_id = ur.user_id::text
+                WHERE ai.app_user_id = ${userId}::uuid AND ai.provider = 'supabase'
                 UNION
                 SELECT ur.*
                 FROM user_roles ur
-                WHERE ur.user_id::uuid = ${userId}::uuid
-                AND NOT EXISTS (SELECT 1 FROM app_users WHERE id::uuid = ${userId}::uuid)
+                WHERE ur.user_id = ${userId}::uuid
+                AND NOT EXISTS (SELECT 1 FROM app_users WHERE id = ${userId}::uuid)
             ) AS combined
             ORDER BY created_at DESC
         `
@@ -76,20 +76,20 @@ export class PrismaCompanyMembershipRepository implements CompanyMembershipRepos
             SELECT * FROM (
                 SELECT ur.*
                 FROM user_roles ur
-                WHERE ur.company_id::uuid = ${companyId}::uuid
-                AND ur.app_user_id::uuid = ${userId}::uuid
+                WHERE ur.company_id = ${companyId}::uuid
+                AND ur.app_user_id = ${userId}::uuid
                 UNION
                 SELECT ur.*
                 FROM user_roles ur
-                INNER JOIN auth_identities ai ON ai.legacy_auth_id::uuid = ur.user_id::uuid
-                WHERE ur.company_id::uuid = ${companyId}::uuid
-                AND ai.app_user_id::uuid = ${userId}::uuid AND ai.provider = 'supabase'
+                INNER JOIN auth_identities ai ON ai.legacy_auth_id = ur.user_id::text
+                WHERE ur.company_id = ${companyId}::uuid
+                AND ai.app_user_id = ${userId}::uuid AND ai.provider = 'supabase'
                 UNION
                 SELECT ur.*
                 FROM user_roles ur
-                WHERE ur.company_id::uuid = ${companyId}::uuid
-                AND ur.user_id::uuid = ${userId}::uuid
-                AND NOT EXISTS (SELECT 1 FROM app_users WHERE id::uuid = ${userId}::uuid)
+                WHERE ur.company_id = ${companyId}::uuid
+                AND ur.user_id = ${userId}::uuid
+                AND NOT EXISTS (SELECT 1 FROM app_users WHERE id = ${userId}::uuid)
             ) AS combined
             LIMIT 1
         `
