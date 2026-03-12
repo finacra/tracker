@@ -627,33 +627,90 @@ function DataRoomPageInner() {
     router,
   ]);
 
+  const fetchRegulatoryRequirements = async () => {
+    if (!currentCompany) return;
+    setIsLoadingRequirements(true);
+    try {
+      console.log('[fetchRegulatoryRequirements] Fetching requirements for company:', currentCompany.id);
+      const result = await getRegulatoryRequirements(currentCompany.id);
+      
+      if (result.success) {
+        setRegulatoryRequirements(result.requirements || []);
+        requirementsFetchedRef.current = currentCompany.id;
+        console.log('[fetchRegulatoryRequirements] Set requirements:', result.requirements?.length || 0);
+      } else {
+        // Handle UnrecognizedActionError (stale build)
+        if (result.error?.includes('UnrecognizedActionError')) {
+          console.warn('[fetchRegulatoryRequirements] Stale build detected, reloading...');
+          window.location.reload();
+          return;
+        }
+        console.error("[fetchRegulatoryRequirements] Failed to load requirements:", result.error);
+        setRegulatoryRequirements([]);
+      }
+    } catch (err: any) {
+      console.error("[fetchRegulatoryRequirements] Error fetching requirements:", err);
+      // Handle UnrecognizedActionError in catch block too
+      if (err.message?.includes('UnrecognizedActionError')) {
+        window.location.reload();
+      }
+      setRegulatoryRequirements([]);
+    } finally {
+      setIsLoadingRequirements(false);
+    }
+  };
+
   const fetchVaultDocuments = async () => {
     if (!currentCompany) return;
     setIsLoadingVaultDocuments(true);
     try {
       console.log('[fetchVaultDocuments] Fetching documents for company:', currentCompany.id);
       const result = await getCompanyDocuments(currentCompany.id);
-      console.log('[fetchVaultDocuments] Result:', {
-        success: result.success,
-        documentCount: result.documents?.length || 0,
-        error: result.error,
-        warning: result.warning,
-      });
+      
       if (result.success) {
         setVaultDocuments(result.documents || []);
         vaultDocumentsFetchedRef.current = currentCompany.id;
         console.log('[fetchVaultDocuments] Set vault documents:', result.documents?.length || 0);
       } else {
+        // Handle UnrecognizedActionError (stale build)
+        if (result.error?.includes('UnrecognizedActionError')) {
+          console.warn('[fetchVaultDocuments] Stale build detected, reloading...');
+          window.location.reload();
+          return;
+        }
         console.error("[fetchVaultDocuments] Failed to load vault documents:", result.error);
         setVaultDocuments([]);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("[fetchVaultDocuments] Error fetching vault documents:", err);
+      if (err.message?.includes('UnrecognizedActionError')) {
+        window.location.reload();
+      }
       setVaultDocuments([]);
     } finally {
       setIsLoadingVaultDocuments(false);
     }
   };
+
+  // Fetch requirements and documents whenever company ID changes (consolidated trigger)
+  useEffect(() => {
+    if (!currentCompany || isDataRoomInitLoading) return;
+    
+    const companyId = currentCompany.id;
+    
+    // Fetch requirements if not already fetched for this company
+    if (requirementsFetchedRef.current !== companyId && !requirementsFetchingRef.current) {
+        requirementsFetchingRef.current = companyId;
+        fetchRegulatoryRequirements().finally(() => {
+            requirementsFetchingRef.current = null;
+        });
+    }
+    
+    // Fetch vault documents if not already fetched for this company
+    if (vaultDocumentsFetchedRef.current !== companyId) {
+        fetchVaultDocuments();
+    }
+  }, [currentCompany?.id, isDataRoomInitLoading]);
 
   // Fetch specific company details and directors when currentCompany changes
   useEffect(() => {
@@ -813,20 +870,6 @@ function DataRoomPageInner() {
     fetchDetails();
   }, [currentCompany?.id]); // Remove supabase from dependencies - it's stable and doesn't need to trigger re-fetches
 
-  // Fetch vault documents when company changes (independent of fetchDetails)
-  useEffect(() => {
-    if (!currentCompany || isDataRoomInitLoading) return;
-    
-    // Skip if already fetched for this company
-    if (vaultDocumentsFetchedRef.current === currentCompany.id) {
-      console.log('[fetchVaultDocuments] Already fetched for company:', currentCompany.id, 'skipping...');
-      return;
-    }
-    
-    // Always fetch documents when company changes, even if details are already fetched
-    console.log('[fetchVaultDocuments] Triggering fetch for company:', currentCompany.id);
-    fetchVaultDocuments();
-  }, [currentCompany?.id, isDataRoomInitLoading]);
 
   // Handle company change - update both state and URL params
   const handleCompanyChange = useCallback(

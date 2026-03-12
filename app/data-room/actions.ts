@@ -3340,19 +3340,32 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
   try {
     const initStartTime = performance.now()
     
-    // 1. FAST COOKIE AUTH
-    const session = await getSession()
-    if (!session) {
+    // 1. DYNAMIC HYBRID AUTH: Resolve user using canonical authService
+    // This supports both Supabase (Email) and Passport (Google) sessions
+    const { authService } = createServerContainer()
+    const authUser = await authService.getCurrentUser()
+    
+    if (!authUser) {
       throw new Error('Not authenticated')
     }
+
+    const userId = authUser.id
 
     // 2. THE ATOMIC PULSE: Everything in exactly one database roundtrip
     const atomicStart = performance.now()
     const pulseRaw = await prisma.$queryRaw<any[]>`
       WITH 
-        params AS (SELECT ${session.appUserId}::uuid as uid),
+        params AS (SELECT ${userId}::uuid as uid),
         -- Identity & Auth
-        user_info AS (SELECT id, primary_email as email, full_name as "fullName" FROM app_users WHERE id = (SELECT uid FROM params)),
+        user_info AS (
+          SELECT id, primary_email as email, full_name as "fullName" 
+          FROM app_users 
+          WHERE id = (SELECT uid FROM params)
+          UNION ALL
+          -- Fallback if user not in app_users yet (e.g. legacy or fresh signup)
+          SELECT (SELECT uid FROM params) as id, '' as email, null as "fullName"
+          WHERE NOT EXISTS (SELECT 1 FROM app_users WHERE id = (SELECT uid FROM params))
+        ),
         is_sa AS (
           SELECT EXISTS (
             SELECT 1 FROM user_roles 
@@ -3445,6 +3458,8 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     
     // MAPPING & LOGIC
     const user = pulse.user as any
+    const userEmail = user.email || authUser.email || ''
+    const userFullName = user.fullName || null
     const isSuperadminResult = pulse.is_superadmin as boolean
     const accessibleCompanyIds = (pulse.accessible_ids || []) as string[]
     const currentCompanyId = pulse.current_company?.id || null
@@ -3502,7 +3517,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         return {
             success: true,
             data: {
-              user: { id: user.id, email: user.email || '', fullName: user.fullName || null },
+              user: { id: user.id, email: userEmail, fullName: userFullName },
               companies: [], accessibleCompanyIds: [], currentCompanyId: null, companyAccess: null,
               userSubscription: { hasSubscription: false, tier: 'none', isTrial: false, trialDaysRemaining: 0, companyLimit: 0, currentCompanyCount: 0, canCreateCompany: false },
               hiddenTemplates: [], hiddenCompliances: [], userRole: 'viewer', initialRequirements: [], initialVaultDocuments: [],
@@ -3535,7 +3550,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     return {
       success: true,
       data: {
-        user: { id: user.id, email: user.email || '', fullName: user.fullName || null },
+        user: { id: user.id, email: userEmail, fullName: userFullName },
         companies: pulse.companies_metadata || [],
         accessibleCompanyIds,
         currentCompanyId,

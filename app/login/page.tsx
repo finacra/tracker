@@ -81,6 +81,12 @@ function LoginPageInner() {
       window.location.href = result.url
     } catch (error: any) {
       console.error('Error signing in:', error)
+      // Handle UnrecognizedActionError (stale build)
+      if (error.message?.includes('UnrecognizedActionError') || error.message?.includes('404')) {
+        console.warn('[handleGoogleSignIn] Stale build or action not found, reloading...');
+        window.location.reload();
+        return;
+      }
       setError(error.message || 'An error occurred')
       setIsLoading(false)
     }
@@ -110,9 +116,10 @@ function LoginPageInner() {
           setIsLoading(false)
         } else if (data.session) {
           // If auto-confirm is enabled, it might return a session immediately
-          const result = await getPostAuthDestination(data.session.user.id)
+          const result = await getPostAuthDestination(data.session.user.id);
+          const baseDestination = result.success ? result.destination ?? '/subscribe' : '/subscribe';
           const redirectTo = resolvePostAuthRedirect({
-            baseDestination: result.success ? result.destination ?? '/subscribe' : '/subscribe',
+            baseDestination,
             overridePath: returnTo,
             allowOverrideForDataRoomUsers: true,
           })
@@ -133,15 +140,22 @@ function LoginPageInner() {
           setError(error.message)
           setIsLoading(false)
         } else if (data.session) {
-          const result = await getPostAuthDestination(data.session.user.id)
-          const redirectTo = resolvePostAuthRedirect({
-            baseDestination: result.success ? result.destination ?? '/subscribe' : '/subscribe',
-            overridePath: returnTo,
-            allowOverrideForDataRoomUsers: true,
-          })
-          
-          console.log(`[EMAIL SIGN IN] User ${data.session.user.id} redirecting to: ${redirectTo}`)
-          router.push(redirectTo)
+          try {
+            const result = await getPostAuthDestination(data.session.user.id)
+            const baseDestination = result.success ? result.destination ?? '/subscribe' : '/subscribe';
+            const redirectTo = resolvePostAuthRedirect({
+              baseDestination,
+              overridePath: returnTo,
+              allowOverrideForDataRoomUsers: true,
+            })
+            
+            console.log(`[EMAIL SIGN IN] User ${data.session.user.id} redirecting to: ${redirectTo}`)
+            router.push(redirectTo)
+          } catch (destErr: any) {
+            console.error('Error resolving destination:', destErr)
+            // Fallback to /subscribe if resolution fails
+            router.push('/subscribe')
+          }
         } else {
           // No session after sign in - should not happen, but handle it
           setError('Sign in failed. Please try again.')
@@ -150,6 +164,12 @@ function LoginPageInner() {
       }
     } catch (error: any) {
       console.error('Error with email auth:', error)
+      // Handle UnrecognizedActionError (stale build)
+      if (error.message?.includes('UnrecognizedActionError') || error.message?.includes('404')) {
+        console.warn('[handleEmailAuth] Stale build or action not found, reloading...');
+        window.location.reload();
+        return;
+      }
       setError(error.message || 'An error occurred')
       setIsLoading(false)
     }

@@ -6,6 +6,7 @@ import { SupabaseClientAuthAdapter } from '@/infrastructure/auth/supabase/Supaba
 import { PassportClientAuthAdapter } from '@/infrastructure/auth/passport/PassportClientAuthAdapter'
 import type { ClientAuthSession } from '@/application/interfaces/ClientAuthAdapter'
 import { trackLogin } from '@/lib/tracking/kpi-tracker'
+import { HybridClientAuthAdapter } from '@/infrastructure/auth/HybridClientAuthAdapter'
 import { AuthProvider, type AuthContextValue } from '@/contexts/AuthContext'
 import type { AppUser } from '@/domain/models/AppUser'
 
@@ -17,13 +18,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const authProvider = process.env.NEXT_PUBLIC_AUTH_PROVIDER || 'supabase'
   const supabase = useMemo(() => createClient(), [])
   
-  // Composition: swap this adapter to change client-side auth provider
+  // Composition: Hybrid adapter supports both Passport and Supabase
   const authAdapter = useMemo(() => {
-    if (authProvider === 'passport') {
-      return new PassportClientAuthAdapter()
-    }
-    return new SupabaseClientAuthAdapter(supabase)
-  }, [supabase, authProvider])
+    return new HybridClientAuthAdapter(supabase)
+  }, [supabase])
   const trackedLoginUserIdRef = useRef<string | null>(null)
   const appUserRequestIdRef = useRef(0)
   const resolvedAppUserIdRef = useRef<string | null>(null)

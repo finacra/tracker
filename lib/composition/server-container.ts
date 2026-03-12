@@ -4,6 +4,7 @@ import { SupabaseSessionProvider } from '@/infrastructure/auth/supabase/Supabase
 import { PassportAuthGateway } from '@/infrastructure/auth/passport/PassportAuthGateway'
 import { PassportAuthService } from '@/infrastructure/auth/passport/PassportAuthService'
 import { PassportSessionProvider } from '@/infrastructure/auth/passport/PassportSessionProvider'
+import { HybridAuthService } from '@/infrastructure/auth/HybridAuthService'
 import { RepositoryAccessService } from '@/application/services/RepositoryAccessService'
 import { RepositorySubscriptionService } from '@/application/services/RepositorySubscriptionService'
 import { PrismaUserRepository } from '@/infrastructure/persistence/prisma/PrismaUserRepository'
@@ -44,10 +45,15 @@ export function createServerContainer() {
   // Choose auth provider based on environment variable (default to Supabase for backward compatibility)
   const authProvider = process.env.AUTH_PROVIDER || 'supabase'
 
-  const authService =
-    authProvider === 'passport'
-      ? new PassportAuthService(userRepository)
-      : new SupabaseAuthService(userRepository)
+  // Create BOTH services for hybrid support
+  const supabaseAuthService = new SupabaseAuthService(userRepository)
+  const passportAuthService = new PassportAuthService(userRepository)
+
+  // Use Hybrid by default to support both Supabase (email) and Passport (Google)
+  const authService = new HybridAuthService(
+    authProvider === 'passport' ? passportAuthService : supabaseAuthService,
+    authProvider === 'passport' ? supabaseAuthService : passportAuthService
+  )
 
   const authGateway =
     authProvider === 'passport'
