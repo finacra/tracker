@@ -3407,7 +3407,18 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
            AND company_id = (SELECT id FROM final_target_id) LIMIT 1
         ),
         excluded_t AS (SELECT folder_name, document_name FROM company_document_template_exclusions WHERE company_id = (SELECT id FROM final_target_id)),
-        excluded_c AS (SELECT requirement_id FROM company_compliance_exclusions WHERE company_id = (SELECT id FROM final_target_id))
+        excluded_c AS (SELECT requirement_id FROM company_compliance_exclusions WHERE company_id = (SELECT id FROM final_target_id)),
+        -- Full Access Snapshot Logic
+        target_owner AS (SELECT app_user_id, user_id FROM companies WHERE id = (SELECT id FROM final_target_id)),
+        target_is_owner AS (SELECT EXISTS (SELECT 1 FROM target_owner WHERE (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params))) as val),
+        target_company_sub AS (SELECT EXISTS (SELECT 1 FROM subscriptions WHERE company_id = (SELECT id FROM final_target_id) AND subscription_type = 'company' AND (status = 'active' OR is_trial = true)) as val),
+        target_owner_sub AS (
+          SELECT EXISTS (
+            SELECT 1 FROM subscriptions s, target_owner o 
+            WHERE (s.app_user_id = o.app_user_id OR s.user_id = o.user_id) 
+            AND s.subscription_type = 'user' AND (s.status = 'active' OR s.is_trial = true)
+          ) as val
+        )
       
       SELECT 
         (SELECT row_to_json(u) FROM user_info u) as user,
@@ -3422,7 +3433,10 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         (SELECT role FROM role_snapshot) as explicit_role,
         (SELECT json_agg(et) FROM excluded_t et) as hidden_templates,
         (SELECT json_agg(ec) FROM excluded_c ec) as hidden_compliances,
-        (SELECT count(*) FROM companies WHERE app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params)) as owned_count
+        (SELECT count(*) FROM companies WHERE app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params)) as owned_count,
+        (SELECT val FROM target_is_owner) as is_owner,
+        (SELECT val FROM target_company_sub) as has_company_sub,
+        (SELECT val FROM target_owner_sub) as has_owner_sub
     `
     const pulse = pulseRaw[0] || {}
     const atomicDuration = performance.now() - atomicStart
@@ -3435,7 +3449,12 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     const accessibleCompanyIds = (pulse.accessible_ids || []) as string[]
     const currentCompanyId = pulse.current_company?.id || null
 
-    // 1. Subscription Logic
+    const isOwner = pulse.is_owner as boolean
+    const hasCompanySub = pulse.has_company_sub as boolean
+    const hasOwnerSub = pulse.has_owner_sub as boolean
+    const ownerSubscriptionExpired = !hasCompanySub && !hasOwnerSub
+
+    // 1. Subscription Logic (for the current LOGGED IN user)
     const sub = pulse.personal_sub
     const now = new Date()
     const trialEndsAt = sub?.trial_ends_at ? new Date(sub.trial_ends_at) : null
@@ -3471,8 +3490,27 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
       })),
     } : null
 
+    // 3. Access Snapshot for the current LOGGED IN user vs target company
     const hasActiveSub = subState.hasSubscription || (subState.isTrial && subState.trialDaysRemaining > 0)
     
+    // 4. Early Redirect Logic: If subscription is EXPIRED, we don't return data, we return a redirect.
+    // For Owners: Check their active sub. 
+    // For Team Members: Check if the owner's sub is expired.
+    if (!isSuperadminResult && preferredCompanyId && ownerSubscriptionExpired) {
+        // If ownerSubscriptionExpired is true, it means NEITHER the company nor the owner has an active plan.
+        // Therefore, NO ONE gets in.
+        return {
+            success: true,
+            data: {
+              user: { id: user.id, email: user.email || '', fullName: user.fullName || null },
+              companies: [], accessibleCompanyIds: [], currentCompanyId: null, companyAccess: null,
+              userSubscription: { hasSubscription: false, tier: 'none', isTrial: false, trialDaysRemaining: 0, companyLimit: 0, currentCompanyCount: 0, canCreateCompany: false },
+              hiddenTemplates: [], hiddenCompliances: [], userRole: 'viewer', initialRequirements: [], initialVaultDocuments: [],
+              redirectTo: `/subscription-required?company_id=${preferredCompanyId}`
+            }
+        }
+    }
+
     const formattedDocs = (pulse.documents || []).map((doc: any) => ({
       id: doc.id,
       company_id: doc.company_id,
@@ -3491,20 +3529,6 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
       requirement_id: doc.requirement_id || null,
     }));
 
-    // 3. Subscription Check for non-superadmins
-    if (!isSuperadminResult && preferredCompanyId && !hasActiveSub) {
-      return {
-        success: true,
-        data: {
-          user: { id: user.id, email: user.email || '', fullName: user.fullName || null },
-          companies: [], accessibleCompanyIds: [], currentCompanyId: null, companyAccess: null,
-          userSubscription: { hasSubscription: false, tier: 'none', isTrial: false, trialDaysRemaining: 0, companyLimit: 0, currentCompanyCount: 0, canCreateCompany: false },
-          hiddenTemplates: [], hiddenCompliances: [], userRole: 'viewer', initialRequirements: [], initialVaultDocuments: [],
-          redirectTo: `/subscription-required?company_id=${preferredCompanyId}`
-        }
-      }
-    }
-
     const totalDuration = performance.now() - initStartTime
     console.log(`[InitAction] ⚛️ ATOMIC PULSE COMPLETE: ${totalDuration.toFixed(2)}ms (DB: ${atomicDuration.toFixed(0)}ms)`)
 
@@ -3515,7 +3539,14 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         companies: pulse.companies_metadata || [],
         accessibleCompanyIds,
         currentCompanyId,
-        companyAccess: isSuperadminResult ? { hasAccess: true, accessType: 'superadmin', trialDaysRemaining: null, isOwner: false, subscriptionInfo: null, ownerSubscriptionExpired: false } : null,
+        companyAccess: {
+          hasAccess: isSuperadminResult || !ownerSubscriptionExpired,
+          accessType: isSuperadminResult ? 'superadmin' : (ownerSubscriptionExpired ? null : 'subscription'),
+          trialDaysRemaining: null,
+          isOwner,
+          subscriptionInfo: null,
+          ownerSubscriptionExpired
+        },
         userSubscription: {
           hasSubscription: hasActiveSub,
           tier: subState.tier,

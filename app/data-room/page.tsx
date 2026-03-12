@@ -503,7 +503,10 @@ function DataRoomPageInner() {
     const isWaitingForHooks = !initDataResults && (anyAccessLoading || userSubscriptionLoading);
     
     // Wait for all loading states to complete before making redirect decisions
-    if (isWaitingForHooks || isLoading || accessLoading)
+    // If we have initDataResults, we ignore accessLoading from the hook
+    const isActuallyLoading = isWaitingForHooks || isLoading || (!initDataResults && accessLoading);
+
+    if (isActuallyLoading)
       return;
 
     // If no user, redirect to login
@@ -555,15 +558,32 @@ function DataRoomPageInner() {
   // Check access when company is selected - redirect if no access
   // CRITICAL: If subscription/trial expired, NO ONE (not even team members) should access data-room
   useEffect(() => {
+    // Determine if we are still loading access. 
+    // If we have initDataResults, we trust it and don't care if the hooks are still "loading" their own check.
+    const isActuallyLoadingAccess = !initDataResults && accessLoading;
+    
     // Wait for all loading states to complete
-    if (accessLoading || authLoading || accessError) return;
+    if (isActuallyLoadingAccess || authLoading || accessError) return;
 
     // If no company selected, don't check access yet
     if (!currentCompany) return;
 
+    // Use derived values from priority: initDataResults > Hooks
+    const finalOwnerSubscriptionExpired = initDataResults?.companyAccess 
+      ? initDataResults.companyAccess.ownerSubscriptionExpired 
+      : ownerSubscriptionExpired;
+      
+    const finalIsOwner = initDataResults?.companyAccess 
+      ? initDataResults.companyAccess.isOwner 
+      : isOwner;
+      
+    const finalHasAccess = initDataResults?.companyAccess 
+      ? initDataResults.companyAccess.hasAccess 
+      : hasAccess;
+
     // CRITICAL: If subscription expired, redirect EVERYONE (owners and team members)
-    if (ownerSubscriptionExpired) {
-      if (isOwner) {
+    if (finalOwnerSubscriptionExpired) {
+      if (finalIsOwner) {
         console.log(
           "[Access Check] Owner subscription/trial expired, redirecting to subscription-required page",
         );
@@ -581,7 +601,7 @@ function DataRoomPageInner() {
     }
 
     // If user is owner but no subscription/trial (or company subscription revoked/expired)
-    if (isOwner && !hasAccess) {
+    if (finalIsOwner && !finalHasAccess) {
       console.log(
         "[Access Check] Owner has no subscription or company subscription expired, redirecting to subscription-required page",
       );
@@ -590,7 +610,7 @@ function DataRoomPageInner() {
     }
 
     // If user is not owner and doesn't have access for other reasons
-    if (!hasAccess && !isOwner) {
+    if (!finalHasAccess && !finalIsOwner) {
       console.log("[Access Check] No access to this company");
       router.replace(`/subscription-required?company_id=${currentCompany.id}`);
     }
