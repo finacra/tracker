@@ -38,9 +38,8 @@ function LoginPageInner() {
       
       if (!isMounted) return
       
-      // Only redirect if there's a returnTo parameter (deep linking for invites, etc.)
-      // This allows authenticated users to access the login page to switch accounts
-      if (session && returnTo) {
+      // Redirect authenticated users to their destination
+      if (session) {
         if (!isMounted) return
         
         const result = await getPostAuthDestination()
@@ -50,10 +49,8 @@ function LoginPageInner() {
           overridePath: returnTo,
           allowOverrideForDataRoomUsers: true,
         })
-        console.log('🔄 [AUTH CHECK] Redirecting to:', destination)
+        console.log('🔄 [AUTH CHECK] Session exists, redirecting to:', destination)
         router.push(destination)
-      } else if (session) {
-        console.log('✅ [AUTH CHECK] Session exists but no returnTo - allowing access to login page')
       } else {
         console.log('✅ [AUTH CHECK] No session, staying on login page')
       }
