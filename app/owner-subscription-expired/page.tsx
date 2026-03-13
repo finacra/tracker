@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, useState, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { getOwnerExpiredInfo } from './actions'
@@ -20,14 +20,20 @@ function OwnerExpiredPageInner() {
   const companyId = searchParams.get('company_id')
   const [ownerInfo, setOwnerInfo] = useState<OwnerInfo | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const hasFetchedRef = useRef(false)
+  const hasRedirectedRef = useRef(false)
 
   useEffect(() => {
+    // Prevent multiple fetches
+    if (hasFetchedRef.current || authLoading) return
+    
     async function fetchOwnerInfo() {
       if (!companyId) {
         setIsLoading(false)
         return
       }
 
+      hasFetchedRef.current = true
       try {
         const result = await getOwnerExpiredInfo(companyId)
         if (result.success && result.companyName) {
@@ -43,14 +49,15 @@ function OwnerExpiredPageInner() {
       }
     }
 
-    if (!authLoading) {
       fetchOwnerInfo()
-    }
   }, [companyId, authLoading])
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated (only once)
   useEffect(() => {
+    if (hasRedirectedRef.current) return
+    
     if (!authLoading && !user) {
+      hasRedirectedRef.current = true
       router.push('/')
     }
   }, [user, authLoading, router])
@@ -116,10 +123,14 @@ function OwnerExpiredPageInner() {
             {/* Actions */}
             <div className="flex flex-col gap-3">
               <button
-                onClick={() => router.push('/data-room')}
+                onClick={() => {
+                  // Clear the company selection and go to data-room
+                  // This allows user to select a different company with valid subscription
+                  router.push('/data-room')
+                }}
                 className="w-full bg-gray-800 text-gray-300 px-6 py-3 rounded-lg font-medium hover:bg-gray-700 transition-colors"
               >
-                Go Back
+                Select Another Company
               </button>
             </div>
           </div>

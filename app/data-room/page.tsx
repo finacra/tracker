@@ -406,21 +406,57 @@ function DataRoomPageInner() {
         updateLoadingMessage("📊 Loading company information...");
         
         // 1. Format and set companies
-        const formattedCompanies = data.companies.map(c => ({
-          id: c.id,
-          name: c.name,
-          type: c.type,
-          year: c.incorporation_date ? new Date(c.incorporation_date).getFullYear().toString() : "N/A",
-          country_code: c.country_code || "IN",
-          region: c.region || "APAC",
-        }));
+        // CRITICAL: Only show companies that are in accessibleCompanyIds
+        // The SQL query now filters out expired companies, so this ensures consistency
+        const formattedCompanies = (data.companies || [])
+          .filter((c: any) => data.accessibleCompanyIds.includes(c.id))
+          .map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            type: c.type,
+            year: c.incorporation_date ? new Date(c.incorporation_date).getFullYear().toString() : "N/A",
+            country_code: c.country_code || "IN",
+            region: c.region || "APAC",
+          }));
         setCompanies(formattedCompanies);
         
         // 2. Determine Final Selected Company (Priority: URL > Preferred > First)
+        // CRITICAL: NEVER auto-select companies with expired subscriptions
         const urlId = searchParams.get("company_id") || searchParams.get("company");
-        const selected = formattedCompanies.find(c => c.id === urlId) || 
-                         formattedCompanies.find(c => c.id === data.currentCompanyId) || 
-                         formattedCompanies[0] || null;
+        
+        let selected = null;
+        
+        // Only select if companyAccess shows subscription is NOT expired
+        // If ownerSubscriptionExpired is true, skip this company entirely
+        const isExpired = data.companyAccess?.ownerSubscriptionExpired === true;
+        
+        if (urlId && !isExpired) {
+          // If URL has company_id, use it only if subscription is valid
+          const urlCompany = formattedCompanies.find(c => c.id === urlId);
+          if (urlCompany) {
+            selected = urlCompany;
+          }
+        }
+        
+        // If no valid company from URL, try currentCompanyId (but ONLY if not expired)
+        if (!selected && data.currentCompanyId && !isExpired) {
+          const currentCompany = formattedCompanies.find(c => c.id === data.currentCompanyId);
+          if (currentCompany) {
+            selected = currentCompany;
+          }
+        }
+        
+        // If still no company, select first available from the list
+        // The list should already be filtered to exclude expired companies
+        if (!selected && formattedCompanies.length > 0) {
+          selected = formattedCompanies[0];
+        }
+        
+        // FINAL SAFETY CHECK: Don't set expired company
+        if (selected && isExpired && selected.id === data.currentCompanyId) {
+          console.warn('[DataRoomInit] Blocked auto-selection of expired company:', selected.id);
+          selected = null;
+        }
         
         setCurrentCompany(selected);
 
@@ -517,8 +553,21 @@ function DataRoomPageInner() {
       return;
     }
 
-    // If user has no companies at all, redirect to onboarding or subscribe
+    // If user has no companies at all, check if they're a team member
+    // Team members should go to /owner-subscription-expired, not /subscribe
     if (companies.length === 0 && !isLoading) {
+      // Check if user is a team member (has roles but subscription expired)
+      const isTeamMember = initDataResults?.companyAccess 
+        ? !initDataResults.companyAccess.isOwner && initDataResults.companyAccess.ownerSubscriptionExpired
+        : false;
+      
+      if (isTeamMember) {
+        console.log('[DataRoom] Team member has no accessible companies, redirecting to owner-subscription-expired');
+        router.push("/owner-subscription-expired");
+        return;
+      }
+      
+      // Owner with no companies - redirect to onboarding or subscribe
       if (finalHasSubscription) {
         router.push("/onboarding");
       } else {
@@ -537,8 +586,19 @@ function DataRoomPageInner() {
         : !hasAnyAccess && !anyAccessLoading;
       
       if (definitelyNoAccess) {
-        console.log('[DataRoom] User has companies but no access, redirecting to subscribe');
-        router.push("/subscribe");
+        // Check if user is a team member (not owner) with expired subscription
+        // Team members should go to /owner-subscription-expired, not /subscribe
+        const isTeamMember = initDataResults?.companyAccess 
+          ? !initDataResults.companyAccess.isOwner && initDataResults.companyAccess.ownerSubscriptionExpired
+          : false;
+        
+        if (isTeamMember) {
+          console.log('[DataRoom] Team member has no access due to expired owner subscription, redirecting to owner-subscription-expired');
+          router.push("/owner-subscription-expired");
+        } else {
+          console.log('[DataRoom] User has companies but no access, redirecting to subscribe');
+          router.push("/subscribe");
+        }
         return;
       }
     }

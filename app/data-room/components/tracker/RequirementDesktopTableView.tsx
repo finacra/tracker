@@ -154,7 +154,7 @@ export default function RequirementDesktopTableView({
               const authority = getAuthorityForCategory(req.category)
 
               return (
-                <tr key={req.id} className="hover:bg-black/50 transition-colors border-t border-white/10">
+                <tr key={`${group.category}-${req.id}-${itemIndex}`} className="hover:bg-black/50 transition-colors border-t border-white/10">
                   {canEdit && (
                     <td className="px-4 py-4">
                       <input

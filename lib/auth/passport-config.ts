@@ -225,42 +225,8 @@ export function initializePassport() {
             }
           }
 
-          // 3. LEGACY MIGRATION: No local password yet. Try verifying against Supabase Auth.
-          // This allows users to keep their current passwords during the transition.
-          console.log(`[Passport] Attempting legacy migration for ${email}`)
-          try {
-            const { createClient } = await import('@/utils/supabase/server')
-            const supabase = await createClient()
-            const { data, error } = await supabase.auth.signInWithPassword({
-              email,
-              password,
-            })
-
-            if (!error && data.user) {
-              // Migration SUCCESS!
-              // Store the password hash locally so we don't need Supabase Auth anymore for this user
-              const salt = await bcrypt.genSalt(10)
-              const hash = await bcrypt.hash(password, salt)
-              
-              await prisma.appUser.update({
-                where: { id: appUserRow.id },
-                data: { password_hash: hash } as any
-              })
-
-              console.log(`[Passport] Legacy migration successful for ${email}`)
-              
-              const sessionUser: PassportSessionUser = {
-                appUserId: appUserRow.id,
-                email: appUserRow.primary_email,
-                googleId: '',
-              }
-              return done(null, sessionUser)
-            }
-          } catch (supaError) {
-            console.error('[Passport] Supabase migration proxy error:', supaError)
-          }
-
-          return done(null, false, { message: 'Invalid credentials or migration failed' })
+          // 3. All attempts failed - invalid password
+          return done(null, false, { message: 'Invalid password' })
         } catch (error) {
           return done(error)
         }

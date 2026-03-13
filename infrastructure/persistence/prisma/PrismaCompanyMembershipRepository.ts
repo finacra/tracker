@@ -7,32 +7,47 @@ import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 
 export class PrismaCompanyMembershipRepository implements CompanyMembershipRepository {
-    private mapRow(row: any): CompanyMembership {
+    private mapRow(row: any): CompanyMembership & { appUserId?: string | null } {
         return {
             id: row.id,
-            userId: row.user_id,
+            userId: row.user_id || row.app_user_id || '', // For Passport users, app_user_id is the userId
             companyId: row.company_id,
             role: row.role as AppRole,
             createdAt: row.created_at.toISOString(),
             updatedAt: row.updated_at.toISOString(),
+            appUserId: row.app_user_id, // Include app_user_id for Passport users
         }
     }
 
     async getAdminUserIds(companyId: string): Promise<string[]> {
+        // Get admin user IDs - for Passport users, use app_user_id; for legacy, use user_id
         const rows = await prisma.userRole.findMany({
             where: {
                 company_id: companyId,
                 role: { in: ['admin', 'superadmin'] },
             },
-            select: { user_id: true }
+            select: { 
+                user_id: true,
+                app_user_id: true
+            }
         })
-        return rows.map((row) => row.user_id)
+        // Return app_user_id for Passport users, user_id for legacy users
+        return rows.map((row) => row.app_user_id || row.user_id).filter((id): id is string => id !== null)
     }
 
-    async getRoles(companyId?: string | null): Promise<CompanyMembership[]> {
+    async getRoles(companyId?: string | null): Promise<(CompanyMembership & { appUserId?: string | null })[]> {
         const rows = await prisma.userRole.findMany({
             where: companyId ? { company_id: companyId } : {},
             orderBy: { created_at: 'desc' },
+            select: {
+                id: true,
+                user_id: true,
+                app_user_id: true,
+                company_id: true,
+                role: true,
+                created_at: true,
+                updated_at: true,
+            },
         })
         return rows.map((row) => this.mapRow(row))
     }
@@ -93,10 +108,14 @@ export class PrismaCompanyMembershipRepository implements CompanyMembershipRepos
     }
 
     async addRole(userId: string, companyId: string, role: Exclude<AppRole, 'superadmin'>, appUserId?: string | null): Promise<void> {
+        // For Passport users, use app_user_id and set user_id to NULL
+        // For legacy Supabase users, use user_id and set app_user_id to NULL
+        const isPassportUser = appUserId !== null && appUserId !== undefined
+        
         await prisma.userRole.create({
             data: {
-                user_id: userId,
-                app_user_id: appUserId || null,
+                user_id: isPassportUser ? null : userId,
+                app_user_id: isPassportUser ? appUserId : null,
                 company_id: companyId,
                 role: role,
             },
@@ -104,11 +123,21 @@ export class PrismaCompanyMembershipRepository implements CompanyMembershipRepos
     }
 
     async upsertRole(userId: string, companyId: string, role: Exclude<AppRole, 'superadmin'>, appUserId?: string | null): Promise<void> {
+        // For Passport users, use app_user_id and set user_id to NULL
+        // For legacy Supabase users, use user_id and set app_user_id to NULL
+        const isPassportUser = appUserId !== null && appUserId !== undefined
+        
+        // Check if role exists by app_user_id (Passport) or user_id (legacy)
         const existing = await prisma.userRole.findFirst({
-            where: {
-                user_id: userId,
-                company_id: companyId,
-            },
+            where: isPassportUser
+                ? {
+                    app_user_id: appUserId,
+                    company_id: companyId,
+                }
+                : {
+                    user_id: userId,
+                    company_id: companyId,
+                },
             select: { id: true }
         })
 
@@ -117,15 +146,16 @@ export class PrismaCompanyMembershipRepository implements CompanyMembershipRepos
                 where: { id: existing.id },
                 data: {
                     role: role,
-                    app_user_id: appUserId || undefined,
+                    app_user_id: isPassportUser ? appUserId : undefined,
+                    user_id: isPassportUser ? undefined : userId,
                     updated_at: new Date(),
                 },
             })
         } else {
             await prisma.userRole.create({
                 data: {
-                    user_id: userId,
-                    app_user_id: appUserId || null,
+                    user_id: isPassportUser ? null : userId,
+                    app_user_id: isPassportUser ? appUserId : null,
                     company_id: companyId,
                     role: role,
                 },

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useAnyCompanyAccess, useUserSubscription } from '@/hooks/useCompanyAccess'
@@ -50,7 +50,8 @@ function SubscribePageInner() {
   // Check if company has ever used a trial (even expired)
   async function checkCompanyTrialEligibility(companyId: string | null): Promise<boolean> {
     try {
-      const result = await getCompanyTrialEligibility(companyId)
+      // Pass accessibleCompanyIds to help with authorization check
+      const result = await getCompanyTrialEligibility(companyId, accessibleCompanyIds)
 
       if (!result.success) {
         console.error('Error checking trial eligibility:', result.error)
@@ -120,8 +121,13 @@ function SubscribePageInner() {
     fetchCompanies()
   }, [companyId, user, accessibleCompanyIds])
 
-  // Check trial eligibility when company changes
+  // Check trial eligibility when company changes (only if user is authenticated)
   useEffect(() => {
+    // Don't check if auth is still loading or user is not authenticated
+    if (authLoading || !user) {
+      return
+    }
+
     async function checkTrialEligibility() {
       const targetCompanyId = selectedCompanyForSubscription || companyId
 
@@ -132,23 +138,38 @@ function SubscribePageInner() {
     }
 
     checkTrialEligibility()
-  }, [selectedCompanyForSubscription, companyId])
+  }, [selectedCompanyForSubscription, companyId, user, authLoading, accessibleCompanyIds])
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated (only once, prevent loops)
+  // CRITICAL: Only redirect if auth is fully loaded AND user is null
+  // This prevents redirect loops when coming from login (auth might still be loading)
+  const hasRedirectedRef = useRef(false)
+  
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (hasRedirectedRef.current) return
+    
+    // CRITICAL: Don't redirect while auth is loading
+    // This prevents false negatives when auth is still initializing after login
+    if (authLoading) return
+    
+    // Only redirect if auth is fully loaded AND user is definitely null
+    if (!user) {
+      hasRedirectedRef.current = true
       router.push('/login')
     }
   }, [user, authLoading, router])
 
-  // If user already has subscription, redirect to data-room or onboarding
+  // If user already has subscription, redirect to data-room or onboarding (only once, prevent loops)
+  const hasRedirectedToDataRoomRef = useRef(false)
   useEffect(() => {
+    if (hasRedirectedToDataRoomRef.current) return
     if (subLoading) return
     if (!user) return
 
     // If user has active access (trial or paid), don't force them to stay on /subscribe
     // Unless they explicitly asked to upgrade via ?upgrade=1
     if (hasSubscription && (isTrial ? trialDaysRemaining > 0 : true) && !showUpgrade) {
+      hasRedirectedToDataRoomRef.current = true
       const target = companyId ? `/data-room?company_id=${companyId}` : '/data-room'
       router.replace(target)
     }

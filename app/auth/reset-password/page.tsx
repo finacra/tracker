@@ -3,30 +3,57 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/utils/supabase/client'
 
 function ResetPasswordPageInner() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const supabase = createClient()
 
   useEffect(() => {
-    // Check if we have the necessary hash in the URL (Supabase adds this)
-    const hash = window.location.hash
-    if (!hash || !hash.includes('access_token')) {
-      setError('Invalid or expired reset link. Please request a new password reset.')
+    // Verify token on mount
+    const token = searchParams.get('token')
+    if (!token) {
+      setError('Invalid reset link. Please request a new password reset.')
+      setIsVerifying(false)
+      return
     }
-  }, [])
+
+    async function verifyToken() {
+      try {
+        const response = await fetch(`/api/auth/passport/reset-password?token=${encodeURIComponent(token)}`)
+        const data = await response.json()
+
+        if (!data.success) {
+          setError(data.error || 'Invalid or expired reset link. Please request a new password reset.')
+        }
+      } catch (error: any) {
+        console.error('Error verifying token:', error)
+        setError('Failed to verify reset link. Please try again.')
+      } finally {
+        setIsVerifying(false)
+      }
+    }
+
+    verifyToken()
+  }, [searchParams])
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setMessage(null)
+
+    const token = searchParams.get('token')
+    if (!token) {
+      setError('Invalid reset link')
+      return
+    }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match')
@@ -41,22 +68,26 @@ function ResetPasswordPageInner() {
     setIsLoading(true)
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password,
+      const response = await fetch('/api/auth/passport/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, password }),
       })
 
-      if (error) {
-        setError(error.message)
-        setIsLoading(false)
-      } else {
+      const data = await response.json()
+
+      if (data.success) {
         setMessage('Password updated successfully! Redirecting to login...')
         setTimeout(() => {
           router.push('/login')
         }, 2000)
+      } else {
+        setError(data.error || 'Failed to reset password')
       }
     } catch (error: any) {
       console.error('Error resetting password:', error)
-      setError(error.message || 'An error occurred')
+      setError('Failed to reset password. Please try again.')
+    } finally {
       setIsLoading(false)
     }
   }
@@ -104,39 +135,83 @@ function ResetPasswordPageInner() {
 
             {/* Reset Password Form */}
             <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-10 w-full">
-              <form onSubmit={handleResetPassword} className="space-y-4">
+              {isVerifying ? (
+                <div className="text-center py-8">
+                  <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-sm text-gray-400 font-light">Verifying reset link...</p>
+                </div>
+              ) : (
+                <form onSubmit={handleResetPassword} className="space-y-4">
                 <div>
                   <label htmlFor="password" className="block text-sm font-light text-gray-300 mb-2">
                     New Password
                   </label>
-                  <input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors font-light"
-                    placeholder="Enter new password (min. 6 characters)"
-                    disabled={isLoading}
-                    minLength={6}
-                  />
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="w-full px-4 py-3 pr-12 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors font-light"
+                      placeholder="Enter new password (min. 6 characters)"
+                      disabled={isLoading || isVerifying}
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
                   <label htmlFor="confirmPassword" className="block text-sm font-light text-gray-300 mb-2">
                     Confirm Password
                   </label>
-                  <input
-                    id="confirmPassword"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors font-light"
-                    placeholder="Confirm new password"
-                    disabled={isLoading}
-                    minLength={6}
-                  />
+                  <div className="relative">
+                    <input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      className="w-full px-4 py-3 pr-12 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors font-light"
+                      placeholder="Confirm new password"
+                      disabled={isLoading || isVerifying}
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showConfirmPassword ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {error && (
@@ -153,7 +228,7 @@ function ResetPasswordPageInner() {
 
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || isVerifying}
                   className="w-full px-6 py-3 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-light"
                 >
                   {isLoading ? (
@@ -163,6 +238,7 @@ function ResetPasswordPageInner() {
                   )}
                 </button>
               </form>
+              )}
 
               <div className="mt-6 text-center">
                 <Link

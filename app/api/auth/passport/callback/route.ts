@@ -122,13 +122,16 @@ export async function GET(request: NextRequest) {
         })
       } else {
         // 3. New user - create app_user and Passport identity
+        // Google OAuth users are auto-verified (Google verifies emails)
         const { prisma } = await import('@/lib/prisma')
         const newAppUserRow = await prisma.appUser.create({
           data: {
             primary_email: email,
             full_name: fullName,
             status: 'active',
-          },
+            email_verified: true, // Google OAuth users are auto-verified
+            email_verified_at: new Date(),
+          } as any,
         })
 
         appUser = {

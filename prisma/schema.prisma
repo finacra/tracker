@@ -9,13 +9,15 @@ datasource db {
 }
 
 model AppUser {
-  id             String         @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
-  primary_email  String
-  full_name      String?
-  password_hash  String?
-  status         String         @default("active")
-  created_at     DateTime       @default(now()) @db.Timestamptz
-  updated_at     DateTime       @default(now()) @db.Timestamptz
+  id               String         @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  primary_email    String
+  full_name        String?
+  password_hash    String?
+  status           String         @default("active")
+  email_verified   Boolean        @default(false)
+  email_verified_at DateTime?     @db.Timestamptz
+  created_at       DateTime       @default(now()) @db.Timestamptz
+  updated_at       DateTime       @default(now()) @db.Timestamptz
 
   authIdentities AuthIdentity[]
 
@@ -76,8 +78,8 @@ model Company {
 model CompanyNotification {
   id             String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   company_id     String    @db.Uuid
-  user_id        String    @db.Uuid
-  app_user_id    String?   @db.Uuid
+  user_id        String?   @db.Uuid  // Nullable for Passport users (use app_user_id instead)
+  app_user_id    String?   @db.Uuid  // For Passport users
   type           String
   title          String
   message        String
@@ -229,8 +231,8 @@ model EmailPreference {
 
 model UserRole {
   id          String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
-  user_id     String    @db.Uuid
-  app_user_id String?   @db.Uuid
+  user_id     String?   @db.Uuid  // Nullable for Passport users (use app_user_id instead)
+  app_user_id String?   @db.Uuid  // For Passport users
   company_id  String?   @db.Uuid
   role        String
   created_at  DateTime? @default(now()) @db.Timestamptz

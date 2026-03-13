@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/utils/supabase/admin'
-import { validateCompanyId, validateUserId, isValidUUID } from '@/lib/utils/input-validation'
+import { validateCompanyId, validateUserId, isValidUUID, sanitizeStringInput } from '@/lib/utils/input-validation'
 import { enrichComplianceItems as enrichComplianceItemsService, type EnrichedComplianceData } from '@/lib/services/compliance-enrichment'
 import { sendEmail, getSiteUrl } from '@/lib/email/resend'
 import { renderTeamInviteEmail } from '@/lib/email/templates/teamInvite'
@@ -16,6 +16,8 @@ import { GetUserNotifications } from '@/application/use-cases/notifications/GetU
 import { MarkAllUserNotificationsRead } from '@/application/use-cases/notifications/MarkAllUserNotificationsRead'
 import { MarkUserNotificationsRead } from '@/application/use-cases/notifications/MarkUserNotificationsRead'
 import { GetCompanyRequirements } from '@/application/use-cases/requirements/GetCompanyRequirements'
+import { generateEmbedding } from '@/lib/utils/embeddings'
+import { processDocumentContent } from '@/lib/utils/document-processor'
 import type { AppNotification } from '@/domain/models/Notification'
 import type { AppUser } from '@/domain/models/AppUser'
 import type { Requirement } from '@/domain/models/Requirement'
@@ -23,6 +25,11 @@ import { randomBytes } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth/passport-session'
 // performance is available globally in Node.js
+
+async function requireCurrentUser() {
+  const { authService } = createServerContainer()
+  return authService.requireCurrentUser()
+}
 
 export interface RegulatoryRequirement {
   id: string
@@ -941,43 +948,34 @@ async function notifyCompanyAdmins(
       return
     }
 
+    // Get user repository to determine if user is Passport or legacy
+    const { userRepository } = createServerContainer()
+    
     // Create notifications for each admin
-    const notifications = adminUserIds.map((userId: string) => ({
-      company_id: companyId,
-      user_id: userId,
-      type,
-      title,
-      message,
-      requirement_id: requirementId || null,
-      metadata: metadata ? JSON.stringify(metadata) : null,
-      is_read: false
-    }))
+    // For Passport users, use app_user_id; for legacy users, use user_id
+    const notificationInputs = await Promise.all(
+      adminUserIds.map(async (userId: string) => {
+        // Check if this is a Passport user (exists in app_users) or legacy user
+        const user = await userRepository.getById(userId)
+        const isPassportUser = user && !user.legacyAuthId
+        
+        return {
+          company_id: companyId,
+          user_id: (isPassportUser ? null : userId) as string | null, // NULL for Passport users
+          app_user_id: (isPassportUser ? userId : null) as string | null, // Passport user ID
+          type,
+          title,
+          message,
+          requirement_id: requirementId || null,
+          metadata: metadata || null,
+          is_read: false
+        }
+      })
+    )
 
     const { notificationRepository } = createServerNotificationContainer()
     const useCase = new CreateNotifications(notificationRepository)
-    await useCase.execute(
-      notifications.map((notification: {
-        company_id: string
-        user_id: string
-        type: string
-        title: string
-        message: string
-        requirement_id: string | null
-        metadata: string | null
-        is_read: boolean
-      }) => ({
-        company_id: notification.company_id,
-        user_id: notification.user_id,
-        type: notification.type,
-        title: notification.title,
-        message: notification.message,
-        requirement_id: notification.requirement_id,
-        metadata: notification.metadata
-          ? (JSON.parse(notification.metadata) as Record<string, unknown>)
-          : null,
-        is_read: notification.is_read,
-      }))
-    )
+    await useCase.execute(notificationInputs)
   } catch (err) {
     console.error('[notifyCompanyAdmins] Exception:', err)
   }
@@ -1249,13 +1247,14 @@ export async function getCompanyUserRoles(companyId: string | null = null): Prom
     }
 
     console.log('[getCompanyUserRoles] Fetching roles for company:', companyId, 'isSuperadmin:', isSuperadmin)
-    let allRoles: Array<UserRole & { is_owner?: boolean }> = allMemberships.map(role => ({
+    let allRoles: Array<UserRole & { is_owner?: boolean; appUserId?: string | null }> = allMemberships.map(role => ({
       id: role.id,
       user_id: role.userId,
       company_id: role.companyId,
       role: role.role,
       created_at: role.createdAt,
       updated_at: role.updatedAt,
+      appUserId: (role as any).appUserId, // Include app_user_id for Passport users
     }))
     console.log('[getCompanyUserRoles] Found', allRoles.length, 'roles from repository')
 
@@ -1283,15 +1282,26 @@ export async function getCompanyUserRoles(companyId: string | null = null): Prom
     console.log('[getCompanyUserRoles] Total roles (including owner):', allRoles.length)
 
     const rolesWithUserInfo = await Promise.all(
-      allRoles.map(async (role: UserRole & { is_owner?: boolean }) => {
+      allRoles.map(async (role: UserRole & { is_owner?: boolean; appUserId?: string | null }) => {
         try {
-          const user = await userRepository.getById(role.user_id)
+          // For Passport users, use app_user_id; for legacy users, use user_id
+          const userIdToFetch = (role as any).appUserId || role.user_id
+          if (!userIdToFetch) {
+            return {
+              ...role,
+              user_email: 'Unknown',
+              user_name: 'Unknown'
+            }
+          }
+          
+          const user = await userRepository.getById(userIdToFetch)
           return {
             ...role,
             user_email: user?.email || 'Unknown',
             user_name: getUserDisplayName(user)
           }
-        } catch {
+        } catch (error) {
+          console.error('[getCompanyUserRoles] Error fetching user info:', error)
           return {
             ...role,
             user_email: 'Unknown',
@@ -1351,16 +1361,15 @@ export async function addTeamMember(
 
     console.log('[addTeamMember] Found user:', existingUser.legacyAuthId || existingUser.id, 'Email:', existingUser.email)
 
-    // Verify the insert data
-    const insertData = {
-      user_id: existingUser.legacyAuthId || existingUser.id,
-      company_id: companyId,
-      role: role
-    }
-    console.log('[addTeamMember] Inserting user role:', JSON.stringify(insertData, null, 2))
+    // For Passport users, use app_user_id; for legacy users, use user_id
+    const isPassportUser = !existingUser.legacyAuthId
+    const userId = existingUser.legacyAuthId || existingUser.id
+    const appUserId = isPassportUser ? existingUser.id : null
+
+    console.log('[addTeamMember] User type:', isPassportUser ? 'Passport' : 'Legacy', 'userId:', userId, 'appUserId:', appUserId)
 
     try {
-      await companyMembershipRepository.addRole(insertData.user_id, companyId, role)
+      await companyMembershipRepository.addRole(userId, companyId, role, appUserId)
       console.log('[addTeamMember] Insert result - Success')
     } catch (insertError: any) {
       console.error('[addTeamMember] FAILED - Insert error:', {
@@ -1371,7 +1380,7 @@ export async function addTeamMember(
       if (insertError.code === '23505') { // Unique constraint violation
         // Check if the entry actually exists and is accessible
         console.log('[addTeamMember] Unique constraint violation - checking if entry exists...')
-        const existingRole = await companyMembershipRepository.findRole(insertData.user_id, companyId)
+        const existingRole = await companyMembershipRepository.findRole(userId, companyId)
         console.log('[addTeamMember] Existing role check - Data:', existingRole)
 
         if (existingRole) {
@@ -1390,7 +1399,7 @@ export async function addTeamMember(
 
     // Verify the insert actually worked by querying it back
     console.log('[addTeamMember] Verifying insert by querying back...')
-    const verifyData = await companyMembershipRepository.findRole(insertData.user_id, companyId)
+    const verifyData = await companyMembershipRepository.findRole(userId, companyId)
     console.log('[addTeamMember] Verification query - Data:', verifyData)
 
     if (!verifyData) {
@@ -1460,39 +1469,10 @@ export async function createTeamInvitation(
     const siteUrl = getSiteUrl()
     const acceptUrl = `${siteUrl}/invite/accept?token=${token}`
 
-    // Check if user already exists in the system
-    const existingUser = await userRepository.findByEmail(normalizedEmail)
-
-    let actionUrl: string
-
-    if (existingUser) {
-      // User exists - just send them directly to the accept page (they can log in there)
-      actionUrl = acceptUrl
-      console.log('[createTeamInvitation] Existing user, using direct accept URL')
-    } else {
-      // New user - generate Supabase invite link
-      const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent(`/invite/accept?token=${token}`)}`
-
-      const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
-        type: 'invite',
-        email: normalizedEmail,
-        options: { redirectTo },
-      } as any)
-
-      if (linkError) {
-        console.error('[createTeamInvitation] generateLink error:', linkError)
-        return { success: false, error: linkError.message }
-      }
-
-      actionUrl =
-        (linkData as any)?.properties?.action_link ||
-        (linkData as any)?.action_link ||
-        null
-
-      if (!actionUrl) {
-        return { success: false, error: 'Failed to generate invite link' }
-      }
-    }
+    // Use direct invite URL for all users (both existing and new)
+    // New users will see a signup form, existing users will be prompted to log in
+    const actionUrl = acceptUrl
+    console.log('[createTeamInvitation] Using direct invite URL for all users')
 
     const { subject, html } = renderTeamInviteEmail({
       companyName: company.name,
@@ -1558,7 +1538,9 @@ export async function acceptTeamInvitation(
       return { success: false, error: 'Invitation has expired' }
     }
 
-    await companyMembershipRepository.upsertRole(user.id, invite.companyId, invite.role)
+    // Pass user.id as app_user_id since we're using Passport authentication
+    // user_id will be set to NULL for Passport users
+    await companyMembershipRepository.upsertRole(user.id, invite.companyId, invite.role, user.id)
 
     await teamInvitationRepository.markAccepted(invite.id, user.id)
 
@@ -3272,26 +3254,72 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         -- Discovery of personal/user-level subscription
         personal_sub AS (
           SELECT * FROM subscriptions 
-          WHERE subscription_type = 'user' AND (status = 'active' OR is_trial = true)
+          WHERE subscription_type = 'user' 
+          AND (status = 'active' OR is_trial = true)
           AND (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params))
+          AND (
+            (is_trial = true AND trial_ends_at > NOW()) 
+            OR 
+            ((is_trial = false OR is_trial IS NULL) AND end_date > NOW())
+          )
           ORDER BY created_at DESC LIMIT 1
         ),
         -- THE ACCESS ENGINE
+        -- CRITICAL: Only include companies with ACTIVE subscriptions/trials
+        -- Team members should NOT see companies with expired subscriptions
         acc_ids AS (
+           -- Superadmins see all companies
            SELECT id FROM companies WHERE (SELECT val FROM is_sa) IS TRUE
            UNION
-           SELECT company_id as id FROM user_roles 
-           WHERE (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params)) 
-           AND company_id IS NOT NULL
+           -- Team members: Only companies with active subscriptions
+           SELECT ur.company_id as id FROM user_roles ur
+           INNER JOIN companies c ON c.id = ur.company_id
+           WHERE (ur.app_user_id = (SELECT uid FROM params) OR ur.user_id = (SELECT uid FROM params)) 
+           AND ur.company_id IS NOT NULL
+           AND (
+             -- Company has active subscription
+             EXISTS (
+               SELECT 1 FROM subscriptions s
+               WHERE s.company_id = c.id
+               AND s.subscription_type = 'company'
+               AND (s.status = 'active' OR s.is_trial = true)
+               AND (
+                 (s.is_trial = true AND s.trial_ends_at > NOW())
+                 OR
+                 ((s.is_trial = false OR s.is_trial IS NULL) AND s.end_date > NOW())
+               )
+             )
+             OR
+             -- Owner has active user-level subscription (Enterprise)
+             EXISTS (
+               SELECT 1 FROM subscriptions s
+               WHERE (s.app_user_id = c.app_user_id OR s.user_id = c.user_id)
+               AND s.subscription_type = 'user'
+               AND (s.status = 'active' OR s.is_trial = true)
+               AND (
+                 (s.is_trial = true AND s.trial_ends_at > NOW())
+                 OR
+                 ((s.is_trial = false OR s.is_trial IS NULL) AND s.end_date > NOW())
+               )
+             )
+           )
            UNION
+           -- Owners with personal subscription (Enterprise)
            SELECT id FROM companies 
            WHERE (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params))
            AND EXISTS (SELECT 1 FROM personal_sub)
            UNION
+           -- Owners with company subscription (Starter/Professional)
            SELECT c.id FROM companies c
            INNER JOIN subscriptions s ON s.company_id = c.id
            WHERE (c.app_user_id = (SELECT uid FROM params) OR c.user_id = (SELECT uid FROM params))
-           AND s.subscription_type = 'company' AND (s.status = 'active' OR s.is_trial = true)
+           AND s.subscription_type = 'company' 
+           AND (s.status = 'active' OR s.is_trial = true)
+           AND (
+             (s.is_trial = true AND s.trial_ends_at > NOW()) 
+             OR 
+             ((s.is_trial = false OR s.is_trial IS NULL) AND s.end_date > NOW())
+           )
         ),
         -- Determine final company selection
         target_selection AS (
@@ -3320,12 +3348,30 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         -- Full Access Snapshot Logic
         target_owner AS (SELECT app_user_id, user_id FROM companies WHERE id = (SELECT id FROM final_target_id)),
         target_is_owner AS (SELECT EXISTS (SELECT 1 FROM target_owner WHERE (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params))) as val),
-        target_company_sub AS (SELECT EXISTS (SELECT 1 FROM subscriptions WHERE company_id = (SELECT id FROM final_target_id) AND subscription_type = 'company' AND (status = 'active' OR is_trial = true)) as val),
+        target_company_sub AS (
+          SELECT EXISTS (
+            SELECT 1 FROM subscriptions 
+            WHERE company_id = (SELECT id FROM final_target_id) 
+            AND subscription_type = 'company' 
+            AND (status = 'active' OR is_trial = true)
+            AND (
+              (is_trial = true AND trial_ends_at > NOW()) 
+              OR 
+              ((is_trial = false OR is_trial IS NULL) AND end_date > NOW())
+            )
+          ) as val
+        ),
         target_owner_sub AS (
           SELECT EXISTS (
             SELECT 1 FROM subscriptions s, target_owner o 
             WHERE (s.app_user_id = o.app_user_id OR s.user_id = o.user_id) 
-            AND s.subscription_type = 'user' AND (s.status = 'active' OR s.is_trial = true)
+            AND s.subscription_type = 'user' 
+            AND (s.status = 'active' OR s.is_trial = true)
+            AND (
+              (s.is_trial = true AND s.trial_ends_at > NOW()) 
+              OR 
+              ((s.is_trial = false OR s.is_trial IS NULL) AND s.end_date > NOW())
+            )
           ) as val
         )
       
@@ -3363,7 +3409,13 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     const isOwner = pulse.is_owner as boolean
     const hasCompanySub = pulse.has_company_sub as boolean
     const hasOwnerSub = pulse.has_owner_sub as boolean
-    const ownerSubscriptionExpired = !hasCompanySub && !hasOwnerSub
+    
+    // CRITICAL: ownerSubscriptionExpired should only be true for TEAM MEMBERS (not owners)
+    // when BOTH company subscription AND owner subscription are expired
+    // Owners should never have ownerSubscriptionExpired = true (they get redirected to subscription-required instead)
+    // Superadmins should never have ownerSubscriptionExpired = true
+    const isTeamMember = !isOwner && !isSuperadminResult
+    const ownerSubscriptionExpired = isTeamMember && !hasCompanySub && !hasOwnerSub
 
     // 1. Subscription Logic (for the current LOGGED IN user)
     const sub = pulse.personal_sub
@@ -3486,5 +3538,253 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
   } catch (error: any) {
     console.error('Error in getDataRoomInitState:', error)
     return { success: false, error: error.message || 'Failed to initialize Data Room' }
+  }
+}
+
+// Document management functions (moved from onboarding/actions to avoid HMR issues)
+export async function uploadDocument(
+  companyId: string,
+  data: {
+    folderName: string
+    documentName: string
+    registrationDate?: string
+    expiryDate?: string
+    isPortalRequired: boolean
+    portalEmail?: string
+    portalPassword?: string
+    frequency: string
+    filePath: string
+    fileName: string
+    // New period metadata fields
+    periodType?: 'one-time' | 'monthly' | 'quarterly' | 'annual'
+    periodFinancialYear?: string
+    periodKey?: string
+    periodStart?: string
+    periodEnd?: string
+    requirementId?: string
+  }
+) {
+  // SECURITY: Validate companyId to prevent injection
+  if (!validateCompanyId(companyId)) {
+    throw new Error('Invalid company ID format')
+  }
+
+  // SECURITY: Sanitize string inputs
+  const sanitizedFolderName = sanitizeStringInput(data.folderName, 500)
+  const sanitizedDocumentName = sanitizeStringInput(data.documentName, 500)
+  const sanitizedFileName = sanitizeStringInput(data.fileName, 500)
+
+  if (!sanitizedFolderName || !sanitizedDocumentName || !sanitizedFileName) {
+    throw new Error('Invalid input: folder name, document name, or file name contains invalid characters')
+  }
+
+  const { documentRepository } = createServerContainer()
+  await requireCurrentUser()
+
+  const embedding = await generateEmbedding(`${sanitizedDocumentName} ${sanitizedFileName}`)
+
+  const [insertedDoc] = await documentRepository.createCompanyDocuments([{
+    companyId,
+    documentType: sanitizedDocumentName,
+    folderName: sanitizedFolderName,
+    registrationDate: data.registrationDate || null,
+    expiryDate: data.expiryDate || null,
+    isPortalRequired: data.isPortalRequired,
+    portalEmail: data.portalEmail || null,
+    portalPassword: data.portalPassword || null,
+    frequency: data.frequency,
+    filePath: data.filePath,
+    fileName: sanitizedFileName,
+    embedding: embedding.length > 0 ? embedding : null,
+    periodType: data.periodType || null,
+    periodFinancialYear: data.periodFinancialYear || null,
+    periodKey: data.periodKey || null,
+    periodStart: data.periodStart || null,
+    periodEnd: data.periodEnd || null,
+    requirementId: data.requirementId || null,
+  }])
+
+  // Trigger content processing in background
+  if (insertedDoc) {
+    processDocumentContent(insertedDoc.id, companyId, insertedDoc.filePath).catch(err =>
+      console.error(`Async processing failed for ${insertedDoc.id}:`, err)
+    )
+  }
+
+  return { success: true, documentId: insertedDoc?.id }
+}
+
+export async function uploadFileToStorage(filePath: string, fileData: ArrayBuffer, contentType: string) {
+  try {
+    await requireCurrentUser()
+
+    // SECURITY: Sanitize filePath
+    const sanitizedFilePath = sanitizeStringInput(filePath, 1000)
+    if (!sanitizedFilePath) {
+      throw new Error('Invalid file path')
+    }
+
+    // Use admin client to bypass RLS for Passport users
+    const adminSupabase = createAdminClient()
+
+    const { error: uploadError } = await adminSupabase.storage
+      .from('company-documents')
+      .upload(sanitizedFilePath, fileData, {
+        contentType: contentType,
+        upsert: false, // Don't overwrite existing files
+      })
+
+    if (uploadError) throw uploadError
+    return { success: true }
+  } catch (err: any) {
+    console.error('Error uploading file to storage:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+export async function getDownloadUrl(filePath: string) {
+  try {
+    await requireCurrentUser()
+
+    // Use admin client to bypass RLS for Passport users
+    const adminSupabase = createAdminClient()
+
+    const { data, error } = await adminSupabase.storage
+      .from('company-documents')
+      .createSignedUrl(filePath, 3600) // 1 hour expiry for preview
+
+    if (error) throw error
+    return { success: true, url: data.signedUrl }
+  } catch (err: any) {
+    console.error('Error creating signed URL:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+export async function deleteDocument(documentId: string, filePath: string) {
+  try {
+    // SECURITY: Validate documentId to prevent injection
+    if (!isValidUUID(documentId)) {
+      throw new Error('Invalid document ID format')
+    }
+
+    // SECURITY: Sanitize filePath
+    const sanitizedFilePath = sanitizeStringInput(filePath, 1000)
+    if (!sanitizedFilePath) {
+      throw new Error('Invalid file path')
+    }
+
+    const { documentRepository } = createServerContainer()
+    await requireCurrentUser()
+
+    // Use admin client to bypass RLS for Passport users
+    const adminSupabase = createAdminClient()
+
+    // 1. Delete from Storage
+    const { error: storageError } = await adminSupabase.storage
+      .from('company-documents')
+      .remove([sanitizedFilePath])
+
+    if (storageError) {
+      console.error('Storage deletion error:', storageError)
+      // Continue anyway to try and clean up metadata
+    }
+
+    // 2. Delete from Metadata table
+    await documentRepository.deleteCompanyDocument(documentId)
+
+    return { success: true }
+  } catch (err: any) {
+    console.error('Error deleting document:', err)
+    return { success: false, error: err.message }
+  }
+}
+
+export async function getDocumentTemplates() {
+  try {
+    const { documentRepository } = createServerContainer()
+    const templates = await documentRepository.getTemplateMappings()
+    return {
+      success: true,
+      templates: templates.map(template => ({
+        document_name: template.documentName,
+        folder_name: template.folderName,
+        default_frequency: template.defaultFrequency,
+      })),
+    }
+  } catch (err: any) {
+    console.error('Error fetching templates:', err)
+    if (err?.code === 'PGRST106' || err?.message?.includes('does not exist')) {
+      return { success: true, templates: [] }
+    }
+    return { success: false, templates: [] }
+  }
+}
+
+export async function getCompanyDocuments(companyId: string) {
+  try {
+    // SECURITY: Validate companyId to prevent injection
+    if (!validateCompanyId(companyId)) {
+      return { success: false, documents: [], error: 'Invalid company ID format' }
+    }
+
+    const { documentRepository, authService, accessService } = createServerContainer()
+
+    // Check authentication
+    const user = await authService.getCurrentUser()
+    if (!user) {
+      return { success: false, documents: [], error: 'Unauthorized' }
+    }
+
+    // Check access to company
+    console.log('[getCompanyDocuments] Checking access for user:', user.id, 'company:', companyId, 'isPassportUser:', !!user.canonicalId)
+    const accessSnapshot = await accessService.getCompanyAccessSnapshot(user.id, companyId)
+    console.log('[getCompanyDocuments] Access snapshot:', {
+      hasAccess: accessSnapshot.hasAccess,
+      accessType: accessSnapshot.accessType,
+      isOwner: accessSnapshot.isOwner,
+      ownerSubscriptionExpired: accessSnapshot.ownerSubscriptionExpired
+    })
+    
+    if (!accessSnapshot.hasAccess) {
+      console.log('[getCompanyDocuments] Access denied for user:', user.id, 'company:', companyId, 'reason:', {
+        accessType: accessSnapshot.accessType,
+        isOwner: accessSnapshot.isOwner,
+        ownerSubscriptionExpired: accessSnapshot.ownerSubscriptionExpired
+      })
+      return { success: false, documents: [], error: 'Access denied to this company' }
+    }
+
+    console.log('[getCompanyDocuments] Fetching documents for company:', companyId, 'user:', user.id)
+
+    const documents = await documentRepository.getCompanyDocuments(companyId)
+    console.log('[getCompanyDocuments] Found', documents.length, 'documents for company:', companyId)
+    
+    return {
+      success: true,
+      documents: documents.map(document => ({
+        id: document.id,
+        company_id: document.companyId,
+        document_type: document.documentType,
+        folder_name: document.folderName,
+        file_path: document.filePath,
+        file_name: document.fileName,
+        created_at: document.createdAt,
+        registration_date: document.registrationDate || null,
+        expiry_date: document.expiryDate || null,
+        period_type: document.periodType || null,
+        period_financial_year: document.periodFinancialYear || null,
+        period_key: document.periodKey || null,
+        period_start: document.periodStart || null,
+        period_end: document.periodEnd || null,
+        requirement_id: document.requirementId || null,
+      })),
+    }
+  } catch (err: any) {
+    console.error('[getCompanyDocuments] Error:', err)
+    if (err?.code === 'PGRST106' || err?.message?.includes('does not exist')) {
+      return { success: true, documents: [], warning: 'Storage table not found' }
+    }
+    return { success: false, error: err.message, documents: [] }
   }
 }

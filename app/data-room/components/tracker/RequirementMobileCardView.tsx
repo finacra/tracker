@@ -84,7 +84,7 @@ export default function RequirementMobileCardView({
           </div>
           {/* Category Items as Cards */}
           <div className="space-y-3">
-            {group.items.map((req) => {
+            {group.items.map((req, itemIndex) => {
               const daysDelayed = calculateDelay(req.dueDate, req.status)
               const calculatedPenalty = calculatePenalty(req.penalty, daysDelayed)
               const complianceType = req.compliance_type
@@ -93,7 +93,7 @@ export default function RequirementMobileCardView({
               const authority = getAuthorityForCategory(req.category)
 
               return (
-                <div key={req.id} className="bg-black border border-white/10 rounded-lg p-3 space-y-2">
+                <div key={`${group.category}-${req.id}-${itemIndex}`} className="bg-black border border-white/10 rounded-lg p-3 space-y-2">
                   {/* Requirement Header with Checkbox */}
                   <div className="flex items-start gap-2">
                     {canEdit && (

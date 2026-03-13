@@ -1,14 +1,9 @@
-import { SupabaseMiddlewareAuthCheck } from '@/infrastructure/auth/supabase/SupabaseMiddlewareAuthCheck'
 import { PassportMiddlewareAuthCheck } from '@/infrastructure/auth/passport/PassportMiddlewareAuthCheck'
 import { NextResponse, type NextRequest } from 'next/server'
+import { prisma } from '@/lib/prisma'
 
-// Composition: swap this to change auth provider for middleware
-// Choose based on AUTH_PROVIDER env var (default to Supabase for backward compatibility)
-const authProvider = process.env.AUTH_PROVIDER || 'supabase'
-const authCheck =
-  authProvider === 'passport'
-    ? new PassportMiddlewareAuthCheck()
-    : new SupabaseMiddlewareAuthCheck()
+// Use Passport authentication (Supabase auth removed)
+const authCheck = new PassportMiddlewareAuthCheck()
 
 export default async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
@@ -20,7 +15,7 @@ export default async function proxy(request: NextRequest) {
   }
 
   // Public routes that should be accessible without authentication
-  const publicRoutes = ['/home', '/privacy-policy', '/terms-of-service', '/pricing', '/contact', '/login', '/compliance-tracker', '/company-onboarding', '/customers', '/auth/reset-password']
+  const publicRoutes = ['/home', '/privacy-policy', '/terms-of-service', '/pricing', '/contact', '/login', '/compliance-tracker', '/company-onboarding', '/customers', '/auth/reset-password', '/forgot-password', '/verify-email', '/invite/accept']
 
   if (
     pathname === '/' ||
@@ -28,11 +23,15 @@ export default async function proxy(request: NextRequest) {
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
     pathname.startsWith('/auth') ||
+    pathname.startsWith('/invite') || // Allow all invite routes (for invitation acceptance)
     pathname.startsWith('/favicon.ico') ||
     pathname.match(/\.(svg|png|jpg|jpeg|gif|webp)$/) ||
     publicRoutes.includes(pathname)
   ) {
     // Server actions perform their own auth checks, so avoid duplicate middleware auth.
+    if (isDev && pathname.startsWith('/invite')) {
+      console.log('[PROXY] Allowing invite route:', pathname)
+    }
     return NextResponse.next({ request })
   }
 
@@ -59,6 +58,115 @@ export default async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/home'
     return NextResponse.redirect(url)
+  }
+
+  // Check email verification for email/password users (not Google OAuth)
+  // Exclude error/info pages and subscription pages that users might be redirected to
+  const excludedFromVerificationCheck = [
+    '/verify-email',
+    '/owner-subscription-expired',
+    '/subscription-required',
+    '/subscribe', // Allow unverified users to see subscription page
+  ]
+  
+  if (result.authenticated && result.userId && !excludedFromVerificationCheck.includes(pathname)) {
+    // Check if we've already verified this session (cached in cookie)
+    const verificationCookie = request.cookies.get('email_verified')
+    const cachedVerificationStatus = verificationCookie?.value === 'true'
+    const cachedUserId = request.cookies.get('email_verified_user_id')?.value
+
+    // If we have a cached verification status for this user, skip the check
+    if (cachedVerificationStatus && cachedUserId === result.userId) {
+      // User is verified, allow access
+      return response
+    }
+
+    try {
+      // Check if user has password_hash (email/password auth) and email verification status
+      // Also check if user has Google OAuth (no password_hash but has auth_identity with Google)
+      const user = await prisma.$queryRaw<Array<{
+        email_verified: boolean | null
+        has_password: boolean
+        has_google_auth: boolean
+        primary_email: string
+      }>>`
+        SELECT 
+          au.email_verified,
+          (au.password_hash IS NOT NULL AND au.password_hash != '') as has_password,
+          EXISTS(
+            SELECT 1 FROM public.auth_identities ai
+            WHERE ai.app_user_id = au.id
+            AND ai.provider = 'passport'
+            AND ai.legacy_auth_id IS NOT NULL
+            AND ai.legacy_auth_id != ''
+            AND au.password_hash IS NULL
+          ) as has_google_auth,
+          au.primary_email
+        FROM public.app_users au
+        WHERE au.id = ${result.userId}::uuid
+        LIMIT 1
+      `
+
+      if (user && user.length > 0) {
+        const userData = user[0]
+        const isEmailPasswordUser = userData.has_password
+        const isGoogleOAuthUser = userData.has_google_auth && !userData.has_password
+        const isEmailVerified = userData.email_verified === true
+
+        // Google OAuth users: Skip verification check (emails are verified by Google)
+        if (isGoogleOAuthUser) {
+          // Set cookie to skip future checks for this user
+          response.cookies.set('email_verified', 'true', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 30, // 30 days
+          })
+          response.cookies.set('email_verified_user_id', result.userId, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 30, // 30 days
+          })
+          return response
+        }
+
+        // Email/password users: Check verification
+        if (isEmailPasswordUser) {
+          if (isEmailVerified) {
+            // Email is verified - cache it to skip future checks
+            response.cookies.set('email_verified', 'true', {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+              maxAge: 60 * 60 * 24 * 30, // 30 days
+            })
+            response.cookies.set('email_verified_user_id', result.userId, {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+              maxAge: 60 * 60 * 24 * 30, // 30 days
+            })
+            return response
+          } else {
+            // Email not verified - redirect to verify-email
+            if (isDev) {
+              console.log('[PROXY] Email not verified, redirecting to /verify-email', {
+                userId: result.userId,
+                email: userData.primary_email,
+              })
+            }
+            const url = request.nextUrl.clone()
+            url.pathname = '/verify-email'
+            return NextResponse.redirect(url)
+          }
+        }
+      }
+    } catch (error) {
+      // If we can't check verification, log but don't block (fail open for now)
+      console.error('[PROXY] Error checking email verification:', error)
+      // Continue to allow access if check fails
+    }
   }
 
   // Don't redirect /admin routes - allow them through

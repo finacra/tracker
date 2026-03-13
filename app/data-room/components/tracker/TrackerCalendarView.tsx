@@ -142,7 +142,7 @@ export default function TrackerCalendarView({
                 {day}
               </div>
               <div className="space-y-1 sm:space-y-1.5 overflow-y-auto max-h-[45px] sm:max-h-[90px]">
-                {dayRequirements.map((req: Requirement) => {
+                {dayRequirements.map((req: Requirement, reqIndex: number) => {
                   const dueDate = req.dueDate || ''
                   const isOverdue = req.status === 'overdue' || (parseDateForCalendar(dueDate) && parseDateForCalendar(dueDate)! < new Date())
                   const daysDelayed = calculateDelay(dueDate, req.status)
@@ -150,7 +150,7 @@ export default function TrackerCalendarView({
 
                   return (
                     <div
-                      key={req.id}
+                      key={`${dateKey}-${req.id}-${reqIndex}`}
                       className={`text-[10px] sm:text-xs p-1 sm:p-2 rounded border cursor-pointer hover:opacity-80 transition-opacity ${isOverdue
                           ? 'bg-red-500/20 text-red-400 border-red-500/30'
                           : req.status === 'completed'

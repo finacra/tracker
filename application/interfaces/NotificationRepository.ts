@@ -7,8 +7,8 @@ export interface NotificationQueryOptions {
 
 export interface CreateNotificationInput {
   company_id: string
-  user_id: string
-  app_user_id?: string | null
+  user_id: string | null  // Nullable for Passport users (use app_user_id instead)
+  app_user_id?: string | null  // For Passport users
   type: string
   title: string
   message: string

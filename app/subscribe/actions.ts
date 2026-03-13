@@ -4,7 +4,8 @@ import { createServerContainer } from '@/lib/composition/server-container'
 import { validateCompanyId } from '@/lib/utils/input-validation'
 
 export async function getCompanyTrialEligibility(
-  companyId: string | null
+  companyId: string | null,
+  accessibleCompanyIds?: string[]
 ): Promise<{ success: boolean; eligible?: boolean; reason?: string; error?: string }> {
   if (companyId && !validateCompanyId(companyId)) {
     return { success: false, error: 'Invalid company ID format' }
@@ -34,8 +35,44 @@ export async function getCompanyTrialEligibility(
     }
 
     const company = await companyRepository.getById(companyId)
-    if (!company || company.ownerUserId !== user.id) {
+    if (!company) {
+      return { success: false, error: 'Company not found' }
+    }
+
+    // Check if user has access to this company
+    // Option 1: User is the owner
+    const isOwner = company.ownerUserId === user.id || company.appUserId === user.id
+    
+    // Option 2: Company is in accessibleCompanyIds (passed from client)
+    const hasAccessViaList = accessibleCompanyIds?.includes(companyId) || false
+    
+    // Option 3: Check via company memberships (fallback)
+    let hasAccessViaMembership = false
+    if (!isOwner && !hasAccessViaList) {
+      try {
+        const { companyMembershipRepository } = createServerContainer()
+        const memberships = await companyMembershipRepository.listByCompanyId(companyId)
+        hasAccessViaMembership = memberships.some(m => m.userId === user.id || m.appUserId === user.id)
+      } catch (err) {
+        // If membership check fails, continue with other checks
+        console.warn('[getCompanyTrialEligibility] Failed to check memberships:', err)
+      }
+    }
+
+    // User must have access via one of the methods above
+    if (!isOwner && !hasAccessViaList && !hasAccessViaMembership) {
       return { success: false, error: 'Unauthorized' }
+    }
+
+    // Only owners can create company trials, but team members should be able to see eligibility
+    if (!isOwner) {
+      // Team members can see eligibility but can't create trials (only owners can)
+      // Return eligible: false with a reason that indicates they need owner to create trial
+      return {
+        success: true,
+        eligible: false,
+        reason: 'requires_owner',
+      }
     }
 
     const hasUsedCompanyTrial = await subscriptionRepository.hasUsedCompanyTrial(companyId)

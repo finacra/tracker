@@ -3,8 +3,19 @@
 import React, { useState, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
-import { uploadDocument, getCompanyDocuments, getDocumentTemplates, getDownloadUrl, deleteDocument, uploadFileToStorage } from '@/app/onboarding/actions'
-import { sendDocumentsEmail, hideDocumentTemplateForCompany, getHiddenDocumentTemplates } from '@/app/data-room/actions'
+import {
+  uploadDocument,
+  getCompanyDocuments,
+  getDocumentTemplates,
+  getDownloadUrl,
+  deleteDocument,
+  uploadFileToStorage
+} from '@/app/data-room/document-actions'
+import {
+  sendDocumentsEmail,
+  hideDocumentTemplateForCompany,
+  getHiddenDocumentTemplates
+} from '@/app/data-room/actions'
 import { trackVaultFileExport, trackVaultFileUpload, trackDocumentUpload } from '@/lib/tracking/kpi-tracker'
 import { showToast } from '@/components/ui/Toast'
 

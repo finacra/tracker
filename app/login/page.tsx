@@ -8,12 +8,16 @@ import { getPostAuthDestination, getOAuthLoginUrl } from './actions'
 
 function LoginPageInner() {
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [isEmailMode, setIsEmailMode] = useState(false)
   const [isSignUp, setIsSignUp] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [requiresLinking, setRequiresLinking] = useState(false)
+  const [linkingUserId, setLinkingUserId] = useState<string | null>(null)
+  const [isSendingVerification, setIsSendingVerification] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -39,7 +43,24 @@ function LoginPageInner() {
         if (!isMounted) return
         
         // Redirect authenticated users to their destination
+        // But first check if email is verified (for email/password users)
         if (session) {
+          try {
+            // Check email verification status
+            const verifyRes = await fetch(`/api/auth/check-verification?userId=${session.appUserId}`)
+            const verifyData = await verifyRes.json()
+            
+            // If email/password user and not verified, redirect to verify-email
+            if (verifyData.requiresVerification && !verifyData.emailVerified) {
+              console.log('🔄 [PASSPORT AUTH CHECK] Email not verified, redirecting to /verify-email')
+              window.location.href = '/verify-email'
+              return
+            }
+          } catch (err) {
+            console.error('Error checking email verification:', err)
+            // Continue with normal redirect if check fails
+          }
+
           const result = await getPostAuthDestination(session.appUserId)
           const baseDestination = result.success ? result.destination ?? '/subscribe' : '/subscribe'
           const destination = resolvePostAuthRedirect({
@@ -111,7 +132,23 @@ function LoginPageInner() {
         return
       }
 
+      // Check if account linking is required
+      if (result.requiresLinking && result.userId) {
+        setRequiresLinking(true)
+        setLinkingUserId(result.userId)
+        setMessage(result.message || 'This email is already registered with Google.')
+        setIsLoading(false)
+        return
+      }
+
       // Success! User is now logged in via Passport session cookie
+      // If email not verified, redirect to verification page
+      if (result.requiresVerification && !result.user.emailVerified) {
+        console.log(`[PASSPORT EMAIL ${isSignUp ? 'SIGN UP' : 'SIGN IN'}] User ${result.user.id} email not verified, redirecting to verify-email`)
+        window.location.href = '/verify-email'
+        return
+      }
+
       try {
         const destResult = await getPostAuthDestination(result.user.id)
         const baseDestination = destResult.success ? destResult.destination ?? '/subscribe' : '/subscribe';
@@ -135,7 +172,36 @@ function LoginPageInner() {
   }
 
   const handlePasswordReset = async () => {
-    setError('Password reset is currently disabled as we transition to our new authentication system. Please contact support.')
+    router.push('/forgot-password')
+  }
+
+  const handleSendLinkingVerification = async () => {
+    if (!linkingUserId) return
+
+    setIsSendingVerification(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/auth/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: linkingUserId }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        setError(result.error || 'Failed to send verification email')
+        setIsSendingVerification(false)
+        return
+      }
+
+      setMessage('Verification email sent! Please check your inbox and click the link to verify your email, then you can set a password.')
+      setIsSendingVerification(false)
+    } catch (error: any) {
+      setError(error.message || 'Failed to send verification email')
+      setIsSendingVerification(false)
+    }
   }
 
   return (
@@ -263,6 +329,57 @@ function LoginPageInner() {
                 <p className="text-sm text-gray-400 font-light">No password required!</p>
               </div>
             </>
+          ) : requiresLinking ? (
+            <>
+              {/* Account Linking UI */}
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-500/10 border border-blue-500/50 rounded-lg">
+                  <p className="text-sm text-blue-400 font-light mb-3">
+                    This email is already registered with Google. To add a password to your account, we need to verify you own this email address.
+                  </p>
+                  <p className="text-sm text-gray-400 font-light">
+                    We'll send a verification email to <strong className="text-white">{email}</strong>. After you verify your email, you can set a password.
+                  </p>
+                </div>
+
+                {error && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg">
+                    <p className="text-sm text-red-400 font-light">{error}</p>
+                  </div>
+                )}
+
+                {message && (
+                  <div className="p-3 bg-green-500/10 border border-green-500/50 rounded-lg">
+                    <p className="text-sm text-green-400 font-light">{message}</p>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleSendLinkingVerification}
+                  disabled={isSendingVerification}
+                  className="w-full px-6 py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-light"
+                >
+                  {isSendingVerification ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
+                  ) : (
+                    'Send Verification Email'
+                  )}
+                </button>
+
+                <button
+                  onClick={() => {
+                    setRequiresLinking(false)
+                    setLinkingUserId(null)
+                    setError(null)
+                    setMessage(null)
+                    setPassword('')
+                  }}
+                  className="w-full px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-all font-light"
+                >
+                  Cancel
+                </button>
+              </div>
+            </>
           ) : (
             <>
               {/* Email/Password Form */}
@@ -287,17 +404,36 @@ function LoginPageInner() {
                   <label htmlFor="password" className="block text-sm font-light text-gray-300 mb-2">
                     Password
                   </label>
+                  <div className="relative">
                   <input
                     id="password"
-                    type="password"
+                      type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors font-light"
+                      className="w-full px-4 py-3 pr-12 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors font-light"
                     placeholder="Enter your password"
                     disabled={isLoading}
                     minLength={6}
                   />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {error && (

@@ -94,11 +94,12 @@ export async function completeOnboarding(
 
   // 1b. Assign admin role to the company creator
   try {
+    // For Passport users, use app_user_id (user.id) and set user_id to NULL
     await companyMembershipRepository.addRole(
       user.id,
       company.id,
       'admin',
-      user.canonicalId
+      user.id // Pass user.id as app_user_id for Passport users
     )
   } catch (roleError) {
     console.error('Role assignment error:', roleError)

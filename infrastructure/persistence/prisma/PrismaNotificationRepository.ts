@@ -12,51 +12,100 @@ export class PrismaNotificationRepository implements NotificationRepository {
     userId: string,
     options: NotificationQueryOptions = {}
   ): Promise<AppNotification[]> {
-    const rows = await prisma.companyNotification.findMany({
-      where: {
-        user_id: userId,
-        ...(options.unreadOnly ? { is_read: false } : {}),
-      },
-      orderBy: { created_at: 'desc' },
-      ...(options.limit ? { take: options.limit } : {}),
-    })
+    // Query using UNION to check both app_user_id (Passport) and user_id (legacy Supabase)
+    const unreadFilter = options.unreadOnly ? 'AND cn.is_read = false' : ''
+    const limitClause = options.limit ? `LIMIT ${options.limit}` : ''
+    
+    const rows = await prisma.$queryRaw<any[]>`
+      SELECT cn.*
+      FROM company_notifications cn
+      WHERE cn.app_user_id = ${userId}::uuid
+      ${Prisma.raw(unreadFilter)}
+      UNION ALL
+      SELECT cn.*
+      FROM company_notifications cn
+      INNER JOIN auth_identities ai ON ai.legacy_auth_id = cn.user_id::text
+      WHERE ai.app_user_id = ${userId}::uuid AND ai.provider = 'supabase'
+      ${Prisma.raw(unreadFilter)}
+      UNION ALL
+      SELECT cn.*
+      FROM company_notifications cn
+      WHERE cn.user_id = ${userId}::uuid
+      AND NOT EXISTS (SELECT 1 FROM app_users WHERE id = ${userId}::uuid)
+      ${Prisma.raw(unreadFilter)}
+      ORDER BY created_at DESC
+      ${Prisma.raw(limitClause)}
+    `
 
     return rows.map((row) => this.mapRow(row))
   }
 
   async countUnreadForUser(userId: string): Promise<number> {
-    return prisma.companyNotification.count({
-      where: {
-        user_id: userId,
-        is_read: false,
-      },
-    })
+    // Count using UNION to check both app_user_id (Passport) and user_id (legacy Supabase)
+    const result = await prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*)::bigint as count
+      FROM (
+        SELECT cn.id
+        FROM company_notifications cn
+        WHERE cn.app_user_id = ${userId}::uuid AND cn.is_read = false
+        UNION ALL
+        SELECT cn.id
+        FROM company_notifications cn
+        INNER JOIN auth_identities ai ON ai.legacy_auth_id = cn.user_id::text
+        WHERE ai.app_user_id = ${userId}::uuid AND ai.provider = 'supabase' AND cn.is_read = false
+        UNION ALL
+        SELECT cn.id
+        FROM company_notifications cn
+        WHERE cn.user_id = ${userId}::uuid
+        AND NOT EXISTS (SELECT 1 FROM app_users WHERE id = ${userId}::uuid)
+        AND cn.is_read = false
+      ) combined
+    `
+    return Number(result[0]?.count || 0)
   }
 
   async markReadForUser(userId: string, notificationIds: string[]): Promise<void> {
-    await prisma.companyNotification.updateMany({
-      where: {
-        user_id: userId,
-        id: { in: notificationIds },
-      },
-      data: {
-        is_read: true,
-        read_at: new Date(),
-      },
-    })
+    // Update using UNION to check both app_user_id (Passport) and user_id (legacy Supabase)
+    await prisma.$executeRaw`
+      UPDATE company_notifications cn
+      SET is_read = true, read_at = NOW()
+      WHERE cn.id = ANY(${notificationIds}::uuid[])
+      AND (
+        cn.app_user_id = ${userId}::uuid
+        OR (
+          cn.user_id IN (
+            SELECT legacy_auth_id::uuid FROM auth_identities 
+            WHERE app_user_id = ${userId}::uuid AND provider = 'supabase'
+          )
+        )
+        OR (
+          cn.user_id = ${userId}::uuid
+          AND NOT EXISTS (SELECT 1 FROM app_users WHERE id = ${userId}::uuid)
+        )
+      )
+    `
   }
 
   async markAllReadForUser(userId: string): Promise<void> {
-    await prisma.companyNotification.updateMany({
-      where: {
-        user_id: userId,
-        is_read: false,
-      },
-      data: {
-        is_read: true,
-        read_at: new Date(),
-      },
-    })
+    // Update using UNION to check both app_user_id (Passport) and user_id (legacy Supabase)
+    await prisma.$executeRaw`
+      UPDATE company_notifications cn
+      SET is_read = true, read_at = NOW()
+      WHERE cn.is_read = false
+      AND (
+        cn.app_user_id = ${userId}::uuid
+        OR (
+          cn.user_id IN (
+            SELECT legacy_auth_id::uuid FROM auth_identities 
+            WHERE app_user_id = ${userId}::uuid AND provider = 'supabase'
+          )
+        )
+        OR (
+          cn.user_id = ${userId}::uuid
+          AND NOT EXISTS (SELECT 1 FROM app_users WHERE id = ${userId}::uuid)
+        )
+      )
+    `
   }
 
   async createMany(notifications: CreateNotificationInput[]): Promise<void> {

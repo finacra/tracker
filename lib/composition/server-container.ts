@@ -38,9 +38,7 @@ export function createServerContainer() {
   const vaultDocumentUsageRepository = new PrismaVaultDocumentUsageRepository()
   const vaultTemplateManagementRepository = new PrismaVaultTemplateManagementRepository()
 
-  // Choose auth provider based on environment variable (default to Supabase for backward compatibility)
-  const authProvider = process.env.AUTH_PROVIDER || 'supabase'
-
+  // Use Passport authentication (Supabase auth removed)
   const authService = new PassportAuthService(userRepository)
   const authGateway = new PassportAuthGateway()
   const sessionProvider = new PassportSessionProvider()
