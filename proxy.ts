@@ -1,6 +1,7 @@
 import { PassportMiddlewareAuthCheck } from '@/infrastructure/auth/passport/PassportMiddlewareAuthCheck'
 import { NextResponse, type NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { cookies } from 'next/headers'
 
 // Use Passport authentication (Supabase auth removed)
 const authCheck = new PassportMiddlewareAuthCheck()
@@ -116,38 +117,40 @@ export default async function proxy(request: NextRequest) {
         // Google OAuth users: Skip verification check (emails are verified by Google)
         if (isGoogleOAuthUser) {
           // Set cookie to skip future checks for this user
-          response.cookies.set('email_verified', 'true', {
+          const nextResponse = response as NextResponse
+          nextResponse.cookies.set('email_verified', 'true', {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             maxAge: 60 * 60 * 24 * 30, // 30 days
           })
-          response.cookies.set('email_verified_user_id', result.userId, {
+          nextResponse.cookies.set('email_verified_user_id', result.userId, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             maxAge: 60 * 60 * 24 * 30, // 30 days
           })
-          return response
+          return nextResponse
         }
 
         // Email/password users: Check verification
         if (isEmailPasswordUser) {
           if (isEmailVerified) {
             // Email is verified - cache it to skip future checks
-            response.cookies.set('email_verified', 'true', {
+            const nextResponse = response as NextResponse
+            nextResponse.cookies.set('email_verified', 'true', {
               httpOnly: true,
               secure: process.env.NODE_ENV === 'production',
               sameSite: 'lax',
               maxAge: 60 * 60 * 24 * 30, // 30 days
             })
-            response.cookies.set('email_verified_user_id', result.userId, {
+            nextResponse.cookies.set('email_verified_user_id', result.userId, {
               httpOnly: true,
               secure: process.env.NODE_ENV === 'production',
               sameSite: 'lax',
               maxAge: 60 * 60 * 24 * 30, // 30 days
             })
-            return response
+            return nextResponse
           } else {
             // Email not verified - redirect to verify-email
             if (isDev) {

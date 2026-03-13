@@ -41,7 +41,7 @@ export async function getCompanyTrialEligibility(
 
     // Check if user has access to this company
     // Option 1: User is the owner
-    const isOwner = company.ownerUserId === user.id || company.appUserId === user.id
+    const isOwner = company.ownerUserId === user.id || (company as any).appUserId === user.id
     
     // Option 2: Company is in accessibleCompanyIds (passed from client)
     const hasAccessViaList = accessibleCompanyIds?.includes(companyId) || false
@@ -51,8 +51,8 @@ export async function getCompanyTrialEligibility(
     if (!isOwner && !hasAccessViaList) {
       try {
         const { companyMembershipRepository } = createServerContainer()
-        const memberships = await companyMembershipRepository.listByCompanyId(companyId)
-        hasAccessViaMembership = memberships.some(m => m.userId === user.id || m.appUserId === user.id)
+        const memberships = await companyMembershipRepository.getRoles(companyId)
+        hasAccessViaMembership = memberships.some(m => m.userId === user.id || (m as any).appUserId === user.id)
       } catch (err) {
         // If membership check fails, continue with other checks
         console.warn('[getCompanyTrialEligibility] Failed to check memberships:', err)

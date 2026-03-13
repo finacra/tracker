@@ -26,6 +26,12 @@ function ResetPasswordPageInner() {
     }
 
     async function verifyToken() {
+      if (!token) {
+        setError('No reset token provided')
+        setIsVerifying(false)
+        return
+      }
+      
       try {
         const response = await fetch(`/api/auth/passport/reset-password?token=${encodeURIComponent(token)}`)
         const data = await response.json()

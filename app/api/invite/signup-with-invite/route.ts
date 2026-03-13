@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
         where: { id: existingUser.id },
         data: { 
           password_hash: hash,
-          full_name: fullName || existingUser.full_name,
+          full_name: fullName || existingUser.fullName,
         } as any
       })
     } else {
