@@ -147,14 +147,11 @@ CREATE INDEX IF NOT EXISTS idx_company_compliance_exclusions_company
 -- These indexes include all columns needed by the query, avoiding table lookups
 
 -- Covering index for subscriptions (includes all columns used in active_subscriptions CTE)
+-- Note: We can't use NOW() in index predicates (not immutable), so date filtering happens at query time
+-- The index still helps with status, is_trial, and date column lookups
 CREATE INDEX IF NOT EXISTS idx_subscriptions_covering_active 
   ON public.subscriptions(company_id, subscription_type, status, is_trial, trial_ends_at, end_date, app_user_id, user_id, created_at)
-  WHERE (status = 'active' OR is_trial = true)
-    AND (
-      (is_trial = true AND trial_ends_at > NOW())
-      OR 
-      ((is_trial = false OR is_trial IS NULL) AND end_date > NOW())
-    );
+  WHERE (status = 'active' OR is_trial = true);
 
 -- Covering index for user_roles (includes role for superadmin and company lookups)
 CREATE INDEX IF NOT EXISTS idx_user_roles_covering 
