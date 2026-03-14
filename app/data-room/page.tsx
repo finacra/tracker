@@ -411,13 +411,13 @@ function DataRoomPageInner() {
         const formattedCompanies = (data.companies || [])
           .filter((c: any) => data.accessibleCompanyIds.includes(c.id))
           .map((c: any) => ({
-            id: c.id,
-            name: c.name,
-            type: c.type,
-            year: c.incorporation_date ? new Date(c.incorporation_date).getFullYear().toString() : "N/A",
-            country_code: c.country_code || "IN",
-            region: c.region || "APAC",
-          }));
+          id: c.id,
+          name: c.name,
+          type: c.type,
+          year: c.incorporation_date ? new Date(c.incorporation_date).getFullYear().toString() : "N/A",
+          country_code: c.country_code || "IN",
+          region: c.region || "APAC",
+        }));
         setCompanies(formattedCompanies);
         
         // 2. Determine Final Selected Company (Priority: URL > Preferred > First)
@@ -596,8 +596,8 @@ function DataRoomPageInner() {
           console.log('[DataRoom] Team member has no access due to expired owner subscription, redirecting to owner-subscription-expired');
           router.push("/owner-subscription-expired");
         } else {
-          console.log('[DataRoom] User has companies but no access, redirecting to subscribe');
-          router.push("/subscribe");
+        console.log('[DataRoom] User has companies but no access, redirecting to subscribe');
+        router.push("/subscribe");
         }
         return;
       }

@@ -142,6 +142,30 @@ CREATE INDEX IF NOT EXISTS idx_company_compliance_exclusions_company
 -- No additional index needed as id is the primary key
 
 -- ============================================
+-- 10. COVERING INDEXES (Include all columns needed)
+-- ============================================
+-- These indexes include all columns needed by the query, avoiding table lookups
+
+-- Covering index for subscriptions (includes all columns used in active_subscriptions CTE)
+CREATE INDEX IF NOT EXISTS idx_subscriptions_covering_active 
+  ON public.subscriptions(company_id, subscription_type, status, is_trial, trial_ends_at, end_date, app_user_id, user_id, created_at)
+  WHERE (status = 'active' OR is_trial = true)
+    AND (
+      (is_trial = true AND trial_ends_at > NOW())
+      OR 
+      ((is_trial = false OR is_trial IS NULL) AND end_date > NOW())
+    );
+
+-- Covering index for user_roles (includes role for superadmin and company lookups)
+CREATE INDEX IF NOT EXISTS idx_user_roles_covering 
+  ON public.user_roles(app_user_id, user_id, company_id, role)
+  WHERE company_id IS NOT NULL;
+
+-- Covering index for companies (includes app_user_id and user_id for owner lookups)
+CREATE INDEX IF NOT EXISTS idx_companies_covering_owner 
+  ON public.companies(id, app_user_id, user_id);
+
+-- ============================================
 -- ANALYZE TABLES
 -- ============================================
 -- Update statistics for the query planner

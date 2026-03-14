@@ -950,7 +950,7 @@ async function notifyCompanyAdmins(
 
     // Get user repository to determine if user is Passport or legacy
     const { userRepository } = createServerContainer()
-    
+
     // Create notifications for each admin
     // For Passport users, use app_user_id; for legacy users, use user_id
     const notificationInputs = await Promise.all(
@@ -960,15 +960,15 @@ async function notifyCompanyAdmins(
         const isPassportUser = user && !user.legacyAuthId
         
         return {
-          company_id: companyId,
+      company_id: companyId,
           user_id: (isPassportUser ? null : userId) as string | null, // NULL for Passport users
           app_user_id: (isPassportUser ? userId : null) as string | null, // Passport user ID
-          type,
-          title,
-          message,
-          requirement_id: requirementId || null,
+      type,
+      title,
+      message,
+      requirement_id: requirementId || null,
           metadata: metadata || null,
-          is_read: false
+      is_read: false
         }
       })
     )
@@ -3251,75 +3251,67 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
             AND company_id IS NULL AND role = 'superadmin'
           ) as val
         ),
-        -- Discovery of personal/user-level subscription
+        -- OPTIMIZATION: Materialize all active subscriptions once
+        -- This avoids repeating the same subscription checks multiple times
+        active_subscriptions AS (
+          SELECT 
+            company_id,
+            app_user_id,
+            user_id,
+            subscription_type,
+            status,
+            is_trial,
+            trial_ends_at,
+            end_date,
+            created_at
+          FROM subscriptions
+          WHERE (status = 'active' OR is_trial = true)
+            AND (
+              (is_trial = true AND trial_ends_at > NOW())
+              OR 
+              ((is_trial = false OR is_trial IS NULL) AND end_date > NOW())
+            )
+        ),
+        -- Discovery of personal/user-level subscription (using materialized CTE)
         personal_sub AS (
-          SELECT * FROM subscriptions 
+          SELECT * FROM active_subscriptions
           WHERE subscription_type = 'user' 
-          AND (status = 'active' OR is_trial = true)
-          AND (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params))
-          AND (
-            (is_trial = true AND trial_ends_at > NOW()) 
-            OR 
-            ((is_trial = false OR is_trial IS NULL) AND end_date > NOW())
-          )
+            AND (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params))
           ORDER BY created_at DESC LIMIT 1
         ),
-        -- THE ACCESS ENGINE
+        -- THE ACCESS ENGINE (OPTIMIZED with JOINs instead of EXISTS)
         -- CRITICAL: Only include companies with ACTIVE subscriptions/trials
         -- Team members should NOT see companies with expired subscriptions
         acc_ids AS (
            -- Superadmins see all companies
            SELECT id FROM companies WHERE (SELECT val FROM is_sa) IS TRUE
            UNION
-           -- Team members: Only companies with active subscriptions
-           SELECT ur.company_id as id FROM user_roles ur
+           -- Team members: Only companies with active subscriptions (using JOINs)
+           SELECT DISTINCT ur.company_id as id 
+           FROM user_roles ur
            INNER JOIN companies c ON c.id = ur.company_id
+           LEFT JOIN active_subscriptions s_company ON 
+             s_company.company_id = c.id 
+             AND s_company.subscription_type = 'company'
+           LEFT JOIN active_subscriptions s_owner ON 
+             (s_owner.app_user_id = c.app_user_id OR s_owner.user_id = c.user_id)
+             AND s_owner.subscription_type = 'user'
            WHERE (ur.app_user_id = (SELECT uid FROM params) OR ur.user_id = (SELECT uid FROM params)) 
-           AND ur.company_id IS NOT NULL
-           AND (
-             -- Company has active subscription
-             EXISTS (
-               SELECT 1 FROM subscriptions s
-               WHERE s.company_id = c.id
-               AND s.subscription_type = 'company'
-               AND (s.status = 'active' OR s.is_trial = true)
-               AND (
-                 (s.is_trial = true AND s.trial_ends_at > NOW())
-                 OR
-                 ((s.is_trial = false OR s.is_trial IS NULL) AND s.end_date > NOW())
-               )
-             )
-             OR
-             -- Owner has active user-level subscription (Enterprise)
-             EXISTS (
-               SELECT 1 FROM subscriptions s
-               WHERE (s.app_user_id = c.app_user_id OR s.user_id = c.user_id)
-               AND s.subscription_type = 'user'
-               AND (s.status = 'active' OR s.is_trial = true)
-               AND (
-                 (s.is_trial = true AND s.trial_ends_at > NOW())
-                 OR
-                 ((s.is_trial = false OR s.is_trial IS NULL) AND s.end_date > NOW())
-               )
-             )
-           )
+             AND ur.company_id IS NOT NULL
+             AND (s_company.company_id IS NOT NULL OR s_owner.app_user_id IS NOT NULL OR s_owner.user_id IS NOT NULL)
            UNION
-           -- Owners with personal subscription (Enterprise)
-           SELECT id FROM companies 
-           WHERE (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params))
-           AND EXISTS (SELECT 1 FROM personal_sub)
-           UNION
-           -- Owners with company subscription (Starter/Professional)
-           SELECT c.id FROM companies c
-           INNER JOIN subscriptions s ON s.company_id = c.id
+           -- Owners with personal subscription (Enterprise) - using JOIN
+           SELECT c.id 
+           FROM companies c
+           INNER JOIN personal_sub ps ON true
            WHERE (c.app_user_id = (SELECT uid FROM params) OR c.user_id = (SELECT uid FROM params))
-           AND s.subscription_type = 'company' 
-           AND (s.status = 'active' OR s.is_trial = true)
-           AND (
-             (s.is_trial = true AND s.trial_ends_at > NOW()) 
-             OR 
-             ((s.is_trial = false OR s.is_trial IS NULL) AND s.end_date > NOW())
-           )
+           UNION
+           -- Owners with company subscription (Starter/Professional) - using JOIN
+           SELECT c.id 
+           FROM companies c
+           INNER JOIN active_subscriptions s ON s.company_id = c.id
+           WHERE (c.app_user_id = (SELECT uid FROM params) OR c.user_id = (SELECT uid FROM params))
+             AND s.subscription_type = 'company'
         ),
         -- Determine final company selection
         target_selection AS (
@@ -3350,28 +3342,16 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         target_is_owner AS (SELECT EXISTS (SELECT 1 FROM target_owner WHERE (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params))) as val),
         target_company_sub AS (
           SELECT EXISTS (
-            SELECT 1 FROM subscriptions 
+            SELECT 1 FROM active_subscriptions
             WHERE company_id = (SELECT id FROM final_target_id) 
-            AND subscription_type = 'company' 
-            AND (status = 'active' OR is_trial = true)
-            AND (
-              (is_trial = true AND trial_ends_at > NOW()) 
-              OR 
-              ((is_trial = false OR is_trial IS NULL) AND end_date > NOW())
-            )
+              AND subscription_type = 'company'
           ) as val
         ),
         target_owner_sub AS (
           SELECT EXISTS (
-            SELECT 1 FROM subscriptions s, target_owner o 
-            WHERE (s.app_user_id = o.app_user_id OR s.user_id = o.user_id) 
-            AND s.subscription_type = 'user' 
-            AND (s.status = 'active' OR s.is_trial = true)
-            AND (
-              (s.is_trial = true AND s.trial_ends_at > NOW()) 
-              OR 
-              ((s.is_trial = false OR s.is_trial IS NULL) AND s.end_date > NOW())
-            )
+            SELECT 1 FROM active_subscriptions s
+            INNER JOIN target_owner o ON (s.app_user_id = o.app_user_id OR s.user_id = o.user_id)
+            WHERE s.subscription_type = 'user'
           ) as val
         )
       
