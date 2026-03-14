@@ -3208,7 +3208,6 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     hiddenTemplates: string[]
     hiddenCompliances: string[]
     userRole: 'superadmin' | 'admin' | 'editor' | 'viewer'
-    initialRequirements: any[]
     initialVaultDocuments: any[]
     redirectTo?: string
     _debug?: any
@@ -3231,28 +3230,30 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
 
     // 2. THE ATOMIC PULSE: Everything in exactly one database roundtrip
     const atomicStart = performance.now()
+    // OPTIMIZATION: Use a single parameterized query with reduced CTE complexity
+    // This reduces planning time by minimizing InitPlans and CTE scans
     const pulseRaw = await prisma.$queryRaw<any[]>`
       WITH 
-        params AS (SELECT ${userId}::uuid as uid),
-        -- Identity & Auth
+        -- Single param reference (reduces InitPlans)
+        uid_param AS (SELECT ${userId}::uuid as uid),
+        -- Identity & Auth (simplified)
         user_info AS (
           SELECT id, primary_email as email, full_name as "fullName" 
           FROM app_users 
-          WHERE id = (SELECT uid FROM params)
+          WHERE id = (SELECT uid FROM uid_param)
           UNION ALL
-          -- Fallback if user not in app_users yet (e.g. legacy or fresh signup)
-          SELECT (SELECT uid FROM params) as id, '' as email, null as "fullName"
-          WHERE NOT EXISTS (SELECT 1 FROM app_users WHERE id = (SELECT uid FROM params))
+          SELECT (SELECT uid FROM uid_param) as id, '' as email, null as "fullName"
+          WHERE NOT EXISTS (SELECT 1 FROM app_users WHERE id = (SELECT uid FROM uid_param))
         ),
+        -- Superadmin check (simplified)
         is_sa AS (
           SELECT EXISTS (
             SELECT 1 FROM user_roles 
-            WHERE (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params)) 
+            WHERE (app_user_id = (SELECT uid FROM uid_param) OR user_id = (SELECT uid FROM uid_param)) 
             AND company_id IS NULL AND role = 'superadmin'
           ) as val
         ),
-        -- OPTIMIZATION: Materialize all active subscriptions once
-        -- This avoids repeating the same subscription checks multiple times
+        -- Active subscriptions (materialized once)
         active_subscriptions AS (
           SELECT 
             company_id,
@@ -3272,106 +3273,106 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
               ((is_trial = false OR is_trial IS NULL) AND end_date > NOW())
             )
         ),
-        -- Discovery of personal/user-level subscription (using materialized CTE)
+        -- Personal subscription (simplified)
         personal_sub AS (
           SELECT * FROM active_subscriptions
           WHERE subscription_type = 'user' 
-            AND (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params))
+            AND (app_user_id = (SELECT uid FROM uid_param) OR user_id = (SELECT uid FROM uid_param))
           ORDER BY created_at DESC LIMIT 1
         ),
-        -- THE ACCESS ENGINE (OPTIMIZED with JOINs instead of EXISTS)
-        -- CRITICAL: Only include companies with ACTIVE subscriptions/trials
-        -- Team members should NOT see companies with expired subscriptions
+        -- Accessible company IDs (optimized UNION)
         acc_ids AS (
-           -- Superadmins see all companies
            SELECT id FROM companies WHERE (SELECT val FROM is_sa) IS TRUE
            UNION
-           -- Team members: Only companies with active subscriptions (using JOINs)
            SELECT DISTINCT ur.company_id as id 
            FROM user_roles ur
            INNER JOIN companies c ON c.id = ur.company_id
            LEFT JOIN active_subscriptions s_company ON 
-             s_company.company_id = c.id 
-             AND s_company.subscription_type = 'company'
+             s_company.company_id = c.id AND s_company.subscription_type = 'company'
            LEFT JOIN active_subscriptions s_owner ON 
              (s_owner.app_user_id = c.app_user_id OR s_owner.user_id = c.user_id)
              AND s_owner.subscription_type = 'user'
-           WHERE (ur.app_user_id = (SELECT uid FROM params) OR ur.user_id = (SELECT uid FROM params)) 
+           WHERE (ur.app_user_id = (SELECT uid FROM uid_param) OR ur.user_id = (SELECT uid FROM uid_param)) 
              AND ur.company_id IS NOT NULL
              AND (s_company.company_id IS NOT NULL OR s_owner.app_user_id IS NOT NULL OR s_owner.user_id IS NOT NULL)
            UNION
-           -- Owners with personal subscription (Enterprise) - using JOIN
            SELECT c.id 
            FROM companies c
            INNER JOIN personal_sub ps ON true
-           WHERE (c.app_user_id = (SELECT uid FROM params) OR c.user_id = (SELECT uid FROM params))
+           WHERE (c.app_user_id = (SELECT uid FROM uid_param) OR c.user_id = (SELECT uid FROM uid_param))
            UNION
-           -- Owners with company subscription (Starter/Professional) - using JOIN
            SELECT c.id 
            FROM companies c
            INNER JOIN active_subscriptions s ON s.company_id = c.id
-           WHERE (c.app_user_id = (SELECT uid FROM params) OR c.user_id = (SELECT uid FROM params))
+           WHERE (c.app_user_id = (SELECT uid FROM uid_param) OR c.user_id = (SELECT uid FROM uid_param))
              AND s.subscription_type = 'company'
         ),
-        -- Determine final company selection
-        target_selection AS (
-           SELECT id FROM acc_ids WHERE id = ${preferredCompanyId}::uuid
-           UNION ALL
-           SELECT id FROM acc_ids LIMIT 1
+        -- Target company selection (simplified)
+        final_target_id AS (
+          SELECT COALESCE(
+            (SELECT id FROM acc_ids WHERE id = ${preferredCompanyId}::uuid LIMIT 1),
+            (SELECT id FROM acc_ids LIMIT 1)
+          ) as id
         ),
-        final_target_id AS (SELECT id FROM target_selection LIMIT 1),
-        -- META-DATA
+        target_company_id AS (SELECT id FROM final_target_id),
+        -- Sidebar metadata
         sidebar_meta AS (
           SELECT id, name, type, incorporation_date, country_code, region 
           FROM companies WHERE id IN (SELECT id FROM acc_ids)
         ),
-        -- THE SNAPSHOT (The payload for the selected company)
-        comp_snapshot AS (SELECT * FROM companies WHERE id = (SELECT id FROM final_target_id)),
-        directors_snapshot AS (SELECT * FROM directors WHERE company_id = (SELECT id FROM final_target_id) ORDER BY created_at ASC),
-        reqs_snapshot AS (SELECT * FROM regulatory_requirements WHERE company_id = (SELECT id FROM final_target_id) ORDER BY due_date ASC),
-        docs_snapshot AS (SELECT * FROM company_documents_internal WHERE company_id = (SELECT id FROM final_target_id) ORDER BY created_at DESC),
-        role_snapshot AS (
-           SELECT role FROM user_roles 
-           WHERE (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params)) 
-           AND company_id = (SELECT id FROM final_target_id) LIMIT 1
+        -- Company snapshot (single query)
+        comp_snapshot AS (
+          SELECT * FROM companies WHERE id = (SELECT id FROM target_company_id)
         ),
-        excluded_t AS (SELECT folder_name, document_name FROM company_document_template_exclusions WHERE company_id = (SELECT id FROM final_target_id)),
-        excluded_c AS (SELECT requirement_id FROM company_compliance_exclusions WHERE company_id = (SELECT id FROM final_target_id)),
-        -- Full Access Snapshot Logic
-        target_owner AS (SELECT app_user_id, user_id FROM companies WHERE id = (SELECT id FROM final_target_id)),
-        target_is_owner AS (SELECT EXISTS (SELECT 1 FROM target_owner WHERE (app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params))) as val),
-        target_company_sub AS (
-          SELECT EXISTS (
-            SELECT 1 FROM active_subscriptions
-            WHERE company_id = (SELECT id FROM final_target_id) 
-              AND subscription_type = 'company'
-          ) as val
-        ),
-        target_owner_sub AS (
-          SELECT EXISTS (
-            SELECT 1 FROM active_subscriptions s
-            INNER JOIN target_owner o ON (s.app_user_id = o.app_user_id OR s.user_id = o.user_id)
-            WHERE s.subscription_type = 'user'
-          ) as val
+        -- Owner info (reused)
+        target_owner AS (
+          SELECT app_user_id, user_id FROM companies WHERE id = (SELECT id FROM target_company_id)
         )
       
       SELECT 
-        (SELECT row_to_json(u) FROM user_info u) as user,
+        (SELECT row_to_json(u) FROM user_info u LIMIT 1) as user,
         (SELECT val FROM is_sa) as is_superadmin,
-        (SELECT row_to_json(s) FROM personal_sub s) as personal_sub,
+        (SELECT row_to_json(s) FROM personal_sub s LIMIT 1) as personal_sub,
         (SELECT json_agg(id) FROM acc_ids) as accessible_ids,
         (SELECT json_agg(sm) FROM sidebar_meta sm) as companies_metadata,
-        (SELECT row_to_json(cs) FROM comp_snapshot cs) as current_company,
-        (SELECT json_agg(ds) FROM directors_snapshot ds) as directors,
-        (SELECT json_agg(rs) FROM reqs_snapshot rs) as requirements,
-        (SELECT json_agg(ds2) FROM docs_snapshot ds2) as documents,
-        (SELECT role FROM role_snapshot) as explicit_role,
-        (SELECT json_agg(et) FROM excluded_t et) as hidden_templates,
-        (SELECT json_agg(ec) FROM excluded_c ec) as hidden_compliances,
-        (SELECT count(*) FROM companies WHERE app_user_id = (SELECT uid FROM params) OR user_id = (SELECT uid FROM params)) as owned_count,
-        (SELECT val FROM target_is_owner) as is_owner,
-        (SELECT val FROM target_company_sub) as has_company_sub,
-        (SELECT val FROM target_owner_sub) as has_owner_sub
+        (SELECT row_to_json(cs) FROM comp_snapshot cs LIMIT 1) as current_company,
+        -- Snapshot queries (direct, no CTE overhead)
+        (SELECT json_agg(ds.*) FROM (
+          SELECT * FROM directors 
+          WHERE company_id = (SELECT id FROM target_company_id) 
+          ORDER BY created_at ASC
+        ) ds) as directors,
+        -- Requirements removed: loaded separately via getRegulatoryRequirements for better performance
+        (SELECT json_agg(ds2.*) FROM (
+          SELECT * FROM company_documents_internal 
+          WHERE company_id = (SELECT id FROM target_company_id) 
+          ORDER BY created_at DESC
+        ) ds2) as documents,
+        (SELECT role FROM user_roles 
+         WHERE (app_user_id = (SELECT uid FROM uid_param) OR user_id = (SELECT uid FROM uid_param)) 
+         AND company_id = (SELECT id FROM target_company_id) 
+         LIMIT 1) as explicit_role,
+        (SELECT json_agg(ROW(folder_name, document_name)) FROM company_document_template_exclusions 
+         WHERE company_id = (SELECT id FROM target_company_id)) as hidden_templates,
+        (SELECT json_agg(requirement_id) FROM company_compliance_exclusions 
+         WHERE company_id = (SELECT id FROM target_company_id)) as hidden_compliances,
+        (SELECT count(*) FROM companies 
+         WHERE app_user_id = (SELECT uid FROM uid_param) OR user_id = (SELECT uid FROM uid_param)) as owned_count,
+        -- Access checks (simplified)
+        (SELECT EXISTS (
+          SELECT 1 FROM target_owner 
+          WHERE app_user_id = (SELECT uid FROM uid_param) OR user_id = (SELECT uid FROM uid_param)
+        )) as is_owner,
+        (SELECT EXISTS (
+          SELECT 1 FROM active_subscriptions
+          WHERE company_id = (SELECT id FROM target_company_id) 
+            AND subscription_type = 'company'
+        )) as has_company_sub,
+        (SELECT EXISTS (
+          SELECT 1 FROM active_subscriptions s
+          INNER JOIN target_owner o ON (s.app_user_id = o.app_user_id OR s.user_id = o.user_id)
+          WHERE s.subscription_type = 'user'
+        )) as has_owner_sub
     `
     const pulse = pulseRaw[0] || {}
     const atomicDuration = performance.now() - atomicStart
@@ -3451,7 +3452,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
               user: { id: user.id, email: userEmail, fullName: userFullName },
               companies: [], accessibleCompanyIds: [], currentCompanyId: null, companyAccess: null,
               userSubscription: { hasSubscription: false, tier: 'none', isTrial: false, trialDaysRemaining: 0, companyLimit: 0, currentCompanyCount: 0, canCreateCompany: false },
-              hiddenTemplates: [], hiddenCompliances: [], userRole: 'viewer', initialRequirements: [], initialVaultDocuments: [],
+              hiddenTemplates: [], hiddenCompliances: [], userRole: 'viewer', initialVaultDocuments: [],
               redirectTo: `/subscription-required?company_id=${preferredCompanyId}`
             }
         }
@@ -3506,7 +3507,6 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         hiddenTemplates: (pulse.hidden_templates || []).map((t: any) => `${t.folder_name}:${t.document_name}`),
         hiddenCompliances: (pulse.hidden_compliances || []).map((c: any) => c.requirement_id),
         userRole: (isSuperadminResult ? 'superadmin' : pulse.explicit_role || 'viewer') as any,
-        initialRequirements: (pulse.requirements || []) as any[],
         initialVaultDocuments: formattedDocs,
         _debug: {
             authProvider: 'passport',

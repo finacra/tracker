@@ -475,12 +475,9 @@ function DataRoomPageInner() {
         
         updateLoadingMessage("⚖️ Loading compliance requirements...");
         
-        // 5. Populate requirements and documents if available for the selected company
+        // 5. Populate documents if available for the selected company
+        // Requirements are now loaded separately via fetchRegulatoryRequirements for better performance
         if (selected?.id === data.currentCompanyId) {
-            if (data.initialRequirements) {
-                setRegulatoryRequirements(data.initialRequirements);
-                requirementsFetchedRef.current = selected.id;
-            }
             if (data.initialVaultDocuments) {
                 setVaultDocuments(data.initialVaultDocuments);
                 vaultDocumentsFetchedRef.current = selected.id;
@@ -695,7 +692,11 @@ function DataRoomPageInner() {
       const result = await getRegulatoryRequirements(currentCompany.id);
       
       if (result.success) {
-        setRegulatoryRequirements(result.requirements || []);
+        // Use startTransition for non-urgent state updates to improve perceived performance
+        // This allows React to prioritize more important updates (like loading states)
+        startTransition(() => {
+          setRegulatoryRequirements(result.requirements || []);
+        });
         requirementsFetchedRef.current = currentCompany.id;
         console.log('[fetchRegulatoryRequirements] Set requirements:', result.requirements?.length || 0);
       } else {
@@ -706,7 +707,9 @@ function DataRoomPageInner() {
           return;
         }
         console.error("[fetchRegulatoryRequirements] Failed to load requirements:", result.error);
-        setRegulatoryRequirements([]);
+        startTransition(() => {
+          setRegulatoryRequirements([]);
+        });
       }
     } catch (err: any) {
       console.error("[fetchRegulatoryRequirements] Error fetching requirements:", err);
@@ -714,7 +717,9 @@ function DataRoomPageInner() {
       if (err.message?.includes('UnrecognizedActionError')) {
         window.location.reload();
       }
-      setRegulatoryRequirements([]);
+      startTransition(() => {
+        setRegulatoryRequirements([]);
+      });
     } finally {
       setIsLoadingRequirements(false);
     }
@@ -3905,16 +3910,27 @@ function DataRoomPageInner() {
 
   // Convert database requirements to display format and apply filters
   // Memoized to prevent recalculation on every render
+  // Optimized: Early return for empty requirements, stable Set comparison
   const displayRequirements = useMemo(() => {
+    // Early return for empty requirements to avoid unnecessary computation
+    if (!regulatoryRequirements || regulatoryRequirements.length === 0) {
+      return [];
+    }
+
     const startTime = performance.now();
-    const result = (regulatoryRequirements || [])
+    
+    // Pre-compute filter conditions for better performance
+    const hasHiddenCompliances = hiddenCompliances.size > 0;
+    const categoryFilterActive = selectedCategory !== "all";
+    
+    const result = regulatoryRequirements
       .filter((req) => {
         // Filter out hidden compliances
-        if (hiddenCompliances.has(req.id)) {
+        if (hasHiddenCompliances && hiddenCompliances.has(req.id)) {
           return false;
         }
         // Apply category filter
-        if (selectedCategory !== "all" && req.category !== selectedCategory) {
+        if (categoryFilterActive && req.category !== selectedCategory) {
           return false;
         }
         return true;
@@ -3944,17 +3960,22 @@ function DataRoomPageInner() {
       }));
 
     const duration = performance.now() - startTime;
-    performanceLogger.log(
-      "DataRoomPage",
-      "displayRequirements_compute",
-      duration,
-      {
-        inputCount: regulatoryRequirements?.length || 0,
-        outputCount: result.length,
-        hasHiddenCompliances: hiddenCompliances.size > 0,
-        selectedCategory,
-      },
-    );
+    
+    // Only log if computation takes meaningful time or has significant data
+    // This reduces console noise during development
+    if (duration > 0.5 || result.length > 0) {
+      performanceLogger.log(
+        "DataRoomPage",
+        "displayRequirements_compute",
+        duration,
+        {
+          inputCount: regulatoryRequirements.length,
+          outputCount: result.length,
+          hasHiddenCompliances,
+          selectedCategory,
+        },
+      );
+    }
 
     return result;
   }, [regulatoryRequirements, hiddenCompliances, selectedCategory, formatDate]);
