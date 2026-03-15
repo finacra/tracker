@@ -26,11 +26,13 @@ export class PrismaNotificationRepository implements NotificationRepository {
       FROM company_notifications cn
       INNER JOIN auth_identities ai ON ai.legacy_auth_id = cn.user_id::text
       WHERE ai.app_user_id = ${userId}::uuid AND ai.provider = 'supabase'
+      AND cn.app_user_id IS NULL
       ${Prisma.raw(unreadFilter)}
       UNION ALL
       SELECT cn.*
       FROM company_notifications cn
       WHERE cn.user_id = ${userId}::uuid
+      AND cn.app_user_id IS NULL
       AND NOT EXISTS (SELECT 1 FROM app_users WHERE id = ${userId}::uuid)
       ${Prisma.raw(unreadFilter)}
       ORDER BY created_at DESC
@@ -53,10 +55,12 @@ export class PrismaNotificationRepository implements NotificationRepository {
         FROM company_notifications cn
         INNER JOIN auth_identities ai ON ai.legacy_auth_id = cn.user_id::text
         WHERE ai.app_user_id = ${userId}::uuid AND ai.provider = 'supabase' AND cn.is_read = false
+        AND cn.app_user_id IS NULL
         UNION ALL
         SELECT cn.id
         FROM company_notifications cn
         WHERE cn.user_id = ${userId}::uuid
+        AND cn.app_user_id IS NULL
         AND NOT EXISTS (SELECT 1 FROM app_users WHERE id = ${userId}::uuid)
         AND cn.is_read = false
       ) combined

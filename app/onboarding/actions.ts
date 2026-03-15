@@ -11,6 +11,20 @@ async function requireCurrentUser() {
   return authService.requireCurrentUser()
 }
 
+interface DirectorInput {
+  firstName: string
+  lastName: string
+  middleName?: string
+  din?: string
+  designation?: string
+  dob?: string
+  pan?: string
+  email?: string
+  mobile?: string
+  verified?: boolean
+  source?: 'cin' | 'din' | 'manual'
+}
+
 export async function completeOnboarding(
   formData: {
     companyName: string
@@ -36,7 +50,7 @@ export async function completeOnboarding(
     documents: Array<{ type: string; path: string; name: string }>
     exDirectors?: string
   },
-  directors: any[]
+  directors: DirectorInput[]
 ) {
   const {
     companyRepository,
@@ -109,7 +123,7 @@ export async function completeOnboarding(
   // 2. Insert Directors
   if (directors.length > 0) {
     await directorRepository.createMany(
-      directors.map((dir: any) => ({
+      directors.map((dir) => ({
         companyId: company.id,
         firstName: dir.firstName,
         lastName: dir.lastName,
@@ -171,50 +185,18 @@ export async function completeOnboarding(
     const userTier = userSubData?.tier ?? null
     const isEnterprise = userTier === 'enterprise'
 
-    // #region agent log
-    console.log('[completeOnboarding] Subscription check:', {
-      companyId: company.id,
-      companyHasSubscription,
-      userHasSubscription,
-      userTier,
-      isEnterprise,
-      companySubData,
-      userSubData
-    });
-    // #endregion
-
     // Logic:
     // - Enterprise tier: User-level subscription/trial covers ALL companies (don't create company-level trial)
     // - Starter/Professional tiers: Each company needs its own subscription/trial (create company-level trial)
     // - If user has no subscription: Create company-level trial for the new company
     if (!companyHasSubscription && !isEnterprise) {
-      console.log('[completeOnboarding] Creating company-level trial for new company (not Enterprise):', company.id)
-
-      let trialError: Error | null = null
-      let trialData: { created?: boolean } | null = null
-
       try {
         await subscriptionRepository.createCompanyTrial(user.id, company.id, user.canonicalId)
-        trialData = { created: true }
-      } catch (error: any) {
-        trialError = error
-      }
-
-      // #region agent log
-      console.log('[completeOnboarding] Trial creation result:', { trialData, trialError });
-      // #endregion
-
-      if (trialError) {
-        console.error('[completeOnboarding] Error creating trial:', trialError)
+      } catch (error: unknown) {
+        console.error('[completeOnboarding] Error creating trial:', error)
         // Don't throw - company is created, trial creation can be retried
         // User can manually start trial via subscribe page
-      } else {
-        console.log('[completeOnboarding] Trial created successfully for company:', company.id)
       }
-    } else if (isEnterprise) {
-      console.log('[completeOnboarding] User has Enterprise subscription/trial, company will use it (no company-level trial needed)')
-    } else {
-      console.log('[completeOnboarding] Company already has subscription/trial, skipping trial creation')
     }
   } catch (trialErr) {
     console.error('[completeOnboarding] Error checking/creating trial:', trialErr)
@@ -494,15 +476,13 @@ export async function deleteDocument(documentId: string, filePath: string) {
     const { documentRepository } = createServerContainer()
     await requireCurrentUser()
 
-    // Use admin client to bypass RLS for Passport users
-    const adminSupabase = createAdminClient()
-
     // 1. Delete from Storage
-    const { error: storageError } = await adminSupabase.storage
-      .from('company-documents')
-      .remove([sanitizedFilePath])
-
-    if (storageError) {
+    const { createStorageAdapter } = await import('@/lib/storage/factory')
+    const storage = createStorageAdapter()
+    
+    try {
+      await storage.deleteFile('company-documents', [sanitizedFilePath])
+    } catch (storageError: any) {
       console.error('Storage deletion error:', storageError)
       // Continue anyway to try and clean up metadata
     }

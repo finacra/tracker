@@ -6,7 +6,7 @@ import { formatCurrency } from '@/lib/utils/currency'
 import { showToast } from '@/components/ui/Toast'
 import { useCalendarSync } from '../../hooks/useCalendarSync'
 import { IRegulatoryService } from '../../services/RegulatoryService'
-import RequirementFormModal from './RequirementFormModal'
+import RequirementFormModal, { EMPTY_REQUIREMENT_FORM } from './RequirementFormModal'
 import RequirementMobileCardView from './RequirementMobileCardView'
 import RequirementDesktopTableView from './RequirementDesktopTableView'
 import TrackerFilterControls from './TrackerFilterControls'
@@ -333,37 +333,13 @@ export default function TrackerTab({
                 setIsCreateModalOpen(false)
                 setIsEditModalOpen(false)
                 setEditingRequirement(null)
-                setRequirementForm({
-                  category: '',
-                  requirement: '',
-                  description: '',
-                  due_date: '',
-                  penalty: '',
-                  penalty_base_amount: null,
-                  is_critical: false,
-                  financial_year: '',
-                  status: 'not_started',
-                  compliance_type: 'one-time',
-                  year: new Date().getFullYear().toString()
-                })
+                setRequirementForm({ ...EMPTY_REQUIREMENT_FORM, year: new Date().getFullYear().toString() })
               }}
               onSuccess={() => {
                 setIsCreateModalOpen(false)
                 setIsEditModalOpen(false)
                 setEditingRequirement(null)
-                setRequirementForm({
-                  category: '',
-                  requirement: '',
-                  description: '',
-                  due_date: '',
-                  penalty: '',
-                  penalty_base_amount: null,
-                  is_critical: false,
-                  financial_year: '',
-                  status: 'not_started',
-                  compliance_type: 'one-time',
-                  year: new Date().getFullYear().toString()
-                })
+                setRequirementForm({ ...EMPTY_REQUIREMENT_FORM, year: new Date().getFullYear().toString() })
               }}
               regulatoryService={regulatoryService}
               currentCompany={currentCompany}

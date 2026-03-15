@@ -11,6 +11,7 @@ import {
 import { useAuth } from '@/hooks/useAuth'
 import { useUserSubscription } from '@/hooks/useCompanyAccess'
 import { completeOnboarding, uploadFileToStorage } from './actions'
+import { showToast } from '@/components/ui/Toast'
 import { INDUSTRIES } from '@/lib/compliance/csv-template'
 import { useCountryConfig } from '@/hooks/useCountryConfig'
 import { useCountryAPISupport } from '@/hooks/useCountryValidator'
@@ -808,7 +809,7 @@ export default function OnboardingPage() {
       }
     } catch (error: any) {
       console.error('Error submitting form:', error)
-      alert('Failed to complete onboarding: ' + error.message)
+      showToast('Failed to complete onboarding: ' + error.message, 'error')
     } finally {
       setIsSubmitting(false)
     }

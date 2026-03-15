@@ -17,11 +17,11 @@ export default function SubtleCircuitBackground() {
             height="150"
             patternUnits="userSpaceOnUse"
           >
-            <circle cx="10" cy="10" r="1" fill="#FF6B35" opacity="0.4" />
-            <circle cx="50" cy="30" r="1.2" fill="#FF6B35" opacity="0.3" />
-            <circle cx="80" cy="60" r="1" fill="#FF6B35" opacity="0.35" />
-            <circle cx="30" cy="80" r="1.1" fill="#FF6B35" opacity="0.3" />
-            <circle cx="70" cy="20" r="1" fill="#FF6B35" opacity="0.4" />
+            <circle cx="10" cy="10" r="1" fill="#1E3A5F" opacity="0.4" />
+            <circle cx="50" cy="30" r="1.2" fill="#1E3A5F" opacity="0.3" />
+            <circle cx="80" cy="60" r="1" fill="#1E3A5F" opacity="0.35" />
+            <circle cx="30" cy="80" r="1.1" fill="#1E3A5F" opacity="0.3" />
+            <circle cx="70" cy="20" r="1" fill="#1E3A5F" opacity="0.4" />
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#circuit-subtle)" />
@@ -37,7 +37,7 @@ export default function SubtleCircuitBackground() {
           y1="60%"
           x2="100%"
           y2="65%"
-          stroke="#FF6B35"
+          stroke="#1E3A5F"
           strokeWidth="1"
           opacity="0.2"
         />
@@ -46,7 +46,7 @@ export default function SubtleCircuitBackground() {
           y1="0"
           x2="40%"
           y2="100%"
-          stroke="#FF6B35"
+          stroke="#1E3A5F"
           strokeWidth="1"
           opacity="0.15"
         />
@@ -55,7 +55,7 @@ export default function SubtleCircuitBackground() {
           y1="0"
           x2="90%"
           y2="100%"
-          stroke="#FF6B35"
+          stroke="#1E3A5F"
           strokeWidth="1"
           opacity="0.12"
         />

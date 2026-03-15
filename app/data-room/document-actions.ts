@@ -47,8 +47,14 @@ export async function uploadDocument(
     throw new Error('Invalid input: folder name, document name, or file name contains invalid characters')
   }
 
-  const { documentRepository } = createServerContainer()
-  await requireCurrentUser()
+  const { documentRepository, authService, accessService } = createServerContainer()
+  const user = await authService.requireCurrentUser()
+
+  // SECURITY: Verify the user has access to this company before uploading
+  const accessSnapshot = await accessService.getCompanyAccessSnapshot(user.id, companyId)
+  if (!accessSnapshot.hasAccess) {
+    throw new Error('Access denied to this company')
+  }
 
   const embedding = await generateEmbedding(`${sanitizedDocumentName} ${sanitizedFileName}`)
 
@@ -93,17 +99,13 @@ export async function uploadFileToStorage(filePath: string, fileData: ArrayBuffe
       throw new Error('Invalid file path')
     }
 
-    // Use admin client to bypass RLS for Passport users
-    const adminSupabase = createAdminClient()
-
-    const { error: uploadError } = await adminSupabase.storage
-      .from('company-documents')
-      .upload(sanitizedFilePath, fileData, {
-        contentType: contentType,
-        upsert: false, // Don't overwrite existing files
-      })
-
-    if (uploadError) throw uploadError
+    // Upload to storage using adapter
+    const { createStorageAdapter } = await import('@/lib/storage/factory')
+    const storage = createStorageAdapter()
+    await storage.uploadFile('company-documents', sanitizedFilePath, fileData, {
+      contentType: contentType,
+      upsert: false, // Don't overwrite existing files
+    })
     return { success: true }
   } catch (err: any) {
     console.error('Error uploading file to storage:', err)
@@ -115,15 +117,12 @@ export async function getDownloadUrl(filePath: string) {
   try {
     await requireCurrentUser()
 
-    // Use admin client to bypass RLS for Passport users
-    const adminSupabase = createAdminClient()
-
-    const { data, error } = await adminSupabase.storage
-      .from('company-documents')
-      .createSignedUrl(filePath, 3600) // 1 hour expiry for preview
-
-    if (error) throw error
-    return { success: true, url: data.signedUrl }
+    // Create signed URL using storage adapter
+    const { createStorageAdapter } = await import('@/lib/storage/factory')
+    const storage = createStorageAdapter()
+    const signedUrl = await storage.createSignedUrl('company-documents', filePath, 3600) // 1 hour expiry for preview
+    
+    return { success: true, url: signedUrl }
   } catch (err: any) {
     console.error('Error creating signed URL:', err)
     return { success: false, error: err.message }
@@ -146,15 +145,12 @@ export async function deleteDocument(documentId: string, filePath: string) {
     const { documentRepository } = createServerContainer()
     await requireCurrentUser()
 
-    // Use admin client to bypass RLS for Passport users
-    const adminSupabase = createAdminClient()
-
     // 1. Delete from Storage
-    const { error: storageError } = await adminSupabase.storage
-      .from('company-documents')
-      .remove([sanitizedFilePath])
-
-    if (storageError) {
+    const { createStorageAdapter } = await import('@/lib/storage/factory')
+    const storage = createStorageAdapter()
+    try {
+      await storage.deleteFile('company-documents', [sanitizedFilePath])
+    } catch (storageError: any) {
       console.error('Storage deletion error:', storageError)
       // Continue anyway to try and clean up metadata
     }
@@ -206,28 +202,12 @@ export async function getCompanyDocuments(companyId: string) {
     }
 
     // Check access to company
-    console.log('[getCompanyDocuments] Checking access for user:', user.id, 'company:', companyId, 'isPassportUser:', !!user.canonicalId)
     const accessSnapshot = await accessService.getCompanyAccessSnapshot(user.id, companyId)
-    console.log('[getCompanyDocuments] Access snapshot:', {
-      hasAccess: accessSnapshot.hasAccess,
-      accessType: accessSnapshot.accessType,
-      isOwner: accessSnapshot.isOwner,
-      ownerSubscriptionExpired: accessSnapshot.ownerSubscriptionExpired
-    })
-    
     if (!accessSnapshot.hasAccess) {
-      console.log('[getCompanyDocuments] Access denied for user:', user.id, 'company:', companyId, 'reason:', {
-        accessType: accessSnapshot.accessType,
-        isOwner: accessSnapshot.isOwner,
-        ownerSubscriptionExpired: accessSnapshot.ownerSubscriptionExpired
-      })
       return { success: false, documents: [], error: 'Access denied to this company' }
     }
 
-    console.log('[getCompanyDocuments] Fetching documents for company:', companyId, 'user:', user.id)
-
     const documents = await documentRepository.getCompanyDocuments(companyId)
-    console.log('[getCompanyDocuments] Found', documents.length, 'documents for company:', companyId)
     
     return {
       success: true,

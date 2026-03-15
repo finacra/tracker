@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { createServerContainer } from '@/lib/composition/server-container'
 
 /**
  * Check if user's email is verified
  * GET /api/auth/check-verification?userId=xxx
+ *
+ * Callers may only query their own verification status.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -15,6 +18,16 @@ export async function GET(request: NextRequest) {
         { success: false, error: 'User ID is required' },
         { status: 400 }
       )
+    }
+
+    // SECURITY: Ensure the caller is only querying their own verification status
+    const { authService } = createServerContainer()
+    const currentUser = await authService.getCurrentUser()
+    if (!currentUser) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+    if (currentUser.id !== userId && currentUser.canonicalId !== userId) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
     }
 
     // Check if user has password (email/password auth) and email verification status

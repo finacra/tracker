@@ -14,7 +14,18 @@ export default function PublicHeader() {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const dropdownMenuRef = useRef<HTMLDivElement>(null)
   const [mounted, setMounted] = useState(false)
-  
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  // Check auth state once on mount
+  useEffect(() => {
+    fetch('/api/auth/profile', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.user) setIsLoggedIn(true)
+      })
+      .catch(() => {})
+  }, [])
+
   // Handle smooth scroll for anchor links on home page
   const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, hash: string) => {
     if (pathname === '/home') {
@@ -184,24 +195,39 @@ export default function PublicHeader() {
           </Link>
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
-          <Link
-            href="/subscribe"
-            onClick={() => trackButtonClick('Start Trial for free', pathname)}
-            className="px-3 sm:px-4 py-2 bg-black border border-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors font-light text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2"
-          >
-            <span className="hidden sm:inline">Start Trial for free</span>
-            <span className="sm:hidden">Trial</span>
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="hidden sm:block">
-              <path d="M1 11L11 1M11 1H1M11 1V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </Link>
-          <Link
-            href="/login"
-            onClick={() => trackLinkClick('Log In', '/login')}
-            className="text-gray-300 hover:text-white transition-colors font-light text-xs sm:text-sm"
-          >
-            Log In
-          </Link>
+          {isLoggedIn ? (
+            <Link
+              href="/data-room"
+              onClick={() => trackButtonClick('Go to Dashboard', pathname)}
+              className="px-3 sm:px-4 py-2 bg-black border border-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors font-light text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2"
+            >
+              <span>Go to Dashboard</span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1 11L11 1M11 1H1M11 1V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/subscribe"
+                onClick={() => trackButtonClick('Start Trial for free', pathname)}
+                className="px-3 sm:px-4 py-2 bg-black border border-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors font-light text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2"
+              >
+                <span className="hidden sm:inline">Start Trial for free</span>
+                <span className="sm:hidden">Trial</span>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="hidden sm:block">
+                  <path d="M1 11L11 1M11 1H1M11 1V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </Link>
+              <Link
+                href="/login"
+                onClick={() => trackLinkClick('Log In', '/login')}
+                className="text-gray-300 hover:text-white transition-colors font-light text-xs sm:text-sm"
+              >
+                Log In
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </nav>

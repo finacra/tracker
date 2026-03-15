@@ -23,8 +23,8 @@ export function useDataRoomInitQuery({
       return result.data
     },
     enabled,
-    staleTime: 2 * 60 * 1000, // 2 minutes - init data changes when company switches
-    gcTime: 5 * 60 * 1000,
-    // This is expensive, so we want to cache it well
+    staleTime: 2 * 60 * 1000,  // 2 minutes — expensive call, changes on company switch
+    gcTime: 3 * 60 * 1000,     // Keep in cache 3 minutes after last use
+    refetchOnWindowFocus: true, // Refresh stale data when user returns to the tab
   })
 }

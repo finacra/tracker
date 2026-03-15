@@ -6,6 +6,8 @@ import { QueryProvider } from '@/lib/react-query/QueryProvider'
 import Analytics from '@/components/features/Analytics'
 import AnalyticsWrapper from '@/components/features/AnalyticsWrapper'
 import { SpeedInsights } from '@vercel/speed-insights/next'
+import { Analytics as VercelAnalytics } from '@vercel/analytics/next'
+import ToastContainer from '@/components/ui/Toast'
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -28,11 +30,13 @@ export default function RootLayout({
       <body className={poppins.className} suppressHydrationWarning>
         <Analytics />
         <SpeedInsights />
+        <VercelAnalytics />
         <QueryProvider>
           <Providers>
             <AnalyticsWrapper>{children}</AnalyticsWrapper>
           </Providers>
         </QueryProvider>
+        <ToastContainer />
       </body>
     </html>
   )

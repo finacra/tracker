@@ -43,39 +43,31 @@ export function sanitizeFolderPath(path: string | null | undefined): string | nu
 }
 
 /**
- * Validate and sanitize a string input for use in database queries
- * Removes SQL injection patterns and dangerous characters
+ * Sanitize a string input: trims whitespace, enforces max length, and strips
+ * control characters (null bytes, ASCII control chars).
+ *
+ * SQL injection protection is provided by Prisma's parameterised queries, NOT
+ * by keyword blocking. Keyword blocking was removed because it falsely rejected
+ * legitimate document names (e.g. "Select Committee Report", "CREATE Company").
+ *
  * @param input - String to validate
  * @param maxLength - Maximum allowed length (default: 1000)
- * @returns Sanitized string or null if invalid
+ * @returns Sanitized string or null if invalid/empty
  */
 export function sanitizeStringInput(input: string | null | undefined, maxLength: number = 1000): string | null {
   if (!input || typeof input !== 'string') {
     return null
   }
-  
+
   const trimmed = input.trim()
-  
-  // Check length
+
   if (trimmed.length === 0 || trimmed.length > maxLength) {
     return null
   }
-  
-  // Remove null bytes and other dangerous characters
-  const sanitized = trimmed.replace(/\0/g, '').replace(/[\x00-\x1F\x7F]/g, '')
-  
-  // Check for SQL injection patterns (basic check)
-  const dangerousPatterns = [
-    /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION|SCRIPT)\b)/i,
-    /(--|;|\/\*|\*\/|xp_|sp_)/i
-  ]
-  
-  for (const pattern of dangerousPatterns) {
-    if (pattern.test(sanitized)) {
-      return null
-    }
-  }
-  
+
+  // Strip null bytes and ASCII control characters (keep printable chars only)
+  const sanitized = trimmed.replace(/[\x00-\x1F\x7F]/g, '')
+
   return sanitized.length > 0 ? sanitized : null
 }
 

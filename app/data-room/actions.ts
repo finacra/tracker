@@ -1,6 +1,8 @@
 'use server'
 
 import { createAdminClient } from '@/utils/supabase/admin'
+import { createStorageAdapter } from '@/lib/storage/factory'
+import { runWithConcurrency } from '@/lib/utils/rate-limiter'
 import { validateCompanyId, validateUserId, isValidUUID, sanitizeStringInput } from '@/lib/utils/input-validation'
 import { enrichComplianceItems as enrichComplianceItemsService, type EnrichedComplianceData } from '@/lib/services/compliance-enrichment'
 import { sendEmail, getSiteUrl } from '@/lib/email/resend'
@@ -317,11 +319,13 @@ export async function getCompanyAccessStatuses(companyIds: string[]): Promise<{
 
     const { authService, accessService } = createServerContainer()
     const user = await authService.requireCurrentUser()
-    const useCase = new GetCompanyAccessSnapshot(accessService)
+    // Check superadmin once and pass as cache to avoid N+1 queries
+    const isSuperadmin = await accessService.isSuperadmin(user.id)
     const statuses = await Promise.all(
-      validCompanyIds.map(async (companyId) =>
-        getCompanyStatusFromAccess(companyId, await useCase.execute(user.id, companyId))
-      )
+      validCompanyIds.map(async (companyId) => {
+        const access = await accessService.getCompanyAccessSnapshot(user.id, companyId, isSuperadmin)
+        return getCompanyStatusFromAccess(companyId, access)
+      })
     )
 
     return { success: true, statuses }
@@ -346,12 +350,13 @@ export async function getOwnedCompanySubscriptionOverview(requestedCompanyId: st
 
     const { authService, accessService, companyRepository } = createServerContainer()
     const user = await authService.requireCurrentUser()
-    const useCase = new GetCompanyAccessSnapshot(accessService)
+    // Check superadmin once and pass as cache to avoid N+1 queries
+    const isSuperadmin = await accessService.isSuperadmin(user.id)
     const ownedCompanies = await companyRepository.listOwnedByUser(user.id)
     const statuses = await Promise.all(
       ownedCompanies.map(async (company) => ({
         company,
-        access: await useCase.execute(user.id, company.id),
+        access: await accessService.getCompanyAccessSnapshot(user.id, company.id, isSuperadmin),
       }))
     )
 
@@ -468,6 +473,9 @@ export async function updateRequirement(
     due_date?: string
     penalty?: string
     penalty_base_amount?: number | null
+    penalty_config?: Record<string, unknown> | null
+    possible_legal_action?: string | null
+    required_documents?: string[]
     is_critical?: boolean
     financial_year?: string
     status?: 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed'
@@ -516,6 +524,9 @@ export async function updateRequirement(
     if (requirement.due_date !== undefined) updateData.due_date = requirement.due_date
     if (requirement.penalty !== undefined) updateData.penalty = requirement.penalty
     if (requirement.penalty_base_amount !== undefined) updateData.penalty_base_amount = requirement.penalty_base_amount
+    if (requirement.penalty_config !== undefined) updateData.penalty_config = requirement.penalty_config
+    if (requirement.possible_legal_action !== undefined) updateData.possible_legal_action = requirement.possible_legal_action
+    if (requirement.required_documents !== undefined) updateData.required_documents = requirement.required_documents
     if (requirement.is_critical !== undefined) updateData.is_critical = requirement.is_critical
     if (requirement.financial_year !== undefined) updateData.financial_year = requirement.financial_year
     if (requirement.status !== undefined) updateData.status = requirement.status
@@ -1073,6 +1084,9 @@ export async function createRequirement(
     due_date: string
     penalty?: string
     penalty_base_amount?: number | null
+    penalty_config?: Record<string, unknown> | null
+    possible_legal_action?: string | null
+    required_documents?: string[]
     is_critical?: boolean
     financial_year?: string
     compliance_type?: 'one-time' | 'monthly' | 'quarterly' | 'annual'
@@ -1143,6 +1157,8 @@ export async function createRequirement(
       dueDate: requirement.due_date,
       penalty: requirement.penalty || null,
       penaltyBaseAmount: requirement.penalty_base_amount || null,
+      penaltyConfig: requirement.penalty_config || null,
+      possibleLegalAction: requirement.possible_legal_action || null,
       isCritical: requirement.is_critical || false,
       financialYear: requirement.financial_year || null,
       complianceType: requirement.compliance_type || 'one-time',
@@ -2796,30 +2812,20 @@ export async function getDirectors(companyId: string): Promise<{
 }
 
 export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
-  console.log('[sendDocumentsEmail] Starting with params:', {
-    companyId: params.companyId,
-    documentCount: params.documentIds.length,
-    recipientCount: params.recipients.length,
-  })
-
   try {
     const { authService } = createServerContainer()
     const adminSupabase: any = createAdminClient()
 
     const user = await authService.getCurrentUser()
     if (!user) {
-      console.error('[sendDocumentsEmail] Auth error: Not authenticated')
       return { success: false, error: 'Unauthorized' }
     }
-    console.log('[sendDocumentsEmail] User authenticated:', user.email)
 
     // Check user has access to this company
     const hasAccess = await canUserView(params.companyId)
     if (!hasAccess) {
-      console.error('[sendDocumentsEmail] Access denied for company:', params.companyId)
       return { success: false, error: 'Access denied to this company' }
     }
-    console.log('[sendDocumentsEmail] Access verified')
 
     // Fetch document details
     const { data: documents, error: docsError } = await adminSupabase
@@ -2828,48 +2834,56 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
       .eq('company_id', params.companyId)
       .in('id', params.documentIds)
 
-    console.log('[sendDocumentsEmail] Documents fetched:', documents?.length, 'Error:', docsError?.message)
-
     if (docsError || !documents || documents.length === 0) {
       console.error('[sendDocumentsEmail] Failed to fetch documents:', docsError)
       return { success: false, error: `Failed to fetch documents: ${docsError?.message || 'No documents found'}` }
     }
 
     // Generate signed URLs for documents (7 days expiry = 604800 seconds)
-    const documentsWithUrls = await Promise.all(
-      documents.map(async (doc: {
+    // Cap concurrency at 5 to avoid overwhelming storage service
+    const urlResults = await runWithConcurrency(
+      documents as Array<{
         file_path: string
         document_type?: string | null
         name?: string | null
         category?: string | null
         period?: string | null
-      }) => {
-        const { data: signedData, error: signError } = await adminSupabase.storage
-          .from('company-documents')
-          .createSignedUrl(doc.file_path, 604800) // 7 days
-
-        return {
-          name: doc.document_type || doc.name || 'Document',
-          category: doc.category || 'General',
-          period: doc.period || undefined,
-          url: signError ? '#' : signedData?.signedUrl || '#',
+      }>,
+      5,
+      async (doc) => {
+        try {
+          const storage = createStorageAdapter()
+          const signedUrl = await storage.createSignedUrl('company-documents', doc.file_path, 604800) // 7 days
+          return {
+            name: doc.document_type || doc.name || 'Document',
+            category: doc.category || 'General',
+            period: doc.period || undefined,
+            url: signedUrl,
+          }
+        } catch (signError: unknown) {
+          console.error('Error creating signed URL:', signError)
+          return {
+            name: doc.document_type || doc.name || 'Document',
+            category: doc.category || 'General',
+            period: doc.period || undefined,
+            url: '#',
+          }
         }
-      })
+      }
     )
+    const documentsWithUrls = urlResults
+      .filter((r): r is PromiseFulfilledResult<{ name: string; category: string; period: string | undefined; url: string }> => r.status === 'fulfilled')
+      .map((r) => r.value)
 
     // Get sender info
     const senderEmail = user.email || 'Unknown'
     const senderName = getUserDisplayName(user)
 
-    console.log('[sendDocumentsEmail] Generated URLs for', documentsWithUrls.length, 'documents')
-    console.log('[sendDocumentsEmail] Sender:', senderName, senderEmail)
-    console.log('[sendDocumentsEmail] Recipients:', params.recipients)
-
-    // Send email to each recipient
-    const results = await Promise.allSettled(
-      params.recipients.map(async (recipientEmail: string) => {
-        console.log('[sendDocumentsEmail] Sending to:', recipientEmail.trim())
-
+    // Send email to each recipient, capped at 5 concurrent sends
+    const results = await runWithConcurrency(
+      params.recipients,
+      5,
+      async (recipientEmail: string) => {
         const emailHtml = documentShareEmail({
           companyName: params.companyName,
           senderName,
@@ -2878,29 +2892,23 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
           documents: documentsWithUrls,
         })
 
-        const result = await sendEmail({
+        return sendEmail({
           to: recipientEmail.trim(),
           subject: params.subject,
           html: emailHtml,
           replyTo: senderEmail,
         })
-
-        console.log('[sendDocumentsEmail] Email result for', recipientEmail.trim(), ':', result)
-        return result
-      })
+      }
     )
 
     // Count successes and failures
-    const succeeded = results.filter((r: PromiseSettledResult<unknown>) => r.status === 'fulfilled').length
-    const failed = results.filter((r: PromiseSettledResult<unknown>) => r.status === 'rejected').length
-
-    console.log('[sendDocumentsEmail] Results - Succeeded:', succeeded, 'Failed:', failed)
+    const succeeded = results.filter((r) => r.status === 'fulfilled').length
+    const failed = results.filter((r) => r.status === 'rejected').length
 
     if (failed > 0 && succeeded === 0) {
-      // Get error details from rejected results
       const errors = results
         .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-        .map((r: PromiseRejectedResult) => r.reason?.message || 'Unknown error')
+        .map((r) => (r.reason instanceof Error ? r.reason.message : 'Unknown error'))
       console.error('[sendDocumentsEmail] All emails failed:', errors)
       return { success: false, error: `Failed to send emails: ${errors.join(', ')}` }
     }
@@ -2913,9 +2921,9 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
         ? `Sent to ${succeeded} recipients. ${failed} failed.`
         : `Documents sent to ${succeeded} recipient${succeeded !== 1 ? 's' : ''}.`
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[sendDocumentsEmail] Error:', error)
-    return { success: false, error: error.message || 'Unknown error occurred' }
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' }
   }
 }
 
@@ -3518,253 +3526,5 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
   } catch (error: any) {
     console.error('Error in getDataRoomInitState:', error)
     return { success: false, error: error.message || 'Failed to initialize Data Room' }
-  }
-}
-
-// Document management functions (moved from onboarding/actions to avoid HMR issues)
-export async function uploadDocument(
-  companyId: string,
-  data: {
-    folderName: string
-    documentName: string
-    registrationDate?: string
-    expiryDate?: string
-    isPortalRequired: boolean
-    portalEmail?: string
-    portalPassword?: string
-    frequency: string
-    filePath: string
-    fileName: string
-    // New period metadata fields
-    periodType?: 'one-time' | 'monthly' | 'quarterly' | 'annual'
-    periodFinancialYear?: string
-    periodKey?: string
-    periodStart?: string
-    periodEnd?: string
-    requirementId?: string
-  }
-) {
-  // SECURITY: Validate companyId to prevent injection
-  if (!validateCompanyId(companyId)) {
-    throw new Error('Invalid company ID format')
-  }
-
-  // SECURITY: Sanitize string inputs
-  const sanitizedFolderName = sanitizeStringInput(data.folderName, 500)
-  const sanitizedDocumentName = sanitizeStringInput(data.documentName, 500)
-  const sanitizedFileName = sanitizeStringInput(data.fileName, 500)
-
-  if (!sanitizedFolderName || !sanitizedDocumentName || !sanitizedFileName) {
-    throw new Error('Invalid input: folder name, document name, or file name contains invalid characters')
-  }
-
-  const { documentRepository } = createServerContainer()
-  await requireCurrentUser()
-
-  const embedding = await generateEmbedding(`${sanitizedDocumentName} ${sanitizedFileName}`)
-
-  const [insertedDoc] = await documentRepository.createCompanyDocuments([{
-    companyId,
-    documentType: sanitizedDocumentName,
-    folderName: sanitizedFolderName,
-    registrationDate: data.registrationDate || null,
-    expiryDate: data.expiryDate || null,
-    isPortalRequired: data.isPortalRequired,
-    portalEmail: data.portalEmail || null,
-    portalPassword: data.portalPassword || null,
-    frequency: data.frequency,
-    filePath: data.filePath,
-    fileName: sanitizedFileName,
-    embedding: embedding.length > 0 ? embedding : null,
-    periodType: data.periodType || null,
-    periodFinancialYear: data.periodFinancialYear || null,
-    periodKey: data.periodKey || null,
-    periodStart: data.periodStart || null,
-    periodEnd: data.periodEnd || null,
-    requirementId: data.requirementId || null,
-  }])
-
-  // Trigger content processing in background
-  if (insertedDoc) {
-    processDocumentContent(insertedDoc.id, companyId, insertedDoc.filePath).catch(err =>
-      console.error(`Async processing failed for ${insertedDoc.id}:`, err)
-    )
-  }
-
-  return { success: true, documentId: insertedDoc?.id }
-}
-
-export async function uploadFileToStorage(filePath: string, fileData: ArrayBuffer, contentType: string) {
-  try {
-    await requireCurrentUser()
-
-    // SECURITY: Sanitize filePath
-    const sanitizedFilePath = sanitizeStringInput(filePath, 1000)
-    if (!sanitizedFilePath) {
-      throw new Error('Invalid file path')
-    }
-
-    // Use admin client to bypass RLS for Passport users
-    const adminSupabase = createAdminClient()
-
-    const { error: uploadError } = await adminSupabase.storage
-      .from('company-documents')
-      .upload(sanitizedFilePath, fileData, {
-        contentType: contentType,
-        upsert: false, // Don't overwrite existing files
-      })
-
-    if (uploadError) throw uploadError
-    return { success: true }
-  } catch (err: any) {
-    console.error('Error uploading file to storage:', err)
-    return { success: false, error: err.message }
-  }
-}
-
-export async function getDownloadUrl(filePath: string) {
-  try {
-    await requireCurrentUser()
-
-    // Use admin client to bypass RLS for Passport users
-    const adminSupabase = createAdminClient()
-
-    const { data, error } = await adminSupabase.storage
-      .from('company-documents')
-      .createSignedUrl(filePath, 3600) // 1 hour expiry for preview
-
-    if (error) throw error
-    return { success: true, url: data.signedUrl }
-  } catch (err: any) {
-    console.error('Error creating signed URL:', err)
-    return { success: false, error: err.message }
-  }
-}
-
-export async function deleteDocument(documentId: string, filePath: string) {
-  try {
-    // SECURITY: Validate documentId to prevent injection
-    if (!isValidUUID(documentId)) {
-      throw new Error('Invalid document ID format')
-    }
-
-    // SECURITY: Sanitize filePath
-    const sanitizedFilePath = sanitizeStringInput(filePath, 1000)
-    if (!sanitizedFilePath) {
-      throw new Error('Invalid file path')
-    }
-
-    const { documentRepository } = createServerContainer()
-    await requireCurrentUser()
-
-    // Use admin client to bypass RLS for Passport users
-    const adminSupabase = createAdminClient()
-
-    // 1. Delete from Storage
-    const { error: storageError } = await adminSupabase.storage
-      .from('company-documents')
-      .remove([sanitizedFilePath])
-
-    if (storageError) {
-      console.error('Storage deletion error:', storageError)
-      // Continue anyway to try and clean up metadata
-    }
-
-    // 2. Delete from Metadata table
-    await documentRepository.deleteCompanyDocument(documentId)
-
-    return { success: true }
-  } catch (err: any) {
-    console.error('Error deleting document:', err)
-    return { success: false, error: err.message }
-  }
-}
-
-export async function getDocumentTemplates() {
-  try {
-    const { documentRepository } = createServerContainer()
-    const templates = await documentRepository.getTemplateMappings()
-    return {
-      success: true,
-      templates: templates.map(template => ({
-        document_name: template.documentName,
-        folder_name: template.folderName,
-        default_frequency: template.defaultFrequency,
-      })),
-    }
-  } catch (err: any) {
-    console.error('Error fetching templates:', err)
-    if (err?.code === 'PGRST106' || err?.message?.includes('does not exist')) {
-      return { success: true, templates: [] }
-    }
-    return { success: false, templates: [] }
-  }
-}
-
-export async function getCompanyDocuments(companyId: string) {
-  try {
-    // SECURITY: Validate companyId to prevent injection
-    if (!validateCompanyId(companyId)) {
-      return { success: false, documents: [], error: 'Invalid company ID format' }
-    }
-
-    const { documentRepository, authService, accessService } = createServerContainer()
-
-    // Check authentication
-    const user = await authService.getCurrentUser()
-    if (!user) {
-      return { success: false, documents: [], error: 'Unauthorized' }
-    }
-
-    // Check access to company
-    console.log('[getCompanyDocuments] Checking access for user:', user.id, 'company:', companyId, 'isPassportUser:', !!user.canonicalId)
-    const accessSnapshot = await accessService.getCompanyAccessSnapshot(user.id, companyId)
-    console.log('[getCompanyDocuments] Access snapshot:', {
-      hasAccess: accessSnapshot.hasAccess,
-      accessType: accessSnapshot.accessType,
-      isOwner: accessSnapshot.isOwner,
-      ownerSubscriptionExpired: accessSnapshot.ownerSubscriptionExpired
-    })
-    
-    if (!accessSnapshot.hasAccess) {
-      console.log('[getCompanyDocuments] Access denied for user:', user.id, 'company:', companyId, 'reason:', {
-        accessType: accessSnapshot.accessType,
-        isOwner: accessSnapshot.isOwner,
-        ownerSubscriptionExpired: accessSnapshot.ownerSubscriptionExpired
-      })
-      return { success: false, documents: [], error: 'Access denied to this company' }
-    }
-
-    console.log('[getCompanyDocuments] Fetching documents for company:', companyId, 'user:', user.id)
-
-    const documents = await documentRepository.getCompanyDocuments(companyId)
-    console.log('[getCompanyDocuments] Found', documents.length, 'documents for company:', companyId)
-    
-    return {
-      success: true,
-      documents: documents.map(document => ({
-        id: document.id,
-        company_id: document.companyId,
-        document_type: document.documentType,
-        folder_name: document.folderName,
-        file_path: document.filePath,
-        file_name: document.fileName,
-        created_at: document.createdAt,
-        registration_date: document.registrationDate || null,
-        expiry_date: document.expiryDate || null,
-        period_type: document.periodType || null,
-        period_financial_year: document.periodFinancialYear || null,
-        period_key: document.periodKey || null,
-        period_start: document.periodStart || null,
-        period_end: document.periodEnd || null,
-        requirement_id: document.requirementId || null,
-      })),
-    }
-  } catch (err: any) {
-    console.error('[getCompanyDocuments] Error:', err)
-    if (err?.code === 'PGRST106' || err?.message?.includes('does not exist')) {
-      return { success: true, documents: [], warning: 'Storage table not found' }
-    }
-    return { success: false, error: err.message, documents: [] }
   }
 }

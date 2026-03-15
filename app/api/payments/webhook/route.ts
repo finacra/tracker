@@ -64,8 +64,6 @@ export async function POST(request: NextRequest) {
 
     if (signature !== expectedSignature) {
       console.error('[Webhook] Invalid webhook signature')
-      console.error(`[Webhook] Expected: ${expectedSignature.substring(0, 20)}...`)
-      console.error(`[Webhook] Received: ${signature.substring(0, 20)}...`)
       return NextResponse.json(
         { error: 'Invalid signature' },
         { status: 400 }

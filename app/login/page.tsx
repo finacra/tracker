@@ -31,17 +31,13 @@ function LoginPageInner() {
     const checkSession = async () => {
       if (!isMounted) return
       
-      console.log('🔍 [PASSPORT AUTH CHECK] Checking session on login page...')
-      
       try {
         const res = await fetch('/api/auth/passport/session')
         const data = await res.json()
         const session = data?.session
 
-        console.log('🔍 [PASSPORT AUTH CHECK] Session exists:', !!session)
-        
         if (!isMounted) return
-        
+
         // Redirect authenticated users to their destination
         // But first check if email is verified (for email/password users)
         if (session) {
@@ -49,10 +45,9 @@ function LoginPageInner() {
             // Check email verification status
             const verifyRes = await fetch(`/api/auth/check-verification?userId=${session.appUserId}`)
             const verifyData = await verifyRes.json()
-            
+
             // If email/password user and not verified, redirect to verify-email
             if (verifyData.requiresVerification && !verifyData.emailVerified) {
-              console.log('🔄 [PASSPORT AUTH CHECK] Email not verified, redirecting to /verify-email')
               window.location.href = '/verify-email'
               return
             }
@@ -68,7 +63,6 @@ function LoginPageInner() {
             overridePath: returnTo,
             allowOverrideForDataRoomUsers: true,
           })
-          console.log('🔄 [PASSPORT AUTH CHECK] Session exists, forcing reload to:', destination)
           window.location.href = destination
         }
       } catch (err) {
@@ -144,7 +138,6 @@ function LoginPageInner() {
       // Success! User is now logged in via Passport session cookie
       // If email not verified, redirect to verification page
       if (result.requiresVerification && !result.user.emailVerified) {
-        console.log(`[PASSPORT EMAIL ${isSignUp ? 'SIGN UP' : 'SIGN IN'}] User ${result.user.id} email not verified, redirecting to verify-email`)
         window.location.href = '/verify-email'
         return
       }
@@ -157,8 +150,6 @@ function LoginPageInner() {
           overridePath: returnTo,
           allowOverrideForDataRoomUsers: true,
         })
-        
-        console.log(`[PASSPORT EMAIL ${isSignUp ? 'SIGN UP' : 'SIGN IN'}] User ${result.user.id} forcing reload to: ${redirectTo}`)
         window.location.href = redirectTo
       } catch (destErr: any) {
         console.error('Error resolving destination:', destErr)

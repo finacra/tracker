@@ -1,169 +1,71 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter, usePathname } from 'next/navigation'
-import { getNotifications, markNotificationsRead, markAllNotificationsRead, type Notification } from '@/app/actions/notifications'
+import type { Notification } from '@/app/actions/notifications'
 import { checkSuperadminStatus } from '@/app/admin/actions'
 import { trackNotificationClick } from '@/lib/tracking/kpi-tracker'
-
-const superadminStatusCache = new Map<string, boolean>()
-const superadminStatusPromiseCache = new Map<string, Promise<boolean>>()
-
-async function resolveSuperadminStatus(userId: string): Promise<boolean> {
-  if (superadminStatusCache.has(userId)) {
-    return superadminStatusCache.get(userId) ?? false
-  }
-
-  const inFlight = superadminStatusPromiseCache.get(userId)
-  if (inFlight) {
-    return inFlight
-  }
-
-  const request = (async () => {
-    try {
-      const result = await checkSuperadminStatus()
-      if (!result.success) {
-        console.error('[Header] Error resolving superadmin status:', result.error)
-        return false
-      }
-
-      const isPlatformSuperadmin = result.isSuperadmin
-      superadminStatusCache.set(userId, isPlatformSuperadmin)
-      return isPlatformSuperadmin
-    } catch (error) {
-       console.error('[Header] Error resolving superadmin status:', error)
-       return false
-    } finally {
-      superadminStatusPromiseCache.delete(userId)
-    }
-  })()
-
-  superadminStatusPromiseCache.set(userId, request)
-  return request
-}
+import {
+  useNotificationsQuery,
+  useUnreadCountQuery,
+  useMarkReadMutation,
+  useMarkAllReadMutation,
+} from '@/hooks/useNotificationsQuery'
+import { useAppStore, selectNotificationCount, selectIsSuperadmin } from '@/lib/store/appStore'
 
 export default function Header() {
   const [showNotifications, setShowNotifications] = useState(false)
-  const [isSuperadmin, setIsSuperadmin] = useState(false)
+  const [showMobileNotifications, setShowMobileNotifications] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false)
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null)
   const [showAllNotifications, setShowAllNotifications] = useState(false)
   const { user, signOut, displayInitials, displayName, displayEmail } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
-  const fetchUnreadCount = useCallback(async () => {
-    if (!user) return
+  // ── Zustand ────────────────────────────────────────────────────────────────
+  const unreadCount = useAppStore(selectNotificationCount)
+  const isSuperadmin = useAppStore(selectIsSuperadmin)
+  const { setIsSuperadmin } = useAppStore()
 
-    try {
-      const result = await getNotifications({ limit: 1 })
-      if (result.success) {
-        setUnreadCount(result.unreadCount || 0)
-      }
-    } catch (err) {
-      console.error('[Header] Error fetching unread notification count:', err)
-    }
-  }, [user])
+  // ── Notifications (React Query) ────────────────────────────────────────────
+  // Background badge count — polls every 60 s
+  useUnreadCountQuery({ enabled: !!user })
 
-  // Fetch notifications
-  const fetchNotifications = useCallback(async () => {
-    if (!user) return
-    
-    setIsLoadingNotifications(true)
-    try {
-      const result = await getNotifications({ limit: 20 })
-      if (result.success) {
-        setNotifications(result.notifications || [])
-        setUnreadCount(result.unreadCount || 0)
-      }
-    } catch (err) {
-      console.error('[Header] Error fetching notifications:', err)
-    } finally {
-      setIsLoadingNotifications(false)
-    }
-  }, [user])
+  // Full list — fetched + polled only while panel is open (desktop or mobile drawer)
+  const { data: notifications = [], isLoading: isLoadingNotifications } = useNotificationsQuery({
+    enabled: !!user && (showNotifications || showMobileNotifications),
+    limit: showAllNotifications ? undefined : 20,
+  })
 
-  // Fetch only the unread badge count on initial load.
-  useEffect(() => {
-    if (user) {
-      fetchUnreadCount()
-    }
-  }, [user, fetchUnreadCount])
+  const markReadMutation = useMarkReadMutation()
+  const markAllReadMutation = useMarkAllReadMutation()
 
-  // Fetch notifications only when the panel is open, and poll while it stays open.
-  useEffect(() => {
-    if (user && showNotifications) {
-      fetchNotifications()
-      const interval = setInterval(fetchNotifications, 30000)
-      return () => clearInterval(interval)
-    }
-  }, [user, showNotifications, fetchNotifications])
-
-  // Mark notification as read
-  const handleMarkRead = async (notificationId: string) => {
-    const result = await markNotificationsRead(notificationId)
-    if (result.success) {
-      setNotifications(prev => 
-        prev.map(n => n.id === notificationId ? { ...n, is_read: true, read_at: new Date().toISOString() } : n)
-      )
-      setUnreadCount(prev => Math.max(0, prev - 1))
-    }
+  const handleMarkRead = (notificationId: string) => {
+    markReadMutation.mutate(notificationId)
   }
 
-  // Mark all as read
-  const handleMarkAllRead = async () => {
-    const result = await markAllNotificationsRead()
-    if (result.success) {
-      setNotifications(prev => 
-        prev.map(n => ({ ...n, is_read: true, read_at: new Date().toISOString() }))
-      )
-      setUnreadCount(0)
-    }
+  const handleMarkAllRead = () => {
+    markAllReadMutation.mutate()
   }
 
-  // Check if user is superadmin with retry logic and comprehensive logging
+  // ── Superadmin check — resolved once, stored in Zustand ───────────────────
   useEffect(() => {
-    let isMounted = true
-    const maxRetries = 3
-    const retryDelay = 1000 // 1 second
-
-    async function checkSuperadmin() {
-      if (!user) {
-        if (isMounted) setIsSuperadmin(false)
-        return
-      }
-
-      const attemptCheck = async (attempt: number): Promise<void> => {
-        try {
-          const nextValue = await resolveSuperadminStatus(user.id)
-          if (isMounted) setIsSuperadmin(nextValue)
-        } catch (error: any) {
-          console.error(`[Header] Error checking superadmin (attempt ${attempt + 1}):`, error)
-          
-          if (attempt < maxRetries && isMounted) {
-            await new Promise(resolve => setTimeout(resolve, retryDelay))
-            return attemptCheck(attempt + 1)
-          } else {
-            if (isMounted) setIsSuperadmin(false)
-          }
-        }
-      }
-
-      await attemptCheck(0)
+    if (!user) {
+      setIsSuperadmin(false)
+      return
     }
-
-    checkSuperadmin()
-
-    return () => {
-      isMounted = false
-    }
-  }, [user])
+    let cancelled = false
+    checkSuperadminStatus()
+      .then((result) => {
+        if (!cancelled) setIsSuperadmin(result.success ? (result.isSuperadmin ?? false) : false)
+      })
+      .catch(() => { if (!cancelled) setIsSuperadmin(false) })
+    return () => { cancelled = true }
+  }, [user, setIsSuperadmin])
 
   const handleSignOut = async () => {
     await signOut()
@@ -221,35 +123,42 @@ export default function Header() {
 
           {/* Right Side - Notifications, Hamburger Menu, and Profile */}
           <div className="flex items-center gap-2 sm:gap-4">
-            {/* Notifications (Desktop Only) */}
-            <div className="relative hidden md:block">
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-1.5 sm:p-2 text-gray-400 hover:text-white transition-colors"
-            >
-              <svg
-                width="18"
-                height="18"
-                className="sm:w-5 sm:h-5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            {/* Notifications Bell — always visible */}
+            <div className="relative">
+              {/* Desktop bell */}
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative hidden md:flex p-1.5 sm:p-2 text-gray-400 hover:text-white transition-colors"
+                aria-label="Notifications"
               >
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
-                {/* Unread Badge */}
+                <svg width="18" height="18" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
                 {unreadCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-gray-600 text-white text-[10px] font-light rounded-full flex items-center justify-center">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
-            </button>
+              </button>
+              {/* Mobile bell */}
+              <button
+                onClick={() => setShowMobileNotifications(true)}
+                className="relative flex md:hidden p-1.5 text-gray-400 hover:text-white transition-colors"
+                aria-label="Notifications"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-gray-600 text-white text-[10px] font-light rounded-full flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
 
-              {/* Notifications Dropdown */}
+              {/* Desktop Notifications Dropdown */}
               {showNotifications && (
                 <>
                   {/* Backdrop */}
@@ -372,14 +281,9 @@ export default function Header() {
                     {notifications.length > 0 && (
                       <div className="px-4 py-2 border-t border-gray-800">
                         <button
-                          onClick={async () => {
+                          onClick={() => {
                             setShowNotifications(false)
-                            // Fetch all notifications (no limit)
-                            const result = await getNotifications({ limit: 1000 })
-                            if (result.success) {
-                              setNotifications(result.notifications || [])
-                              setShowAllNotifications(true)
-                            }
+                            setShowAllNotifications(true)
                           }}
                           className="w-full text-center text-sm text-gray-400 hover:text-white transition-colors font-light"
                         >
@@ -387,6 +291,84 @@ export default function Header() {
                         </button>
                       </div>
                     )}
+                  </div>
+                </>
+              )}
+
+              {/* Mobile Notifications Drawer */}
+              {showMobileNotifications && (
+                <>
+                  <div className="fixed inset-0 bg-black/60 z-40 md:hidden" onClick={() => setShowMobileNotifications(false)} />
+                  <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[#151515] border-t border-white/10 rounded-t-2xl shadow-2xl flex flex-col max-h-[80vh]">
+                    {/* Drawer handle */}
+                    <div className="flex justify-center pt-3 pb-1">
+                      <div className="w-10 h-1 bg-white/20 rounded-full" />
+                    </div>
+                    {/* Drawer header */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+                      <h3 className="text-white font-light">Notifications</h3>
+                      <div className="flex items-center gap-3">
+                        {unreadCount > 0 && (
+                          <button onClick={handleMarkAllRead} className="text-xs text-gray-400 hover:text-white transition-colors font-light">
+                            Mark all read
+                          </button>
+                        )}
+                        <button onClick={() => setShowMobileNotifications(false)} className="text-gray-400 hover:text-white transition-colors" aria-label="Close notifications">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    {/* Drawer list */}
+                    <div className="overflow-y-auto flex-1">
+                      {isLoadingNotifications ? (
+                        <div className="p-8 flex justify-center">
+                          <div className="animate-spin w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full" />
+                        </div>
+                      ) : notifications.length === 0 ? (
+                        <div className="p-8 text-center text-gray-400">
+                          <svg className="w-12 h-12 mx-auto mb-2 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                          </svg>
+                          <p className="text-sm font-light">No notifications yet</p>
+                        </div>
+                      ) : (
+                        notifications.map((notification) => (
+                          <div
+                            key={notification.id}
+                            onClick={async () => {
+                              if (!notification.is_read) handleMarkRead(notification.id)
+                              setSelectedNotification(notification)
+                              setShowMobileNotifications(false)
+                            }}
+                            className={`px-4 py-3 border-b border-white/5 cursor-pointer transition-colors ${notification.is_read ? 'bg-transparent' : 'bg-white/5'}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                notification.type === 'missing_docs' ? 'bg-yellow-500/20 text-yellow-400'
+                                : notification.type === 'status_change' ? 'bg-blue-500/20 text-blue-400'
+                                : notification.type === 'overdue' ? 'bg-red-500/20 text-red-400'
+                                : 'bg-gray-700 text-gray-400'
+                              }`}>
+                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                                </svg>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm font-light ${notification.is_read ? 'text-gray-300' : 'text-white'}`}>{notification.title}</p>
+                                <p className="text-xs text-gray-400 mt-0.5 line-clamp-2 font-light">{notification.message}</p>
+                                <p className="text-[10px] text-gray-500 mt-1 font-light">
+                                  {new Date(notification.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                              </div>
+                              {!notification.is_read && <div className="w-2 h-2 bg-gray-400 rounded-full flex-shrink-0 mt-1.5" />}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
                 </>
               )}
@@ -436,15 +418,11 @@ export default function Header() {
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
-                  console.log('[Header] User menu clicked, current state:', showUserMenu)
-                  const newState = !showUserMenu
-                  setShowUserMenu(newState)
-                  console.log('[Header] User menu state after toggle:', newState)
+                  setShowUserMenu(!showUserMenu)
                 }}
                 onMouseDown={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
-                  console.log('[Header] User menu mousedown')
                 }}
                 className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity cursor-pointer relative z-50"
                 type="button"
@@ -880,7 +858,6 @@ export default function Header() {
                 <button
                   onClick={() => {
                     setShowAllNotifications(false)
-                    fetchNotifications() // Refresh to get limited list back
                   }}
                   className="text-gray-400 hover:text-white transition-colors"
                 >

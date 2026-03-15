@@ -30,7 +30,8 @@ export function useRegulatoryRequirementsQuery({
     },
     enabled: enabled && !!companyId,
     initialData,
-    staleTime: 1 * 60 * 1000, // 1 minute - requirements can change frequently
-    gcTime: 5 * 60 * 1000,
+    staleTime: 1 * 60 * 1000,  // 1 minute — requirements change frequently
+    gcTime: 2 * 60 * 1000,     // Keep in cache 2 minutes (longer than staleTime for background refetch)
+    refetchOnWindowFocus: true, // Refresh stale data when user returns to the tab
   })
 }

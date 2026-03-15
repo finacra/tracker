@@ -1,6 +1,7 @@
-import { createAdminClient } from '@/utils/supabase/admin';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { generateEmbedding } from './embeddings';
+import { createStorageAdapter } from '@/lib/storage/factory';
+import { createAdminClient } from '@/utils/supabase/admin';
 
 /**
  * PRODUCTION-GRADE PDF PROCESSOR
@@ -10,6 +11,7 @@ import { generateEmbedding } from './embeddings';
  * We bypass this by requiring the core logic directly.
  */
 export async function processDocumentContent(documentId: string, companyId: string, filePath: string) {
+  const storage = createStorageAdapter();
   const adminSupabase: any = createAdminClient();
   const LOG_PREFIX = `[AI-Processor][Doc:${documentId.slice(0, 8)}]`;
   
@@ -32,16 +34,9 @@ export async function processDocumentContent(documentId: string, companyId: stri
 
     // 3. Download from Storage
     console.log(`${LOG_PREFIX} 📥 Downloading from Storage: ${filePath}`);
-    const { data, error: downloadError } = await adminSupabase.storage
-      .from('company-documents')
-      .download(filePath);
-
-    if (downloadError || !data) {
-      throw new Error(`Download failed: ${downloadError?.message || 'Empty response'}`);
-    }
+    const buffer = await storage.downloadFile('company-documents', filePath);
 
     // 4. Extract Text
-    const buffer = Buffer.from(await data.arrayBuffer());
     console.log(`${LOG_PREFIX} 📄 Extracting text from ${buffer.length} bytes...`);
     
     // Ensure we have a function
@@ -75,7 +70,7 @@ export async function processDocumentContent(documentId: string, companyId: stri
     console.log(`${LOG_PREFIX} 🧩 Created ${chunks.length} semantic chunks.`);
 
     // 6. Embedding Generation
-    console.log(`${LOG_PREFIX} 🧠 Generating embeddings...`);
+    console.log(`${LOG_PREFIX} 🧠 Generating embeddings for ${chunks.length} chunks...`);
     const chunkData = await Promise.all(
       chunks.map(async (chunk, index) => {
         try {
@@ -87,7 +82,8 @@ export async function processDocumentContent(documentId: string, companyId: stri
             embedding: embedding.length > 0 ? embedding : null,
             metadata: { page: index + 1, source: filePath },
           };
-        } catch (e) {
+        } catch (e: unknown) {
+          console.error(`${LOG_PREFIX} Embedding failed for chunk ${index + 1}:`, e instanceof Error ? e.message : e);
           return null;
         }
       })
@@ -96,8 +92,10 @@ export async function processDocumentContent(documentId: string, companyId: stri
     const validChunks = chunkData.filter((c): c is NonNullable<typeof c> => c !== null && c.embedding !== null);
 
     if (validChunks.length === 0) {
-      throw new Error('All embedding calls failed.');
+      throw new Error(`All ${chunks.length} embedding calls failed — document indexed without AI chunks.`);
     }
+
+    console.log(`${LOG_PREFIX} ${validChunks.length}/${chunks.length} chunks embedded successfully.`);
 
     // 7. Database Save
     console.log(`${LOG_PREFIX} 💾 Saving ${validChunks.length} chunks to Supabase...`);
@@ -110,7 +108,9 @@ export async function processDocumentContent(documentId: string, companyId: stri
     }
 
     console.log(`${LOG_PREFIX} ✅ SUCCESS. Document indexed.`);
-  } catch (error: any) {
-    console.error(`${LOG_PREFIX} 🚨 PRODUCTION ERROR:`, error.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`${LOG_PREFIX} 🚨 Processing failed: ${message}`);
+    throw error; // Re-throw so the caller's .catch() handler is informed
   }
 }

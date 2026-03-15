@@ -24,6 +24,8 @@ const DscDinTab = lazy(() => import("./components/DscDinTab"));
 import Header from "@/components/layout/Header";
 import CompanySelector from "@/components/features/CompanySelector";
 import SubtleCircuitBackground from "@/components/ui/SubtleCircuitBackground";
+import { OverviewStatsSkeleton } from "@/components/ui/skeletons/OverviewStatsSkeleton";
+import { RequirementTableSkeleton } from "@/components/ui/skeletons/RequirementRowSkeleton";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -33,7 +35,7 @@ import {
   getDownloadUrl,
   deleteDocument,
   uploadFileToStorage,
-} from "@/app/onboarding/actions";
+} from "@/app/data-room/document-actions";
 import {
   getRegulatoryRequirements,
   updateRequirementStatus,
@@ -85,6 +87,8 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { useCompanyCountry } from "@/hooks/useCompanyCountry";
 import { useComplianceCategories } from "@/hooks/useComplianceCategories";
 import { RegulatoryServiceImpl } from "./services/RegulatoryServiceImpl";
+import { DataRoomProvider } from "@/contexts/DataRoomContext";
+import { useAppStore } from "@/lib/store/appStore";
 
 const isDataRoomDebugEnabled = process.env.NODE_ENV === "development";
 
@@ -193,7 +197,14 @@ function DataRoomPageInner() {
     searchParams.get("company_id") || searchParams.get("company") || null;
   const initialCompanyId = useMemo(() => urlParamValue, [urlParamValue]);
 
-  const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
+  // Sync company selection to Zustand so other components can read it
+  const { setCurrentCompanyId } = useAppStore();
+
+  const [currentCompany, setCurrentCompanyLocal] = useState<Company | null>(null);
+  const setCurrentCompany = useCallback((company: Company | null) => {
+    setCurrentCompanyLocal(company);
+    setCurrentCompanyId(company?.id ?? null);
+  }, [setCurrentCompanyId]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
@@ -1056,7 +1067,18 @@ function DataRoomPageInner() {
     fetchCompliances();
   }, [currentCompany?.id, isDataRoomInitLoading]);
 
-  const [activeTab, setActiveTab] = useState("overview");
+  // Active tab — URL is source of truth on load; Zustand persists within-session
+  const { activeTab: storedTab, setActiveTab: setStoredTab } = useAppStore();
+  const urlTab = searchParams.get("tab");
+  const [activeTab, setActiveTabLocal] = useState(urlTab ?? storedTab ?? "overview");
+  const setActiveTab = useCallback((tab: string) => {
+    setActiveTabLocal(tab);
+    setStoredTab(tab as import("@/lib/store/appStore").DataRoomTab);
+    // Reflect in URL without adding to browser history
+    const params = new URLSearchParams(window.location.search);
+    params.set("tab", tab);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [setStoredTab, router]);
 
   // GST Integration States
   // GST tab state moved to GSTTab component
@@ -2148,26 +2170,21 @@ function DataRoomPageInner() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingRequirement, setEditingRequirement] =
     useState<RegulatoryRequirement | null>(null);
-  const [requirementForm, setRequirementForm] = useState({
+  const [requirementForm, setRequirementForm] = useState<import("./components/tracker/RequirementFormModal").RequirementForm>({
     category: "",
     requirement: "",
     description: "",
     due_date: "",
     penalty: "",
-    penalty_base_amount: null as number | null,
+    penalty_base_amount: null,
+    penalty_config: null,
+    possible_legal_action: "",
+    required_documents: [],
+    required_documents_input: "",
     is_critical: false,
     financial_year: "",
-    status: "not_started" as
-      | "not_started"
-      | "upcoming"
-      | "pending"
-      | "overdue"
-      | "completed",
-    compliance_type: "one-time" as
-      | "one-time"
-      | "monthly"
-      | "quarterly"
-      | "annual",
+    status: "not_started",
+    compliance_type: "one-time",
     year: new Date().getFullYear().toString(),
   });
 
@@ -4367,21 +4384,23 @@ function DataRoomPageInner() {
   // 1. Initial boot: Show dynamic loading messages
   if (isDataRoomInitLoading || (authLoading && !user)) {
     return (
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="text-center max-w-md px-4">
-          <div className="relative mb-6">
-            <div className="w-16 h-16 border-4 border-white/20 border-t-transparent rounded-full animate-spin mx-auto" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full animate-pulse" />
-            </div>
+      <div className="min-h-screen bg-primary-dark">
+        <Header />
+        <div className="container mx-auto px-4 py-8 space-y-6 max-w-7xl">
+          {/* Skeleton company selector strip */}
+          <div className="flex gap-3 overflow-hidden">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-10 w-36 animate-pulse rounded-xl bg-white/5 flex-shrink-0" />
+            ))}
           </div>
-          <h2 className="text-white text-xl font-semibold mb-2">Preparing Your Data Room</h2>
-          <p className="text-gray-300 text-sm mb-1">{loadingMessage}</p>
-          <div className="mt-4 flex items-center justify-center gap-1">
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          {/* Skeleton tab strip */}
+          <div className="flex gap-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-9 w-24 animate-pulse rounded-lg bg-white/5" />
+            ))}
           </div>
+          {/* Skeleton main content */}
+          <OverviewStatsSkeleton />
         </div>
       </div>
     );
@@ -4495,7 +4514,7 @@ function DataRoomPageInner() {
         )}
 
       {/* Main Content */}
-      <div className="relative z-10 container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+      <div className="relative z-10 container mx-auto px-3 sm:px-4 py-4 sm:py-8 animate-fadeIn">
         {/* Company Selector */}
         <div className="mb-4 sm:mb-6">
           <h2 className="text-gray-400 text-sm font-medium mb-2 sm:mb-3">
@@ -5493,7 +5512,9 @@ export default function DataRoomPage() {
         </div>
       }
     >
-      <DataRoomPageInner />
+      <DataRoomProvider>
+        <DataRoomPageInner />
+      </DataRoomProvider>
     </Suspense>
   );
 }

@@ -5,9 +5,22 @@ import { createServerContainer } from '@/lib/composition/server-container'
 /**
  * API endpoint to process refunds for trial verification payments
  * This should be called by a scheduled job (cron) every hour
- * to check for payments that need to be refunded
+ * to check for payments that need to be refunded.
+ *
+ * Requires the Authorization header: Bearer <CRON_SECRET>
  */
 export async function POST(request: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET
+  if (!cronSecret) {
+    console.error('[refund-trial-verification] CRON_SECRET env var is not set')
+    return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 })
+  }
+
+  const authHeader = request.headers.get('Authorization')
+  if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const { paymentRepository } = createServerContainer()
 

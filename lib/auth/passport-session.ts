@@ -9,7 +9,11 @@ import { NextResponse } from 'next/server'
 import type { PassportSessionUser } from './passport-config'
 
 const SESSION_COOKIE_NAME = 'passport_session'
-const SESSION_SECRET = process.env.SESSION_SECRET || 'finno123' // Fallback, but should be set in env
+
+if (!process.env.SESSION_SECRET) {
+  throw new Error('SESSION_SECRET environment variable is required but not set')
+}
+const SESSION_SECRET = process.env.SESSION_SECRET
 
 /**
  * Create a session token from user data

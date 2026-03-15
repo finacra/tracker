@@ -21,6 +21,7 @@
     "@tavily/core": "^0.3.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/react-window": "^1.8.8",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "bcryptjs": "^3.0.3",
     "express-session": "^1.19.0",
@@ -42,7 +43,8 @@
     "react-dom": "^19.2.3",
     "react-katex": "^3.0.1",
     "react-window": "^2.2.7",
-    "resend": "^6.9.1"
+    "resend": "^6.9.1",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@types/express-session": "^1.18.2",

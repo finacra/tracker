@@ -32,7 +32,6 @@ async function generateAuthToken(): Promise<string> {
   })
 
   const data = await response.json()
-  console.log('Token response:', JSON.stringify(data, null, 2))
 
   if (!data.IsSuccess || !data.Data?.Token) {
     throw new Error(data.Message || 'Failed to generate token')
@@ -63,8 +62,6 @@ export async function POST(request: NextRequest) {
     
     // Call CIN verification API
     const url = `${API_BASE_URL}/CIN/GetCompanyDetails?CINorLLPorFCRN=${encodeURIComponent(cin)}&TokenID=${TOKEN_ID}&TokenSecret=${TOKEN_SECRET}`
-    
-    console.log('CIN API Request URL:', url)
 
     const response = await fetch(url, {
       method: 'GET',

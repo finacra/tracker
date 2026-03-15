@@ -3,8 +3,19 @@ import { createClient } from '@/utils/supabase/server'
 import { createServerContainer } from '@/lib/composition/server-container'
 import { getRazorpayInstance } from '@/lib/razorpay/client'
 import { calculatePricing, getTierById, type BillingCycle, type PricingTier } from '@/lib/pricing/tiers'
+import { checkRateLimit, getClientIp } from '@/lib/utils/rate-limiter'
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 10 order creation attempts per IP per 15 minutes
+  const ip = getClientIp(request)
+  const { allowed, retryAfterMs } = checkRateLimit(`create-order:${ip}`, 10, 15 * 60 * 1000)
+  if (!allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) } }
+    )
+  }
+
   try {
     const { authService, paymentRepository, companyRepository } = createServerContainer()
     const user = await authService.getCurrentUser()

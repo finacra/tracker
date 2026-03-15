@@ -18,7 +18,7 @@ export class PrismaRequirementRepository implements RequirementRepository {
   async refreshAllOverdueStatuses(): Promise<void> {
     // Use the same RPC as Supabase implementation — this stored procedure is DB-level
     try {
-      await prisma.$executeRawUnsafe(`SELECT update_overdue_statuses()`)
+      await prisma.$executeRaw(Prisma.sql`SELECT update_overdue_statuses()`)
     } catch (error) {
       console.error('[PrismaRequirementRepository] All status refresh error:', error)
     }
@@ -26,9 +26,8 @@ export class PrismaRequirementRepository implements RequirementRepository {
 
   async getAll(): Promise<Requirement[]> {
     // Use raw query to get all columns including those not in Prisma model
-    const rows = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT * FROM regulatory_requirements
-       ORDER BY due_date ASC`
+    const rows = await prisma.$queryRaw<any[]>(
+      Prisma.sql`SELECT * FROM regulatory_requirements ORDER BY due_date ASC`
     )
 
     return (rows || []).map((row) => this.mapRow(row))
@@ -64,6 +63,7 @@ export class PrismaRequirementRepository implements RequirementRepository {
   async create(input: import('@/application/interfaces/RequirementRepository').CreateRequirementInput): Promise<Requirement> {
     // Use Prisma.sql with explicit UUID casts
     const requiredDocsJson = JSON.stringify(input.requiredDocuments || [])
+    const penaltyConfigJson = input.penaltyConfig ? JSON.stringify(input.penaltyConfig) : null
     const result = await prisma.$queryRaw<any[]>(
       Prisma.sql`INSERT INTO regulatory_requirements (
         company_id,
@@ -73,6 +73,8 @@ export class PrismaRequirementRepository implements RequirementRepository {
         due_date,
         penalty,
         penalty_base_amount,
+        penalty_config,
+        possible_legal_action,
         is_critical,
         financial_year,
         compliance_type,
@@ -91,6 +93,8 @@ export class PrismaRequirementRepository implements RequirementRepository {
         ${input.dueDate}::date,
         ${input.penalty || null}::text,
         ${input.penaltyBaseAmount || null}::numeric,
+        ${penaltyConfigJson}::jsonb,
+        ${input.possibleLegalAction || null}::text,
         ${input.isCritical ?? false}::boolean,
         ${input.financialYear || null}::text,
         ${input.complianceType || 'one-time'}::text,

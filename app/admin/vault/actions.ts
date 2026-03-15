@@ -96,7 +96,7 @@ export async function getFolders(): Promise<{ success: boolean; folders?: Folder
         setTimeout(() => reject(new Error('Check timeout after 10 seconds')), 10000)
       })
       
-      const checkPromise = accessService.isSuperadmin(user.legacyAuthId || user.id)
+      const checkPromise = accessService.isSuperadmin(user.id)
       isSuperadmin = await Promise.race([checkPromise, timeoutPromise]) as boolean
     } catch (error: any) {
       console.error('[VAULT ACTIONS] Superadmin check failed or timed out - SERVER SIDE:', error)
@@ -297,7 +297,7 @@ export async function createFolder(
     }
 
     // Check if superadmin
-    const isSuperadmin = await accessService.isSuperadmin(user.legacyAuthId || user.id)
+    const isSuperadmin = await accessService.isSuperadmin(user.id)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can manage vault' }
@@ -368,7 +368,7 @@ export async function updateFolder(
     }
 
     // Check if superadmin
-    const isSuperadmin = await accessService.isSuperadmin(user.legacyAuthId || user.id)
+    const isSuperadmin = await accessService.isSuperadmin(user.id)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can manage vault' }
@@ -428,7 +428,7 @@ export async function deleteFolder(path: string): Promise<{ success: boolean; er
     }
 
     // Check if superadmin
-    const isSuperadmin = await accessService.isSuperadmin(user.legacyAuthId || user.id)
+    const isSuperadmin = await accessService.isSuperadmin(user.id)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can manage vault' }
@@ -503,7 +503,7 @@ export async function getDocumentTemplates(
     const adminSupabase: any = createAdminClient()
 
     // Check if superadmin
-    const isSuperadmin = await accessService.isSuperadmin(user.legacyAuthId || user.id)
+    const isSuperadmin = await accessService.isSuperadmin(user.id)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can access vault' }
@@ -581,7 +581,7 @@ export async function createDocumentTemplate(
     }
 
     // Check if superadmin
-    const isSuperadmin = await accessService.isSuperadmin(user.legacyAuthId || user.id)
+    const isSuperadmin = await accessService.isSuperadmin(user.id)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can manage vault' }
@@ -650,7 +650,7 @@ export async function updateDocumentTemplate(
     }
 
     // Check if superadmin
-    const isSuperadmin = await accessService.isSuperadmin(user.legacyAuthId || user.id)
+    const isSuperadmin = await accessService.isSuperadmin(user.id)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can manage vault' }
@@ -758,7 +758,7 @@ export async function deleteDocumentTemplate(id: string): Promise<{ success: boo
     }
 
     // Check if superadmin
-    const isSuperadmin = await accessService.isSuperadmin(user.legacyAuthId || user.id)
+    const isSuperadmin = await accessService.isSuperadmin(user.id)
     
     if (!isSuperadmin) {
       return { success: false, error: 'Only superadmins can manage vault' }

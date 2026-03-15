@@ -8,6 +8,8 @@ export interface CreateRequirementInput {
   dueDate: string
   penalty?: string | null
   penaltyBaseAmount?: number | null
+  penaltyConfig?: Record<string, unknown> | null
+  possibleLegalAction?: string | null
   isCritical?: boolean
   financialYear?: string | null
   complianceType?: 'one-time' | 'monthly' | 'quarterly' | 'annual'

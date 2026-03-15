@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useMemo, useRef, useCallback, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import SubtleCircuitBackground from '@/components/ui/SubtleCircuitBackground'
+import { showToast } from '@/components/ui/Toast'
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/utils/supabase/client'
 import { getRegulatoryRequirements, getCompanyUserRoles, getUserRole, getComplianceTemplates, createComplianceTemplate, updateComplianceTemplate, deleteComplianceTemplate, getTemplateDetails, applyAllTemplates, type ComplianceTemplate } from '@/app/data-room/actions'
@@ -92,9 +94,41 @@ async function resolveSuperadminStatus(userId: string): Promise<boolean> {
   return request
 }
 
-export default function AdminPage() {
+const EMPTY_TEMPLATE_FORM = {
+  category: '',
+  requirement: '',
+  description: '',
+  compliance_type: 'one-time' as 'one-time' | 'monthly' | 'quarterly' | 'annual',
+  entity_types: [] as string[],
+  industries: [] as string[],
+  industry_categories: [] as string[],
+  penalty: '',
+  penalty_config_type: 'none' as 'none' | 'flat' | 'daily' | 'interest' | 'percentage',
+  penalty_config_rate: '',
+  penalty_config_amount: '',
+  penalty_config_period: 'month' as 'day' | 'month' | 'year',
+  penalty_config_base: 'tax_due' as string,
+  penalty_config_cap: '',
+  is_critical: false,
+  financial_year: '',
+  due_date_offset: undefined as number | undefined,
+  due_month: undefined as number | undefined,
+  due_day: undefined as number | undefined,
+  due_date: '',
+  year_type: 'FY' as 'FY' | 'CY',
+  is_active: true,
+  country_code: 'IN' as string,
+  applicable_regions: [] as string[],
+  required_documents: [] as string[],
+  possible_legal_action: '',
+  required_documents_input: '',
+}
+
+function AdminPageInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useAuth()
+  const { openConfirm, confirmDialog } = useConfirmDialog()
   const checkedSuperadminUserRef = useRef<string | null>(null)
   const checkingSuperadminUserRef = useRef<string | null>(null)
   const dataFetchedRef = useRef<string | null>(null)
@@ -105,7 +139,16 @@ export default function AdminPage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [allRequirements, setAllRequirements] = useState<Requirement[]>([])
   const [selectedCompany, setSelectedCompany] = useState<string>('all')
-  const [activeTab, setActiveTab] = useState<'overview' | 'companies' | 'compliances' | 'subscriptions' | 'allusers' | 'templates' | 'financials' | 'transactions' | 'vault' | 'kpis' | 'tracking'>('overview')
+  type AdminTab = 'overview' | 'companies' | 'compliances' | 'subscriptions' | 'allusers' | 'templates' | 'financials' | 'transactions' | 'vault' | 'kpis' | 'tracking'
+  const urlTab = searchParams?.get('tab') as AdminTab | null
+  const [activeTab, setActiveTabRaw] = useState<AdminTab>(urlTab ?? 'overview')
+  const setActiveTab = useCallback((tab: AdminTab | string) => {
+    const validated = tab as AdminTab
+    setActiveTabRaw(validated)
+    const params = new URLSearchParams(window.location.search)
+    params.set('tab', validated)
+    router.replace(`?${params.toString()}`, { scroll: false })
+  }, [router])
   const [templates, setTemplates] = useState<ComplianceTemplate[]>([])
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([])
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
@@ -117,30 +160,7 @@ export default function AdminPage() {
   // Fetch compliance categories from database
   const { categories: complianceCategories, isLoading: categoriesLoading } = useComplianceCategories('IN')
 
-  const [templateForm, setTemplateForm] = useState({
-    category: '',
-    requirement: '',
-    description: '',
-    compliance_type: 'one-time' as 'one-time' | 'monthly' | 'quarterly' | 'annual',
-    entity_types: [] as string[],
-    industries: [] as string[],
-    industry_categories: [] as string[],
-    penalty: '',
-    is_critical: false,
-    financial_year: '',
-    due_date_offset: undefined as number | undefined,
-    due_month: undefined as number | undefined,
-    due_day: undefined as number | undefined,
-    due_date: '',
-    year_type: 'FY' as 'FY' | 'CY',  // Financial Year (India) or Calendar Year (Gulf/USA)
-    is_active: true,
-    country_code: 'IN' as string,  // Default to India
-    applicable_regions: [] as string[],  // For multi-country templates
-    // New fields for V2
-    required_documents: [] as string[],
-    possible_legal_action: '',
-    required_documents_input: '' // Temporary input for adding documents
-  })
+  const [templateForm, setTemplateForm] = useState({ ...EMPTY_TEMPLATE_FORM })
 
   // Vault management state
   const [vaultFolders, setVaultFolders] = useState<FolderInfo[]>([])
@@ -280,11 +300,11 @@ export default function AdminPage() {
         setVaultFolders(foldersResult.folders)
       } else if (foldersResult.error) {
         console.error('[ADMIN VAULT] Failed to load folders:', foldersResult.error)
-        alert(`Failed to load folders: ${foldersResult.error}`)
+        showToast(`Failed to load folders: ${foldersResult.error}`, 'error')
       }
     } catch (error) {
       console.error('[ADMIN VAULT] Error loading vault folders:', error)
-      alert(`Error loading vault folders: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      showToast(`Error loading vault folders: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error')
     } finally {
       setIsLoadingVaultFolders(false)
     }
@@ -325,7 +345,7 @@ export default function AdminPage() {
 
   const handleCreateVaultFolder = async () => {
     if (!vaultFolderForm.name.trim()) {
-      alert('Please enter a folder name')
+      showToast('Please enter a folder name', 'warning')
       return
     }
 
@@ -342,11 +362,11 @@ export default function AdminPage() {
         setVaultFolderForm({ name: '', description: '' })
         await loadVaultFolders()
       } else {
-        alert(result.error || 'Failed to create folder')
+        showToast(result.error || 'Failed to create folder', 'error')
       }
     } catch (error) {
       console.error('Error creating folder:', error)
-      alert('Failed to create folder')
+      showToast('Failed to create folder', 'error')
     } finally {
       setIsCreatingVaultFolder(false)
     }
@@ -378,18 +398,18 @@ export default function AdminPage() {
         }
         await loadVaultFolders()
       } else {
-        alert(result.error || 'Failed to update folder')
+        showToast(result.error || 'Failed to update folder', 'error')
       }
     } catch (error) {
       console.error('Error updating folder:', error)
-      alert('Failed to update folder')
+      showToast('Failed to update folder', 'error')
     } finally {
       setIsCreatingVaultFolder(false)
     }
   }
 
   const handleDeleteVaultFolder = async (folderPath: string) => {
-    if (!confirm('Are you sure you want to delete this folder? This will delete all document templates in this folder and subfolders. This action cannot be undone.')) {
+    if (!await openConfirm('This will delete all document templates in this folder and subfolders. This action cannot be undone.', { title: 'Delete folder?' })) {
       return
     }
 
@@ -402,17 +422,17 @@ export default function AdminPage() {
         }
         await loadVaultFolders()
       } else {
-        alert(result.error || 'Failed to delete folder')
+        showToast(result.error || 'Failed to delete folder', 'error')
       }
     } catch (error) {
       console.error('Error deleting folder:', error)
-      alert('Failed to delete folder')
+      showToast('Failed to delete folder', 'error')
     }
   }
 
   const handleCreateVaultTemplate = async () => {
     if (!vaultTemplateForm.name.trim()) {
-      alert('Please enter a document name')
+      showToast('Please enter a document name', 'warning')
       return
     }
 
@@ -438,11 +458,11 @@ export default function AdminPage() {
         })
         await loadVaultTemplates(selectedFolderPath)
       } else {
-        alert(result.error || 'Failed to create document template')
+        showToast(result.error || 'Failed to create document template', 'error')
       }
     } catch (error) {
       console.error('Error creating document template:', error)
-      alert('Failed to create document template')
+      showToast('Failed to create document template', 'error')
     } finally {
       setIsCreatingVaultTemplate(false)
     }
@@ -476,18 +496,18 @@ export default function AdminPage() {
         })
         await loadVaultTemplates(selectedFolderPath)
       } else {
-        alert(result.error || 'Failed to update document template')
+        showToast(result.error || 'Failed to update document template', 'error')
       }
     } catch (error) {
       console.error('Error updating document template:', error)
-      alert('Failed to update document template')
+      showToast('Failed to update document template', 'error')
     } finally {
       setIsCreatingVaultTemplate(false)
     }
   }
 
   const handleDeleteVaultTemplate = async (templateId: string) => {
-    if (!confirm('Are you sure you want to delete this document template? This action cannot be undone.')) {
+    if (!await openConfirm('Are you sure you want to delete this document template? This action cannot be undone.', { title: 'Delete document template?' })) {
       return
     }
 
@@ -497,11 +517,11 @@ export default function AdminPage() {
       if (result.success) {
         await loadVaultTemplates(selectedFolderPath)
       } else {
-        alert(result.error || 'Failed to delete document template')
+        showToast(result.error || 'Failed to delete document template', 'error')
       }
     } catch (error) {
       console.error('Error deleting document template:', error)
-      alert('Failed to delete document template')
+      showToast('Failed to delete document template', 'error')
     }
   }
 
@@ -676,17 +696,39 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-primary-dark relative overflow-hidden">
+      {confirmDialog}
       <SubtleCircuitBackground />
       <Header />
 
-      <div className="relative z-10 container mx-auto px-4 py-8">
+      <div className="relative z-10 container mx-auto px-4 py-8 animate-fadeIn">
         <div className="mb-6">
           <h1 className="text-4xl font-light text-white mb-2">Superadmin Dashboard</h1>
           <p className="text-gray-400">Manage all companies, compliances, and users across the platform</p>
         </div>
 
-        {/* Tabs */}
-        <div className="flex items-center gap-2 mb-8">
+        {/* Tabs — Mobile select */}
+        <div className="md:hidden mb-6">
+          <select
+            value={activeTab}
+            onChange={(e) => setActiveTab(e.target.value as typeof activeTab)}
+            className="w-full bg-primary-dark-card border border-gray-700 text-white rounded-lg px-4 py-3 font-light text-sm focus:outline-none focus:border-gray-500"
+          >
+            <option value="overview">Overview</option>
+            <option value="companies">Companies</option>
+            <option value="compliances">All Compliances</option>
+            <option value="templates">Compliance Templates</option>
+            <option value="subscriptions">Subscriptions</option>
+            <option value="allusers">All Users</option>
+            <option value="financials">Financials</option>
+            <option value="transactions">Transaction History</option>
+            <option value="vault">Vault</option>
+            <option value="kpis">KPIs</option>
+            <option value="tracking">Tracking System</option>
+          </select>
+        </div>
+
+        {/* Tabs — Desktop scrollable strip */}
+        <div className="hidden md:flex items-center gap-2 mb-8 overflow-x-auto pb-1 scrollbar-hide">
           <button
             onClick={() => setActiveTab('overview')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'overview'
@@ -1047,13 +1089,13 @@ export default function AdminPage() {
                     try {
                       const result = await applyAllTemplates()
                       if (result.success) {
-                        alert(`Successfully applied ${result.template_count} templates! Created/updated ${result.applied_count} requirements.`)
+                        showToast(`Successfully applied ${result.template_count} templates! Created/updated ${result.applied_count} requirements.`, 'success')
                       } else {
-                        alert(`Error: ${result.error || 'Failed to apply templates'}`)
+                        showToast(`Error: ${result.error || 'Failed to apply templates'}`, 'error')
                       }
                     } catch (err) {
                       console.error('Error applying templates:', err)
-                      alert('Error applying templates')
+                      showToast('Error applying templates', 'error')
                     } finally {
                       setIsApplyingTemplates(false)
                     }
@@ -1078,29 +1120,7 @@ export default function AdminPage() {
                 </button>
                 <button
                   onClick={() => {
-                    setTemplateForm({
-                      category: '',
-                      requirement: '',
-                      description: '',
-                      compliance_type: 'one-time',
-                      entity_types: [],
-                      industries: [],
-                      industry_categories: [],
-                      penalty: '',
-                      is_critical: false,
-                      financial_year: '',
-                      due_date_offset: undefined,
-                      due_month: undefined,
-                      due_day: undefined,
-                      due_date: '',
-                      year_type: 'FY',
-                      is_active: true,
-                      country_code: 'IN',
-                      applicable_regions: [],
-                      required_documents: [],
-                      possible_legal_action: '',
-                      required_documents_input: ''
-                    })
+                    setTemplateForm({ ...EMPTY_TEMPLATE_FORM })
                     setEditingTemplate(null)
                     setIsTemplateModalOpen(true)
                   }}
@@ -1126,7 +1146,7 @@ export default function AdminPage() {
                 {selectedTemplates.length > 0 && (
                   <button
                     onClick={async () => {
-                      if (!confirm(`Are you sure you want to delete ${selectedTemplates.length} template(s) and their associated compliance requirements? This action cannot be undone.`)) {
+                      if (!await openConfirm(`Delete ${selectedTemplates.length} template(s) and all associated compliance requirements? This action cannot be undone.`, { title: 'Delete selected templates?' })) {
                         return
                       }
                       setIsDeletingTemplates(true)
@@ -1148,7 +1168,7 @@ export default function AdminPage() {
                       }
                       setSelectedTemplates([])
                       setIsDeletingTemplates(false)
-                      alert(`Deleted ${deletedCount} template(s)${errorCount > 0 ? `. ${errorCount} failed.` : ''}`)
+                      showToast(`Deleted ${deletedCount} template(s)${errorCount > 0 ? `. ${errorCount} failed.` : ''}`, errorCount > 0 ? 'warning' : 'success')
                     }}
                     disabled={isDeletingTemplates}
                     className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 font-medium disabled:opacity-50"
@@ -1296,6 +1316,7 @@ export default function AdminPage() {
                                 <button
                                   onClick={() => {
                                     setEditingTemplate(template)
+                                    const existingPenaltyConfig = template.penalty_config as any
                                     setTemplateForm({
                                       category: template.category,
                                       requirement: template.requirement,
@@ -1305,6 +1326,12 @@ export default function AdminPage() {
                                       industries: template.industries,
                                       industry_categories: template.industry_categories,
                                       penalty: template.penalty || '',
+                                      penalty_config_type: existingPenaltyConfig?.type || 'none',
+                                      penalty_config_rate: existingPenaltyConfig?.rate?.toString() || '',
+                                      penalty_config_amount: existingPenaltyConfig?.amount?.toString() || '',
+                                      penalty_config_period: existingPenaltyConfig?.period || 'month',
+                                      penalty_config_base: existingPenaltyConfig?.base || 'tax_due',
+                                      penalty_config_cap: existingPenaltyConfig?.cap?.toString() || '',
                                       is_critical: template.is_critical,
                                       financial_year: template.financial_year || '',
                                       due_date_offset: template.due_date_offset || undefined,
@@ -1331,13 +1358,13 @@ export default function AdminPage() {
                                 </button>
                                 <button
                                   onClick={async () => {
-                                    if (!confirm('Re-apply this template to matching companies? This will create/update requirements.')) return
+                                    if (!await openConfirm('Re-apply this template to matching companies? This will create/update compliance requirements.', { title: 'Re-apply template?', confirmLabel: 'Re-apply', variant: 'default' })) return
                                     const result = await updateComplianceTemplate(template.id, {})
                                     if (result.success) {
                                       await loadTemplates()
-                                      alert(`Template re-applied successfully. Created/updated ${result.applied_count || 0} compliance requirements.`)
+                                      showToast(`Template re-applied successfully. Created/updated ${result.applied_count || 0} compliance requirements.`, 'success')
                                     } else {
-                                      alert(`Failed to re-apply: ${result.error}`)
+                                      showToast(`Failed to re-apply: ${result.error}`, 'error')
                                     }
                                   }}
                                   className="p-2 text-green-400 hover:text-green-300 hover:bg-green-500/20 rounded-lg transition-colors"
@@ -1352,13 +1379,13 @@ export default function AdminPage() {
                                 </button>
                                 <button
                                   onClick={async () => {
-                                    if (!confirm('Are you sure you want to delete this template? This will also delete all associated compliance requirements.')) return
+                                    if (!await openConfirm('This will also delete all associated compliance requirements. This action cannot be undone.', { title: 'Delete template?' })) return
                                     const result = await deleteComplianceTemplate(template.id, true)
                                     if (result.success) {
                                       await loadTemplates()
-                                      alert('Template deleted successfully')
+                                      showToast('Template deleted successfully', 'success')
                                     } else {
-                                      alert(`Failed to delete: ${result.error}`)
+                                      showToast(`Failed to delete: ${result.error}`, 'error')
                                     }
                                   }}
                                   className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
@@ -1684,29 +1711,7 @@ export default function AdminPage() {
                     onClick={() => {
                       setIsTemplateModalOpen(false)
                       setEditingTemplate(null)
-                      setTemplateForm({
-                        category: '',
-                        requirement: '',
-                        description: '',
-                        compliance_type: 'one-time',
-                        entity_types: [],
-                        industries: [],
-                        industry_categories: [],
-                        penalty: '',
-                        is_critical: false,
-                        financial_year: '',
-                        due_date_offset: undefined,
-                        due_month: undefined,
-                        due_day: undefined,
-                        due_date: '',
-                        year_type: 'FY',
-                        is_active: true,
-                        country_code: 'IN',
-                        applicable_regions: [],
-                        required_documents: [],
-                        possible_legal_action: '',
-                        required_documents_input: ''
-                      })
+                      setTemplateForm({ ...EMPTY_TEMPLATE_FORM })
                     }}
                     className="text-gray-400 hover:text-white transition-colors"
                   >
@@ -2098,6 +2103,113 @@ export default function AdminPage() {
                   />
                 </div>
 
+                {/* Penalty Calculator (structured penalty_config) */}
+                <div className="border border-gray-700 rounded-xl p-4 space-y-4 bg-gray-900/30">
+                  <div className="flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-yellow-400">
+                      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                    <span className="text-sm font-medium text-white">Penalty Calculator</span>
+                    <span className="text-xs text-gray-400">(enables automatic penalty calculation when applied to companies)</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Penalty Type</label>
+                    <select
+                      value={templateForm.penalty_config_type}
+                      onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_type: e.target.value as any }))}
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    >
+                      <option value="none">None / Text only</option>
+                      <option value="flat">Flat amount (fixed penalty)</option>
+                      <option value="daily">Daily rate (per day late)</option>
+                      <option value="interest">Interest (% on base amount per period)</option>
+                      <option value="percentage">Percentage of base amount</option>
+                    </select>
+                  </div>
+
+                  {templateForm.penalty_config_type === 'flat' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Fixed Penalty Amount (₹)</label>
+                      <input type="number" value={templateForm.penalty_config_amount}
+                        onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_amount: e.target.value }))}
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        placeholder="e.g., 5000" min="0" />
+                    </div>
+                  )}
+
+                  {templateForm.penalty_config_type === 'daily' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Rate per Day (₹)</label>
+                        <input type="number" value={templateForm.penalty_config_rate}
+                          onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_rate: e.target.value }))}
+                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          placeholder="e.g., 200" min="0" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Maximum Cap (₹, optional)</label>
+                        <input type="number" value={templateForm.penalty_config_cap}
+                          onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_cap: e.target.value }))}
+                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          placeholder="e.g., 10000" min="0" />
+                      </div>
+                    </div>
+                  )}
+
+                  {(templateForm.penalty_config_type === 'interest' || templateForm.penalty_config_type === 'percentage') && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Rate (%)</label>
+                        <input type="number" value={templateForm.penalty_config_rate}
+                          onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_rate: e.target.value }))}
+                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          placeholder="e.g., 1.5" min="0" step="0.01" />
+                      </div>
+                      {templateForm.penalty_config_type === 'interest' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">Per</label>
+                          <select value={templateForm.penalty_config_period}
+                            onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_period: e.target.value as any }))}
+                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors">
+                            <option value="month">Month</option>
+                            <option value="day">Day</option>
+                            <option value="year">Year</option>
+                          </select>
+                        </div>
+                      )}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Base Amount Type</label>
+                        <select value={templateForm.penalty_config_base}
+                          onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_base: e.target.value }))}
+                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors">
+                          <option value="tax_due">Tax Due</option>
+                          <option value="turnover">Turnover</option>
+                          <option value="income">Income</option>
+                          <option value="contribution">Contribution (PF/ESI)</option>
+                        </select>
+                      </div>
+                      {templateForm.penalty_config_type === 'percentage' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">Cap (₹, optional)</label>
+                          <input type="number" value={templateForm.penalty_config_cap}
+                            onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_cap: e.target.value }))}
+                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                            placeholder="Maximum penalty cap" min="0" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {templateForm.penalty_config_type !== 'none' && (
+                    <p className="text-xs text-yellow-400/80">
+                      {templateForm.penalty_config_type === 'interest' || templateForm.penalty_config_type === 'percentage'
+                        ? 'Users will be prompted to enter the base amount when this template is applied to their company.'
+                        : 'Penalty will be calculated automatically based on days delayed.'}
+                    </p>
+                  )}
+                </div>
+
                 {/* Possible Legal Action */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -2214,83 +2326,79 @@ export default function AdminPage() {
                     onClick={async () => {
                       // Validation
                       if (!templateForm.category || !templateForm.requirement) {
-                        alert('Please fill all required fields')
+                        showToast('Please fill all required fields', 'warning')
                         return
                       }
                       if (templateForm.entity_types.length === 0) {
-                        alert('Please select at least one entity type')
+                        showToast('Please select at least one entity type', 'warning')
                         return
                       }
                       if (templateForm.industries.length === 0) {
-                        alert('Please select at least one industry')
+                        showToast('Please select at least one industry', 'warning')
                         return
                       }
                       if (templateForm.industry_categories.length === 0) {
-                        alert('Please select at least one industry category')
+                        showToast('Please select at least one industry category', 'warning')
                         return
                       }
                       if (templateForm.compliance_type === 'one-time' && !templateForm.due_date) {
-                        alert('Due date is required for one-time compliances')
+                        showToast('Due date is required for one-time compliances', 'warning')
                         return
                       }
                       if (templateForm.compliance_type === 'monthly' && templateForm.due_date_offset === undefined) {
-                        alert('Due date offset is required for monthly compliances')
+                        showToast('Due date offset is required for monthly compliances', 'warning')
                         return
                       }
                       if (templateForm.compliance_type === 'quarterly' && (templateForm.due_month === undefined || templateForm.due_day === undefined)) {
-                        alert('Month in quarter and day are required for quarterly compliances')
+                        showToast('Month in quarter and day are required for quarterly compliances', 'warning')
                         return
                       }
                       if (templateForm.compliance_type === 'annual' && (templateForm.due_month === undefined || templateForm.due_day === undefined)) {
-                        alert('Due month and day are required for annual compliances')
+                        showToast('Due month and day are required for annual compliances', 'warning')
                         return
                       }
 
                       try {
+                        // Build structured penalty_config from builder fields
+                        let builtPenaltyConfig: Record<string, unknown> | null = null
+                        const pct = templateForm.penalty_config_type
+                        if (pct === 'flat' && templateForm.penalty_config_amount) {
+                          builtPenaltyConfig = { type: 'flat', amount: parseFloat(templateForm.penalty_config_amount) }
+                        } else if (pct === 'daily' && templateForm.penalty_config_rate) {
+                          builtPenaltyConfig = { type: 'daily', rate: parseFloat(templateForm.penalty_config_rate) }
+                          if (templateForm.penalty_config_cap) builtPenaltyConfig.cap = parseFloat(templateForm.penalty_config_cap)
+                        } else if (pct === 'interest' && templateForm.penalty_config_rate) {
+                          builtPenaltyConfig = { type: 'interest', rate: parseFloat(templateForm.penalty_config_rate), period: templateForm.penalty_config_period, base: templateForm.penalty_config_base }
+                        } else if (pct === 'percentage' && templateForm.penalty_config_rate) {
+                          builtPenaltyConfig = { type: 'percentage', rate: parseFloat(templateForm.penalty_config_rate), base: templateForm.penalty_config_base }
+                          if (templateForm.penalty_config_cap) builtPenaltyConfig.cap = parseFloat(templateForm.penalty_config_cap)
+                        }
+                        const submissionForm = { ...templateForm, penalty_config: builtPenaltyConfig }
+
                         let result
                         if (editingTemplate) {
-                          result = await updateComplianceTemplate(editingTemplate.id, templateForm)
+                          result = await updateComplianceTemplate(editingTemplate.id, submissionForm)
                         } else {
-                          result = await createComplianceTemplate(templateForm)
+                          result = await createComplianceTemplate(submissionForm)
                         }
 
                         if (result.success) {
                           await loadTemplates()
                           setIsTemplateModalOpen(false)
                           setEditingTemplate(null)
-                          setTemplateForm({
-                            category: '',
-                            requirement: '',
-                            description: '',
-                            compliance_type: 'one-time',
-                            entity_types: [],
-                            industries: [],
-                            industry_categories: [],
-                            penalty: '',
-                            is_critical: false,
-                            financial_year: '',
-                            due_date_offset: undefined,
-                            due_month: undefined,
-                            due_day: undefined,
-                            due_date: '',
-                            year_type: 'FY',
-                            is_active: true,
-                            country_code: 'IN',
-                            applicable_regions: [],
-                            required_documents: [],
-                            possible_legal_action: '',
-                            required_documents_input: ''
-                          })
-                          alert(editingTemplate
-                            ? `Template updated successfully. Applied to ${result.applied_count || 0} companies.`
-                            : `Template created successfully. Applied to ${result.applied_count || 0} companies.`
+                          setTemplateForm({ ...EMPTY_TEMPLATE_FORM })
+                          showToast(
+                            editingTemplate
+                              ? `Template updated successfully. Applied to ${result.applied_count || 0} companies.`
+                              : `Template created successfully. Applied to ${result.applied_count || 0} companies.`,
+                            'success'
                           )
                         } else {
-                          alert(`Failed: ${result.error}`)
+                          showToast(`Failed: ${result.error}`, 'error')
                         }
                       } catch (error: any) {
                         console.error('Error saving template:', error)
-                        alert(`Error: ${error.message}`)
+                        showToast(`Error: ${error.message}`, 'error')
                       }
                     }}
                     className="flex-1 bg-primary-orange text-white px-6 py-3 rounded-lg hover:bg-primary-orange/90 transition-colors font-medium"
@@ -2301,29 +2409,7 @@ export default function AdminPage() {
                     onClick={() => {
                       setIsTemplateModalOpen(false)
                       setEditingTemplate(null)
-                      setTemplateForm({
-                        category: '',
-                        requirement: '',
-                        description: '',
-                        compliance_type: 'one-time',
-                        entity_types: [],
-                        industries: [],
-                        industry_categories: [],
-                        penalty: '',
-                        is_critical: false,
-                        financial_year: '',
-                        due_date_offset: undefined,
-                        due_month: undefined,
-                        due_day: undefined,
-                        due_date: '',
-                        year_type: 'FY',
-                        is_active: true,
-                        country_code: 'IN',
-                        applicable_regions: [],
-                        required_documents: [],
-                        possible_legal_action: '',
-                        required_documents_input: ''
-                      })
+                      setTemplateForm({ ...EMPTY_TEMPLATE_FORM })
                     }}
                     className="px-6 py-3 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors font-medium"
                   >
@@ -3542,5 +3628,13 @@ function TrackingSystemTab() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0a0a0a]" />}>
+      <AdminPageInner />
+    </Suspense>
   )
 }

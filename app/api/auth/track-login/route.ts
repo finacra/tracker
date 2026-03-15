@@ -15,7 +15,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'appUserId is required' }, { status: 400 })
     }
 
-    const { authIdentityRepository } = createServerContainer()
+    const { authService, authIdentityRepository } = createServerContainer()
+
+    // SECURITY: Verify the caller is authenticated and tracking their own login
+    const currentUser = await authService.getCurrentUser()
+    if (!currentUser) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+    if (currentUser.id !== appUserId && currentUser.canonicalId !== appUserId) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
+    }
 
     // Check if user has a Supabase identity linked to this app_user
     const allIdentities = await authIdentityRepository.findByAppUserId(appUserId)

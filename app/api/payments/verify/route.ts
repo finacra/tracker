@@ -2,8 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerContainer } from '@/lib/composition/server-container'
 import crypto from 'crypto'
 import { getTierById, type BillingCycle } from '@/lib/pricing/tiers'
+import { checkRateLimit, getClientIp } from '@/lib/utils/rate-limiter'
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 20 verification attempts per IP per 15 minutes
+  const ip = getClientIp(request)
+  const { allowed, retryAfterMs } = checkRateLimit(`verify-payment:${ip}`, 20, 15 * 60 * 1000)
+  if (!allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) } }
+    )
+  }
+
   try {
     const { authService, paymentRepository, subscriptionRepository } = createServerContainer()
     const user = await authService.getCurrentUser()
