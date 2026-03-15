@@ -3225,16 +3225,15 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
   try {
     const initStartTime = performance.now()
     
-    // 1. DYNAMIC HYBRID AUTH: Resolve user using canonical authService
-    // This supports both Supabase (Email) and Passport (Google) sessions
-    const { authService } = createServerContainer()
-    const authUser = await authService.getCurrentUser()
-    
-    if (!authUser) {
+    // 1. AUTH: Read session from JWT cookie (no DB round-trip needed here)
+    // The atomic query below already fetches user info from app_users.
+    const session = await getSession()
+
+    if (!session) {
       throw new Error('Not authenticated')
     }
 
-    const userId = authUser.id
+    const userId = session.appUserId
 
     // 2. THE ATOMIC PULSE: Everything in exactly one database roundtrip
     const atomicStart = performance.now()
@@ -3389,7 +3388,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     
     // MAPPING & LOGIC
     const user = pulse.user as any
-    const userEmail = user.email || authUser.email || ''
+    const userEmail = user.email || session.email || ''
     const userFullName = user.fullName || null
     const isSuperadminResult = pulse.is_superadmin as boolean
     const accessibleCompanyIds = (pulse.accessible_ids || []) as string[]

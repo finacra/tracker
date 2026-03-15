@@ -339,16 +339,10 @@ function DataRoomPageInner() {
 
 
   // Main Data Room Initialization & URL Sync - Consolidated to prevent flickering/waterfalls
+  // NOTE: We do NOT wait for authLoading — getDataRoomInitState verifies auth server-side
+  // via the session cookie, so we can start fetching immediately and eliminate the
+  // client-side auth waterfall (saves ~2-4s on every page load).
   useEffect(() => {
-    if (authLoading) return;
-    
-    // Auth guard
-    if (!user && !authLoading && !isDataRoomInitLoading) {
-      router.push("/login");
-      return;
-    }
-    if (!user) return;
-
     // Only skip if we're actively fetching (prevent duplicate concurrent calls)
     // On full reload, refs reset, so this check is fine
     if (companiesFetchingRef.current) {
@@ -398,6 +392,11 @@ function DataRoomPageInner() {
         }
         
         if (!result.success || !result.data) {
+          // Auth failure → redirect to login instead of showing error
+          if (result.error?.includes('Not authenticated') || result.error?.includes('authenticated')) {
+            router.push("/login");
+            return;
+          }
           throw new Error(result.error || "Failed to initialize Data Room");
         }
 
@@ -534,7 +533,7 @@ function DataRoomPageInner() {
     }
 
     initializeDataRoom();
-  }, [user, authLoading, initialCompanyId, router]);
+  }, [initialCompanyId, router]);
 
   // Check if user has access to ANY company - redirect if no access at all
   useEffect(() => {
