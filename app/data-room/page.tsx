@@ -736,10 +736,10 @@ function DataRoomPageInner() {
 
   // Fetch requirements and documents whenever company ID changes (consolidated trigger)
   useEffect(() => {
-    if (!currentCompany || isDataRoomInitLoading) return;
-    
+    if (!currentCompany || isDataRoomInitLoading || companySwitchInProgressRef.current) return;
+
     const companyId = currentCompany.id;
-    
+
     // Fetch vault documents if not already fetched for this company
     if (vaultDocumentsFetchedRef.current !== companyId) {
         fetchVaultDocuments();
@@ -749,8 +749,8 @@ function DataRoomPageInner() {
   // Fetch specific company details and directors when currentCompany changes
   useEffect(() => {
     async function fetchDetails() {
-      // Skip if during initial boot (handled by consolidated init)
-      if (isDataRoomInitLoading || !currentCompany) return;
+      // Skip if during initial boot or batched company switch is in progress
+      if (isDataRoomInitLoading || !currentCompany || companySwitchInProgressRef.current) return;
 
       // Skip if already fetched for this company (prevents re-fetch on tab switch or remount)
       // Check both ref and state to handle remounts where refs reset but state persists
@@ -905,9 +905,18 @@ function DataRoomPageInner() {
   }, [currentCompany?.id]); // Remove supabase from dependencies - it's stable and doesn't need to trigger re-fetches
 
 
+  // Guard: prevents individual useEffects from racing with the batched company switch
+  const companySwitchInProgressRef = useRef(false);
+
   // Handle company change - batched fetch for all company-specific data
   const handleCompanyChange = useCallback(
     async (company: Company) => {
+      // Pre-set refs IMMEDIATELY to prevent individual useEffects from firing
+      // (they check these refs and skip if data is already "fetched" for this company)
+      companySwitchInProgressRef.current = true;
+      detailsFetchedRef.current = company.id;
+      vaultDocumentsFetchedRef.current = company.id;
+
       setCurrentCompany(company);
       // Update URL params without causing navigation
       const params = new URLSearchParams(searchParams.toString());
@@ -959,21 +968,22 @@ function DataRoomPageInner() {
               verified: d.verified,
             })),
           });
-          detailsFetchedRef.current = company.id;
 
           setVaultDocuments(data.documents);
-          vaultDocumentsFetchedRef.current = company.id;
 
           setHiddenTemplates(new Set(data.hiddenTemplates));
           setHiddenCompliances(new Set(data.hiddenComplianceIds));
+        } else {
+          // Batched call failed — clear refs so individual useEffects can retry
+          detailsFetchedRef.current = null;
+          vaultDocumentsFetchedRef.current = null;
         }
       } catch (err) {
         console.error("[handleCompanyChange] Batched fetch error:", err);
-        // Fallback: clear state so individual hooks can try
-        setVaultDocuments([]);
-        setEntityDetails(null);
         detailsFetchedRef.current = null;
         vaultDocumentsFetchedRef.current = null;
+      } finally {
+        companySwitchInProgressRef.current = false;
       }
       templatesFetchedRef.current.clear();
     },
@@ -1017,8 +1027,8 @@ function DataRoomPageInner() {
   // Fetch hidden templates when company changes
   useEffect(() => {
     const fetchTemplates = async () => {
-      // Skip if during initial boot (handled by consolidated init)
-      if (isDataRoomInitLoading || !currentCompany) {
+      // Skip if during initial boot or batched switch
+      if (isDataRoomInitLoading || !currentCompany || companySwitchInProgressRef.current) {
         if (!currentCompany) setHiddenTemplates(new Set());
         return;
       }
@@ -1045,8 +1055,8 @@ function DataRoomPageInner() {
   // Fetch hidden compliances when company changes
   useEffect(() => {
     const fetchCompliances = async () => {
-      // Skip if during initial boot (handled by consolidated init)
-      if (isDataRoomInitLoading || !currentCompany) {
+      // Skip if during initial boot or batched switch
+      if (isDataRoomInitLoading || !currentCompany || companySwitchInProgressRef.current) {
         if (!currentCompany) setHiddenCompliances(new Set());
         return;
       }
