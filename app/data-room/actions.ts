@@ -3257,6 +3257,10 @@ export async function getCompanySwitchData(companyId: string): Promise<{
     documents: any[]
     hiddenTemplates: string[]
     hiddenComplianceIds: string[]
+    // Pre-fetched data for React Query hooks (avoids redundant server calls)
+    requirements: RegulatoryRequirement[]
+    companyAccess: import('@/domain/types/CompanyAccess').CompanyAccessSnapshot
+    userRole: string | null
   }
   error?: string
 }> {
@@ -3266,42 +3270,60 @@ export async function getCompanySwitchData(companyId: string): Promise<{
       return { success: false, error: 'Invalid company ID format' }
     }
 
-    // Single auth check
-    const user = await getCurrentUserOrNull()
+    // SINGLE container + auth check for everything
+    const container = createServerContainer()
+    const { authService, accessService, companyRepository, directorRepository, documentRepository, requirementRepository } = container
+    const user = await authService.getCurrentUser()
     if (!user) {
       return { success: false, error: 'Unauthorized' }
     }
 
-    // Single access check
-    const hasAccess = await canUserView(companyId)
-    if (!hasAccess) {
-      return { success: false, error: 'No access to this company' }
-    }
+    const authTime = performance.now() - startTime
+    console.log(`[getCompanySwitchData] Auth resolved in ${authTime.toFixed(0)}ms`)
 
-    const { companyRepository, directorRepository, documentRepository } = createServerContainer()
+    // Fetch access snapshot + role + all data in ONE parallel batch
     const adminSupabase: any = createAdminClient()
 
-    // Fetch ALL data in parallel — single roundtrip for everything
-    const [companyDetails, directors, documents, templateExclusions, complianceExclusions] =
-      await Promise.all([
-        companyRepository.getDetailsById(companyId),
-        directorRepository.getByCompanyId(companyId),
-        documentRepository.getCompanyDocuments(companyId),
-        adminSupabase
-          .from('company_document_template_exclusions')
-          .select('document_name, folder_name')
-          .eq('company_id', companyId)
-          .then((r: any) => r.data || [])
-          .catch(() => []),
-        adminSupabase
-          .from('company_compliance_exclusions')
-          .select('requirement_id')
-          .eq('company_id', companyId)
-          .then((r: any) => (r.data || []).map((ex: any) => ex.requirement_id))
-          .catch(() => []),
-      ])
+    // Fire non-blocking overdue status refresh
+    requirementRepository.refreshOverdueStatuses(companyId).catch((err) => {
+      console.error('[getCompanySwitchData] Background status refresh failed:', err)
+    })
+
+    const [
+      companyAccessSnapshot,
+      userRoleResult,
+      companyDetails,
+      directors,
+      documents,
+      requirements,
+      templateExclusions,
+      complianceExclusions,
+    ] = await Promise.all([
+      accessService.getCompanyAccessSnapshot(user.id, companyId),
+      new GetCompanyRole(accessService).execute(user.id, companyId),
+      companyRepository.getDetailsById(companyId),
+      directorRepository.getByCompanyId(companyId),
+      documentRepository.getCompanyDocuments(companyId),
+      requirementRepository.getByCompanyId(companyId),
+      adminSupabase
+        .from('company_document_template_exclusions')
+        .select('document_name, folder_name')
+        .eq('company_id', companyId)
+        .then((r: any) => r.data || [])
+        .catch(() => []),
+      adminSupabase
+        .from('company_compliance_exclusions')
+        .select('requirement_id')
+        .eq('company_id', companyId)
+        .then((r: any) => (r.data || []).map((ex: any) => ex.requirement_id))
+        .catch(() => []),
+    ])
 
     console.log(`[getCompanySwitchData] All data fetched in ${(performance.now() - startTime).toFixed(0)}ms`)
+
+    if (!companyAccessSnapshot.hasAccess) {
+      return { success: false, error: 'No access to this company' }
+    }
 
     if (!companyDetails) {
       return { success: false, error: 'Company not found' }
@@ -3344,6 +3366,14 @@ export async function getCompanySwitchData(companyId: string): Promise<{
           (t: any) => `${t.folder_name}:${t.document_name}`
         ),
         hiddenComplianceIds: complianceExclusions,
+        requirements: (requirements || []).map((req: Requirement) => ({
+          ...req,
+          required_documents: Array.isArray(req.required_documents)
+            ? req.required_documents
+            : (req.required_documents ? [req.required_documents] : [])
+        })) as RegulatoryRequirement[],
+        companyAccess: companyAccessSnapshot,
+        userRole: userRoleResult,
       },
     }
   } catch (err) {

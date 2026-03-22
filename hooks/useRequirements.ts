@@ -88,5 +88,11 @@ export function useRequirements(
     fetchForCompany(companyId)
   }, [companyId, enabled, hasAccess, fetchForCompany])
 
-  return { requirements, setRequirements, isLoading, refresh }
+  // Mark data as fresh for a specific company (used when data is set externally, e.g. batched fetch)
+  const markFresh = useCallback((id: string) => {
+    fetchedForRef.current = id
+    activeCompanyRef.current = id
+  }, [])
+
+  return { requirements, setRequirements, isLoading, refresh, markFresh }
 }

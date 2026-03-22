@@ -11,6 +11,8 @@ import {
   lazy,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/react-query/query-keys";
 import React from "react";
 
 // Lazy load tracker tab for better performance
@@ -190,6 +192,7 @@ function generateICSFile(requirements: RegulatoryRequirement[]): string {
 function DataRoomPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { user, loading: authLoading } = useAuth();
   // Memoize supabase client to prevent infinite re-renders
   const supabase = useMemo(() => createClient(), []);
@@ -340,6 +343,7 @@ function DataRoomPageInner() {
     setRequirements: setRegulatoryRequirements,
     isLoading: isLoadingRequirements,
     refresh: refreshRequirements,
+    markFresh: markRequirementsFresh,
   } = useRequirements(currentCompany?.id, {
     enabled: !isDataRoomInitLoading,
     hasAccess: !!hasAccess,
@@ -972,6 +976,14 @@ function DataRoomPageInner() {
 
           setHiddenTemplates(new Set(data.hiddenTemplates));
           setHiddenCompliances(new Set(data.hiddenComplianceIds));
+
+          // Set requirements directly from batched response (avoids separate useRequirements fetch)
+          setRegulatoryRequirements(data.requirements);
+          markRequirementsFresh(company.id);
+
+          // Pre-populate React Query cache so hooks don't trigger redundant server calls
+          queryClient.setQueryData(queryKeys.companyAccess(company.id), data.companyAccess);
+          queryClient.setQueryData(queryKeys.userRole(company.id), data.userRole);
         } else {
           // Batched call failed — clear refs so individual useEffects can retry
           detailsFetchedRef.current = null;
@@ -987,7 +999,7 @@ function DataRoomPageInner() {
       }
       templatesFetchedRef.current.clear();
     },
-    [router, searchParams],
+    [router, searchParams, queryClient, markRequirementsFresh],
   );
 
   // Sync URL params to state when they change manually (from outside the init flow)
