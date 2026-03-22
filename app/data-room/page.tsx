@@ -345,10 +345,19 @@ function DataRoomPageInner() {
   });
 
   // Main Data Room Initialization & URL Sync - Consolidated to prevent flickering/waterfalls
-  // NOTE: We do NOT wait for authLoading — getDataRoomInitState verifies auth server-side
-  // via the session cookie, so we can start fetching immediately and eliminate the
-  // client-side auth waterfall (saves ~2-4s on every page load).
+  // We wait for client auth to resolve first to prevent the reload redirect loop
+  // (server-side session check can transiently fail, causing premature /login redirects).
   useEffect(() => {
+    // Wait for client auth to resolve before calling server init
+    if (authLoading) return;
+
+    // If user isn't logged in, redirect to login (no need to call server init)
+    if (!user) {
+      const returnPath = window.location.pathname + window.location.search;
+      router.push(`/login?returnTo=${encodeURIComponent(returnPath)}`);
+      return;
+    }
+
     // Only skip if we're actively fetching (prevent duplicate concurrent calls)
     // On full reload, refs reset, so this check is fine
     if (companiesFetchingRef.current) {
@@ -398,12 +407,11 @@ function DataRoomPageInner() {
         }
         
         if (!result.success || !result.data) {
-          // Auth failure from server action → DON'T redirect to login immediately.
-          // The server action may transiently fail to read the session cookie.
-          // Instead, let the client-side auth check (useAuth) handle the redirect
-          // once it has definitively determined there is no session.
           if (result.error?.includes('Not authenticated') || result.error?.includes('authenticated')) {
-            console.warn('[DataRoomInit] Server auth check failed, deferring to client auth...');
+            // Client auth confirmed user is logged in, but server action disagrees.
+            // This can happen after deployment (stale server functions). Reload once.
+            console.warn('[DataRoomInit] Server auth mismatch, reloading...');
+            window.location.reload();
             return;
           }
           throw new Error(result.error || "Failed to initialize Data Room");
@@ -524,25 +532,21 @@ function DataRoomPageInner() {
       } catch (err: any) {
         console.error("[DataRoomInit] Initialization error:", err);
         setInitError(err.message || "Failed to initialize Data Room");
-        // Ensure loading state is cleared even on error
         setIsDataRoomInitLoading(false);
         setIsLoadingCompanies(false);
         setIsLoading(false);
       } finally {
-        // Always clear loading states and refs
         setIsDataRoomInitLoading(false);
         setIsLoadingCompanies(false);
         setIsLoading(false);
         companiesFetchingRef.current = false;
-        
-        // Lock the currentCompany for 2 seconds to prevent Sync effects from cycling through IDs
         didInitRef.current = true;
         lockUntilRef.current = Date.now() + 2000;
       }
     }
 
     initializeDataRoom();
-  }, [initialCompanyId, router]);
+  }, [initialCompanyId, router, authLoading, user]);
 
   // Check if user has access to ANY company - redirect if no access at all
   useEffect(() => {
