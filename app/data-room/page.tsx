@@ -351,13 +351,6 @@ function DataRoomPageInner() {
     // Wait for client auth to resolve before calling server init
     if (authLoading) return;
 
-    // If user isn't logged in, redirect to login (no need to call server init)
-    if (!user) {
-      const returnPath = window.location.pathname + window.location.search;
-      router.push(`/login?returnTo=${encodeURIComponent(returnPath)}`);
-      return;
-    }
-
     // Only skip if we're actively fetching (prevent duplicate concurrent calls)
     // On full reload, refs reset, so this check is fine
     if (companiesFetchingRef.current) {
@@ -546,7 +539,7 @@ function DataRoomPageInner() {
     }
 
     initializeDataRoom();
-  }, [initialCompanyId, router, authLoading, user]);
+  }, [initialCompanyId, router, authLoading]);
 
   // Check if user has access to ANY company - redirect if no access at all
   useEffect(() => {
