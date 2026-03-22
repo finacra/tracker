@@ -398,10 +398,12 @@ function DataRoomPageInner() {
         }
         
         if (!result.success || !result.data) {
-          // Auth failure → redirect to login instead of showing error
+          // Auth failure from server action → DON'T redirect to login immediately.
+          // The server action may transiently fail to read the session cookie.
+          // Instead, let the client-side auth check (useAuth) handle the redirect
+          // once it has definitively determined there is no session.
           if (result.error?.includes('Not authenticated') || result.error?.includes('authenticated')) {
-            const returnPath = window.location.pathname + window.location.search;
-            router.push(`/login?returnTo=${encodeURIComponent(returnPath)}`);
+            console.warn('[DataRoomInit] Server auth check failed, deferring to client auth...');
             return;
           }
           throw new Error(result.error || "Failed to initialize Data Room");
