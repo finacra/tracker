@@ -29,7 +29,17 @@ export interface UpdateRequirementInput {
   filedOn?: string | null
   category?: string
   requirement?: string
+  description?: string | null
   dueDate?: string | null
+  penalty?: string | null
+  penaltyBaseAmount?: number | null
+  penaltyConfig?: Record<string, unknown> | null
+  possibleLegalAction?: string | null
+  isCritical?: boolean
+  financialYear?: string | null
+  complianceType?: string | null
+  yearType?: string | null
+  requiredDocuments?: string[]
 }
 
 export interface RequirementRepository {

@@ -51,6 +51,7 @@ import {
   getHiddenCompliances,
   getDataRoomInitState,
   getCompanyDetails,
+  getCompanySwitchData,
   type RegulatoryRequirement,
 } from "@/app/data-room/actions";
 import {
@@ -70,6 +71,8 @@ import {
   useAnyCompanyAccess,
   useUserSubscription,
 } from "@/hooks/useCompanyAccess";
+import { useRequirements } from "@/hooks/useRequirements";
+import { TrackerContextProvider } from "@/contexts/TrackerContext";
 import {
   enrichComplianceRequirements,
   type EnrichedComplianceData,
@@ -266,10 +269,6 @@ function DataRoomPageInner() {
   const [hiddenTemplates, setHiddenTemplates] = useState<Set<string>>(
     new Set(),
   ); // Track hidden templates as "folderName:documentName"
-  const [regulatoryRequirements, setRegulatoryRequirements] = useState<
-    RegulatoryRequirement[]
-  >([]);
-  const [isLoadingRequirements, setIsLoadingRequirements] = useState(false);
   const [hiddenCompliances, setHiddenCompliances] = useState<Set<string>>(
     new Set(),
   ); // Track hidden compliance IDs
@@ -280,8 +279,6 @@ function DataRoomPageInner() {
   const lastMessageUpdateRef = useRef(Date.now());
   const detailsFetchedRef = useRef<string | null>(null);
   const detailsFetchingRef = useRef<string | null>(null);
-  const requirementsFetchedRef = useRef<string | null>(null);
-  const requirementsFetchingRef = useRef<string | null>(null);
   const vaultDocumentsFetchedRef = useRef<string | null>(null);
   const [isGeneratingEnhancedPDF, setIsGeneratingEnhancedPDF] = useState(false);
   const [pdfGenerationProgress, setPdfGenerationProgress] = useState({
@@ -332,11 +329,20 @@ function DataRoomPageInner() {
   const {
     hasSubscription: userHasSubscription,
     isLoading: userSubscriptionLoading,
-  } = useUserSubscription({ 
+  } = useUserSubscription({
     enabled: !isDataRoomInitLoading,
     initialData: initDataResults?.userSubscription
   });
 
+  const {
+    requirements: regulatoryRequirements,
+    setRequirements: setRegulatoryRequirements,
+    isLoading: isLoadingRequirements,
+    refresh: refreshRequirements,
+  } = useRequirements(currentCompany?.id, {
+    enabled: !isDataRoomInitLoading,
+    hasAccess: !!hasAccess,
+  });
 
   // Main Data Room Initialization & URL Sync - Consolidated to prevent flickering/waterfalls
   // NOTE: We do NOT wait for authLoading — getDataRoomInitState verifies auth server-side
@@ -394,7 +400,8 @@ function DataRoomPageInner() {
         if (!result.success || !result.data) {
           // Auth failure → redirect to login instead of showing error
           if (result.error?.includes('Not authenticated') || result.error?.includes('authenticated')) {
-            router.push("/login");
+            const returnPath = window.location.pathname + window.location.search;
+            router.push(`/login?returnTo=${encodeURIComponent(returnPath)}`);
             return;
           }
           throw new Error(result.error || "Failed to initialize Data Room");
@@ -554,9 +561,10 @@ function DataRoomPageInner() {
     if (isActuallyLoading)
       return;
 
-    // If no user, redirect to login
+    // If no user, redirect to login with return URL for deep linking
     if (!user) {
-      router.push("/login");
+      const returnPath = window.location.pathname + window.location.search;
+      router.push(`/login?returnTo=${encodeURIComponent(returnPath)}`);
       return;
     }
 
@@ -694,47 +702,6 @@ function DataRoomPageInner() {
     router,
   ]);
 
-  const fetchRegulatoryRequirements = async () => {
-    if (!currentCompany) return;
-    setIsLoadingRequirements(true);
-    try {
-      console.log('[fetchRegulatoryRequirements] Fetching requirements for company:', currentCompany.id);
-      const result = await getRegulatoryRequirements(currentCompany.id);
-      
-      if (result.success) {
-        // Use startTransition for non-urgent state updates to improve perceived performance
-        // This allows React to prioritize more important updates (like loading states)
-        startTransition(() => {
-          setRegulatoryRequirements(result.requirements || []);
-        });
-        requirementsFetchedRef.current = currentCompany.id;
-        console.log('[fetchRegulatoryRequirements] Set requirements:', result.requirements?.length || 0);
-      } else {
-        // Handle UnrecognizedActionError (stale build)
-        if (result.error?.includes('UnrecognizedActionError')) {
-          console.warn('[fetchRegulatoryRequirements] Stale build detected, reloading...');
-          window.location.reload();
-          return;
-        }
-        console.error("[fetchRegulatoryRequirements] Failed to load requirements:", result.error);
-        startTransition(() => {
-          setRegulatoryRequirements([]);
-        });
-      }
-    } catch (err: any) {
-      console.error("[fetchRegulatoryRequirements] Error fetching requirements:", err);
-      // Handle UnrecognizedActionError in catch block too
-      if (err.message?.includes('UnrecognizedActionError')) {
-        window.location.reload();
-      }
-      startTransition(() => {
-        setRegulatoryRequirements([]);
-      });
-    } finally {
-      setIsLoadingRequirements(false);
-    }
-  };
-
   const fetchVaultDocuments = async () => {
     if (!currentCompany) return;
     setIsLoadingVaultDocuments(true);
@@ -772,14 +739,6 @@ function DataRoomPageInner() {
     if (!currentCompany || isDataRoomInitLoading) return;
     
     const companyId = currentCompany.id;
-    
-    // Fetch requirements if not already fetched for this company
-    if (requirementsFetchedRef.current !== companyId && !requirementsFetchingRef.current) {
-        requirementsFetchingRef.current = companyId;
-        fetchRegulatoryRequirements().finally(() => {
-            requirementsFetchingRef.current = null;
-        });
-    }
     
     // Fetch vault documents if not already fetched for this company
     if (vaultDocumentsFetchedRef.current !== companyId) {
@@ -946,9 +905,9 @@ function DataRoomPageInner() {
   }, [currentCompany?.id]); // Remove supabase from dependencies - it's stable and doesn't need to trigger re-fetches
 
 
-  // Handle company change - update both state and URL params
+  // Handle company change - batched fetch for all company-specific data
   const handleCompanyChange = useCallback(
-    (company: Company) => {
+    async (company: Company) => {
       setCurrentCompany(company);
       // Update URL params without causing navigation
       const params = new URLSearchParams(searchParams.toString());
@@ -956,17 +915,67 @@ function DataRoomPageInner() {
       router.replace(`/data-room?${params.toString()}`, { scroll: false });
       // Reset director selection when company changes
       setSelectedDirectorId(null);
-      // CRITICAL FIX: Clear all data immediately when company changes
-      // This prevents showing wrong company's data
+      // Clear requirements immediately (fetched separately via useRequirements hook)
       setRegulatoryRequirements([]);
-      setVaultDocuments([]);
-      setEntityDetails(null);
-      // Reset fetch refs so new data is fetched for the new company
-      detailsFetchedRef.current = null;
-      requirementsFetchedRef.current = null;
-      requirementsFetchingRef.current = null;
-      vaultDocumentsFetchedRef.current = null;
-      templatesFetchedRef.current.clear(); // Clear the Set for templates
+
+      // Fetch ALL company-specific data in a single server action
+      // This replaces 5 separate useEffect-driven fetches that each did their own auth+access check
+      try {
+        const result = await getCompanySwitchData(company.id);
+        if (result.success && result.data) {
+          const { data } = result;
+          const companyCountryCode = data.company.country_code || "IN";
+          const cc = getCountryConfig(companyCountryCode);
+          const incorporationDate = new Date(data.company.incorporation_date);
+          let formattedDate = "";
+          if (cc?.dateFormat === "DD/MM/YYYY") {
+            formattedDate = incorporationDate.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
+          } else {
+            formattedDate = incorporationDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+          }
+
+          setEntityDetails({
+            companyName: data.company.name,
+            type: data.company.type ? data.company.type.toUpperCase() : '',
+            regDate: formattedDate,
+            taxId: data.company.tax_id || "Not Provided",
+            registrationId: data.company.registration_id || "Not Provided",
+            address: data.company.address || '',
+            phoneNumber: data.company.phone_number || "Not Provided",
+            industryCategory: Array.isArray(data.company.industry_categories)
+              ? data.company.industry_categories.join(", ")
+              : data.company.industry || '',
+            directors: data.directors.map((d) => ({
+              id: d.id,
+              firstName: d.firstName,
+              lastName: d.lastName,
+              middleName: d.middleName,
+              din: d.din,
+              designation: d.designation,
+              dob: d.dob,
+              pan: d.pan,
+              email: d.email,
+              mobile: d.mobile,
+              verified: d.verified,
+            })),
+          });
+          detailsFetchedRef.current = company.id;
+
+          setVaultDocuments(data.documents);
+          vaultDocumentsFetchedRef.current = company.id;
+
+          setHiddenTemplates(new Set(data.hiddenTemplates));
+          setHiddenCompliances(new Set(data.hiddenComplianceIds));
+        }
+      } catch (err) {
+        console.error("[handleCompanyChange] Batched fetch error:", err);
+        // Fallback: clear state so individual hooks can try
+        setVaultDocuments([]);
+        setEntityDetails(null);
+        detailsFetchedRef.current = null;
+        vaultDocumentsFetchedRef.current = null;
+      }
+      templatesFetchedRef.current.clear();
     },
     [router, searchParams],
   );
@@ -991,16 +1000,8 @@ function DataRoomPageInner() {
         if (isDataRoomDebugEnabled) {
             console.log(`[Sync] Legitimate URL change detected: ${currentCompany?.id} -> ${urlCompanyId}`);
         }
-        setCurrentCompany(companyFromUrl);
-        setSelectedDirectorId(null);
-        // CRITICAL FIX: Clear all data immediately when company changes via URL
-        setRegulatoryRequirements([]);
-        setVaultDocuments([]);
-        setEntityDetails(null);
-        detailsFetchedRef.current = null;
-        requirementsFetchedRef.current = null;
-        requirementsFetchingRef.current = null;
-        templatesFetchedRef.current.clear();
+        // Use the same batched fetch as handleCompanyChange
+        handleCompanyChange(companyFromUrl);
     }
   }, [searchParams, companies]);
 
@@ -2132,229 +2133,8 @@ function DataRoomPageInner() {
     return months[new Date().getMonth()];
   };
 
-  const [selectedTrackerFY, setSelectedTrackerFY] = useState<string>(""); // '' means "All Years"
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null); // null means "All Months"
-  const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState(false);
-  const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null);
-  const [isQuarterDropdownOpen, setIsQuarterDropdownOpen] = useState(false);
-  const [trackerView, setTrackerView] = useState<"list" | "calendar">("list");
-  const [calendarMonth, setCalendarMonth] = useState<number>(
-    new Date().getMonth(),
-  );
-  const [calendarYear, setCalendarYear] = useState<number>(
-    new Date().getFullYear(),
-  );
-  const [categoryFilter, setCategoryFilter] = useState("all"); // Status filter (all, critical, pending, etc.)
-  const [selectedCategory, setSelectedCategory] = useState<string>("all"); // Category filter (Income Tax, GST, etc.)
-  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
-  const [entityTypeFilter, setEntityTypeFilter] = useState<string>("all");
-  const [industryFilter, setIndustryFilter] = useState<string>("all");
-  const [industryCategoryFilter, setIndustryCategoryFilter] =
-    useState<string>("all");
-  const [complianceTypeFilter, setComplianceTypeFilter] =
-    useState<string>("all");
-  const [trackerSearchQuery, setTrackerSearchQuery] = useState("");
-  const [selectedRequirements, setSelectedRequirements] = useState<Set<string>>(
-    new Set(),
-  );
   const [isComplianceScoreModalOpen, setIsComplianceScoreModalOpen] =
     useState(false);
-  const [isBulkActionModalOpen, setIsBulkActionModalOpen] = useState(false);
-  const [bulkActionType, setBulkActionType] = useState<
-    "status" | "delete" | null
-  >(null);
-
-  // CRUD modals and forms
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingRequirement, setEditingRequirement] =
-    useState<RegulatoryRequirement | null>(null);
-  const [requirementForm, setRequirementForm] = useState<import("./components/tracker/RequirementFormModal").RequirementForm>({
-    category: "",
-    requirement: "",
-    description: "",
-    due_date: "",
-    penalty: "",
-    penalty_base_amount: null,
-    penalty_config: null,
-    possible_legal_action: "",
-    required_documents: [],
-    required_documents_input: "",
-    is_critical: false,
-    financial_year: "",
-    status: "not_started",
-    compliance_type: "one-time",
-    year: new Date().getFullYear().toString(),
-  });
-
-  const months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-
-  const quarters = [
-    { value: "q1", label: "Q1 - April - June" },
-    { value: "q2", label: "Q2 - July - Sep" },
-    { value: "q3", label: "Q3 - Oct - Dec" },
-    { value: "q4", label: "Q4 - Jan - Mar" },
-  ];
-
-  // Fetch regulatory requirements when company changes
-  useEffect(() => {
-    async function fetchRequirements() {
-      // Skip if during initial boot (handled by consolidated init)
-      if (isDataRoomInitLoading || !currentCompany) {
-        if (!currentCompany && !isDataRoomInitLoading) {
-          setRegulatoryRequirements([]);
-          requirementsFetchedRef.current = null;
-          requirementsFetchingRef.current = null;
-        }
-        return;
-      }
-
-      // Wait for company access resolution before fetching requirements.
-      // Without this guard, a company change can briefly kick off a stale
-      // requirements request before the matching access state has settled.
-      if (authLoading || accessLoading) {
-        return;
-      }
-
-      if (accessError || !hasAccess) {
-        setRegulatoryRequirements([]);
-        setIsLoadingRequirements(false);
-        requirementsFetchedRef.current = null;
-        requirementsFetchingRef.current = null;
-        return;
-      }
-
-      // CRITICAL FIX: Clear requirements if they're from a different company
-      // This prevents showing wrong company's data when switching
-      const hasWrongCompanyData = regulatoryRequirements.length > 0 &&
-        regulatoryRequirements.some((r) => r.company_id !== currentCompany.id);
-      
-      if (hasWrongCompanyData) {
-        console.log('[fetchRequirements] Clearing wrong company data, refetching for:', currentCompany.id);
-        setRegulatoryRequirements([]);
-        requirementsFetchedRef.current = null;
-        requirementsFetchingRef.current = null;
-        // Continue to fetch below
-      }
-
-      // Skip if already fetched for this company (prevents re-fetch on tab switch or remount)
-      // Check both ref and current state's company association to handle remounts stably
-      const hasCorrectData =
-        regulatoryRequirements.length > 0 &&
-        regulatoryRequirements.every((r) => r.company_id === currentCompany.id);
-
-      if (
-        requirementsFetchedRef.current === currentCompany.id &&
-        hasCorrectData
-      ) {
-        console.log(
-          "[fetchRequirements] Already fetched and ref matches, skipping...",
-        );
-
-        if (isLoadingRequirements) {
-          setIsLoadingRequirements(false);
-        }
-        return;
-      }
-
-      if (requirementsFetchingRef.current === currentCompany.id) {
-        console.log(
-          "[fetchRequirements] Fetch already in progress for company:",
-          currentCompany.id,
-          "skipping...",
-        );
-        return;
-      }
-
-      setIsLoadingRequirements(true);
-      const startTime = performance.now();
-      console.log(
-        "[fetchRequirements] Starting fetch for company:",
-        currentCompany.id,
-      );
-      requirementsFetchingRef.current = currentCompany.id;
-
-      try {
-        const result = await getRegulatoryRequirements(currentCompany.id);
-        const duration = performance.now() - startTime;
-        console.log(
-          "[fetchRequirements] Completed in",
-          Math.round(duration),
-          "ms",
-        );
-
-        // Log to performance logger
-        performanceLogger.log("DataRoomPage", "fetchRequirements", duration, {
-          companyId: currentCompany.id,
-          success: result.success,
-          requirementCount: result.requirements?.length || 0,
-        });
-
-        if (result.success && result.requirements) {
-          console.log(
-            "[fetchRequirements] Setting requirements, count:",
-            result.requirements.length,
-          );
-          // Log sample requirement with required_documents
-          if (result.requirements.length > 0) {
-            const sample = result.requirements.find(
-              (r: any) =>
-                r.requirement === "GSTR-3B - Monthly Summary Return" ||
-                r.requirement === "ESI Challan - Monthly ESI Payment",
-            );
-            if (sample) {
-              console.log("[fetchRequirements] Sample requirement in state:", {
-                requirement: sample.requirement,
-                required_documents: sample.required_documents,
-                type: typeof sample.required_documents,
-                isArray: Array.isArray(sample.required_documents),
-              });
-            }
-          }
-          setRegulatoryRequirements(result.requirements);
-          // Mark as fetched for this company
-          requirementsFetchedRef.current = currentCompany.id;
-        } else {
-          console.error("Failed to fetch requirements:", result.error);
-          setRegulatoryRequirements([]);
-        }
-      } catch (error: any) {
-        console.error("Error fetching requirements:", error);
-        // Handle network errors gracefully
-        if (
-          error?.message?.includes("fetch failed") ||
-          error?.name === "TypeError" ||
-          error?.message?.includes("Failed to fetch")
-        ) {
-          console.warn(
-            "Network error while fetching requirements - this may be a temporary connectivity issue",
-          );
-          // Continue with empty array - user can retry by refreshing or the app will retry on company change
-        }
-        setRegulatoryRequirements([]);
-      } finally {
-        if (requirementsFetchingRef.current === currentCompany.id) {
-          requirementsFetchingRef.current = null;
-        }
-        setIsLoadingRequirements(false);
-      }
-    }
-
-    fetchRequirements();
-  }, [currentCompany, authLoading, accessLoading, accessError, hasAccess]); // Wait for access state before fetching
 
   // Track tracker tab opened (only when switching TO tracker, not on every render)
   useEffect(() => {
@@ -2496,9 +2276,10 @@ function DataRoomPageInner() {
   // Memoized penalty calculation function
   const calculatePenaltyMemoized = useCallback(
     (
-      penaltyStr: string | null,
+      penaltyStr: string | null | undefined,
       daysDelayed: number | null,
       penaltyBaseAmount?: number | null, // Base amount for interest calculations
+      penaltyConfig?: Record<string, unknown> | null, // Structured config from penalty builder
     ): string => {
       // If no delay or penalty string is empty, return '-'
       if (
@@ -2743,14 +2524,44 @@ function DataRoomPageInner() {
               return `${formatCurrency(Math.round(interest), countryCode)} (Interest @ ${rate}%/month on ${formatCurrency(penaltyBaseAmount, countryCode)})`;
             }
           }
+
+          // Fall back to penalty_config if set via the penalty builder
+          if (penaltyConfig && daysDelayed) {
+            const cfg = penaltyConfig as any;
+            if (cfg.type === 'interest' && cfg.rate > 0) {
+              const rate = cfg.rate as number;
+              const period = (cfg.period as string) || 'month';
+              const months = period === 'year' ? daysDelayed / 365 * 12 : daysDelayed / 30;
+              const interest = ((penaltyBaseAmount * rate) / 100) * (period === 'year' ? daysDelayed / 365 : daysDelayed / 30);
+              return `${formatCurrency(Math.round(interest), countryCode)} (Interest @ ${rate}%/${period} on ${formatCurrency(penaltyBaseAmount, countryCode)})`;
+            }
+          }
         }
 
-        // If base amount not available, return helpful error message
+        // Base amount is set but rate can't be determined — prompt for penalty config
+        if (penaltyBaseAmount && penaltyBaseAmount > 0) {
+          return "Cannot calculate - Set interest rate via Edit → Penalty Config";
+        }
         return "Cannot calculate - Please provide principal amount (Base Amount) for interest calculation";
       }
 
       // Check for vague "as per Act" references
       if (/as per.*Act/i.test(penalty) || /as per.*guidelines/i.test(penalty)) {
+        // If penalty_config has structured data, use it instead
+        if (penaltyConfig && daysDelayed) {
+          const cfg = penaltyConfig as any;
+          if (cfg.type === 'flat' && cfg.amount > 0) {
+            return formatCurrency(cfg.amount, countryCode);
+          }
+          if (cfg.type === 'daily' && cfg.rate > 0) {
+            return formatCurrency(Math.round(cfg.rate * daysDelayed), countryCode);
+          }
+          if ((cfg.type === 'interest' || cfg.type === 'percentage') && cfg.rate > 0 && penaltyBaseAmount) {
+            const period = (cfg.period as string) || 'month';
+            const interest = ((penaltyBaseAmount * cfg.rate) / 100) * (period === 'year' ? daysDelayed / 365 : daysDelayed / 30);
+            return `${formatCurrency(Math.round(interest), countryCode)} (@ ${cfg.rate}%/${period} on ${formatCurrency(penaltyBaseAmount, countryCode)})`;
+          }
+        }
         return "Refer to Act";
       }
 
@@ -2806,27 +2617,6 @@ function DataRoomPageInner() {
     },
     [],
   );
-
-  // Refresh requirements
-  const refreshRequirements = async () => {
-    if (!currentCompany) return;
-
-    setIsLoadingRequirements(true);
-    try {
-      const result = await getRegulatoryRequirements(currentCompany.id);
-      if (result.success && result.requirements) {
-        setRegulatoryRequirements(result.requirements);
-      } else {
-        console.error("Failed to fetch requirements:", result.error);
-        setRegulatoryRequirements([]);
-      }
-    } catch (error) {
-      console.error("Error fetching requirements:", error);
-      setRegulatoryRequirements([]);
-    } finally {
-      setIsLoadingRequirements(false);
-    }
-  };
 
   // Validate status transition
   const isValidStatusTransition = (
@@ -2899,15 +2689,22 @@ function DataRoomPageInner() {
         }
       }
 
+      // Optimistic update — immediately reflect the change in UI
+      setRegulatoryRequirements((prev) =>
+        prev.map((req) =>
+          req.id === requirementId ? { ...req, status: newStatus } : req,
+        ),
+      );
+
       const result = await updateRequirementStatus(
         requirementId,
         currentCompany.id,
         newStatus,
       );
       if (result.success) {
-        // Track status change
+        // Track status change (fire-and-forget)
         if (user?.id && currentCompany?.id) {
-          await trackStatusChange(
+          trackStatusChange(
             user.id,
             currentCompany.id,
             requirementId,
@@ -2918,7 +2715,7 @@ function DataRoomPageInner() {
           });
         }
 
-        // Update local state with actual status (may differ from requested if validation changed it)
+        // Reconcile with actual status from server (may differ if validation overrode it)
         const actualStatus:
           | "not_started"
           | "upcoming"
@@ -2930,19 +2727,22 @@ function DataRoomPageInner() {
           | "pending"
           | "overdue"
           | "completed";
-        setRegulatoryRequirements((prev) =>
-          prev.map((req) =>
-            req.id === requirementId
-              ? {
-                  ...req,
-                  status: actualStatus,
-                  status_reason: result.missingDocs
-                    ? `Missing documents: ${result.missingDocs.join(", ")}`
-                    : req.status_reason,
-                }
-              : req,
-          ),
-        );
+
+        if (actualStatus !== newStatus || result.missingDocs) {
+          setRegulatoryRequirements((prev) =>
+            prev.map((req) =>
+              req.id === requirementId
+                ? {
+                    ...req,
+                    status: actualStatus,
+                    status_reason: result.missingDocs
+                      ? `Missing documents: ${result.missingDocs.join(", ")}`
+                      : req.status_reason,
+                  }
+                : req,
+            ),
+          );
+        }
 
         // Show appropriate message
         if (
@@ -2958,6 +2758,12 @@ function DataRoomPageInner() {
           showToast("Status updated successfully", "success");
         }
       } else {
+        // Roll back optimistic update on failure
+        setRegulatoryRequirements((prev) =>
+          prev.map((req) =>
+            req.id === requirementId ? { ...req, status: oldStatus } : req,
+          ),
+        );
         showToast(`Failed to update status: ${result.error}`, "error");
       }
     } catch (error: any) {
@@ -3924,33 +3730,12 @@ function DataRoomPageInner() {
     }
   }, [uploadFile]);
 
-  // Convert database requirements to display format and apply filters
-  // Memoized to prevent recalculation on every render
-  // Optimized: Early return for empty requirements, stable Set comparison
+  // Mapped requirements for ReportsTab (no category filter — TrackerContext applies that)
   const displayRequirements = useMemo(() => {
-    // Early return for empty requirements to avoid unnecessary computation
-    if (!regulatoryRequirements || regulatoryRequirements.length === 0) {
-      return [];
-    }
-
-    const startTime = performance.now();
-    
-    // Pre-compute filter conditions for better performance
+    if (!regulatoryRequirements || regulatoryRequirements.length === 0) return [];
     const hasHiddenCompliances = hiddenCompliances.size > 0;
-    const categoryFilterActive = selectedCategory !== "all";
-    
-    const result = regulatoryRequirements
-      .filter((req) => {
-        // Filter out hidden compliances
-        if (hasHiddenCompliances && hiddenCompliances.has(req.id)) {
-          return false;
-        }
-        // Apply category filter
-        if (categoryFilterActive && req.category !== selectedCategory) {
-          return false;
-        }
-        return true;
-      })
+    return regulatoryRequirements
+      .filter((req) => !(hasHiddenCompliances && hiddenCompliances.has(req.id)))
       .map((req) => ({
         id: req.id,
         template_id: (req as any).template_id ?? null,
@@ -3974,347 +3759,7 @@ function DataRoomPageInner() {
         filed_by: req.filed_by,
         status_reason: req.status_reason,
       }));
-
-    const duration = performance.now() - startTime;
-    
-    // Only log if computation takes meaningful time or has significant data
-    // This reduces console noise during development
-    if (duration > 0.5 || result.length > 0) {
-      performanceLogger.log(
-        "DataRoomPage",
-        "displayRequirements_compute",
-        duration,
-        {
-          inputCount: regulatoryRequirements.length,
-          outputCount: result.length,
-          hasHiddenCompliances,
-          selectedCategory,
-        },
-      );
-    }
-
-    return result;
-  }, [regulatoryRequirements, hiddenCompliances, selectedCategory, formatDate]);
-
-  // Memoized filtered requirements for tracker tab - prevents recalculation on every render
-  // MUST be placed before any early returns to maintain hook order
-  const filteredRequirements = useMemo(() => {
-    if (activeTab !== "tracker") {
-      return [];
-    }
-
-    const startTime = performance.now();
-
-    const months = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
-
-    // Helper function to parse dates
-    const parseDate = (dateStr: string): Date | null => {
-      if (!dateStr) return null;
-      return normalizeDate(dateStr);
-    };
-
-    // Helper to check if date falls within a financial year (country-aware)
-    const isInFinancialYear = (
-      reqDate: Date | null,
-      fyStr: string,
-    ): boolean => {
-      if (!reqDate || !fyStr) return false;
-      return isInFinancialYearUtil(reqDate, fyStr, countryCode);
-    };
-
-    // Filter by date (Financial Year, Month, Quarter - all independent/loosely coupled)
-    let dateFilteredRequirements = displayRequirements;
-
-    // Filter by Financial Year (if selected) - with null safety
-    if (selectedTrackerFY) {
-      try {
-        dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
-          if (!req.dueDate) return false;
-          const reqDate = parseDate(req.dueDate);
-          return isInFinancialYear(reqDate, selectedTrackerFY);
-        });
-      } catch (error) {
-        console.error("Error filtering by financial year:", error);
-        // Fallback: don't filter if parsing fails
-      }
-    }
-
-    // Filter by Month (if selected) - works independently but shows relationship
-    if (selectedMonth) {
-      const monthIndex = months.indexOf(selectedMonth);
-      dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
-        const reqDate = parseDate(req.dueDate);
-        if (!reqDate) return false;
-        return reqDate.getUTCMonth() === monthIndex;
-      });
-    }
-
-    // Filter by Quarter (if selected) - works independently but shows relationship
-    if (selectedQuarter) {
-      dateFilteredRequirements = dateFilteredRequirements.filter((req) => {
-        const reqDate = parseDate(req.dueDate);
-        if (!reqDate) return false;
-        const reqMonth = reqDate.getUTCMonth();
-        const reqQuarter =
-          reqMonth >= 3 && reqMonth <= 5
-            ? "q1" // Apr-Jun
-            : reqMonth >= 6 && reqMonth <= 8
-              ? "q2" // Jul-Sep
-              : reqMonth >= 9 && reqMonth <= 11
-                ? "q3" // Oct-Dec
-                : "q4"; // Jan-Mar
-        return reqQuarter === selectedQuarter;
-      });
-    }
-
-    // Filter by status/category and additional filters
-    const result = dateFilteredRequirements.filter((req) => {
-      // Status filter
-      if (categoryFilter !== "all") {
-        if (
-          categoryFilter === "critical" &&
-          !(req.isCritical || req.status === "overdue")
-        )
-          return false;
-        if (categoryFilter === "pending" && req.status !== "pending")
-          return false;
-        if (categoryFilter === "upcoming" && req.status !== "upcoming")
-          return false;
-        if (categoryFilter === "completed" && req.status !== "completed")
-          return false;
-      }
-
-      // Entity type filter
-      if (entityTypeFilter !== "all") {
-        // Get entity type from requirement metadata or company
-        const reqEntityType = (req as any).entity_type || entityDetails?.type;
-        if (reqEntityType !== entityTypeFilter) return false;
-      }
-
-      // Industry filter
-      if (industryFilter !== "all") {
-        const reqIndustry =
-          (req as any).industry || entityDetails?.industryCategory;
-        if (reqIndustry !== industryFilter) return false;
-      }
-
-      // Industry category filter
-      if (industryCategoryFilter !== "all") {
-        const reqIndustryCategory =
-          (req as any).industry_category || entityDetails?.industryCategory;
-        if (reqIndustryCategory !== industryCategoryFilter) return false;
-      }
-
-      // Compliance type filter
-      if (complianceTypeFilter !== "all") {
-        const reqComplianceType = (req as any).compliance_type;
-        if (reqComplianceType !== complianceTypeFilter) return false;
-      }
-
-      // Search filter
-      if (trackerSearchQuery.trim()) {
-        const query = trackerSearchQuery.toLowerCase().trim();
-        const searchableText = [
-          req.category,
-          req.requirement,
-          req.description,
-          req.status,
-          req.compliance_type,
-          req.financial_year,
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        if (!searchableText.includes(query)) return false;
-      }
-
-      return true;
-    });
-
-    const endTime = performance.now();
-    const duration = endTime - startTime;
-
-    // Log to file via performance logger
-    performanceLogger.log(
-      "DataRoomPage",
-      "filteredRequirements_compute",
-      duration,
-      {
-        inputCount: displayRequirements.length,
-        outputCount: result.length,
-        hasFYFilter: !!selectedTrackerFY,
-        hasMonthFilter: !!selectedMonth,
-        hasQuarterFilter: !!selectedQuarter,
-        categoryFilter,
-        entityTypeFilter,
-        industryFilter,
-        industryCategoryFilter,
-        complianceTypeFilter,
-        hasSearchQuery: !!trackerSearchQuery.trim(),
-      },
-    );
-
-    return result;
-  }, [
-    activeTab,
-    displayRequirements,
-    selectedTrackerFY,
-    selectedMonth,
-    selectedQuarter,
-    categoryFilter,
-    entityTypeFilter,
-    industryFilter,
-    industryCategoryFilter,
-    complianceTypeFilter,
-    trackerSearchQuery,
-    entityDetails,
-    countryCode,
-  ]);
-
-  // Memoized category order for tracker tab
-  const categoryOrder = useMemo(() => {
-    if (activeTab !== "tracker") return [];
-
-    const startTime = performance.now();
-    // Get all unique categories from ALL requirements (before filtering) - dynamic, not hardcoded
-    const allCategories = Array.from(
-      new Set(
-        (displayRequirements || []).map((req) => req.category).filter(Boolean),
-      ),
-    );
-    // Use country-specific categories as preferred order, fallback to dynamic categories
-    const preferredOrder =
-      complianceCategories.length > 0
-        ? complianceCategories
-        : [
-            "Income Tax",
-            "GST",
-            "Payroll",
-            "RoC",
-            "Renewals",
-            "Prof.Tax",
-            "Other",
-            "Others",
-          ];
-    const result = [
-      ...preferredOrder.filter((cat) => allCategories.includes(cat)),
-      ...allCategories
-        .filter((cat) => !preferredOrder.includes(cat) && cat)
-        .sort((a, b) => {
-          const catA = a || "";
-          const catB = b || "";
-          if (!catA && !catB) return 0;
-          if (!catA) return 1;
-          if (!catB) return -1;
-          return catA.localeCompare(catB);
-        }),
-    ];
-
-    const duration = performance.now() - startTime;
-    performanceLogger.log("DataRoomPage", "categoryOrder_compute", duration, {
-      categoryCount: result.length,
-      allCategoriesCount: allCategories.length,
-    });
-
-    return result;
-  }, [activeTab, displayRequirements, complianceCategories]);
-
-  // Memoized grouped requirements by category for list view
-  const groupedByCategory = useMemo(() => {
-    if (activeTab !== "tracker" || filteredRequirements.length === 0) return [];
-
-    const startTime = performance.now();
-    const result = categoryOrder
-      .map((category) => {
-        const items = filteredRequirements
-          .filter((req) => req.category === category)
-          .sort((a, b) => {
-            const dateA = a.dueDate || "";
-            const dateB = b.dueDate || "";
-            if (!dateA && !dateB) return 0;
-            if (!dateA) return 1;
-            if (!dateB) return -1;
-            return dateA.localeCompare(dateB);
-          });
-        return { category, items };
-      })
-      .filter((group) => group.items.length > 0);
-
-    const duration = performance.now() - startTime;
-    performanceLogger.log(
-      "DataRoomPage",
-      "groupedByCategory_compute",
-      duration,
-      {
-        inputCount: filteredRequirements.length,
-        categoryCount: categoryOrder.length,
-        outputGroupCount: result.length,
-        totalItemsInGroups: result.reduce(
-          (sum, group) => sum + group.items.length,
-          0,
-        ),
-      },
-    );
-
-    return result;
-  }, [activeTab, filteredRequirements, categoryOrder]);
-
-  // Memoized requirements grouped by date for calendar view
-  const requirementsByDate = useMemo(() => {
-    if (activeTab !== "tracker" || filteredRequirements.length === 0) {
-      return new Map<string, typeof filteredRequirements>();
-    }
-
-    const startTime = performance.now();
-    const parseDateForCalendar = (
-      dateStr: string | null | undefined,
-    ): Date | null => {
-      if (!dateStr) return null;
-      return normalizeDate(dateStr);
-    };
-
-    const dateMap = new Map<string, typeof filteredRequirements>();
-    filteredRequirements.forEach((req) => {
-      const date = parseDateForCalendar(req.dueDate);
-      if (date) {
-        const dateKey = date.toISOString().split("T")[0]; // YYYY-MM-DD
-        if (!dateMap.has(dateKey)) {
-          dateMap.set(dateKey, []);
-        }
-        dateMap.get(dateKey)!.push(req);
-      }
-    });
-
-    const duration = performance.now() - startTime;
-    performanceLogger.log(
-      "DataRoomPage",
-      "requirementsByDate_compute",
-      duration,
-      {
-        inputCount: filteredRequirements.length,
-        uniqueDates: dateMap.size,
-        totalMapped: Array.from(dateMap.values()).reduce(
-          (sum, reqs) => sum + reqs.length,
-          0,
-        ),
-      },
-    );
-
-    return dateMap;
-  }, [activeTab, filteredRequirements]);
+  }, [regulatoryRequirements, hiddenCompliances, formatDate]);
 
   // Track render completion for tracker tab (must be after memoized values are defined)
   const prevActiveTab = useRef(activeTab);
@@ -4337,9 +3782,6 @@ function DataRoomPageInner() {
             {
               companyId: currentCompany.id,
               displayRequirementsCount: displayRequirements.length,
-              filteredRequirementsCount: filteredRequirements.length,
-              groupedByCategoryCount: groupedByCategory.length,
-              requirementsByDateCount: requirementsByDate.size,
             },
           );
         });
@@ -4350,10 +3792,8 @@ function DataRoomPageInner() {
     activeTab,
     currentCompany?.id,
     displayRequirements.length,
-    filteredRequirements.length,
-    groupedByCategory.length,
-    requirementsByDate.size,
   ]);
+
 
   const [teamMembers] = useState([
     {
@@ -5149,106 +4589,59 @@ function DataRoomPageInner() {
         )}
 
         {activeTab === "tracker" && (
-          <Suspense
-            fallback={
-              <div className="flex items-center justify-center p-8">
-                <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
-              </div>
-            }
+          <TrackerContextProvider
+            regulatoryRequirements={regulatoryRequirements}
+            setRegulatoryRequirements={setRegulatoryRequirements}
+            isLoadingRequirements={isLoadingRequirements}
+            refreshRequirements={refreshRequirements}
+            hiddenCompliances={hiddenCompliances}
+            setHiddenCompliances={setHiddenCompliances}
+            vaultDocuments={vaultDocuments}
+            currentCompany={currentCompany}
+            user={user}
+            canEdit={canEdit}
+            canManage={canManage}
+            isComplianceScoreModalOpen={isComplianceScoreModalOpen}
+            setIsComplianceScoreModalOpen={setIsComplianceScoreModalOpen}
+            regulatoryService={regulatoryService}
+            financialYears={financialYears}
+            setComplianceDetailsModal={setComplianceDetailsModal}
+            handleStatusChange={handleStatusChange}
+            handleTrackerDocumentUpload={handleTrackerDocumentUpload}
+            documentUploadModal={documentUploadModal}
+            setDocumentUploadModal={setDocumentUploadModal}
+            uploadingDocument={uploadingDocument}
+            setUploadingDocument={setUploadingDocument}
+            uploadFile={uploadFile}
+            setUploadFile={setUploadFile}
+            uploadProgress={uploadProgress}
+            setUploadProgress={setUploadProgress}
+            uploadStage={uploadStage}
+            setUploadStage={setUploadStage}
+            previewFileUrl={previewFileUrl}
+            setPreviewFileUrl={setPreviewFileUrl}
+            countryCode={countryCode}
+            countryConfig={countryConfig}
+            complianceCategories={complianceCategories}
+            entityDetails={entityDetails}
+            calculateDelayMemoized={calculateDelayMemoized}
+            calculatePenaltyMemoized={calculatePenaltyMemoized}
+            normalizeDate={normalizeDate}
+            formatDate={formatDate}
+            getFormFrequency={getFormFrequency}
+            getRelevantLegalSections={getRelevantLegalSections}
+            getAuthorityForCategory={getAuthorityForCategory}
           >
-            <TrackerTab
-              regulatoryService={regulatoryService}
-              trackerView={trackerView}
-              setTrackerView={setTrackerView}
-              isLoadingRequirements={isLoadingRequirements}
-              refreshRequirements={refreshRequirements}
-              canEdit={canEdit}
-              selectedTrackerFY={selectedTrackerFY}
-              setSelectedTrackerFY={setSelectedTrackerFY}
-              setRequirementForm={setRequirementForm}
-              isCreateModalOpen={isCreateModalOpen}
-              setIsCreateModalOpen={setIsCreateModalOpen}
-              setRegulatoryRequirements={setRegulatoryRequirements}
-              user={user}
-              regulatoryRequirements={regulatoryRequirements}
-              financialYears={financialYears}
-              setComplianceDetailsModal={setComplianceDetailsModal}
-              handleStatusChange={handleStatusChange}
-              setHiddenCompliances={setHiddenCompliances}
-              selectedMonth={selectedMonth}
-              setSelectedMonth={setSelectedMonth}
-              selectedQuarter={selectedQuarter}
-              setSelectedQuarter={setSelectedQuarter}
-              categoryFilter={categoryFilter}
-              setCategoryFilter={setCategoryFilter}
-              trackerSearchQuery={trackerSearchQuery}
-              setTrackerSearchQuery={setTrackerSearchQuery}
-              selectedCategory={selectedCategory}
-              setSelectedCategory={setSelectedCategory}
-              selectedRequirements={selectedRequirements}
-              setSelectedRequirements={setSelectedRequirements}
-              filteredRequirements={filteredRequirements}
-              groupedByCategory={groupedByCategory}
-              requirementsByDate={requirementsByDate}
-              displayRequirements={displayRequirements}
-              calendarMonth={calendarMonth}
-              setCalendarMonth={setCalendarMonth}
-              calendarYear={calendarYear}
-              setCalendarYear={setCalendarYear}
-              entityTypeFilter={entityTypeFilter}
-              setEntityTypeFilter={setEntityTypeFilter}
-              industryFilter={industryFilter}
-              setIndustryFilter={setIndustryFilter}
-              industryCategoryFilter={industryCategoryFilter}
-              setIndustryCategoryFilter={setIndustryCategoryFilter}
-              complianceTypeFilter={complianceTypeFilter}
-              setComplianceTypeFilter={setComplianceTypeFilter}
-              countryCode={countryCode}
-              countryConfig={countryConfig}
-              complianceCategories={complianceCategories}
-              entityDetails={entityDetails}
-              currentCompany={currentCompany}
-              calculateDelayMemoized={calculateDelayMemoized}
-              calculatePenaltyMemoized={calculatePenaltyMemoized}
-              normalizeDate={normalizeDate}
-              isInFinancialYearUtil={isInFinancialYearUtil}
-              formatDate={formatDate}
-              getFormFrequency={getFormFrequency}
-              getRelevantLegalSections={getRelevantLegalSections}
-              getAuthorityForCategory={getAuthorityForCategory}
-              isEditModalOpen={isEditModalOpen}
-              setIsEditModalOpen={setIsEditModalOpen}
-              editingRequirement={editingRequirement}
-              setEditingRequirement={setEditingRequirement}
-              requirementForm={requirementForm}
-              setDocumentUploadModal={setDocumentUploadModal}
-              isCategoryDropdownOpen={isCategoryDropdownOpen}
-              setIsCategoryDropdownOpen={setIsCategoryDropdownOpen}
-              isMonthDropdownOpen={isMonthDropdownOpen}
-              setIsMonthDropdownOpen={setIsMonthDropdownOpen}
-              isQuarterDropdownOpen={isQuarterDropdownOpen}
-              setIsQuarterDropdownOpen={setIsQuarterDropdownOpen}
-              isBulkActionModalOpen={isBulkActionModalOpen}
-              setIsBulkActionModalOpen={setIsBulkActionModalOpen}
-              bulkActionType={bulkActionType}
-              setBulkActionType={setBulkActionType}
-              isComplianceScoreModalOpen={isComplianceScoreModalOpen}
-              setIsComplianceScoreModalOpen={setIsComplianceScoreModalOpen}
-              documentUploadModal={documentUploadModal}
-              uploadingDocument={uploadingDocument}
-              setUploadingDocument={setUploadingDocument}
-              uploadFile={uploadFile}
-              setUploadFile={setUploadFile}
-              uploadProgress={uploadProgress}
-              setUploadProgress={setUploadProgress}
-              uploadStage={uploadStage}
-              setUploadStage={setUploadStage}
-              previewFileUrl={previewFileUrl}
-              setPreviewFileUrl={setPreviewFileUrl}
-              showToast={showToast}
-              handleTrackerDocumentUpload={handleTrackerDocumentUpload}
-            />
-          </Suspense>
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center p-8">
+                  <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+                </div>
+              }
+            >
+              <TrackerTab />
+            </Suspense>
+          </TrackerContextProvider>
         )}
 
         {activeTab === "dsc-din" && (

@@ -231,7 +231,7 @@ export async function handlePassportCallback(
     const next = resolvePostAuthRedirect({
       baseDestination,
       overridePath: explicitNext || redirectDestination,
-      allowOverrideForDataRoomUsers: false,
+      allowOverrideForDataRoomUsers: true,
     })
 
     // Create redirect response

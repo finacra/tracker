@@ -66,6 +66,16 @@ export async function completeOnboarding(
   const countryConfig = getCountryConfig(formData.countryCode || 'IN')
   const region = countryConfig?.region || 'APAC'
 
+  // For Indian companies, extract NIC code and listing status from CIN
+  let nicCode: string | null = null
+  let isListed: boolean | null = null
+  if ((formData.countryCode || 'IN') === 'IN' && formData.cinNumber) {
+    const { parseCIN } = await import('@/utils/cin-parser')
+    const parsed = parseCIN(formData.cinNumber)
+    if (parsed.nicCode) nicCode = parsed.nicCode
+    if (parsed.isListed !== null) isListed = parsed.isListed
+  }
+
   // 1. Insert Company
   // For backward compatibility, set industry to first industry from industries array
   const firstIndustry = formData.industries.length > 0 ? formData.industries[0] : null
@@ -103,7 +113,9 @@ export async function completeOnboarding(
     yearType: formData.yearType || 'FY',
     countryCode: formData.countryCode || 'IN',
     region: region,
-    exDirectors: exDirectorsArray
+    exDirectors: exDirectorsArray,
+    nicCode,
+    isListed,
   })
 
   // 1b. Assign admin role to the company creator

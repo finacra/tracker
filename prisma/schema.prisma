@@ -66,6 +66,8 @@ model Company {
   country_code            String?   @default("IN") @db.VarChar
   region                  String?
   ex_directors            String[]
+  nic_code                String?   @db.VarChar(5)
+  is_listed               Boolean?
   created_at              DateTime  @default(now()) @db.Timestamptz
   updated_at              DateTime  @default(now()) @db.Timestamptz
 

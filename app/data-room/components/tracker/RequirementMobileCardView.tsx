@@ -28,13 +28,14 @@ interface RequirementMobileCardViewProps {
     items: Requirement[]
   }>
   canEdit: boolean
+  canManage?: boolean
   selectedRequirements: Set<string>
   setSelectedRequirements: (updater: (prev: Set<string>) => Set<string>) => void
   handleStatusChange: (requirementId: string, newStatus: 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed') => Promise<void>
   regulatoryService: IRegulatoryService
   currentCompany: { id: string } | null
   setHiddenCompliances: (updater: (prev: Set<string>) => Set<string>) => void
-  setRegulatoryRequirements: (requirements: any[]) => void
+  setRegulatoryRequirements: React.Dispatch<React.SetStateAction<any[]>>
   regulatoryRequirements: Requirement[]
   setEditingRequirement: (req: Requirement | null) => void
   setRequirementForm: (form: any) => void
@@ -42,7 +43,7 @@ interface RequirementMobileCardViewProps {
   setComplianceDetailsModal: (req: Requirement | null) => void
   // Utility functions
   calculateDelay: (dueDate: string, status: string) => number | null
-  calculatePenalty: (penalty: string | null | undefined, daysDelayed: number | null) => string
+  calculatePenalty: (penalty: string | null | undefined, daysDelayed: number | null, penaltyBaseAmount?: number | null, penaltyConfig?: Record<string, unknown> | null) => string
   getFormFrequency: (requirement: string) => string | null
   getRelevantLegalSections: (requirement: string, category: string | null | undefined) => string[]
   getAuthorityForCategory: (category: string | null | undefined) => string | null
@@ -51,6 +52,7 @@ interface RequirementMobileCardViewProps {
 export default function RequirementMobileCardView({
   groupedByCategory,
   canEdit,
+  canManage,
   selectedRequirements,
   setSelectedRequirements,
   handleStatusChange,
@@ -86,7 +88,7 @@ export default function RequirementMobileCardView({
           <div className="space-y-3">
             {group.items.map((req, itemIndex) => {
               const daysDelayed = calculateDelay(req.dueDate, req.status)
-              const calculatedPenalty = calculatePenalty(req.penalty, daysDelayed)
+              const calculatedPenalty = calculatePenalty(req.penalty, daysDelayed, req.penalty_base_amount, req.penalty_config)
               const complianceType = req.compliance_type
               const formFreq = getFormFrequency(req.requirement)
               const legalSections = getRelevantLegalSections(req.requirement, req.category)
@@ -379,35 +381,37 @@ export default function RequirementMobileCardView({
                           <path d="M18 6L6 18M6 6l12 12" />
                         </svg>
                       </button>
-                      <button
-                        onClick={async () => {
-                          if (!confirm('Are you sure you want to delete this compliance requirement permanently?')) return
-                          if (!currentCompany) return
+                      {canManage && (
+                        <button
+                          onClick={async () => {
+                            if (!confirm('Are you sure you want to delete this compliance requirement permanently?')) return
+                            if (!currentCompany) return
 
-                          try {
-                            const result = await regulatoryService.deleteRequirement(req.id, currentCompany.id)
-                            if (result.success) {
-                              const refreshResult = await regulatoryService.getRequirements(currentCompany.id)
-                              if (refreshResult.success && refreshResult.data) {
-                                setRegulatoryRequirements(refreshResult.data)
+                            try {
+                              const result = await regulatoryService.deleteRequirement(req.id, currentCompany.id)
+                              if (result.success) {
+                                const refreshResult = await regulatoryService.getRequirements(currentCompany.id)
+                                if (refreshResult.success && refreshResult.data) {
+                                  setRegulatoryRequirements(refreshResult.data)
+                                }
+                                showToast('Requirement deleted successfully', 'success')
+                              } else {
+                                showToast(result.error || 'Failed to delete', 'error')
                               }
-                              showToast('Requirement deleted successfully', 'success')
-                            } else {
-                              showToast(result.error || 'Failed to delete', 'error')
+                            } catch (error: any) {
+                              console.error('Error deleting requirement:', error)
+                              showToast(error.message || 'Error deleting requirement', 'error')
                             }
-                          } catch (error: any) {
-                            console.error('Error deleting requirement:', error)
-                            showToast(error.message || 'Error deleting requirement', 'error')
-                          }
-                        }}
-                        className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
-                        title="Delete permanently"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="3 6 5 6 21 6" />
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                        </svg>
-                      </button>
+                          }}
+                          className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
+                          title="Delete permanently"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

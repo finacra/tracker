@@ -1,11 +1,9 @@
 'use client'
 
 import React from 'react'
-import { getFinancialYearMonths, getCurrentFinancialYear, parseFinancialYear, isInFinancialYear as isInFinancialYearUtil } from '@/lib/utils/financial-year'
-import { formatCurrency } from '@/lib/utils/currency'
-import { showToast } from '@/components/ui/Toast'
+import { getFinancialYearMonths } from '@/lib/utils/financial-year'
+import { useTrackerContext } from '@/contexts/TrackerContext'
 import { useCalendarSync } from '../../hooks/useCalendarSync'
-import { IRegulatoryService } from '../../services/RegulatoryService'
 import RequirementFormModal, { EMPTY_REQUIREMENT_FORM } from './RequirementFormModal'
 import RequirementMobileCardView from './RequirementMobileCardView'
 import RequirementDesktopTableView from './RequirementDesktopTableView'
@@ -16,75 +14,53 @@ import TrackerCategoryFilters from './TrackerCategoryFilters'
 import TrackerEmptyState from './TrackerEmptyState'
 import TrackerCalendarView from './TrackerCalendarView'
 
-interface TrackerTabProps {
-  // Services (DIP: Injected, not imported)
-  regulatoryService: IRegulatoryService
-  
-  // State
-  trackerView: 'list' | 'calendar'
-  setTrackerView: (view: 'list' | 'calendar') => void
-  isLoadingRequirements: boolean
-  refreshRequirements: () => void
-  canEdit: boolean
-  selectedTrackerFY: string
-  setSelectedTrackerFY: (fy: string) => void
-  setRequirementForm: (form: any) => void
-  isCreateModalOpen: boolean
-  setIsCreateModalOpen: (open: boolean) => void
-  setRegulatoryRequirements: (requirements: any[]) => void
-  user: any
-  regulatoryRequirements: any[]
-  financialYears: string[]
-  setComplianceDetailsModal: (req: any) => void
-  handleStatusChange: (requirementId: string, newStatus: 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed') => Promise<void>
-  setHiddenCompliances: (updater: (prev: Set<string>) => Set<string>) => void
-  // Add all other props as needed
-  [key: string]: any
-}
-
-export default function TrackerTab({
-  regulatoryService, // DIP: Injected service
-  trackerView,
-  setTrackerView,
-  isLoadingRequirements,
-  refreshRequirements,
-  canEdit,
-  selectedTrackerFY,
-  setSelectedTrackerFY,
-  setRequirementForm,
-  isCreateModalOpen,
-  setIsCreateModalOpen,
-  setRegulatoryRequirements,
-  user,
-  regulatoryRequirements,
-  financialYears,
-  setComplianceDetailsModal,
-  handleStatusChange,
-  setHiddenCompliances,
-  ...rest
-}: TrackerTabProps) {
-  // Destructure all other props
+export default function TrackerTab() {
   const {
+    // External data
+    regulatoryRequirements,
+    setRegulatoryRequirements,
+    isLoadingRequirements,
+    refreshRequirements,
+    currentCompany,
+    user,
+    canEdit,
+    canManage,
+    vaultDocuments,
+    regulatoryService,
+    financialYears,
+    setComplianceDetailsModal,
+    handleStatusChange,
+    setHiddenCompliances,
+    countryCode,
+    countryConfig,
+    complianceCategories,
+    entityDetails,
+    calculateDelayMemoized,
+    calculatePenaltyMemoized,
+    normalizeDate,
+    formatDate,
+    getFormFrequency,
+    getRelevantLegalSections,
+    getAuthorityForCategory,
+    // Filter state (managed by context)
+    trackerView,
+    setTrackerView,
+    selectedTrackerFY,
+    setSelectedTrackerFY,
     selectedMonth,
     setSelectedMonth,
+    isMonthDropdownOpen,
+    setIsMonthDropdownOpen,
     selectedQuarter,
     setSelectedQuarter,
+    isQuarterDropdownOpen,
+    setIsQuarterDropdownOpen,
     categoryFilter,
     setCategoryFilter,
-    trackerSearchQuery,
-    setTrackerSearchQuery,
     selectedCategory,
     setSelectedCategory,
-    selectedRequirements,
-    setSelectedRequirements,
-    filteredRequirements,
-    groupedByCategory,
-    requirementsByDate,
-    displayRequirements,
-    calendarMonth,
-    setCalendarMonth,
-    calendarYear,
-    setCalendarYear,
+    isCategoryDropdownOpen,
+    setIsCategoryDropdownOpen,
     entityTypeFilter,
     setEntityTypeFilter,
     industryFilter,
@@ -93,60 +69,42 @@ export default function TrackerTab({
     setIndustryCategoryFilter,
     complianceTypeFilter,
     setComplianceTypeFilter,
-    countryCode,
-    countryConfig,
-    complianceCategories,
-    entityDetails,
-    currentCompany,
-    calculateDelayMemoized,
-    calculatePenaltyMemoized,
-    normalizeDate,
-    isInFinancialYearUtil,
-    formatDate,
-    getFormFrequency,
-    getRelevantLegalSections,
-    getAuthorityForCategory,
+    trackerSearchQuery,
+    setTrackerSearchQuery,
+    selectedRequirements,
+    setSelectedRequirements,
+    calendarMonth,
+    setCalendarMonth,
+    calendarYear,
+    setCalendarYear,
+    // Modal state (managed by context)
+    isCreateModalOpen,
+    setIsCreateModalOpen,
     isEditModalOpen,
     setIsEditModalOpen,
-    editingRequirement,
-    setEditingRequirement,
-    requirementForm,
-    setDocumentUploadModal,
-    documentUploadModal,
-    uploadingDocument,
-    setUploadingDocument,
-    uploadFile,
-    setUploadFile,
-    uploadProgress,
-    setUploadProgress,
-    uploadStage,
-    setUploadStage,
-    previewFileUrl,
-    setPreviewFileUrl,
-    isCategoryDropdownOpen,
-    setIsCategoryDropdownOpen,
-    isMonthDropdownOpen,
-    setIsMonthDropdownOpen,
-    isQuarterDropdownOpen,
-    setIsQuarterDropdownOpen,
     isBulkActionModalOpen,
     setIsBulkActionModalOpen,
     bulkActionType,
     setBulkActionType,
-    isComplianceScoreModalOpen,
-    setIsComplianceScoreModalOpen,
-    showToast,
-    ...allOtherProps
-  } = rest
+    editingRequirement,
+    setEditingRequirement,
+    requirementForm,
+    setRequirementForm,
+    // Upload state (owned by page.tsx, passed through context)
+    setDocumentUploadModal,
+    // Derived values
+    displayRequirements,
+    filteredRequirements,
+    groupedByCategory,
+    requirementsByDate,
+  } = useTrackerContext()
 
-  // Use calendar sync hook (SRP: Business logic extracted)
   const { handleCalendarSync } = useCalendarSync({
     user,
     currentCompany,
-    regulatoryRequirements
+    regulatoryRequirements,
   })
 
-  // Define months and quarters arrays (after destructuring countryCode)
   const months = selectedTrackerFY && countryCode
     ? getFinancialYearMonths(countryCode, selectedTrackerFY)
     : ['January', 'February', 'March', 'April', 'May', 'June',
@@ -156,201 +114,204 @@ export default function TrackerTab({
     { value: 'Q1', label: 'Q1 - Apr to Jun' },
     { value: 'Q2', label: 'Q2 - Jul to Sep' },
     { value: 'Q3', label: 'Q3 - Oct to Dec' },
-    { value: 'Q4', label: 'Q4 - Jan to Mar' }
+    { value: 'Q4', label: 'Q4 - Jan to Mar' },
   ]
 
   return (
     <div className="space-y-4 sm:space-y-6">
-            {/* Header with Title and Actions - Stack on Mobile */}
-            <TrackerHeader
-              trackerView={trackerView}
-              setTrackerView={setTrackerView}
-              isLoadingRequirements={isLoadingRequirements}
-              refreshRequirements={refreshRequirements}
-              canEdit={canEdit}
-              selectedTrackerFY={selectedTrackerFY}
-              setRequirementForm={setRequirementForm}
-              setIsCreateModalOpen={setIsCreateModalOpen}
-              handleCalendarSync={handleCalendarSync}
-            />
+      {/* Header with Title and Actions */}
+      <TrackerHeader
+        trackerView={trackerView}
+        setTrackerView={setTrackerView}
+        isLoadingRequirements={isLoadingRequirements}
+        refreshRequirements={refreshRequirements}
+        canEdit={canEdit}
+        selectedTrackerFY={selectedTrackerFY}
+        setRequirementForm={setRequirementForm}
+        setIsCreateModalOpen={setIsCreateModalOpen}
+        handleCalendarSync={handleCalendarSync}
+      />
 
-            {/* Country Indicator */}
-            {currentCompany && (
-              <div className="mb-3 flex items-center gap-2 text-sm text-gray-400">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Country: <span className="text-white font-medium">{countryConfig.name}</span></span>
-                <span className="text-gray-600">·</span>
-                <span className="text-xs">Categories and templates are country-specific</span>
-              </div>
-            )}
+      {/* Country Indicator */}
+      {currentCompany && (
+        <div className="mb-3 flex items-center gap-2 text-sm text-gray-400">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Country: <span className="text-white font-medium">{countryConfig.name}</span></span>
+          <span className="text-gray-600">·</span>
+          <span className="text-xs">Categories and templates are country-specific</span>
+        </div>
+      )}
 
-            {/* Super Filters - Stack on Mobile */}
-            <TrackerFilterControls
-              selectedTrackerFY={selectedTrackerFY}
-              setSelectedTrackerFY={setSelectedTrackerFY}
-              selectedMonth={selectedMonth}
-              setSelectedMonth={setSelectedMonth}
-              selectedQuarter={selectedQuarter}
-              setSelectedQuarter={setSelectedQuarter}
-              selectedCategory={selectedCategory}
-              setSelectedCategory={setSelectedCategory}
-              isMonthDropdownOpen={isMonthDropdownOpen}
-              setIsMonthDropdownOpen={setIsMonthDropdownOpen}
-              isQuarterDropdownOpen={isQuarterDropdownOpen}
-              setIsQuarterDropdownOpen={setIsQuarterDropdownOpen}
-              isCategoryDropdownOpen={isCategoryDropdownOpen}
-              setIsCategoryDropdownOpen={setIsCategoryDropdownOpen}
-              financialYears={financialYears}
-              months={months}
-              quarters={quarters}
-              countryCode={countryCode}
-              regulatoryRequirements={regulatoryRequirements}
-              complianceCategories={complianceCategories}
-            />
+      {/* Super Filters */}
+      <TrackerFilterControls
+        selectedTrackerFY={selectedTrackerFY}
+        setSelectedTrackerFY={setSelectedTrackerFY}
+        selectedMonth={selectedMonth}
+        setSelectedMonth={setSelectedMonth}
+        selectedQuarter={selectedQuarter}
+        setSelectedQuarter={setSelectedQuarter}
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
+        isMonthDropdownOpen={isMonthDropdownOpen}
+        setIsMonthDropdownOpen={setIsMonthDropdownOpen}
+        isQuarterDropdownOpen={isQuarterDropdownOpen}
+        setIsQuarterDropdownOpen={setIsQuarterDropdownOpen}
+        isCategoryDropdownOpen={isCategoryDropdownOpen}
+        setIsCategoryDropdownOpen={setIsCategoryDropdownOpen}
+        financialYears={financialYears}
+        months={months}
+        quarters={quarters}
+        countryCode={countryCode}
+        regulatoryRequirements={regulatoryRequirements}
+        complianceCategories={complianceCategories}
+      />
 
-            {/* Search and Bulk Actions Bar */}
-            <TrackerSearchAndActions
-              trackerSearchQuery={trackerSearchQuery}
-              setTrackerSearchQuery={setTrackerSearchQuery}
-              canEdit={canEdit}
-              selectedRequirements={selectedRequirements}
-              setBulkActionType={setBulkActionType}
-              setIsBulkActionModalOpen={setIsBulkActionModalOpen}
-              setSelectedRequirements={setSelectedRequirements}
-            />
+      {/* Search and Bulk Actions Bar */}
+      <TrackerSearchAndActions
+        trackerSearchQuery={trackerSearchQuery}
+        setTrackerSearchQuery={setTrackerSearchQuery}
+        canEdit={canEdit}
+        selectedRequirements={selectedRequirements}
+        setBulkActionType={setBulkActionType}
+        setIsBulkActionModalOpen={setIsBulkActionModalOpen}
+        setSelectedRequirements={setSelectedRequirements}
+      />
 
-            {/* Category Filters - Scrollable on Mobile */}
-            <TrackerCategoryFilters
-              categoryFilter={categoryFilter}
-              setCategoryFilter={setCategoryFilter}
-            />
+      {/* Category Filters */}
+      <TrackerCategoryFilters
+        categoryFilter={categoryFilter}
+        setCategoryFilter={setCategoryFilter}
+      />
 
-            {/* Regulatory Requirements Table */}
-            <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden">
-              {isLoadingRequirements || displayRequirements.length === 0 ? (
-                <TrackerEmptyState
-                  isLoadingRequirements={isLoadingRequirements}
-                  displayRequirements={displayRequirements}
-                  regulatoryRequirements={regulatoryRequirements}
-                  trackerSearchQuery={trackerSearchQuery}
-                  selectedTrackerFY={selectedTrackerFY}
-                  selectedMonth={selectedMonth}
-                  selectedQuarter={selectedQuarter}
-                  categoryFilter={categoryFilter}
-                  selectedCategory={selectedCategory}
+      {/* Regulatory Requirements Table */}
+      <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden">
+        {isLoadingRequirements || displayRequirements.length === 0 ? (
+          <TrackerEmptyState
+            isLoadingRequirements={isLoadingRequirements}
+            displayRequirements={displayRequirements}
+            regulatoryRequirements={regulatoryRequirements}
+            trackerSearchQuery={trackerSearchQuery}
+            selectedTrackerFY={selectedTrackerFY}
+            selectedMonth={selectedMonth}
+            selectedQuarter={selectedQuarter}
+            categoryFilter={categoryFilter}
+            selectedCategory={selectedCategory}
+            canEdit={canEdit}
+            setTrackerSearchQuery={setTrackerSearchQuery}
+            setSelectedTrackerFY={setSelectedTrackerFY}
+            setSelectedMonth={setSelectedMonth}
+            setSelectedQuarter={setSelectedQuarter}
+            setCategoryFilter={setCategoryFilter}
+            setSelectedCategory={setSelectedCategory}
+            setRequirementForm={setRequirementForm}
+            setIsCreateModalOpen={setIsCreateModalOpen}
+          />
+        ) : (
+          <div className="sm:overflow-x-auto scrollbar-hide">
+            {trackerView === 'calendar' ? (
+              <TrackerCalendarView
+                calendarMonth={calendarMonth}
+                calendarYear={calendarYear}
+                setCalendarMonth={setCalendarMonth}
+                setCalendarYear={setCalendarYear}
+                months={months}
+                selectedTrackerFY={selectedTrackerFY}
+                requirementsByDate={requirementsByDate}
+                calculateDelay={calculateDelayMemoized}
+                calculatePenalty={calculatePenaltyMemoized}
+                parseDateForCalendar={(dateStr: string | null | undefined) => {
+                  if (!dateStr) return null
+                  return normalizeDate(dateStr)
+                }}
+              />
+            ) : (
+              <>
+                {/* Mobile Card View */}
+                <RequirementMobileCardView
+                  groupedByCategory={groupedByCategory}
                   canEdit={canEdit}
-                  setTrackerSearchQuery={setTrackerSearchQuery}
-                  setSelectedTrackerFY={setSelectedTrackerFY}
-                  setSelectedMonth={setSelectedMonth}
-                  setSelectedQuarter={setSelectedQuarter}
-                  setCategoryFilter={setCategoryFilter}
-                  setSelectedCategory={setSelectedCategory}
+                  canManage={canManage}
+                  selectedRequirements={selectedRequirements}
+                  setSelectedRequirements={setSelectedRequirements}
+                  handleStatusChange={handleStatusChange}
+                  regulatoryService={regulatoryService}
+                  currentCompany={currentCompany}
+                  setHiddenCompliances={setHiddenCompliances}
+                  setRegulatoryRequirements={setRegulatoryRequirements}
+                  regulatoryRequirements={regulatoryRequirements}
+                  setEditingRequirement={setEditingRequirement}
                   setRequirementForm={setRequirementForm}
-                  setIsCreateModalOpen={setIsCreateModalOpen}
+                  setIsEditModalOpen={setIsEditModalOpen}
+                  setComplianceDetailsModal={setComplianceDetailsModal}
+                  calculateDelay={calculateDelayMemoized}
+                  calculatePenalty={calculatePenaltyMemoized}
+                  getFormFrequency={getFormFrequency}
+                  getRelevantLegalSections={getRelevantLegalSections}
+                  getAuthorityForCategory={getAuthorityForCategory}
                 />
-              ) : (
-                <div className="sm:overflow-x-auto scrollbar-hide">
-                  {trackerView === 'calendar' ? (
-                    <TrackerCalendarView
-                      calendarMonth={calendarMonth}
-                      calendarYear={calendarYear}
-                      setCalendarMonth={setCalendarMonth}
-                      setCalendarYear={setCalendarYear}
-                      months={months}
-                      selectedTrackerFY={selectedTrackerFY}
-                      requirementsByDate={requirementsByDate}
-                      calculateDelay={calculateDelayMemoized}
-                      calculatePenalty={calculatePenaltyMemoized}
-                      parseDateForCalendar={(dateStr: string | null | undefined) => {
-                        if (!dateStr) return null
-                        return normalizeDate(dateStr)
-                      }}
-                    />
-                  ) : (
-                    <>
-                      {/* Mobile Card View */}
-                      <RequirementMobileCardView
-                        groupedByCategory={groupedByCategory}
-                        canEdit={canEdit}
-                        selectedRequirements={selectedRequirements}
-                        setSelectedRequirements={setSelectedRequirements}
-                        handleStatusChange={handleStatusChange}
-                        regulatoryService={regulatoryService}
-                        currentCompany={currentCompany}
-                        setHiddenCompliances={setHiddenCompliances}
-                        setRegulatoryRequirements={setRegulatoryRequirements}
-                        regulatoryRequirements={regulatoryRequirements}
-                        setEditingRequirement={setEditingRequirement}
-                        setRequirementForm={setRequirementForm}
-                        setIsEditModalOpen={setIsEditModalOpen}
-                        setComplianceDetailsModal={setComplianceDetailsModal}
-                        calculateDelay={calculateDelayMemoized}
-                        calculatePenalty={calculatePenaltyMemoized}
-                        getFormFrequency={getFormFrequency}
-                        getRelevantLegalSections={getRelevantLegalSections}
-                        getAuthorityForCategory={getAuthorityForCategory}
-                      />
 
-                      {/* Desktop Table View */}
-                      <RequirementDesktopTableView
-                        groupedByCategory={groupedByCategory}
-                        filteredRequirements={filteredRequirements}
-                        canEdit={canEdit}
-                        selectedRequirements={selectedRequirements}
-                        setSelectedRequirements={setSelectedRequirements}
-                        handleStatusChange={handleStatusChange}
-                        regulatoryService={regulatoryService}
-                        currentCompany={currentCompany}
-                        setHiddenCompliances={setHiddenCompliances}
-                        setRegulatoryRequirements={setRegulatoryRequirements}
-                        regulatoryRequirements={regulatoryRequirements}
-                        setEditingRequirement={setEditingRequirement}
-                        setRequirementForm={setRequirementForm}
-                        setIsEditModalOpen={setIsEditModalOpen}
-                        setComplianceDetailsModal={setComplianceDetailsModal}
-                        setDocumentUploadModal={setDocumentUploadModal}
-                        calculateDelay={calculateDelayMemoized}
-                        calculatePenalty={calculatePenaltyMemoized}
-                        getFormFrequency={getFormFrequency}
-                        getRelevantLegalSections={getRelevantLegalSections}
-                        getAuthorityForCategory={getAuthorityForCategory}
-                      />
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+                {/* Desktop Table View */}
+                <RequirementDesktopTableView
+                  groupedByCategory={groupedByCategory}
+                  filteredRequirements={filteredRequirements}
+                  canEdit={canEdit}
+                  canManage={canManage}
+                  vaultDocuments={vaultDocuments}
+                  selectedRequirements={selectedRequirements}
+                  setSelectedRequirements={setSelectedRequirements}
+                  handleStatusChange={handleStatusChange}
+                  regulatoryService={regulatoryService}
+                  currentCompany={currentCompany}
+                  setHiddenCompliances={setHiddenCompliances}
+                  setRegulatoryRequirements={setRegulatoryRequirements}
+                  regulatoryRequirements={regulatoryRequirements}
+                  setEditingRequirement={setEditingRequirement}
+                  setRequirementForm={setRequirementForm}
+                  setIsEditModalOpen={setIsEditModalOpen}
+                  setComplianceDetailsModal={setComplianceDetailsModal}
+                  setDocumentUploadModal={setDocumentUploadModal}
+                  calculateDelay={calculateDelayMemoized}
+                  calculatePenalty={calculatePenaltyMemoized}
+                  getFormFrequency={getFormFrequency}
+                  getRelevantLegalSections={getRelevantLegalSections}
+                  getAuthorityForCategory={getAuthorityForCategory}
+                />
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
-            {/* Create/Edit Compliance Modal */}
-            <RequirementFormModal
-              isOpen={isCreateModalOpen || isEditModalOpen}
-              isEdit={isEditModalOpen}
-              requirementForm={requirementForm}
-              setRequirementForm={setRequirementForm}
-              onClose={() => {
-                setIsCreateModalOpen(false)
-                setIsEditModalOpen(false)
-                setEditingRequirement(null)
-                setRequirementForm({ ...EMPTY_REQUIREMENT_FORM, year: new Date().getFullYear().toString() })
-              }}
-              onSuccess={() => {
-                setIsCreateModalOpen(false)
-                setIsEditModalOpen(false)
-                setEditingRequirement(null)
-                setRequirementForm({ ...EMPTY_REQUIREMENT_FORM, year: new Date().getFullYear().toString() })
-              }}
-              regulatoryService={regulatoryService}
-              currentCompany={currentCompany}
-              complianceCategories={complianceCategories}
-              regulatoryRequirements={regulatoryRequirements}
-              financialYears={financialYears}
-              countryCode={countryCode}
-              countryConfig={countryConfig}
-              editingRequirement={editingRequirement}
-              setRegulatoryRequirements={setRegulatoryRequirements}
-            />
+      {/* Create/Edit Compliance Modal */}
+      <RequirementFormModal
+        isOpen={isCreateModalOpen || isEditModalOpen}
+        isEdit={isEditModalOpen}
+        requirementForm={requirementForm}
+        setRequirementForm={setRequirementForm}
+        onClose={() => {
+          setIsCreateModalOpen(false)
+          setIsEditModalOpen(false)
+          setEditingRequirement(null)
+          setRequirementForm({ ...EMPTY_REQUIREMENT_FORM, year: new Date().getFullYear().toString() })
+        }}
+        onSuccess={() => {
+          setIsCreateModalOpen(false)
+          setIsEditModalOpen(false)
+          setEditingRequirement(null)
+          setRequirementForm({ ...EMPTY_REQUIREMENT_FORM, year: new Date().getFullYear().toString() })
+        }}
+        regulatoryService={regulatoryService}
+        currentCompany={currentCompany}
+        complianceCategories={complianceCategories}
+        regulatoryRequirements={regulatoryRequirements}
+        financialYears={financialYears}
+        countryCode={countryCode}
+        countryConfig={countryConfig}
+        editingRequirement={editingRequirement}
+        setRegulatoryRequirements={setRegulatoryRequirements}
+      />
     </div>
   )
 }

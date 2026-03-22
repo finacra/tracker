@@ -76,7 +76,7 @@ export async function getManageCompanyData(companyIdParam: string | null): Promi
       return { success: false, redirectTo: '/data-room' }
     }
 
-    const canAccess = company.ownerUserId === user.id || Boolean(membership)
+    const canAccess = company.ownerUserId === user.id || company.ownerAppUserId === user.id || Boolean(membership)
     if (!canAccess) {
       return { success: false, redirectTo: '/data-room' }
     }

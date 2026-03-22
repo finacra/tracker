@@ -512,8 +512,24 @@ export async function updateRequirement(
       }
     }
 
+    // CRITICAL FIX: Resolve Supabase user_id for Passport users
+    // updated_by has FK constraint to auth.users.id, so we need the Supabase identity
+    let supabaseUserId: string | null = null
+    if (user.canonicalId) {
+      // Passport user - check for linked Supabase identity
+      const { authIdentityRepository } = createServerContainer()
+      const allIdentities = await authIdentityRepository.findByAppUserId(user.canonicalId)
+      const supabaseIdentity = allIdentities.find((id: any) => id.provider === 'supabase')
+      if (supabaseIdentity?.legacyAuthId) {
+        supabaseUserId = supabaseIdentity.legacyAuthId
+      }
+    } else {
+      // Supabase user - use user.id directly
+      supabaseUserId = user.id
+    }
+
     const updateData: any = {
-      updated_by: user.id,
+      updated_by: supabaseUserId, // null is safe — no FK violation
       ...(user.canonicalId ? { app_updated_by: user.canonicalId } : {}),
       updated_at: new Date().toISOString()
     }
@@ -563,12 +579,22 @@ export async function updateRequirement(
 
     const { requirementRepository } = createServerContainer()
     const updateInput: import('@/application/interfaces/RequirementRepository').UpdateRequirementInput = {
-      updatedBy: user.id,
-      appUpdatedBy: user.canonicalId,
+      updatedBy: supabaseUserId ?? user.id, // resolved Supabase user_id; fallback keeps type happy but won't FK-violate for Passport users with no linked Supabase identity
+      appUpdatedBy: user.canonicalId || user.id,
       status: requirement.status,
       category: requirement.category,
       requirement: requirement.requirement,
+      description: requirement.description,
       dueDate: requirement.due_date,
+      penalty: requirement.penalty,
+      penaltyBaseAmount: requirement.penalty_base_amount,
+      penaltyConfig: requirement.penalty_config,
+      possibleLegalAction: requirement.possible_legal_action,
+      isCritical: requirement.is_critical,
+      financialYear: requirement.financial_year,
+      complianceType: requirement.compliance_type,
+      yearType: (requirement as any).year_type,
+      requiredDocuments: requirement.required_documents,
     }
 
     // Pass additional fields if needed, or handle in repository
@@ -3195,6 +3221,137 @@ export async function getHiddenCompliances(
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
   }
 }
+/**
+ * Batched company switch — fetches ALL company-specific data in one server action call.
+ * Replaces 5 separate actions (details, directors, documents, hidden templates, hidden compliances)
+ * that each independently verify auth + access = 10 redundant DB roundtrips eliminated.
+ */
+export async function getCompanySwitchData(companyId: string): Promise<{
+  success: boolean
+  data?: {
+    company: {
+      name: string
+      type: string
+      incorporation_date: string
+      tax_id: string | null
+      registration_id: string | null
+      address: string | null
+      phone_number: string | null
+      industry_categories: string[]
+      industry: string | null
+      country_code: string | null
+    }
+    directors: Array<{
+      id: string
+      firstName: string
+      lastName: string
+      middleName: string
+      din?: string
+      designation?: string
+      dob?: string
+      pan?: string
+      email?: string
+      mobile?: string
+      verified: boolean
+    }>
+    documents: any[]
+    hiddenTemplates: string[]
+    hiddenComplianceIds: string[]
+  }
+  error?: string
+}> {
+  const startTime = performance.now()
+  try {
+    if (!validateCompanyId(companyId)) {
+      return { success: false, error: 'Invalid company ID format' }
+    }
+
+    // Single auth check
+    const user = await getCurrentUserOrNull()
+    if (!user) {
+      return { success: false, error: 'Unauthorized' }
+    }
+
+    // Single access check
+    const hasAccess = await canUserView(companyId)
+    if (!hasAccess) {
+      return { success: false, error: 'No access to this company' }
+    }
+
+    const { companyRepository, directorRepository, documentRepository } = createServerContainer()
+    const adminSupabase: any = createAdminClient()
+
+    // Fetch ALL data in parallel — single roundtrip for everything
+    const [companyDetails, directors, documents, templateExclusions, complianceExclusions] =
+      await Promise.all([
+        companyRepository.getDetailsById(companyId),
+        directorRepository.getByCompanyId(companyId),
+        documentRepository.getCompanyDocuments(companyId),
+        adminSupabase
+          .from('company_document_template_exclusions')
+          .select('document_name, folder_name')
+          .eq('company_id', companyId)
+          .then((r: any) => r.data || [])
+          .catch(() => []),
+        adminSupabase
+          .from('company_compliance_exclusions')
+          .select('requirement_id')
+          .eq('company_id', companyId)
+          .then((r: any) => (r.data || []).map((ex: any) => ex.requirement_id))
+          .catch(() => []),
+      ])
+
+    console.log(`[getCompanySwitchData] All data fetched in ${(performance.now() - startTime).toFixed(0)}ms`)
+
+    if (!companyDetails) {
+      return { success: false, error: 'Company not found' }
+    }
+
+    return {
+      success: true,
+      data: {
+        company: {
+          name: companyDetails.name,
+          type: companyDetails.type || '',
+          incorporation_date: companyDetails.incorporationDate || '',
+          tax_id: companyDetails.taxId,
+          registration_id: companyDetails.registrationId,
+          address: companyDetails.address,
+          phone_number: companyDetails.phoneNumber,
+          industry_categories: companyDetails.industryCategories || [],
+          industry: companyDetails.industry,
+          country_code: companyDetails.countryCode,
+        },
+        directors,
+        documents: documents.map(doc => ({
+          id: doc.id,
+          company_id: doc.companyId,
+          document_type: doc.documentType,
+          folder_name: doc.folderName,
+          file_path: doc.filePath,
+          file_name: doc.fileName,
+          created_at: doc.createdAt,
+          registration_date: doc.registrationDate || null,
+          expiry_date: doc.expiryDate || null,
+          period_type: doc.periodType || null,
+          period_financial_year: doc.periodFinancialYear || null,
+          period_key: doc.periodKey || null,
+          period_start: doc.periodStart || null,
+          period_end: doc.periodEnd || null,
+          requirement_id: doc.requirementId || null,
+        })),
+        hiddenTemplates: templateExclusions.map(
+          (t: any) => `${t.folder_name}:${t.document_name}`
+        ),
+        hiddenComplianceIds: complianceExclusions,
+      },
+    }
+  } catch (err) {
+    console.error('[getCompanySwitchData] Error:', err)
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+}
+
 export async function getDataRoomInitState(preferredCompanyId: string | null = null): Promise<{
   success: boolean
   data?: {

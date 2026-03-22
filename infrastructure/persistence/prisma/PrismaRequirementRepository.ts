@@ -195,6 +195,56 @@ export class PrismaRequirementRepository implements RequirementRepository {
       setClauses.push(`due_date = $${paramIndex++}::date`)
     }
 
+    if (input.description !== null && input.description !== undefined) {
+      params.push(input.description)
+      setClauses.push(`description = $${paramIndex++}::text`)
+    }
+
+    if (input.penalty !== null && input.penalty !== undefined) {
+      params.push(input.penalty)
+      setClauses.push(`penalty = $${paramIndex++}::text`)
+    }
+
+    if (input.penaltyBaseAmount !== undefined) {
+      params.push(input.penaltyBaseAmount)
+      setClauses.push(`penalty_base_amount = $${paramIndex++}::numeric`)
+    }
+
+    if (input.penaltyConfig !== undefined) {
+      params.push(JSON.stringify(input.penaltyConfig))
+      setClauses.push(`penalty_config = $${paramIndex++}::jsonb`)
+    }
+
+    if (input.possibleLegalAction !== null && input.possibleLegalAction !== undefined) {
+      params.push(input.possibleLegalAction)
+      setClauses.push(`possible_legal_action = $${paramIndex++}::text`)
+    }
+
+    if (input.isCritical !== null && input.isCritical !== undefined) {
+      params.push(input.isCritical)
+      setClauses.push(`is_critical = $${paramIndex++}::boolean`)
+    }
+
+    if (input.financialYear !== null && input.financialYear !== undefined) {
+      params.push(input.financialYear)
+      setClauses.push(`financial_year = $${paramIndex++}::text`)
+    }
+
+    if (input.complianceType !== null && input.complianceType !== undefined) {
+      params.push(input.complianceType)
+      setClauses.push(`compliance_type = $${paramIndex++}::text`)
+    }
+
+    if (input.yearType !== null && input.yearType !== undefined) {
+      params.push(input.yearType)
+      setClauses.push(`year_type = $${paramIndex++}::text`)
+    }
+
+    if (input.requiredDocuments !== null && input.requiredDocuments !== undefined) {
+      params.push(input.requiredDocuments)
+      setClauses.push(`required_documents = $${paramIndex++}::text[]`)
+    }
+
     // Add requirementId as last parameter
     params.push(requirementId)
 
@@ -218,7 +268,7 @@ export class PrismaRequirementRepository implements RequirementRepository {
       due_date: row.due_date ? (row.due_date instanceof Date ? row.due_date.toISOString().split('T')[0] : String(row.due_date)) : '',
       penalty: row.penalty ?? null,
       penalty_config: row.penalty_config ?? null,
-      penalty_base_amount: row.penalty_base_amount ?? null,
+      penalty_base_amount: row.penalty_base_amount != null ? Number(row.penalty_base_amount) : null,
       is_critical: row.is_critical ?? false,
       financial_year: row.financial_year ?? null,
       compliance_type: row.compliance_type ?? null,

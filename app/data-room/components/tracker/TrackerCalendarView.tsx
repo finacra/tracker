@@ -24,7 +24,7 @@ interface TrackerCalendarViewProps {
   selectedTrackerFY: string
   requirementsByDate: Map<string, Requirement[]>
   calculateDelay: (dueDate: string, status: string) => number | null
-  calculatePenalty: (penaltyStr: string | null, daysDelayed: number | null, penaltyBaseAmount?: number | null) => any
+  calculatePenalty: (penaltyStr: string | null, daysDelayed: number | null, penaltyBaseAmount?: number | null, penaltyConfig?: Record<string, unknown> | null) => any
   parseDateForCalendar: (dateStr: string | null | undefined) => Date | null
 }
 
@@ -146,7 +146,7 @@ export default function TrackerCalendarView({
                   const dueDate = req.dueDate || ''
                   const isOverdue = req.status === 'overdue' || (parseDateForCalendar(dueDate) && parseDateForCalendar(dueDate)! < new Date())
                   const daysDelayed = calculateDelay(dueDate, req.status)
-                  const calculatedPenalty = calculatePenalty(req.penalty || null, daysDelayed, req.penalty_base_amount)
+                  const calculatedPenalty = calculatePenalty(req.penalty || null, daysDelayed, req.penalty_base_amount, req.penalty_config)
 
                   return (
                     <div

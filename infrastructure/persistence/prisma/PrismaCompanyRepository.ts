@@ -12,7 +12,8 @@ export class PrismaCompanyRepository implements CompanyRepository {
     const row = await prisma.$queryRaw<any[]>(
       Prisma.sql`SELECT id, name, user_id, app_user_id, type, incorporation_date, tax_id, registration_id,
               industry, address, city, state, pin_code, phone_number, email, landline,
-              other_info, industry_categories, other_industry_category, ex_directors, country_code
+              other_info, industry_categories, other_industry_category, ex_directors, country_code,
+              nic_code, is_listed
        FROM companies WHERE id = ${companyId}::uuid`
     )
 
@@ -41,6 +42,8 @@ export class PrismaCompanyRepository implements CompanyRepository {
       otherIndustryCategory: data.other_industry_category ?? null,
       exDirectors: Array.isArray(data.ex_directors) ? data.ex_directors : [],
       countryCode: data.country_code ?? null,
+      nicCode: data.nic_code ?? null,
+      isListed: data.is_listed ?? null,
     }
   }
 
@@ -148,6 +151,8 @@ export class PrismaCompanyRepository implements CompanyRepository {
         country_code: input.countryCode || 'IN',
         region: input.region || null,
         ex_directors: input.exDirectors || [],
+        nic_code: input.nicCode || null,
+        is_listed: input.isListed ?? null,
       },
       select: { id: true, name: true, user_id: true },
     })
@@ -178,6 +183,8 @@ export class PrismaCompanyRepository implements CompanyRepository {
         landline: input.landline !== undefined ? input.landline : undefined,
         other_info: input.otherInfo !== undefined ? input.otherInfo : undefined,
         ex_directors: input.exDirectors || undefined,
+        nic_code: input.nicCode !== undefined ? input.nicCode : undefined,
+        is_listed: input.isListed !== undefined ? input.isListed : undefined,
       },
     })
   }
@@ -217,8 +224,8 @@ export class PrismaCompanyRepository implements CompanyRepository {
       SELECT id, name, user_id, app_user_id, type, incorporation_date, tax_id, registration_id,
              industry, address, city, state, pin_code, phone_number, email, landline,
              other_info, industry_categories, other_industry_category, ex_directors, country_code,
-             created_at
-      FROM companies 
+             nic_code, is_listed, created_at
+      FROM companies
       ORDER BY created_at DESC
     `
     return rows.map((data) => ({
@@ -243,6 +250,8 @@ export class PrismaCompanyRepository implements CompanyRepository {
       otherIndustryCategory: data.other_industry_category ?? null,
       exDirectors: Array.isArray(data.ex_directors) ? data.ex_directors : [],
       countryCode: data.country_code ?? null,
+      nicCode: data.nic_code ?? null,
+      isListed: data.is_listed ?? null,
       createdAt: data.created_at ? data.created_at.toISOString() : null,
     }))
   }

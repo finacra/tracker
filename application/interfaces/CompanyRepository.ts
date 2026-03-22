@@ -23,6 +23,8 @@ export interface CompanyDetailsRecord extends CompanyRecord {
   otherIndustryCategory: string | null
   exDirectors: string[]
   countryCode: string | null
+  nicCode: string | null
+  isListed: boolean | null
   createdAt?: string | null
 }
 
@@ -52,6 +54,8 @@ export interface CreateCompanyInput {
   countryCode?: string | null
   region?: string | null
   exDirectors?: string[] | null
+  nicCode?: string | null
+  isListed?: boolean | null
 }
 
 export interface UpdateCompanyInput {
@@ -70,6 +74,8 @@ export interface UpdateCompanyInput {
   landline?: string | null
   otherInfo?: string | null
   exDirectors?: string[] | null
+  nicCode?: string | null
+  isListed?: boolean | null
 }
 
 export interface CompanyRepository {

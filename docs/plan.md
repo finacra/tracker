@@ -9,22 +9,25 @@
 
 ## Executive Summary
 
-Phase 2 focuses on transforming Finacra from a compliance tracking platform into an AI-powered autonomous compliance and financial management system. This phase introduces **4 core AI agents** (MVP versions) and **3 firm-specific dashboards** to serve distinct customer segments: CA firms, VCs, and accelerators.
+Phase 2 focuses on transforming Finacra from a compliance tracking platform into an AI-powered autonomous compliance and financial management system. Based on the March 2026 meeting, this phase has two non-negotiable priorities: **(1) extensive testing and hardening of the compliance tracker and document vault**, and **(2) deploying the Compliance Sentinel and Document Intelligence agents before any other agent work begins** — including e‑invoicing. The e‑invoicing / filing agent follows only after Sentinel and Document Intelligence are stable. This phase also introduces **3 firm-specific dashboards** for CA firms, VCs, and accelerators.
 
-**Key Deliverables:**
-- ✅ 4 AI Agents (MVP): ComplianceBot, Filing Agent, Reconciliation Agent, Knowledge Bot
+**Key Deliverables (Updated After March 2026 Meeting):**
+- ✅ Core Risk & Document AI Agents (MVP): **Compliance Sentinel**, **Document Intelligence** — deployed first, ahead of all other agents
+- ✅ Foundation for Additional Agents (Filing / E‑Invoicing deferred until after Sentinel + Doc Intelligence are stable; Reconciliation, Knowledge to follow)
 - ✅ 3 Firm Dashboards: CA Firm Portal, VC Fund Dashboard, Accelerator Command Center
 - ✅ Core Infrastructure: Agent orchestration framework, portal integrations, data connectors
 
-**Realistic Scope:** We're building MVP versions that demonstrate autonomous capability while maintaining human oversight. Full-featured agents will be enhanced in Phase 3 based on user feedback.
+**Sequencing Mandate (March 2026 Meeting):** Compliance Sentinel and Document Intelligence agents are the **exclusive agent focus for Month 1**. The e‑invoicing / filing agent will not be built until Sentinel and Document Intelligence have been tested and stabilised. This order is non-negotiable for Phase 2.
+
+**Realistic Scope:** We're building MVP versions that demonstrate autonomous capability while maintaining human oversight. The **primary focus for all 3 months is testing, hardening, and operationalising the existing compliance tracker and document vault.** AI agents are layered on top progressively through dot releases. Full-featured agents (including advanced e‑invoicing and reconciliation) will be enhanced in Phase 3 based on user feedback.
 
 ---
 
 ## Development Timeline
 
-### Month 1: Foundation & Core Agent (April 1 - April 30, 2026)
+### Month 1: Foundation & Core Sentinel & Doc Intelligence (April 1 - April 30, 2026)
 
-**Focus:** Build agent infrastructure + ComplianceBot MVP
+**Focus:** Build agent infrastructure + Compliance Sentinel & Document Intelligence (MVP)
 
 #### Week 1-2: Infrastructure Setup
 - **Agent Orchestration Framework**
@@ -37,22 +40,20 @@ Phase 2 focuses on transforming Finacra from a compliance tracking platform into
   - Real-time event streaming setup (Kafka/PubSub)
   - Portal integration framework (GSTN, MCA21 API connectors)
 
-#### Week 3-4: ComplianceBot MVP
-- **Compliance Calendar Engine**
-  - Auto-generate compliance calendar from company profile
+#### Week 3-4: Compliance Sentinel & Document Intelligence MVP
+- **Compliance Sentinel (Risk & Alert Engine)**
+  - Auto-generate and continuously maintain the compliance calendar from company profile
   - Track 50+ compliance items (GST, TDS, MCA, PT, PF)
   - Deadline calculation based on incorporation date, business type
-  - Auto-update calendar when regulatory changes detected
-- **Regulatory Change Monitor**
-  - Scrape CBIC, MCA21 notifications (basic version)
-  - Alert system for deadline shifts
-  - Manual trigger for regulatory updates (automated scraping in Phase 3)
-- **Notice Classification (Basic)**
-  - Classify uploaded notices (GST, IT, MCA)
-  - Map to applicable compliance requirements
-  - Draft basic response templates (LLM-powered)
+  - Auto-update calendar when regulatory changes or notifications are detected
+  - Risk scoring and alerting for overdue / at-risk items
+- **Document Intelligence**
+  - Intelligent ingestion of compliance and financial documents into the document vault
+  - Basic extraction of key fields (entity, period, amounts, sections)
+  - Classification of uploaded notices (GST, IT, MCA) and mapping to applicable compliance requirements
+  - Draft basic response templates (LLM-powered) tied back to stored documents
 
-**Deliverable:** ComplianceBot MVP operational, handling compliance calendar and basic notice classification
+**Deliverable:** Compliance Sentinel + Document Intelligence MVP operational, deeply integrated with the compliance tracker and document vault
 
 ---
 
@@ -166,18 +167,19 @@ Phase 2 focuses on transforming Finacra from a compliance tracking platform into
 
 ## Agent Feature Scope (MVP vs Full)
 
-### ComplianceBot MVP (Month 1)
-✅ Auto-generate compliance calendar  
+### Compliance Sentinel & Document Intelligence MVP (Month 1)
+✅ Auto-generate and maintain compliance calendar  
 ✅ Track 50+ compliance items  
-✅ Deadline alerts  
+✅ Deadline alerts + risk scoring for overdue / at-risk items  
 ✅ Basic regulatory change detection  
-✅ Notice classification  
-✅ Basic response templates  
+✅ Notice and document classification (GST, IT, MCA)  
+✅ Basic response templates tied to documents in the vault  
 ❌ Full regulatory scraping (Phase 3)  
 ❌ Advanced notice response generation (Phase 3)  
-❌ Cross-client optimization (Phase 3)
+❌ Cross-client optimisation (Phase 3)  
+❌ Advanced document understanding (multi-format, multi-language) (Phase 3)
 
-### Filing Agent MVP (Month 2)
+### Filing Agent / E‑Invoicing Agent MVP (Month 2+)
 ✅ GST GSTR-1 & GSTR-3B filing  
 ✅ Pre-fill from synced data  
 ✅ Validation engine  
@@ -337,6 +339,174 @@ Phase 2 focuses on transforming Finacra from a compliance tracking platform into
 2. **Integration Complexity**
    - Mitigation: Prioritize GST (most used), defer others
    - Phased approach: One portal at a time
+
+---
+
+## Versioned Product Roadmap (Dot Releases for v1)
+
+Over the next 3 months (April 1, 2026 – July 1, 2026), the **primary objective is testing and hardening the compliance tracker and document vault**. AI agents are introduced progressively through dot releases — each release is small, independently testable, and gated on the previous release being stable.
+
+> **Sequencing rule:** No agent release proceeds until the preceding agent layer has completed internal testing. E‑invoicing / filing foundations do not start until v1.3.0 (Sentinel + Doc Intelligence) is confirmed stable.
+
+---
+
+### v1.0.0 – Foundation (Target: April 1–7, 2026)
+**Theme:** Stable baseline — no new features, just a hardened, deployable product
+
+**Compliance Tracker**
+- Complete manual compliance calendar (all 50+ items configured)
+- Deadline reminder notifications (email + in-app)
+- Status update flows (pending → filed → overdue)
+- Regression test suite covering core tracker flows
+
+**Document Vault**
+- Upload, search, and tagging working reliably across document types
+- Folder structure and version history stable
+- Bulk upload and download tested
+
+**Infrastructure**
+- AgentOS core scaffolded (task queue, retry logic, error handling)
+- Audit logging live for all user actions
+- Human-in-the-loop approval gate framework ready (not yet wired to any agent)
+- Monitoring dashboard for system health
+
+**Testing Goals**
+- 100% of core tracker + vault user flows covered by integration tests
+- Load test: 50 concurrent users, <2s response time
+- Zero P0 bugs open at release
+
+---
+
+### v1.1.0 – Compliance Sentinel Alpha (Target: April 14–21, 2026)
+**Theme:** Sentinel integrated with the compliance tracker — internal testing only
+
+**Compliance Sentinel**
+- Auto-generate compliance calendar from company profile (incorporation date, business type, GST registration)
+- Track 50+ compliance items: GST, TDS, MCA, PT, PF
+- Deadline calculation engine (statutory dates + grace periods)
+- Risk scoring: overdue, at-risk, upcoming (7-day, 30-day buckets)
+- Rule-based alerts: email + in-app notifications triggered by risk score changes
+- Sentinel dashboard panel added to compliance tracker UI
+
+**Testing & Rollout**
+- Internal-only testing: 3–5 pilot client profiles (synthetic data)
+- Manual QA checklist: calendar accuracy for 10+ company profiles
+- No external users; feedback loop internal only
+
+**Exit Criteria for v1.1.0**
+- Calendar accuracy ≥95% across test profiles
+- Zero missed deadlines on test set
+- Alert delivery latency <5 min
+
+---
+
+### v1.2.0 – Document Intelligence Alpha (Target: May 1–10, 2026)
+**Theme:** Intelligent document ingestion into the vault — closed beta with CA firms
+
+**Document Intelligence**
+- Intelligent ingestion pipeline: documents uploaded to vault are auto-processed
+- Key field extraction: entity name, period, amounts, sections, notice reference numbers
+- Notice/document classification: GST, Income Tax, MCA, Others
+- Mapping classified notices to relevant compliance tracker items
+- Draft response template generation (LLM-powered, tied to extracted fields + vault documents)
+- Confidence scoring on all extractions (low-confidence items flagged for human review)
+
+**Testing & Rollout**
+- Closed beta: 5–10 CA firms (invited)
+- Test set: 100+ real notices/documents across GST, IT, MCA categories
+- Accuracy benchmarking: extraction accuracy, classification accuracy
+- Feedback form embedded in UI for beta users to flag errors
+
+**Exit Criteria for v1.2.0**
+- Classification accuracy ≥90% across test document set
+- Key field extraction accuracy ≥85%
+- Response template accepted without major edits ≥70% of the time
+
+---
+
+### v1.3.0 – Sentinel + Document Intelligence Beta (Target: May 20 – June 5, 2026)
+**Theme:** Combined workflows — expanded beta, performance tuning
+
+**Combined Workflows**
+- Sentinel risk alerts now link directly to relevant documents in the vault
+- Document Intelligence notices auto-update compliance tracker item status
+- Draft notice responses surface within the tracker (not just the vault)
+- Unified timeline view: compliance events + document events in one feed
+- Bulk notice processing for CA firms managing multiple clients
+
+**Hardening**
+- Performance tuning based on closed beta feedback (v1.2.0)
+- Accuracy improvements to extraction and classification models
+- Edge case handling: multi-period notices, amended returns, cross-entity documents
+- Regression suite expanded to cover Sentinel ↔ Doc Intelligence interaction paths
+
+**Testing & Rollout**
+- Expanded beta: 20–30 CA firms
+- A/B test: manual workflow vs. Sentinel-assisted workflow (time-to-completion metric)
+- Weekly feedback review cycle
+
+**Exit Criteria for v1.3.0**
+- No P0/P1 bugs open
+- Sentinel + Doc Intelligence integrated flows fully regression-tested
+- Beta NPS ≥40
+
+---
+
+### v1.4.0 – Filing / E‑Invoicing Foundations (Target: June 10–20, 2026)
+**Theme:** First filing automation — gated on v1.3.0 stability
+
+> **Gate:** v1.4.0 work does not begin until v1.3.0 exit criteria are met and signed off.
+
+**Filing Agent (GST only)**
+- OAuth 2.0 authentication with GSTN portal
+- Pre-fill GSTR-1 and GSTR-3B from synced compliance tracker data
+- Validation engine: GSTIN format, HSN codes, amount cross-checks
+- CA approval gate: one-click review + submit workflow
+- ARN / acknowledgment storage in document vault
+- Filing queue: multi-client view sorted by deadline urgency
+
+**E‑Invoicing Groundwork**
+- Schema handling for e-invoice JSON (IRN generation flow)
+- Basic validation: mandatory fields, GSTIN, invoice date checks
+- Not yet live — groundwork only, no production submissions
+
+**Testing & Rollout**
+- End-to-end testing with human-in-the-loop approvals (no automated submissions yet)
+- Sandbox GSTN environment used exclusively
+- Internal QA + 3–5 CA firm pilot users
+
+**Exit Criteria for v1.4.0**
+- GSTR-1 and GSTR-3B pre-fill accuracy ≥99%
+- Validation engine catches all known error codes
+- CA approval flow tested end-to-end with zero data loss
+
+---
+
+### v1.5.0 – v1 Stabilisation & Hardening (Target: June 25 – July 1, 2026)
+**Theme:** Polish, test coverage, and Phase 3 readiness
+
+**Stabilisation**
+- All P0 and P1 bugs resolved across compliance tracker, document vault, Sentinel, Doc Intelligence, and Filing Agent
+- Performance optimisation: query tuning, caching, background job efficiency
+- UX polish: onboarding flows, empty states, error messages, loading states
+- Accessibility pass on core screens
+
+**Test Coverage**
+- Full regression suite: compliance tracker + document vault (target: 90%+ coverage)
+- Integration tests for all agent-to-tracker and agent-to-vault interactions
+- Load test: 200 concurrent users, <2s p95 response time
+- Security review: auth flows, document access controls, API key handling
+
+**Documentation & Readiness**
+- Internal runbooks for each agent and integration
+- User-facing help docs for CA firm beta users
+- API documentation for portal integrations
+- Phase 3 backlog groomed and prioritised (reconciliation, knowledge bot, advanced e‑invoicing)
+
+**Exit Criteria for v1.5.0 (Phase 2 Completion)**
+- Zero P0 bugs, <5 P1 bugs open
+- All regression suites passing
+- Phase 3 backlog reviewed and signed off
 
 ---
 

@@ -95,7 +95,7 @@ interface RequirementFormModalProps {
     currency: { symbol: string }
   }
   editingRequirement: { id: string } | null
-  setRegulatoryRequirements: (requirements: any[]) => void
+  setRegulatoryRequirements: React.Dispatch<React.SetStateAction<any[]>>
 }
 
 export default function RequirementFormModal({

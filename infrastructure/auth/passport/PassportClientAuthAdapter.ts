@@ -54,7 +54,7 @@ export class PassportClientAuthAdapter implements ClientAuthAdapter {
         const session = await this.getSession()
 
         // Only fire callback if session state changed
-        const sessionChanged = 
+        const sessionChanged =
           (session?.userId !== lastSession?.userId) ||
           (session === null && lastSession !== null) ||
           (session !== null && lastSession === null)
@@ -73,8 +73,17 @@ export class PassportClientAuthAdapter implements ClientAuthAdapter {
     // Initial check with a small delay to avoid race conditions during page load
     const timeoutId = setTimeout(checkSession, 500)
 
-    // Poll every 5 seconds
-    intervalId = setInterval(checkSession, 5000)
+    // Poll every 5 minutes (down from 5 seconds) — session is a 7-day JWT cookie,
+    // no need to check frequently. Also check on tab focus for instant responsiveness.
+    intervalId = setInterval(checkSession, 5 * 60 * 1000)
+
+    // Check session when user returns to the tab (covers logout in another tab)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkSession()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return {
       unsubscribe: () => {
@@ -83,6 +92,7 @@ export class PassportClientAuthAdapter implements ClientAuthAdapter {
           clearInterval(intervalId)
           intervalId = null
         }
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
       },
     }
   }
