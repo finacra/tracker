@@ -212,6 +212,7 @@ function DataRoomPageInner() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingCompanies, setIsLoadingCompanies] = useState(true);
   const [isDataRoomInitLoading, setIsDataRoomInitLoading] = useState(true);
+  const [isCompanySwitching, setIsCompanySwitching] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState("Setting up your Data Room...");
   
@@ -913,6 +914,7 @@ function DataRoomPageInner() {
       // Pre-set refs IMMEDIATELY to prevent individual useEffects from firing
       // (they check these refs and skip if data is already "fetched" for this company)
       companySwitchInProgressRef.current = true;
+      setIsCompanySwitching(true);
       detailsFetchedRef.current = company.id;
       vaultDocumentsFetchedRef.current = company.id;
 
@@ -923,8 +925,6 @@ function DataRoomPageInner() {
       router.replace(`/data-room?${params.toString()}`, { scroll: false });
       // Reset director selection when company changes
       setSelectedDirectorId(null);
-      // Clear requirements immediately (fetched separately via useRequirements hook)
-      setRegulatoryRequirements([]);
 
       // Fetch ALL company-specific data in a single server action
       // This replaces 5 separate useEffect-driven fetches that each did their own auth+access check
@@ -983,6 +983,7 @@ function DataRoomPageInner() {
         vaultDocumentsFetchedRef.current = null;
       } finally {
         companySwitchInProgressRef.current = false;
+        setIsCompanySwitching(false);
       }
       templatesFetchedRef.current.clear();
     },
@@ -4197,7 +4198,7 @@ function DataRoomPageInner() {
             }
           >
             <OverviewTab
-              isLoading={isLoading}
+              isLoading={isLoading || isCompanySwitching}
               entityDetails={entityDetails}
               selectedDirectorId={selectedDirectorId}
               setSelectedDirectorId={setSelectedDirectorId}
@@ -4601,7 +4602,7 @@ function DataRoomPageInner() {
           <TrackerContextProvider
             regulatoryRequirements={regulatoryRequirements}
             setRegulatoryRequirements={setRegulatoryRequirements}
-            isLoadingRequirements={isLoadingRequirements}
+            isLoadingRequirements={isLoadingRequirements || isCompanySwitching}
             refreshRequirements={refreshRequirements}
             hiddenCompliances={hiddenCompliances}
             setHiddenCompliances={setHiddenCompliances}
@@ -4676,7 +4677,7 @@ function DataRoomPageInner() {
             <DocumentsTab
               vaultDocuments={vaultDocuments}
               setVaultDocuments={setVaultDocuments}
-              isLoadingVaultDocuments={isLoadingVaultDocuments}
+              isLoadingVaultDocuments={isLoadingVaultDocuments || isCompanySwitching}
               setIsLoadingVaultDocuments={setIsLoadingVaultDocuments}
               documentTemplates={documentTemplates}
               setDocumentTemplates={setDocumentTemplates}
