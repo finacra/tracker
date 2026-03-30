@@ -72,6 +72,16 @@ function ManageCompanyPageInner() {
     other: '',
     industryCategories: [] as string[],
     otherIndustryCategory: '',
+    // Compliance intelligence fields
+    employeeCount: '',
+    annualTurnover: '',
+    isGstRegistered: false,
+    gstNumber: '',
+    netWorth: '',
+    isMsme: '',
+    msmeCategory: '',
+    hasImportsExports: false,
+    isStartupDpiit: false,
   })
 
   useEffect(() => {
@@ -462,6 +472,145 @@ function ManageCompanyPageInner() {
                 ))}
               </div>
             </div>
+
+            {/* ── Compliance Profile (for Rules Engine) ── */}
+            {countryCode === 'IN' && (
+              <div className="border border-gray-700/50 rounded-xl p-5 bg-gray-900/30 space-y-5">
+                <div>
+                  <h4 className="text-white font-medium text-sm mb-1">Compliance Profile</h4>
+                  <p className="text-gray-500 text-xs">These fields help determine which regulatory compliances apply to your company. The more you fill, the more accurate the compliance tracker becomes.</p>
+                </div>
+
+                {/* Row 1: Employee Count + Annual Turnover */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">Employee Count</label>
+                    <input
+                      type="number"
+                      name="employeeCount"
+                      value={formData.employeeCount}
+                      onChange={handleInputChange}
+                      placeholder="e.g. 25"
+                      min="0"
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                    />
+                    <p className="text-gray-600 text-[10px] mt-1">Determines PF (20+), ESI (10+), POSH (10+), Gratuity (10+)</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">Annual Turnover (in Lakhs ₹)</label>
+                    <input
+                      type="number"
+                      name="annualTurnover"
+                      value={formData.annualTurnover}
+                      onChange={handleInputChange}
+                      placeholder="e.g. 500 for ₹5 Crore"
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                    />
+                    <p className="text-gray-600 text-[10px] mt-1">Determines Tax Audit (100L+), E-Invoicing (500L+), GST Audit (500L+)</p>
+                  </div>
+                </div>
+
+                {/* Row 2: Net Worth + GST */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">Net Worth (in Crores ₹)</label>
+                    <input
+                      type="number"
+                      name="netWorth"
+                      value={formData.netWorth}
+                      onChange={handleInputChange}
+                      placeholder="e.g. 10"
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                    />
+                    <p className="text-gray-600 text-[10px] mt-1">Determines CSR (500Cr+), CARO thresholds</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">GSTIN</label>
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={formData.isGstRegistered}
+                          onChange={(e) => setFormData(prev => ({ ...prev, isGstRegistered: e.target.checked, gstNumber: e.target.checked ? prev.gstNumber : '' }))}
+                          className="w-4 h-4 text-blue-500 bg-gray-800 border-gray-600 rounded focus:ring-gray-500"
+                        />
+                        <span className="text-gray-400 text-xs">GST Registered</span>
+                      </label>
+                      {formData.isGstRegistered && (
+                        <input
+                          type="text"
+                          name="gstNumber"
+                          value={formData.gstNumber}
+                          onChange={handleInputChange}
+                          placeholder="22AAAAA0000A1Z5"
+                          maxLength={15}
+                          className="flex-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 3: MSME + Category */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">MSME Status</label>
+                    <select
+                      name="isMsme"
+                      value={formData.isMsme}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                    >
+                      <option value="">Not sure / Not applicable</option>
+                      <option value="yes">Yes — MSME Registered</option>
+                      <option value="no">No</option>
+                    </select>
+                  </div>
+                  {formData.isMsme === 'yes' && (
+                    <div>
+                      <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">MSME Category</label>
+                      <select
+                        name="msmeCategory"
+                        value={formData.msmeCategory}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                      >
+                        <option value="">Select category</option>
+                        <option value="micro">Micro</option>
+                        <option value="small">Small</option>
+                        <option value="medium">Medium</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                {/* Row 4: Boolean flags */}
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-2 p-3 bg-gray-900 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={formData.hasImportsExports}
+                      onChange={(e) => setFormData(prev => ({ ...prev, hasImportsExports: e.target.checked }))}
+                      className="w-4 h-4 text-blue-500 bg-gray-800 border-gray-600 rounded focus:ring-gray-500"
+                    />
+                    <span className="text-gray-300 text-sm font-light">Has Imports / Exports</span>
+                  </label>
+                  <label className="flex items-center gap-2 p-3 bg-gray-900 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={formData.isStartupDpiit}
+                      onChange={(e) => setFormData(prev => ({ ...prev, isStartupDpiit: e.target.checked }))}
+                      className="w-4 h-4 text-blue-500 bg-gray-800 border-gray-600 rounded focus:ring-gray-500"
+                    />
+                    <span className="text-gray-300 text-sm font-light">DPIIT-Recognized Startup</span>
+                  </label>
+                </div>
+              </div>
+            )}
 
             {/* Directors Section */}
             <div>

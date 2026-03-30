@@ -2,6 +2,7 @@
 name: Comprehensive Performance Optimization
 overview: ""
 todos: []
+isProject: false
 ---
 
 # Comprehensive Performance Optimization Plan
@@ -93,6 +94,8 @@ flowchart TD
     ParallelFetch --> Done[Data Room Loaded]
     Redirect --> Done
 ```
+
+
 
 ## Implementation Plan
 
@@ -234,3 +237,5 @@ hasUserSub
 })
 
 // If NO active subscription, redirect immediately
+```
+

@@ -406,29 +406,26 @@ export default function ReportsTab({
     const doc = new jsPDF()
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
-    const margin = 15
+    const margin = 20
     const contentWidth = pageWidth - 2 * margin
     let yPos = margin
-    const lineHeight = 7
-    const sectionSpacing = 12
+    const lineHeight = 6
+    const sectionGap = 10
 
+    // Color palette
+    const navy = [20, 40, 72]
+    const darkText = [33, 33, 33]
+    const midGray = [100, 100, 100]
+    const lightBorder = [200, 200, 200]
+    const accentRed = [180, 40, 40]
+    const bgLight = [248, 248, 248]
 
-    // Colors (grayscale for PDF)
-    const primaryColor = [30, 58, 95] // Navy (McKinsey/EY style)
-    const darkGray = [44, 44, 44]
-    const lightGray = [210, 210, 210]
-    const textGray = [90, 90, 90]
-    const redColor = [198, 40, 40] // Muted red for highlights only
-    const accentBlue = [112, 160, 220] // Light accent for cover accents (subtle)
+    // Footer reservation
+    const footerY = pageHeight - 10
+    const maxContentY = footerY - 8
 
-
-    // Helper function to add new page if needed
-    // Reserve space for footer (20px from bottom to prevent overlap)
-    const footerHeight = 20
-    const footerY = pageHeight - 12
-    const maxContentY = footerY - 5 // Content must stop 5px before footer
-    const checkNewPage = (requiredSpace: number) => {
-      if (yPos + requiredSpace > maxContentY) {
+    const checkNewPage = (space: number) => {
+      if (yPos + space > maxContentY) {
         doc.addPage()
         yPos = margin
         return true
@@ -436,906 +433,605 @@ export default function ReportsTab({
       return false
     }
 
-
-    // Helper to split long text
     const splitText = (text: string, maxWidth: number, fontSize: number = 10): string[] => {
       doc.setFontSize(fontSize)
       const words = text.split(' ')
       const lines: string[] = []
-      let currentLine = ''
-
-
-      words.forEach((word: string) => {
-        const testLine = currentLine ? `${currentLine} ${word}` : word
-        const textWidth = doc.getTextWidth(testLine)
-        if (textWidth > maxWidth && currentLine) {
-          lines.push(currentLine)
-          currentLine = word
+      let cur = ''
+      words.forEach((w: string) => {
+        const test = cur ? `${cur} ${w}` : w
+        if (doc.getTextWidth(test) > maxWidth && cur) {
+          lines.push(cur)
+          cur = w
         } else {
-          currentLine = testLine
+          cur = test
         }
       })
-      if (currentLine) {
-        lines.push(currentLine)
-      }
+      if (cur) lines.push(cur)
       return lines
     }
 
+    // Helper: draw a thin section heading line
+    const drawSectionHeader = (title: string) => {
+      checkNewPage(20)
+      doc.setDrawColor(navy[0], navy[1], navy[2])
+      doc.setLineWidth(0.8)
+      doc.line(margin, yPos, pageWidth - margin, yPos)
+      yPos += 6
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(13)
+      doc.setTextColor(navy[0], navy[1], navy[2])
+      doc.text(title, margin, yPos)
+      yPos += 8
+      doc.setTextColor(darkText[0], darkText[1], darkText[2])
+      doc.setFont('helvetica', 'normal')
+    }
 
-    // Cover page (modern, minimalist — keep content, refresh layout)
+    // ── COVER PAGE ──
     const coverDate = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
     const companyName = currentCompany?.name || 'Company'
 
-
-    // White background
+    // White bg
     doc.setFillColor(255, 255, 255)
     doc.rect(0, 0, pageWidth, pageHeight, 'F')
 
+    // Top navy bar
+    doc.setFillColor(navy[0], navy[1], navy[2])
+    doc.rect(0, 0, pageWidth, 6, 'F')
 
-    // Diagonal accents (top-left + bottom-right) inspired by modern report covers
-    // Use thick diagonal lines to avoid relying on polygon APIs.
-    doc.setLineCap(2)
+    // Left accent strip
+    doc.setFillColor(navy[0], navy[1], navy[2])
+    doc.rect(0, 0, 4, pageHeight, 'F')
 
-
-    // Top-left main band
-    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2])
-    doc.setLineWidth(34)
-    doc.line(-40, 40, pageWidth * 0.58, -60)
-
-
-    // Top-left accent strokes
-    doc.setDrawColor(210, 230, 255)
-    doc.setLineWidth(10)
-    doc.line(-38, 55, pageWidth * 0.56, -45)
-    doc.setDrawColor(accentBlue[0], accentBlue[1], accentBlue[2])
-    doc.setLineWidth(6)
-    doc.line(-35, 68, pageWidth * 0.54, -32)
-
-
-    // Bottom-right band
-    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2])
-    doc.setLineWidth(42)
-    doc.line(pageWidth * 0.52, pageHeight + 70, pageWidth + 60, pageHeight * 0.62)
-
-
-    // Bottom-right accent strokes
-    doc.setDrawColor(210, 230, 255)
-    doc.setLineWidth(12)
-    doc.line(pageWidth * 0.56, pageHeight + 62, pageWidth + 52, pageHeight * 0.66)
-    doc.setDrawColor(accentBlue[0], accentBlue[1], accentBlue[2])
-    doc.setLineWidth(7)
-    doc.line(pageWidth * 0.60, pageHeight + 50, pageWidth + 44, pageHeight * 0.70)
-
-
-    // Content block
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(12)
-    doc.text('COMPLIANCE REPORT', margin, 45, { maxWidth: contentWidth })
-
-
-    // Company name (large, wrapped)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(40)
-    const companyLines = splitText(companyName.toUpperCase(), contentWidth, 40)
-    let coverY = 85
-    companyLines.slice(0, 3).forEach((line: string, idx: number) => {
-      doc.text(line, margin, coverY + idx * 18, { maxWidth: contentWidth })
-    })
-
-
-    // Byline
-    coverY += Math.min(companyLines.length, 3) * 18 + 10
-    doc.setFont('helvetica', 'italic')
-    doc.setFontSize(14)
-    doc.text('BY FINACRA AI', margin, coverY, { maxWidth: contentWidth })
-
-
-    // Footer details (bottom-left)
-    const footerBlockY = pageHeight - 70
+    // Subtitle
     doc.setFont('helvetica', 'normal')
+    doc.setFontSize(11)
+    doc.setTextColor(midGray[0], midGray[1], midGray[2])
+    doc.text('COMPLIANCE REPORT', margin + 6, 40)
+
+    // Company name
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(32)
+    doc.setTextColor(navy[0], navy[1], navy[2])
+    const coverCompanyLines = splitText(companyName, contentWidth - 10, 32)
+    let cY = 60
+    coverCompanyLines.slice(0, 3).forEach((line: string, i: number) => {
+      doc.text(line, margin + 6, cY + i * 14)
+    })
+    cY += Math.min(coverCompanyLines.length, 3) * 14 + 8
+
+    // Thin line under company
+    doc.setDrawColor(lightBorder[0], lightBorder[1], lightBorder[2])
+    doc.setLineWidth(0.5)
+    doc.line(margin + 6, cY, pageWidth - margin, cY)
+    cY += 10
+
+    // By line
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(11)
+    doc.setTextColor(midGray[0], midGray[1], midGray[2])
+    doc.text('Prepared by Finacra AI', margin + 6, cY)
+    cY += 7
     doc.setFontSize(10)
-    doc.setTextColor(textGray[0], textGray[1], textGray[2])
-    doc.text('PREPARED FOR MANAGEMENT REVIEW', margin, footerBlockY, { maxWidth: contentWidth })
+    doc.text(coverDate, margin + 6, cY)
+
+    // Bottom block
+    const bY = pageHeight - 55
     doc.setFontSize(9)
-    doc.text(`Date: ${coverDate}`, margin, footerBlockY + 10, { maxWidth: contentWidth })
-    doc.text(`Scope: Overdue & pending (past due) compliances for the selected company.`, margin, footerBlockY + 20, { maxWidth: contentWidth })
-    doc.text('Confidential — for internal use only.', margin, footerBlockY + 32, { maxWidth: contentWidth })
-    doc.text(`Generated: ${coverDate}`, margin, footerBlockY + 44, { maxWidth: contentWidth })
+    doc.setTextColor(midGray[0], midGray[1], midGray[2])
+    doc.text('Scope: Overdue & pending compliances', margin + 6, bY)
+    doc.text('Confidential — for internal use only', margin + 6, bY + 10)
 
+    // Bottom navy bar
+    doc.setFillColor(navy[0], navy[1], navy[2])
+    doc.rect(0, pageHeight - 6, pageWidth, 6, 'F')
 
-    // Page break to main content
+    // ── PAGE 2: EXECUTIVE SUMMARY ──
     doc.addPage()
     yPos = margin
 
+    // Page header bar
+    doc.setFillColor(navy[0], navy[1], navy[2])
+    doc.rect(0, 0, pageWidth, 3, 'F')
+    yPos = 15
 
-    // Header
-    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
-    doc.rect(0, 0, pageWidth, 50, 'F')
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(22)
+    // Title
     doc.setFont('helvetica', 'bold')
-    doc.text('Compliance Report', margin, 30, { maxWidth: contentWidth })
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'normal')
-    const generatedText = `Generated: ${new Date().toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })}`
-    doc.text(generatedText, margin, 42, { maxWidth: contentWidth * 0.6 })
-    if (currentCompany) {
-      const companyText = `Company: ${currentCompany.name}`
-      const companyLines = splitText(companyText, contentWidth * 0.4, 9)
-      companyLines.forEach((line: string, idx: number) => {
-        doc.text(line, pageWidth - margin, 42 - (companyLines.length - 1 - idx) * 4, { align: 'right', maxWidth: contentWidth * 0.4 })
-      })
-    }
+    doc.setFontSize(18)
+    doc.setTextColor(navy[0], navy[1], navy[2])
+    doc.text('Executive Summary', margin, yPos)
+    yPos += 4
+    doc.setDrawColor(navy[0], navy[1], navy[2])
+    doc.setLineWidth(0.8)
+    doc.line(margin, yPos, margin + 55, yPos)
+    yPos += 10
 
-
-    yPos = 60
-
-
-    // Executive Summary Section
-    doc.setFillColor(darkGray[0], darkGray[1], darkGray[2])
-    doc.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(14)
-    doc.setFont('helvetica', 'bold')
-    doc.text('Executive Summary', margin + 3, yPos + 6)
-    yPos += 15
-
-
-    doc.setTextColor(0, 0, 0)
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
-
-
-    // Key Metrics Grid - Better spacing
-    const metricsPerRow = 2
-    const metricWidth = (contentWidth - 20) / metricsPerRow // Leave 20px gap between metrics
-    const metrics = [
-      { label: 'Total Compliances', value: totalCompliances.toString() },
-      { label: 'Completed', value: completed.toString() },
-      { label: 'Overdue', value: overdue.toString() },
-      { label: 'Pending', value: pending.toString() }
+    // Metrics boxes (2x2 grid)
+    const boxW = (contentWidth - 8) / 2
+    const boxH = 22
+    const metricsData = [
+      { label: 'Total Compliances', value: totalCompliances.toString(), color: navy },
+      { label: 'Completed', value: `${completed}`, sub: totalCompliances > 0 ? `${Math.round((completed / totalCompliances) * 100)}%` : '', color: [34, 120, 60] },
+      { label: 'Overdue', value: `${overdue}`, sub: totalCompliances > 0 ? `${Math.round((overdue / totalCompliances) * 100)}%` : '', color: accentRed },
+      { label: 'Pending', value: `${pending}`, color: [180, 130, 20] },
     ]
 
+    metricsData.forEach((m: any, i: number) => {
+      const col = i % 2
+      const row = Math.floor(i / 2)
+      const bx = margin + col * (boxW + 8)
+      const by = yPos + row * (boxH + 6)
 
-    const startY = yPos
-    metrics.forEach((metric: { label: string; value: string }, index: number) => {
-      const row = Math.floor(index / metricsPerRow)
-      const col = index % metricsPerRow
-      const xPos = margin + (col * metricWidth) + (col * 20)
-      const currentY = startY + (row * 25)
+      // Box background
+      doc.setFillColor(bgLight[0], bgLight[1], bgLight[2])
+      doc.rect(bx, by, boxW, boxH, 'F')
+      // Left color accent
+      doc.setFillColor(m.color[0], m.color[1], m.color[2])
+      doc.rect(bx, by, 2.5, boxH, 'F')
 
+      // Value
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(18)
+      doc.setTextColor(m.color[0], m.color[1], m.color[2])
+      doc.text(m.value, bx + 8, by + 12)
 
-      if (row > 0 && col === 0) {
-        checkNewPage(30)
+      // Sub text (percentage)
+      if (m.sub) {
+        const valWidth = doc.getTextWidth(m.value)
+        doc.setFontSize(9)
+        doc.setTextColor(midGray[0], midGray[1], midGray[2])
+        doc.text(m.sub, bx + 8 + valWidth + 3, by + 12)
       }
 
-
-      // Value (large number)
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(20)
-      doc.setTextColor(0, 0, 0)
-      doc.text(metric.value, xPos, currentY, { maxWidth: metricWidth - 10 })
-
-
-      // Label (small text below)
+      // Label
       doc.setFont('helvetica', 'normal')
-      doc.setFontSize(9)
-      doc.setTextColor(textGray[0], textGray[1], textGray[2])
-      doc.text(metric.label, xPos, currentY + 8, { maxWidth: metricWidth - 10 })
-      doc.setTextColor(0, 0, 0)
+      doc.setFontSize(8)
+      doc.setTextColor(midGray[0], midGray[1], midGray[2])
+      doc.text(m.label, bx + 8, by + 18)
     })
 
-
-    yPos = startY + (Math.ceil(metrics.length / metricsPerRow) * 25) + 5
-    checkNewPage(20)
-
+    yPos += Math.ceil(metricsData.length / 2) * (boxH + 6) + 4
 
     // Compliance Score
     if (totalCompliances > 0) {
-      const score = Math.max(0, Math.min(100, Math.round((completed / totalCompliances) * 100 - (overdue / totalCompliances) * 30)))
+      checkNewPage(18)
+      const score = complianceScore
+      doc.setFillColor(bgLight[0], bgLight[1], bgLight[2])
+      doc.rect(margin, yPos, contentWidth, 16, 'F')
+      doc.setFillColor(navy[0], navy[1], navy[2])
+      doc.rect(margin, yPos, 2.5, 16, 'F')
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(9)
+      doc.setTextColor(midGray[0], midGray[1], midGray[2])
+      doc.text('Compliance Score', margin + 8, yPos + 6)
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(12)
-      doc.text('Compliance Score:', margin, yPos)
-      doc.setFontSize(20)
-      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
-      doc.text(`${score}/100`, margin + 50, yPos)
-      doc.setTextColor(0, 0, 0)
-      yPos += 10
+      doc.setFontSize(16)
+      doc.setTextColor(navy[0], navy[1], navy[2])
+      doc.text(`${score}/100`, margin + 8, yPos + 13)
+
+      // Score bar
+      const barX = margin + 45
+      const barW = contentWidth - 50
+      doc.setFillColor(lightBorder[0], lightBorder[1], lightBorder[2])
+      doc.rect(barX, yPos + 9, barW, 3, 'F')
+      const scoreColor = score >= 70 ? [34, 120, 60] : score >= 40 ? [180, 130, 20] : accentRed
+      doc.setFillColor(scoreColor[0], scoreColor[1], scoreColor[2])
+      doc.rect(barX, yPos + 9, barW * (score / 100), 3, 'F')
+
+      yPos += 22
     }
 
+    // Total Penalty (in summary)
+    if (totalPenalty > 0) {
+      checkNewPage(16)
+      doc.setFillColor(252, 245, 245)
+      doc.rect(margin, yPos, contentWidth, 14, 'F')
+      doc.setFillColor(accentRed[0], accentRed[1], accentRed[2])
+      doc.rect(margin, yPos, 2.5, 14, 'F')
 
-    yPos += sectionSpacing
-    checkNewPage(30)
-
-
-    // Status Breakdown
-    doc.setFillColor(darkGray[0], darkGray[1], darkGray[2])
-    doc.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(14)
-    doc.setFont('helvetica', 'bold')
-    doc.text('Status Breakdown', margin + 3, yPos + 6)
-    yPos += 15
-
-
-    doc.setTextColor(0, 0, 0)
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
-
-
-    Object.entries(statusBreakdown).forEach(([status, count]) => {
-      // Check before adding each status line
-      if (yPos + lineHeight + 2 > maxContentY) {
-        doc.addPage()
-        yPos = margin
-      }
-
-
-      const percentage = totalCompliances > 0 ? (count / totalCompliances) * 100 : 0
-      const statusLabel = status === 'notStarted' ? 'Not Started' : status.charAt(0).toUpperCase() + status.slice(1)
-
-
-      doc.text(`${statusLabel}:`, margin, yPos, { maxWidth: 60 })
-      doc.setFont('helvetica', 'bold')
-      doc.text(count.toString(), margin + 45, yPos, { maxWidth: 20 })
       doc.setFont('helvetica', 'normal')
-      doc.setTextColor(textGray[0], textGray[1], textGray[2])
-      doc.text(`(${Math.round(percentage)}%)`, margin + 60, yPos, { maxWidth: 30 })
-      doc.setTextColor(0, 0, 0)
+      doc.setFontSize(9)
+      doc.setTextColor(midGray[0], midGray[1], midGray[2])
+      doc.text('Total Accumulated Penalty', margin + 8, yPos + 6)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(14)
+      doc.setTextColor(accentRed[0], accentRed[1], accentRed[2])
+      doc.text(formatCurrency(totalPenalty, countryCode), margin + 8, yPos + 12)
+      yPos += 20
+    }
 
+    yPos += sectionGap
 
-      // Progress bar - ensure it fits within page
-      const barStartX = margin + 95
-      const barWidth = Math.min(80, pageWidth - barStartX - margin)
-      const barHeight = 4
-      doc.setDrawColor(lightGray[0], lightGray[1], lightGray[2])
-      doc.rect(barStartX, yPos - 3, barWidth, barHeight, 'S')
-      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
-      doc.rect(barStartX, yPos - 3, Math.min((barWidth * percentage) / 100, barWidth), barHeight, 'F')
+    // ── STATUS BREAKDOWN ──
+    drawSectionHeader('Status Breakdown')
 
+    const statusItems = [
+      { label: 'Completed', count: statusBreakdown.completed, color: [34, 120, 60] },
+      { label: 'Pending', count: statusBreakdown.pending, color: [180, 130, 20] },
+      { label: 'Overdue', count: statusBreakdown.overdue, color: accentRed },
+      { label: 'Not Started', count: statusBreakdown.notStarted, color: midGray },
+      { label: 'Upcoming', count: statusBreakdown.upcoming, color: [50, 100, 168] },
+    ]
 
-      yPos += lineHeight + 2
+    // Stacked bar
+    if (totalCompliances > 0) {
+      const barY = yPos
+      const barH = 6
+      let barOffset = 0
+      const statusBarColors = [[34, 120, 60], [180, 130, 20], accentRed, [160, 160, 160], [50, 100, 168]]
+      statusItems.forEach((s: any, i: number) => {
+        const w = (s.count / totalCompliances) * contentWidth
+        if (w > 0) {
+          doc.setFillColor(statusBarColors[i][0], statusBarColors[i][1], statusBarColors[i][2])
+          doc.rect(margin + barOffset, barY, w, barH, 'F')
+          barOffset += w
+        }
+      })
+      yPos += barH + 6
+    }
+
+    // Legend rows
+    doc.setFontSize(9)
+    statusItems.forEach((s: any) => {
+      if (yPos + 6 > maxContentY) { doc.addPage(); yPos = margin }
+      const pct = totalCompliances > 0 ? Math.round((s.count / totalCompliances) * 100) : 0
+      // Color dot
+      doc.setFillColor(s.color[0], s.color[1], s.color[2])
+      doc.circle(margin + 2, yPos - 1.5, 1.5, 'F')
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(darkText[0], darkText[1], darkText[2])
+      doc.text(s.label, margin + 7, yPos)
+      doc.setFont('helvetica', 'bold')
+      doc.text(`${s.count}`, margin + 40, yPos)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(midGray[0], midGray[1], midGray[2])
+      doc.text(`(${pct}%)`, margin + 52, yPos)
+      doc.setTextColor(darkText[0], darkText[1], darkText[2])
+      yPos += lineHeight
     })
 
+    yPos += sectionGap
 
-    yPos += sectionSpacing
-    checkNewPage(30)
-
-
-    // Category Breakdown
-    doc.setFillColor(darkGray[0], darkGray[1], darkGray[2])
-    doc.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(14)
-    doc.setFont('helvetica', 'bold')
-    doc.text('Category Breakdown', margin + 3, yPos + 6)
-    yPos += 15
-
-
-    doc.setTextColor(0, 0, 0)
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
-
+    // ── CATEGORY BREAKDOWN ──
+    drawSectionHeader('Category Breakdown')
 
     const sortedCategories = Object.entries(categoryBreakdown)
       .sort(([, a], [, b]) => (b as number) - (a as number))
-      .slice(0, 8) // Limit to top 8 categories
+      .slice(0, 10)
 
-
+    doc.setFontSize(9)
     sortedCategories.forEach(([category, count]) => {
-      checkNewPage(10)
-      const percentage = totalCompliances > 0 ? ((count as number) / totalCompliances) * 100 : 0
-
-
-      const categoryLines = splitText(category, 60, 10)
-      categoryLines.forEach((line: string, idx: number) => {
-        doc.text(line, margin, yPos + (idx * 5), { maxWidth: 60 })
+      checkNewPage(8)
+      const pct = totalCompliances > 0 ? Math.round(((count as number) / totalCompliances) * 100) : 0
+      const catLines = splitText(category, 75, 9)
+      catLines.forEach((line: string, idx: number) => {
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(darkText[0], darkText[1], darkText[2])
+        doc.text(line, margin, yPos + idx * 4)
       })
-      const textY = yPos + (categoryLines.length - 1) * 5
+      const textEndY = yPos + (catLines.length - 1) * 4
 
+      // Bar
+      const barX = margin + 80
+      const barW = contentWidth - 110
+      doc.setFillColor(bgLight[0], bgLight[1], bgLight[2])
+      doc.rect(barX, textEndY - 3, barW, 4, 'F')
+      doc.setFillColor(navy[0], navy[1], navy[2])
+      doc.rect(barX, textEndY - 3, Math.max(barW * (pct / 100), 1), 4, 'F')
 
+      // Count
       doc.setFont('helvetica', 'bold')
-      doc.text((count as number).toString(), pageWidth - margin - 35, textY, { align: 'right', maxWidth: 20 })
+      doc.setTextColor(darkText[0], darkText[1], darkText[2])
+      doc.text(`${count}`, pageWidth - margin - 14, textEndY, { align: 'right' })
       doc.setFont('helvetica', 'normal')
-      doc.setTextColor(textGray[0], textGray[1], textGray[2])
-      doc.text(`(${Math.round(percentage)}%)`, pageWidth - margin - 10, textY, { align: 'right', maxWidth: 25 })
-      doc.setTextColor(0, 0, 0)
+      doc.setTextColor(midGray[0], midGray[1], midGray[2])
+      doc.text(`${pct}%`, pageWidth - margin, textEndY, { align: 'right' })
 
-
-      // Progress bar - ensure it fits
-      const barStartX = margin + 65
-      const barWidth = Math.min(70, pageWidth - barStartX - margin - 40)
-      const barHeight = 4
-      doc.setDrawColor(lightGray[0], lightGray[1], lightGray[2])
-      doc.rect(barStartX, textY - 3, barWidth, barHeight, 'S')
-      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
-      doc.rect(barStartX, textY - 3, Math.min((barWidth * percentage) / 100, barWidth), barHeight, 'F')
-
-
-      yPos += (categoryLines.length * lineHeight) + 2
+      yPos += catLines.length * 4 + 4
     })
 
+    yPos += sectionGap
 
-    yPos += sectionSpacing
-    checkNewPage(30)
+    // ── COMPLIANCE TYPE BREAKDOWN ──
+    drawSectionHeader('Compliance Type Breakdown')
 
-
-    // Compliance Type Breakdown
-    doc.setFillColor(darkGray[0], darkGray[1], darkGray[2])
-    doc.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(14)
-    doc.setFont('helvetica', 'bold')
-    doc.text('Compliance Type Breakdown', margin + 3, yPos + 6)
-    yPos += 15
-
-
-    doc.setTextColor(0, 0, 0)
-    doc.setFontSize(9)
-
+    const typeLabels: Record<string, string> = {
+      'one-time': 'One-time', 'annual': 'Annual', 'monthly': 'Monthly', 'quarterly': 'Quarterly'
+    }
 
     Object.entries(complianceTypeBreakdown)
       .filter(([, data]) => data.total > 0)
       .forEach(([type, data]) => {
-        // Check before adding each type breakdown
-        if (yPos + 28 > maxContentY) {
-          doc.addPage()
-          yPos = margin
-        }
-
-
-        // Compliance type labels: one-time (no recurring), annual (recurs annually)
-        const typeLabels: Record<string, string> = {
-          'one-time': 'One-time (No Recurring)',
-          'annual': 'Annual (Recurring)',
-          'monthly': 'Monthly (Recurring)',
-          'quarterly': 'Quarterly (Recurring)'
-        }
-        const completionRate = data.total > 0 ? (data.completed / data.total) * 100 : 0
-
+        checkNewPage(16)
+        const completionRate = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0
 
         doc.setFont('helvetica', 'bold')
-        doc.setFontSize(11)
-        doc.text(typeLabels[type] || type, margin, yPos)
+        doc.setFontSize(10)
+        doc.setTextColor(darkText[0], darkText[1], darkText[2])
+        doc.text(`${typeLabels[type] || type}`, margin, yPos)
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(9)
-        doc.text(`Total: ${data.total}`, margin + 10, yPos + 6)
-        doc.text(`Completed: ${data.completed}`, margin + 10, yPos + 12)
-        doc.text(`Overdue: ${data.overdue}`, margin + 10, yPos + 18)
-        doc.text(`Pending: ${data.pending}`, margin + 80, yPos + 6)
-        doc.text(`Not Started: ${data.notStarted}`, margin + 80, yPos + 12)
-        doc.setTextColor(textGray[0], textGray[1], textGray[2])
-        doc.text(`Completion: ${Math.round(completionRate)}%`, margin + 80, yPos + 18)
-        doc.setTextColor(0, 0, 0)
+        doc.setTextColor(midGray[0], midGray[1], midGray[2])
+        doc.text(`Total: ${data.total}   Completed: ${data.completed}   Overdue: ${data.overdue}   Pending: ${data.pending}   Not Started: ${data.notStarted}   (${completionRate}% done)`, margin + 2, yPos + 6)
 
-
-        yPos += 28
+        yPos += 14
       })
 
+    yPos += sectionGap
 
-    yPos += sectionSpacing
-    checkNewPage(30)
-
-
-    // Financial Year Breakdown (if available)
+    // ── FINANCIAL YEAR BREAKDOWN ──
     if (Object.keys(fyBreakdown).length > 0) {
-      doc.setFillColor(darkGray[0], darkGray[1], darkGray[2])
-      doc.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
-      doc.setTextColor(255, 255, 255)
-      doc.setFontSize(14)
-      doc.setFont('helvetica', 'bold')
-      doc.text('Financial Year Breakdown', margin + 3, yPos + 6)
-      yPos += 15
-
-
-      doc.setTextColor(0, 0, 0)
-      doc.setFontSize(10)
-      doc.setFont('helvetica', 'normal')
-
+      drawSectionHeader('Financial Year Breakdown')
 
       const sortedFY = Object.entries(fyBreakdown)
         .sort(([a], [b]) => {
-          const getYear = (fy: string) => {
-            if (fy === 'Not Specified') return 0
-            const match = fy.match(/\d{4}/)
-            return match ? parseInt(match[0]) : 0
-          }
-          return getYear(b) - getYear(a)
+          const yr = (s: string) => { const m = s.match(/\d{4}/); return m ? parseInt(m[0]) : 0 }
+          return yr(b) - yr(a)
         })
 
-
-      sortedFY.forEach(([fy, count], index: number) => {
-        checkNewPage(10)
-        if (index % 2 === 0) {
-          doc.text(`${fy}:`, margin, yPos)
-          doc.setFont('helvetica', 'bold')
-          doc.text((count as number).toString(), margin + 50, yPos)
-        } else {
-          doc.text(`${fy}:`, margin + 100, yPos)
-          doc.setFont('helvetica', 'bold')
-          doc.text((count as number).toString(), margin + 150, yPos)
-          yPos += lineHeight
-        }
-        doc.setFont('helvetica', 'normal')
-      })
-
-
-      if (sortedFY.length % 2 !== 0) {
-        yPos += lineHeight
-      }
-
-
-      yPos += sectionSpacing
-      checkNewPage(30)
-    }
-
-
-    // Overdue Compliances (if any)
-    if (overdueCompliances.length > 0) {
-      doc.setFillColor(redColor[0], redColor[1], redColor[2]) // Muted red for overdue
-      doc.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
-      doc.setTextColor(255, 255, 255)
-      doc.setFontSize(14)
-      doc.setFont('helvetica', 'bold')
-      doc.text(`Overdue Compliances (Top 10 shown)`, margin + 3, yPos + 6)
-      yPos += 15
-
-
-      doc.setTextColor(0, 0, 0)
       doc.setFontSize(9)
-      doc.setFont('helvetica', 'normal')
+      const fyPerRow = 4
+      const fyColW = contentWidth / fyPerRow
+      sortedFY.forEach(([fy, count], i: number) => {
+        const col = i % fyPerRow
+        const row = Math.floor(i / fyPerRow)
+        if (col === 0 && row > 0) checkNewPage(10)
+        const fx = margin + col * fyColW
+        const fy2 = yPos + row * 10
 
-
-      // To keep report generation fast, show only top 10 individual overdue items
-      overdueCompliances.slice(0, 10).forEach((req: any, index: number) => {
-        checkNewPage(30)
-        const delay = calculateDelayMemoized(req.dueDate, req.status)
-        let penalty = calculatePenalty(req.penalty || '', delay, req.penalty_base_amount)
-        // Remove leading apostrophe if present
-        if (penalty.startsWith("'")) {
-          penalty = penalty.substring(1)
-        }
-
-
-        const itemStartY = yPos
-
-
-        // Item number and requirement name
-        doc.setFont('helvetica', 'bold')
-        doc.setFontSize(10)
-        doc.setTextColor(0, 0, 0)
-        const reqText = `${index + 1}. ${req.requirement}`
-        const reqLines = splitText(reqText, contentWidth * 0.55, 10)
-        reqLines.forEach((line: string, idx: number) => {
-          doc.text(line, margin, itemStartY + (idx * 5), { maxWidth: contentWidth * 0.55 })
-        })
-        const reqEndY = itemStartY + (reqLines.length - 1) * 5
-
-
-        // Category and Due Date on separate lines
         doc.setFont('helvetica', 'normal')
-        doc.setFontSize(8)
-        doc.setTextColor(0, 0, 0)
-        let detailY = reqEndY + 6
-        doc.text(`Category: ${req.category}`, margin + 5, detailY, { maxWidth: contentWidth * 0.55 })
-        detailY += 5
-        doc.text(`Due Date: ${req.dueDate}`, margin + 5, detailY, { maxWidth: contentWidth * 0.55 })
-
-
-        // Right column: Days Delayed and Penalty
-        const rightX = margin + contentWidth * 0.6
-        let rightY = reqEndY + 6
-
-
-        if (delay !== null && delay > 0) {
-          doc.setTextColor(255, 0, 0)
-          doc.setFont('helvetica', 'bold')
-          doc.setFontSize(8)
-          doc.text(`Days Delayed: ${delay}`, rightX, rightY, { maxWidth: contentWidth * 0.35 })
-          doc.setFont('helvetica', 'normal')
-          rightY += 5
-        }
-
-
-        if (penalty !== '-' && !penalty.includes('Cannot calculate')) {
-          doc.setTextColor(255, 0, 0)
-          doc.setFont('helvetica', 'bold')
-          doc.setFontSize(8)
-          const penaltyText = `Penalty: ${penalty}`
-          const penaltyLines = splitText(penaltyText, contentWidth * 0.35, 8)
-          penaltyLines.forEach((line: string, idx: number) => {
-            doc.text(line, rightX, rightY + (idx * 5), { maxWidth: contentWidth * 0.35 })
-          })
-          doc.setFont('helvetica', 'normal')
-          rightY += (penaltyLines.length - 1) * 5
-        }
-
-
-        // Calculate the maximum height used for this item
-        const leftHeight = detailY - itemStartY + 5
-        const rightHeight = rightY - reqEndY
-        const itemHeight = Math.max(leftHeight, rightHeight) + 5
-
-
-        // Add a subtle line separator
-        doc.setDrawColor(lightGray[0], lightGray[1], lightGray[2])
-        doc.setLineWidth(0.5)
-        doc.line(margin, yPos + itemHeight, pageWidth - margin, yPos + itemHeight)
-
-
-        yPos += itemHeight + 3
+        doc.setTextColor(midGray[0], midGray[1], midGray[2])
+        doc.text(fy, fx, fy2)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(darkText[0], darkText[1], darkText[2])
+        doc.text(`${count}`, fx + doc.getTextWidth(fy + '  '), fy2)
       })
-
-
-      if (overdueCompliances.length > 10) {
-        yPos += 5
-        doc.setFontSize(8)
-        doc.setTextColor(textGray[0], textGray[1], textGray[2])
-        doc.text(`... and ${overdueCompliances.length - 10} more overdue compliances`, margin, yPos)
-        doc.setTextColor(0, 0, 0)
-      }
+      yPos += Math.ceil(sortedFY.length / fyPerRow) * 10 + sectionGap
     }
 
-
-    // Legal & Business Impact Analysis Section (for non-compliant items)
-    if (enrichedData.length > 0) {
-      yPos += sectionSpacing
-      checkNewPage(40)
-
-
-      doc.setFillColor(darkGray[0], darkGray[1], darkGray[2])
-      doc.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
-      doc.setTextColor(255, 255, 255)
-      doc.setFontSize(14)
-      doc.setFont('helvetica', 'bold')
-      doc.text('Legal & Business Impact Analysis', margin + 3, yPos + 6)
-      yPos += 15
-
-
-      doc.setTextColor(0, 0, 0)
-      doc.setFontSize(8)
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(textGray[0], textGray[1], textGray[2])
-      doc.text('This section provides detailed legal sections, penalty provisions, and business impact for non-compliant items.', margin, yPos, { maxWidth: contentWidth })
-      yPos += 8
-
+    // ── OVERDUE COMPLIANCES TABLE ──
+    if (overdueCompliances.length > 0) {
+      drawSectionHeader(`Overdue Compliances (${Math.min(overdueCompliances.length, 15)} of ${overdueCompliances.length})`)
 
       // Table header
-      const colWidths = {
-        requirement: contentWidth * 0.25,
-        category: contentWidth * 0.12,
-        legalSection: contentWidth * 0.18,
-        penaltyProvision: contentWidth * 0.15,
-        exactPenalty: contentWidth * 0.12,
-        financial: contentWidth * 0.18
-      }
+      const cols = [
+        { label: 'Requirement', w: contentWidth * 0.35 },
+        { label: 'Category', w: contentWidth * 0.20 },
+        { label: 'Due Date', w: contentWidth * 0.15 },
+        { label: 'Days Late', w: contentWidth * 0.12 },
+        { label: 'Penalty', w: contentWidth * 0.18 },
+      ]
 
-
-      doc.setFillColor(darkGray[0], darkGray[1], darkGray[2])
-      doc.rect(margin, yPos, contentWidth, 6, 'F')
+      doc.setFillColor(navy[0], navy[1], navy[2])
+      doc.rect(margin, yPos - 2, contentWidth, 7, 'F')
       doc.setTextColor(255, 255, 255)
-      doc.setFontSize(7)
+      doc.setFontSize(8)
       doc.setFont('helvetica', 'bold')
-
-
-      let headerX = margin + 2
-      doc.text('Requirement', headerX, yPos + 4.5, { maxWidth: colWidths.requirement - 4 })
-      headerX += colWidths.requirement
-      doc.text('Category', headerX, yPos + 4.5, { maxWidth: colWidths.category - 4 })
-      headerX += colWidths.category
-      doc.text('Legal Section', headerX, yPos + 4.5, { maxWidth: colWidths.legalSection - 4 })
-      headerX += colWidths.legalSection
-      doc.text('Penalty', headerX, yPos + 4.5, { maxWidth: colWidths.penaltyProvision - 4 })
-      headerX += colWidths.penaltyProvision
-      doc.text('Amount', headerX, yPos + 4.5, { maxWidth: colWidths.exactPenalty - 4 })
-      headerX += colWidths.exactPenalty
-      doc.text('Financial Impact', headerX, yPos + 4.5, { maxWidth: colWidths.financial - 4 })
-
-
+      let hx = margin + 2
+      cols.forEach((c: any) => {
+        doc.text(c.label, hx, yPos + 3)
+        hx += c.w
+      })
       yPos += 8
 
+      // Rows
+      doc.setFontSize(8)
+      overdueCompliances.slice(0, 15).forEach((req: any, idx: number) => {
+        const delay = calculateDelayMemoized(req.dueDate, req.status)
+        let penalty = calculatePenalty(req.penalty || '', delay, req.penalty_base_amount)
+        if (penalty.startsWith("'")) penalty = penalty.substring(1)
 
-      // Table rows
-      // Enrichment is computed once per unique compliance type (group representative only)
+        // Estimate row height
+        const reqLines = splitText(req.requirement, cols[0].w - 4, 8)
+        const catLines = splitText(req.category, cols[1].w - 4, 8)
+        const rowH = Math.max(reqLines.length, catLines.length) * 4 + 3
+        checkNewPage(rowH + 2)
+
+        // Alternate row bg
+        if (idx % 2 === 0) {
+          doc.setFillColor(bgLight[0], bgLight[1], bgLight[2])
+          doc.rect(margin, yPos - 2, contentWidth, rowH, 'F')
+        }
+
+        let cx = margin + 2
+        // Requirement
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(darkText[0], darkText[1], darkText[2])
+        reqLines.forEach((line: string, li: number) => {
+          doc.text(line, cx, yPos + li * 4)
+        })
+        cx += cols[0].w
+
+        // Category
+        doc.setTextColor(midGray[0], midGray[1], midGray[2])
+        catLines.forEach((line: string, li: number) => {
+          doc.text(line, cx, yPos + li * 4)
+        })
+        cx += cols[1].w
+
+        // Due Date
+        doc.setTextColor(darkText[0], darkText[1], darkText[2])
+        doc.text(req.dueDate || '—', cx, yPos)
+        cx += cols[2].w
+
+        // Days Late
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(accentRed[0], accentRed[1], accentRed[2])
+        doc.text(`${delay || 0}`, cx, yPos)
+        cx += cols[3].w
+
+        // Penalty
+        if (penalty !== '-' && !penalty.includes('Cannot calculate')) {
+          doc.text(penalty, cx, yPos)
+        } else {
+          doc.setTextColor(midGray[0], midGray[1], midGray[2])
+          doc.setFont('helvetica', 'normal')
+          doc.text('—', cx, yPos)
+        }
+
+        // Row separator
+        doc.setDrawColor(lightBorder[0], lightBorder[1], lightBorder[2])
+        doc.setLineWidth(0.2)
+        doc.line(margin, yPos + rowH - 2, pageWidth - margin, yPos + rowH - 2)
+
+        yPos += rowH
+      })
+
+      if (overdueCompliances.length > 15) {
+        yPos += 4
+        doc.setFontSize(8)
+        doc.setTextColor(midGray[0], midGray[1], midGray[2])
+        doc.setFont('helvetica', 'italic')
+        doc.text(`+ ${overdueCompliances.length - 15} more overdue compliances (see CSV export for full list)`, margin, yPos)
+        doc.setFont('helvetica', 'normal')
+        yPos += 8
+      }
+    }
+
+    // ── LEGAL & BUSINESS IMPACT ANALYSIS ──
+    if (enrichedData.length > 0) {
+      yPos += sectionGap
+      drawSectionHeader('Legal & Business Impact Analysis')
+
+      doc.setFontSize(8)
+      doc.setTextColor(midGray[0], midGray[1], midGray[2])
+      doc.text('AI-researched legal sections, penalty provisions, and business impact for non-compliant items.', margin, yPos)
+      yPos += 8
+
       enrichedData.forEach((enriched: EnrichedComplianceData, index: number) => {
         const group = Array.from(nonCompliantGroups.values()).find((g: any) => g.representative.id === enriched.requirementId)
         const req = group?.representative
         if (!req) return
 
-
-        // Estimate row height before writing
-        const reqLines = splitText(req.requirement, colWidths.requirement - 4, 7)
-        const legalLines = splitText(enriched.legalSection, colWidths.legalSection - 4, 7)
-        const penaltyLines = splitText(enriched.penaltyProvision, colWidths.penaltyProvision - 4, 7)
-        const financialLines = splitText(enriched.businessImpact.financial, colWidths.financial - 4, 7)
-        const estimatedRowHeight = Math.max(
-          reqLines.length * 4,
-          legalLines.length * 4,
-          penaltyLines.length * 4,
-          financialLines.length * 4
-        ) + 4
-
-
-        // Check if row fits on current page
-        checkNewPage(estimatedRowHeight)
-
-
-        // Alternate row background
-        if (index % 2 === 0) {
-          doc.setFillColor(245, 245, 245)
-          doc.rect(margin, yPos - 2, contentWidth, 0, 'F')
-        }
-
-
-        doc.setTextColor(0, 0, 0)
-        doc.setFontSize(7)
-        doc.setFont('helvetica', 'normal')
-
-
-        let cellX = margin + 2
-        let maxHeight = 0
-
-
-        // Requirement
-        reqLines.forEach((line: string, idx: number) => {
-          doc.text(line, cellX, yPos + (idx * 4), { maxWidth: colWidths.requirement - 4 })
-        })
-        maxHeight = Math.max(maxHeight, reqLines.length * 4)
-
-
-        // Category
-        cellX += colWidths.requirement
-        doc.text(req.category, cellX, yPos, { maxWidth: colWidths.category - 4 })
-
-
-        // Legal Section
-        cellX += colWidths.category
-        legalLines.forEach((line: string, idx: number) => {
-          doc.text(line, cellX, yPos + (idx * 4), { maxWidth: colWidths.legalSection - 4 })
-        })
-        maxHeight = Math.max(maxHeight, legalLines.length * 4)
-
-
-        // Penalty Provision
-        cellX += colWidths.legalSection
-        penaltyLines.forEach((line: string, idx: number) => {
-          doc.text(line, cellX, yPos + (idx * 4), { maxWidth: colWidths.penaltyProvision - 4 })
-        })
-        maxHeight = Math.max(maxHeight, penaltyLines.length * 4)
-
-
-        // Exact Penalty
-        cellX += colWidths.penaltyProvision
-        doc.setFont('helvetica', 'bold')
-        doc.setTextColor(255, 0, 0)
-        doc.text(enriched.exactPenalty, cellX, yPos, { maxWidth: colWidths.exactPenalty - 4 })
-        doc.setFont('helvetica', 'normal')
-        doc.setTextColor(0, 0, 0)
-
-
-        // Financial Impact
-        cellX += colWidths.exactPenalty
-        financialLines.forEach((line: string, idx: number) => {
-          doc.text(line, cellX, yPos + (idx * 4), { maxWidth: colWidths.financial - 4 })
-        })
-        maxHeight = Math.max(maxHeight, financialLines.length * 4)
-
-
-        // Draw row separator
-        doc.setDrawColor(lightGray[0], lightGray[1], lightGray[2])
-        doc.setLineWidth(0.3)
-        doc.line(margin, yPos + maxHeight + 2, pageWidth - margin, yPos + maxHeight + 2)
-
-
-        yPos += maxHeight + 4
-
-
-        // Final safety check - ensure we haven't exceeded footer area
-        if (yPos > maxContentY) {
-          doc.addPage()
-          yPos = margin
-        }
-      })
-
-
-      yPos += sectionSpacing
-      checkNewPage(20)
-
-
-      // Reputation and Operations Impact (separate section)
-      doc.setFillColor(darkGray[0], darkGray[1], darkGray[2])
-      doc.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
-      doc.setTextColor(255, 255, 255)
-      doc.setFontSize(12)
-      doc.setFont('helvetica', 'bold')
-      doc.text('Additional Business Impact Details', margin + 3, yPos + 6)
-      yPos += 15
-
-
-      enrichedData.forEach((enriched: EnrichedComplianceData, index: number) => {
-        const req = nonCompliantItems.find((r: any) => r.id === enriched.requirementId)
-        if (!req) return
-
-
-        // Estimate content height
+        // Estimate total height for this block
+        const titleLines = splitText(`${index + 1}. ${req.requirement}`, contentWidth - 4, 10)
+        const legalLines = splitText(enriched.legalSection, contentWidth - 10, 8)
+        const penProvLines = splitText(enriched.penaltyProvision, contentWidth - 10, 8)
+        const finLines = splitText(enriched.businessImpact.financial, contentWidth - 10, 8)
         const repLines = splitText(enriched.businessImpact.reputation, contentWidth - 10, 8)
         const opsLines = splitText(enriched.businessImpact.operations, contentWidth - 10, 8)
-        const estimatedHeight = 6 + 5 + repLines.length * 4 + 3 + 5 + opsLines.length * 4 + 5
+        const estH = titleLines.length * 5 + 8 + legalLines.length * 4 + 6 + penProvLines.length * 4 + 6 + finLines.length * 4 + 6 + repLines.length * 4 + 6 + opsLines.length * 4 + 10
 
+        checkNewPage(Math.min(estH, 80)) // at least start on fresh page if tight
 
-        // Check if content fits on current page
-        if (yPos + estimatedHeight > maxContentY) {
-          doc.addPage()
-          yPos = margin
-        }
+        // Title bar
+        doc.setFillColor(bgLight[0], bgLight[1], bgLight[2])
+        doc.rect(margin, yPos - 2, contentWidth, titleLines.length * 5 + 4, 'F')
+        doc.setFillColor(navy[0], navy[1], navy[2])
+        doc.rect(margin, yPos - 2, 2.5, titleLines.length * 5 + 4, 'F')
 
-
-        doc.setTextColor(0, 0, 0)
-        doc.setFontSize(9)
         doc.setFont('helvetica', 'bold')
-        doc.text(`${index + 1}. ${req.requirement}`, margin, yPos, { maxWidth: contentWidth })
-        yPos += 6
+        doc.setFontSize(10)
+        doc.setTextColor(navy[0], navy[1], navy[2])
+        titleLines.forEach((line: string, li: number) => {
+          doc.text(line, margin + 6, yPos + li * 5)
+        })
+        yPos += titleLines.length * 5 + 4
 
-
+        // Category
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(8)
-        doc.setTextColor(0, 0, 0)
+        doc.setTextColor(midGray[0], midGray[1], midGray[2])
+        doc.text(`Category: ${req.category}`, margin + 6, yPos)
+        yPos += 6
 
-
-        // Reputation Impact
-        doc.setFont('helvetica', 'bold')
-        doc.setTextColor(0, 0, 0)
-        doc.text('Reputation Impact:', margin + 5, yPos, { maxWidth: contentWidth - 10 })
-        yPos += 5
-        doc.setFont('helvetica', 'normal')
-        doc.setTextColor(textGray[0], textGray[1], textGray[2])
-        repLines.forEach((line: string, idx: number) => {
-          // Safety check before each line
-          if (yPos + (idx * 4) > maxContentY) {
-            doc.addPage()
-            yPos = margin
-          }
-          doc.text(line, margin + 5, yPos + (idx * 4), { maxWidth: contentWidth - 10 })
-        })
-        yPos += repLines.length * 4 + 3
-
-
-        // Operations Impact
-        doc.setFont('helvetica', 'bold')
-        doc.setTextColor(0, 0, 0)
-        // Check before adding operations section
-        if (yPos + 5 > maxContentY) {
-          doc.addPage()
-          yPos = margin
+        // Exact penalty (prominent)
+        if (enriched.exactPenalty && enriched.exactPenalty !== 'Not applicable') {
+          doc.setFont('helvetica', 'bold')
+          doc.setFontSize(9)
+          doc.setTextColor(accentRed[0], accentRed[1], accentRed[2])
+          doc.text(`Calculated Penalty: ${enriched.exactPenalty}`, margin + 6, yPos)
+          yPos += 6
         }
-        doc.text('Operational Impact:', margin + 5, yPos, { maxWidth: contentWidth - 10 })
-        yPos += 5
-        doc.setFont('helvetica', 'normal')
-        doc.setTextColor(textGray[0], textGray[1], textGray[2])
-        opsLines.forEach((line: string, idx: number) => {
-          // Safety check before each line
-          if (yPos + (idx * 4) > maxContentY) {
-            doc.addPage()
-            yPos = margin
-          }
-          doc.text(line, margin + 5, yPos + (idx * 4), { maxWidth: contentWidth - 10 })
+
+        // Sub-sections with label + content
+        const subSections = [
+          { label: 'Legal Section', lines: legalLines },
+          { label: 'Penalty Provision', lines: penProvLines },
+          { label: 'Financial Impact', lines: finLines },
+          { label: 'Reputation Impact', lines: repLines },
+          { label: 'Operational Impact', lines: opsLines },
+        ]
+
+        subSections.forEach((sub: any) => {
+          if (sub.lines.length === 0 || (sub.lines.length === 1 && sub.lines[0] === 'Information not available')) return
+          checkNewPage(sub.lines.length * 4 + 8)
+
+          doc.setFont('helvetica', 'bold')
+          doc.setFontSize(8)
+          doc.setTextColor(darkText[0], darkText[1], darkText[2])
+          doc.text(sub.label, margin + 6, yPos)
+          yPos += 4
+
+          doc.setFont('helvetica', 'normal')
+          doc.setTextColor(midGray[0], midGray[1], midGray[2])
+          sub.lines.forEach((line: string, li: number) => {
+            if (yPos + li * 4 > maxContentY) { doc.addPage(); yPos = margin }
+            doc.text(line, margin + 6, yPos + li * 4)
+          })
+          yPos += sub.lines.length * 4 + 2
         })
-        yPos += opsLines.length * 4 + 5
 
-
-        doc.setTextColor(0, 0, 0)
-
-
-        // Final safety check
-        if (yPos > maxContentY) {
-          doc.addPage()
-          yPos = margin
-        }
+        // Separator between items
+        yPos += 3
+        doc.setDrawColor(lightBorder[0], lightBorder[1], lightBorder[2])
+        doc.setLineWidth(0.3)
+        doc.line(margin, yPos, pageWidth - margin, yPos)
+        yPos += 5
       })
     }
 
-
-    // Total Penalty
-    if (totalPenalty > 0) {
-      yPos += sectionSpacing
-      checkNewPage(15)
-      doc.setFillColor(darkGray[0], darkGray[1], darkGray[2])
-      doc.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
-      doc.setTextColor(255, 255, 255)
-      doc.setFontSize(14)
-      doc.setFont('helvetica', 'bold')
-      doc.text('Total Accumulated Penalty', margin + 3, yPos + 6)
-      yPos += 15
-
-
-      doc.setTextColor(255, 0, 0)
-      doc.setFontSize(16)
-      doc.setFont('helvetica', 'bold')
-      const penaltyText = formatCurrency(totalPenalty, countryCode)
-      doc.text(penaltyText, margin, yPos, { maxWidth: contentWidth })
-    }
-
-
-    // Last page: QR + CTA (brand)
+    // ── LAST PAGE: QR + CTA ──
     doc.addPage()
-    // White background
     doc.setFillColor(255, 255, 255)
     doc.rect(0, 0, pageWidth, pageHeight, 'F')
 
+    // Top and bottom bars
+    doc.setFillColor(navy[0], navy[1], navy[2])
+    doc.rect(0, 0, pageWidth, 3, 'F')
+    doc.rect(0, pageHeight - 3, pageWidth, 3, 'F')
 
-    // Subtle diagonal accents (match cover)
-    doc.setLineCap(2)
-    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2])
-    doc.setLineWidth(34)
-    doc.line(pageWidth * 0.55, pageHeight + 70, pageWidth + 60, pageHeight * 0.62)
-    doc.setDrawColor(210, 230, 255)
-    doc.setLineWidth(10)
-    doc.line(pageWidth * 0.58, pageHeight + 62, pageWidth + 52, pageHeight * 0.66)
-
-
-    // QR code
     try {
       const QRCode: any = await import('qrcode')
-      const qrUrl = 'https://www.finacra.com'
-      const qrDataUrl: string = await QRCode.toDataURL(qrUrl, {
-        margin: 1,
-        width: 260,
-        color: {
-          dark: '#1E3A5F',
-          light: '#FFFFFF',
-        },
+      const qrDataUrl: string = await QRCode.toDataURL('https://www.finacra.com', {
+        margin: 1, width: 260, color: { dark: '#142848', light: '#FFFFFF' },
       })
 
-
-      const qrSize = 80
+      const qrSize = 70
       const qrX = (pageWidth - qrSize) / 2
-      const qrY = pageHeight / 2 - 55
+      const qrY = pageHeight / 2 - 45
       doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize)
 
-
-      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
+      doc.setTextColor(navy[0], navy[1], navy[2])
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(18)
-      doc.text('Try free trial now!', pageWidth / 2, qrY + qrSize + 18, { align: 'center' })
-
-
+      doc.setFontSize(16)
+      doc.text('Try free trial now!', pageWidth / 2, qrY + qrSize + 14, { align: 'center' })
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(10)
-      doc.setTextColor(textGray[0], textGray[1], textGray[2])
-      doc.text('Scan to visit', pageWidth / 2, qrY + qrSize + 32, { align: 'center' })
-      doc.text('www.finacra.com', pageWidth / 2, qrY + qrSize + 44, { align: 'center' })
-    } catch (qrErr) {
-      // Fallback if QR generation fails: show the URL + CTA text
-      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
+      doc.setTextColor(midGray[0], midGray[1], midGray[2])
+      doc.text('Scan to visit www.finacra.com', pageWidth / 2, qrY + qrSize + 24, { align: 'center' })
+    } catch {
+      doc.setTextColor(navy[0], navy[1], navy[2])
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(18)
+      doc.setFontSize(16)
       doc.text('Try free trial now!', pageWidth / 2, pageHeight / 2, { align: 'center' })
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(10)
-      doc.setTextColor(textGray[0], textGray[1], textGray[2])
-      doc.text('www.finacra.com', pageWidth / 2, pageHeight / 2 + 14, { align: 'center' })
+      doc.setTextColor(midGray[0], midGray[1], midGray[2])
+      doc.text('www.finacra.com', pageWidth / 2, pageHeight / 2 + 12, { align: 'center' })
     }
 
-
-    // Footer - Add to all pages with proper spacing
+    // ── FOOTER ON ALL PAGES ──
     const totalPages = doc.getNumberOfPages()
-    // footerY is already defined at the top of the function
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i)
-      doc.setFontSize(8)
-      doc.setTextColor(textGray[0], textGray[1], textGray[2])
+      doc.setFontSize(7)
+      doc.setTextColor(midGray[0], midGray[1], midGray[2])
+      doc.setFont('helvetica', 'normal')
       doc.text(
-        `Page ${i} of ${totalPages} | Compliance Report | Generated on ${new Date().toLocaleDateString('en-IN')}`,
-        pageWidth / 2,
-        footerY,
-        { align: 'center' }
+        `Page ${i} of ${totalPages}  |  Compliance Report  |  ${coverDate}`,
+        pageWidth / 2, footerY, { align: 'center' }
       )
     }
 

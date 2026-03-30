@@ -5,8 +5,6 @@ import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter, usePathname } from 'next/navigation'
 import type { Notification } from '@/app/actions/notifications'
-import { checkSuperadminStatus } from '@/app/admin/actions'
-import { trackNotificationClick } from '@/lib/tracking/kpi-tracker'
 import {
   useNotificationsQuery,
   useUnreadCountQuery,
@@ -59,11 +57,11 @@ export default function Header() {
       return
     }
     let cancelled = false
-    checkSuperadminStatus()
-      .then((result) => {
+    import('@/app/admin/actions').then(({ checkSuperadminStatus }) =>
+      checkSuperadminStatus().then((result) => {
         if (!cancelled) setIsSuperadmin(result.success ? (result.isSuperadmin ?? false) : false)
       })
-      .catch(() => { if (!cancelled) setIsSuperadmin(false) })
+    ).catch(() => { if (!cancelled) setIsSuperadmin(false) })
     return () => { cancelled = true }
   }, [user, setIsSuperadmin])
 
@@ -205,13 +203,13 @@ export default function Header() {
                                 // Track notification click
                                 if (user?.id) {
                                   const companyId = notification.company_id || undefined
-                                  trackNotificationClick(user.id, companyId || '', notification.type || 'general')
+                                  import('@/lib/tracking/kpi-tracker').then(({ trackNotificationClick }) => trackNotificationClick(user.id, companyId || '', notification.type || 'general'))
                                 }
                               } else {
                                 // Track notification click even if already read
                                 if (user?.id) {
                                   const companyId = notification.company_id || undefined
-                                  trackNotificationClick(user.id, companyId || '', notification.type || 'general')
+                                  import('@/lib/tracking/kpi-tracker').then(({ trackNotificationClick }) => trackNotificationClick(user.id, companyId || '', notification.type || 'general'))
                                 }
                               }
                               setSelectedNotification(notification)

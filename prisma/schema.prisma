@@ -68,6 +68,15 @@ model Company {
   ex_directors            String[]
   nic_code                String?   @db.VarChar(5)
   is_listed               Boolean?
+  employee_count          Int?
+  annual_turnover         Decimal?  @db.Decimal(15, 2)
+  is_gst_registered       Boolean?  @default(false)
+  gst_number              String?   @db.VarChar(15)
+  net_worth               Decimal?  @db.Decimal(15, 2)
+  is_msme                 Boolean?
+  msme_category           String?   @db.VarChar(10)
+  has_imports_exports      Boolean?  @default(false)
+  is_startup_dpiit        Boolean?  @default(false)
   created_at              DateTime  @default(now()) @db.Timestamptz
   updated_at              DateTime  @default(now()) @db.Timestamptz
 
@@ -129,6 +138,19 @@ model RegulatoryRequirement {
   required_documents  String[]
   year_type           String?
   country_code        String?
+  // AI compliance intelligence fields
+  source              String?   @default("manual")
+  confidence_score    Float?
+  needs_ca_review     Boolean?  @default(false)
+  source_url          String?
+  act                 String?
+  section             String?
+  authority           String?
+  due_date_formula    String?
+  applicability_reason String?
+  ai_batch_id         String?
+  period_key          String?
+  period_label        String?
 
   company              Company @relation(fields: [company_id], references: [id])
   companyNotifications CompanyNotification[]

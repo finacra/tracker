@@ -89,6 +89,37 @@ export async function uploadDocument(
   return { success: true, documentId: insertedDoc?.id }
 }
 
+/**
+ * Re-index a document that failed processing (e.g., scanned PDFs uploaded before OCR was added).
+ * Deletes any existing stale chunks then re-runs the full extraction + embedding pipeline.
+ */
+export async function reprocessDocument(documentId: string) {
+  if (!isValidUUID(documentId)) throw new Error('Invalid document ID')
+
+  const { authService } = createServerContainer()
+  await authService.requireCurrentUser()
+
+  const supabase = createAdminClient()
+
+  // Look up the document directly
+  const { data: doc, error } = await supabase
+    .from('company_documents_internal')
+    .select('id, company_id, file_path')
+    .eq('id', documentId)
+    .single()
+
+  if (error || !doc) throw new Error('Document not found')
+  const row = doc as { id: string; company_id: string; file_path: string }
+
+  // Delete existing (failed) chunks so we don't get duplicates
+  await supabase.from('document_chunks_internal').delete().eq('document_id', documentId)
+
+  // Re-run processing — OCR fallback is now in the pipeline
+  await processDocumentContent(row.id, row.company_id, row.file_path)
+
+  return { success: true }
+}
+
 export async function uploadFileToStorage(filePath: string, fileData: ArrayBuffer, contentType: string) {
   try {
     await requireCurrentUser()

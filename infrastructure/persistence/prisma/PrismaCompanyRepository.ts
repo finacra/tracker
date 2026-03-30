@@ -13,7 +13,8 @@ export class PrismaCompanyRepository implements CompanyRepository {
       Prisma.sql`SELECT id, name, user_id, app_user_id, type, incorporation_date, tax_id, registration_id,
               industry, address, city, state, pin_code, phone_number, email, landline,
               other_info, industry_categories, other_industry_category, ex_directors, country_code,
-              nic_code, is_listed
+              nic_code, is_listed, employee_count, annual_turnover, is_gst_registered, gst_number,
+              net_worth, is_msme, msme_category, has_imports_exports, is_startup_dpiit
        FROM companies WHERE id = ${companyId}::uuid`
     )
 
@@ -44,6 +45,15 @@ export class PrismaCompanyRepository implements CompanyRepository {
       countryCode: data.country_code ?? null,
       nicCode: data.nic_code ?? null,
       isListed: data.is_listed ?? null,
+      employeeCount: data.employee_count ?? null,
+      annualTurnover: data.annual_turnover != null ? Number(data.annual_turnover) : null,
+      isGstRegistered: data.is_gst_registered ?? null,
+      gstNumber: data.gst_number ?? null,
+      netWorth: data.net_worth != null ? Number(data.net_worth) : null,
+      isMsme: data.is_msme ?? null,
+      msmeCategory: data.msme_category ?? null,
+      hasImportsExports: data.has_imports_exports ?? null,
+      isStartupDpiit: data.is_startup_dpiit ?? null,
     }
   }
 
@@ -185,6 +195,15 @@ export class PrismaCompanyRepository implements CompanyRepository {
         ex_directors: input.exDirectors || undefined,
         nic_code: input.nicCode !== undefined ? input.nicCode : undefined,
         is_listed: input.isListed !== undefined ? input.isListed : undefined,
+        employee_count: input.employeeCount !== undefined ? input.employeeCount : undefined,
+        annual_turnover: input.annualTurnover !== undefined ? input.annualTurnover : undefined,
+        is_gst_registered: input.isGstRegistered !== undefined ? input.isGstRegistered : undefined,
+        gst_number: input.gstNumber !== undefined ? input.gstNumber : undefined,
+        net_worth: input.netWorth !== undefined ? input.netWorth : undefined,
+        is_msme: input.isMsme !== undefined ? input.isMsme : undefined,
+        msme_category: input.msmeCategory !== undefined ? input.msmeCategory : undefined,
+        has_imports_exports: input.hasImportsExports !== undefined ? input.hasImportsExports : undefined,
+        is_startup_dpiit: input.isStartupDpiit !== undefined ? input.isStartupDpiit : undefined,
       },
     })
   }
@@ -224,7 +243,8 @@ export class PrismaCompanyRepository implements CompanyRepository {
       SELECT id, name, user_id, app_user_id, type, incorporation_date, tax_id, registration_id,
              industry, address, city, state, pin_code, phone_number, email, landline,
              other_info, industry_categories, other_industry_category, ex_directors, country_code,
-             nic_code, is_listed, created_at
+             nic_code, is_listed, employee_count, annual_turnover, is_gst_registered, gst_number,
+             net_worth, is_msme, msme_category, has_imports_exports, is_startup_dpiit, created_at
       FROM companies
       ORDER BY created_at DESC
     `
@@ -252,6 +272,15 @@ export class PrismaCompanyRepository implements CompanyRepository {
       countryCode: data.country_code ?? null,
       nicCode: data.nic_code ?? null,
       isListed: data.is_listed ?? null,
+      employeeCount: data.employee_count ?? null,
+      annualTurnover: data.annual_turnover != null ? Number(data.annual_turnover) : null,
+      isGstRegistered: data.is_gst_registered ?? null,
+      gstNumber: data.gst_number ?? null,
+      netWorth: data.net_worth != null ? Number(data.net_worth) : null,
+      isMsme: data.is_msme ?? null,
+      msmeCategory: data.msme_category ?? null,
+      hasImportsExports: data.has_imports_exports ?? null,
+      isStartupDpiit: data.is_startup_dpiit ?? null,
       createdAt: data.created_at ? data.created_at.toISOString() : null,
     }))
   }

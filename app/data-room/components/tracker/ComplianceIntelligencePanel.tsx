@@ -1,0 +1,825 @@
+'use client'
+
+import React, { useState, useCallback } from 'react'
+import {
+  generateComplianceForCompany,
+  validateComplianceForCompany,
+  generateHistoricalCompliances,
+  getAIRequirementsPendingReview,
+  approveAIRequirement,
+  approveAllAIRequirements,
+  rejectAIRequirement,
+  type AIRequirementForReview,
+  type ValidateComplianceResult,
+} from '../../actions-intelligence'
+
+interface ComplianceIntelligencePanelProps {
+  companyId: string
+  companyName: string
+  hasNicCode: boolean
+  canEdit: boolean
+  hasExistingRequirements: boolean
+  incorporationDate: string | null
+  onRequirementsApproved: () => void // refresh the tracker after approvals
+}
+
+type ViewState = 'idle' | 'generating' | 'validating' | 'reviewing' | 'error'
+
+const CONFIDENCE_COLORS: Record<string, string> = {
+  high: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+  medium: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+  low: 'bg-red-500/20 text-red-400 border-red-500/30',
+}
+
+function getConfidenceLevel(score: number | null): 'high' | 'medium' | 'low' {
+  if (!score) return 'low'
+  if (score >= 0.95) return 'high'
+  if (score >= 0.85) return 'medium'
+  return 'low'
+}
+
+function formatConfidence(score: number | null): string {
+  if (!score) return 'N/A'
+  return `${Math.round(score * 100)}%`
+}
+
+const CATEGORY_ICONS: Record<string, string> = {
+  'RoC': 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
+  'GST': 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z',
+  'Income Tax': 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+  'Payroll': 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
+}
+
+export default function ComplianceIntelligencePanel({
+  companyId,
+  companyName,
+  hasNicCode,
+  canEdit,
+  hasExistingRequirements,
+  incorporationDate,
+  onRequirementsApproved,
+}: ComplianceIntelligencePanelProps) {
+  const [viewState, setViewState] = useState<ViewState>('idle')
+  const [requirements, setRequirements] = useState<AIRequirementForReview[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const [stats, setStats] = useState<{
+    total: number
+    rulesEngineCount: number
+    aiCount: number
+    highConf: number
+    needsReview: number
+    missingFields: string[]
+  } | null>(null)
+  const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set())
+  const [isApprovingAll, setIsApprovingAll] = useState(false)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [validationResults, setValidationResults] = useState<Array<{
+    requirementName: string
+    verdict: 'applicable' | 'not_applicable' | 'uncertain'
+    reason: string
+    sourceUrl: string | null
+  }> | null>(null)
+  const [validationStats, setValidationStats] = useState<{
+    validated: number
+    flagged: number
+    removed: number
+    discovered: number
+  } | null>(null)
+  const [isGeneratingHistory, setIsGeneratingHistory] = useState(false)
+  const [showHistorySelector, setShowHistorySelector] = useState(false)
+  const [historyResult, setHistoryResult] = useState<{
+    generated: number
+    yearsBack: number
+    capped: boolean
+  } | null>(null)
+  const [discoveredItems, setDiscoveredItems] = useState<Array<{
+    name: string
+    category: string
+    act: string
+    authority: string
+    confidenceScore: number
+  }> | null>(null)
+
+  // ── Generate ─────────────────────────────────────────────────────────
+
+  const handleGenerate = useCallback(async () => {
+    setViewState('generating')
+    setError(null)
+
+    const result = await generateComplianceForCompany(companyId)
+
+    if (!result.success) {
+      setError(result.error || 'Generation failed')
+      setViewState('error')
+      return
+    }
+
+    setStats({
+      total: result.totalGenerated || 0,
+      rulesEngineCount: result.rulesEngineCount || 0,
+      aiCount: result.aiCount || 0,
+      highConf: result.highConfidence || 0,
+      needsReview: result.needsReview || 0,
+      missingFields: result.missingProfileFields || [],
+    })
+
+    // Capture validation results
+    if (result.validationRan) {
+      setValidationStats({
+        validated: result.validatedCount || 0,
+        flagged: result.flaggedCount || 0,
+        removed: result.removedByValidation || 0,
+        discovered: 0, // generate flow doesn't discover — that's standalone validate
+      })
+      if (result.validationResults && result.validationResults.length > 0) {
+        setValidationResults(result.validationResults)
+      }
+    }
+
+    // Fetch AI-generated items pending review (rules engine items are auto-approved)
+    const reviewResult = await getAIRequirementsPendingReview(companyId)
+    if (reviewResult.success && reviewResult.requirements && reviewResult.requirements.length > 0) {
+      setRequirements(reviewResult.requirements)
+      setViewState('reviewing')
+    } else {
+      // No AI items to review — rules engine results are already active
+      setViewState('idle')
+      if ((result.rulesEngineCount || 0) > 0) {
+        onRequirementsApproved() // refresh the tracker to show new rules engine items
+      }
+    }
+  }, [companyId])
+
+  // ── Load existing pending review items ──────────────────────────────
+
+  const handleLoadPending = useCallback(async () => {
+    const result = await getAIRequirementsPendingReview(companyId)
+    if (result.success && result.requirements && result.requirements.length > 0) {
+      setRequirements(result.requirements)
+      setViewState('reviewing')
+    }
+  }, [companyId])
+
+  // ── Standalone Validate ─────────────────────────────────────────────
+
+  const handleValidate = useCallback(async () => {
+    setViewState('validating')
+    setError(null)
+    setValidationResults(null)
+    setValidationStats(null)
+    setDiscoveredItems(null)
+
+    const result = await validateComplianceForCompany(companyId)
+
+    if (!result.success) {
+      setError(result.error || 'Validation failed')
+      setViewState('error')
+      return
+    }
+
+    setValidationStats({
+      validated: result.validatedCount || 0,
+      flagged: result.flaggedCount || 0,
+      removed: result.removedCount || 0,
+      discovered: result.discoveredCount || 0,
+    })
+
+    if (result.results && result.results.length > 0) {
+      setValidationResults(result.results)
+    }
+
+    if (result.discovered && result.discovered.length > 0) {
+      setDiscoveredItems(result.discovered)
+    }
+
+    // Refresh tracker if items were removed or discovered
+    if ((result.removedCount || 0) > 0 || (result.discoveredCount || 0) > 0) {
+      onRequirementsApproved()
+    }
+
+    setViewState('idle')
+  }, [companyId, onRequirementsApproved])
+
+  // ── Generate Historical ────────────────────────────────────────────
+
+  const maxHistoricalYears = React.useMemo(() => {
+    if (!incorporationDate) return 0
+    const incorp = new Date(incorporationDate)
+    const now = new Date()
+    return Math.floor((now.getTime() - incorp.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+  }, [incorporationDate])
+
+  const handleGenerateHistory = useCallback(async (years: number) => {
+    setIsGeneratingHistory(true)
+    setShowHistorySelector(false)
+    setHistoryResult(null)
+
+    const result = await generateHistoricalCompliances(companyId, years)
+
+    if (result.success) {
+      setHistoryResult({
+        generated: result.generated || 0,
+        yearsBack: result.yearsBack || years,
+        capped: result.cappedAtIncorporation || false,
+      })
+      if ((result.generated || 0) > 0) {
+        onRequirementsApproved()
+      }
+    } else {
+      setError(result.error || 'Historical generation failed')
+    }
+
+    setIsGeneratingHistory(false)
+  }, [companyId, onRequirementsApproved])
+
+  // Check for pending items on mount
+  React.useEffect(() => {
+    handleLoadPending()
+  }, [handleLoadPending])
+
+  // ── Approve single ──────────────────────────────────────────────────
+
+  const handleApprove = useCallback(async (reqId: string) => {
+    console.log('[CompliancePanel] Approving:', reqId, 'companyId:', companyId)
+    setApprovingIds(prev => new Set(prev).add(reqId))
+    const result = await approveAIRequirement(reqId, companyId)
+    console.log('[CompliancePanel] Approve result:', result)
+    if (result.success) {
+      setRequirements(prev => prev.filter(r => r.id !== reqId))
+      onRequirementsApproved()
+    } else {
+      console.error('[CompliancePanel] Approve failed:', result.error)
+    }
+    setApprovingIds(prev => {
+      const next = new Set(prev)
+      next.delete(reqId)
+      return next
+    })
+  }, [companyId, onRequirementsApproved])
+
+  // ── Reject single ──────────────────────────────────────────────────
+
+  const handleReject = useCallback(async (reqId: string) => {
+    setApprovingIds(prev => new Set(prev).add(reqId))
+    const result = await rejectAIRequirement(reqId, companyId)
+    if (result.success) {
+      setRequirements(prev => prev.filter(r => r.id !== reqId))
+    } else {
+      console.error('[CompliancePanel] Reject failed:', result.error)
+    }
+    setApprovingIds(prev => {
+      const next = new Set(prev)
+      next.delete(reqId)
+      return next
+    })
+  }, [companyId])
+
+  // ── Approve all ─────────────────────────────────────────────────────
+
+  const handleApproveAll = useCallback(async () => {
+    console.log('[CompliancePanel] Approve all, count:', requirements.length, 'batchId:', requirements[0]?.ai_batch_id)
+    setIsApprovingAll(true)
+    const batchId = requirements[0]?.ai_batch_id || undefined
+    const result = await approveAllAIRequirements(companyId, batchId || undefined)
+    console.log('[CompliancePanel] Approve all result:', result)
+    if (result.success) {
+      setRequirements([])
+      setViewState('idle')
+      onRequirementsApproved()
+    } else {
+      console.error('[CompliancePanel] Approve all failed:', result.error)
+    }
+    setIsApprovingAll(false)
+  }, [companyId, requirements, onRequirementsApproved])
+
+  // ── Auto-refresh tracker when all items reviewed ────────────────────
+
+  React.useEffect(() => {
+    if (viewState === 'reviewing' && requirements.length === 0) {
+      setViewState('idle')
+      onRequirementsApproved()
+    }
+  }, [requirements.length, viewState, onRequirementsApproved])
+
+  // ── Idle state: show generate button ────────────────────────────────
+
+  if (viewState === 'idle') {
+    if (!canEdit) return null
+
+    return (
+      <div className="border border-gray-700/50 rounded-xl p-4 sm:p-6 bg-gradient-to-br from-blue-500/5 to-purple-500/5">
+        <div className="flex items-start gap-3 sm:gap-4">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-blue-400 sm:w-6 sm:h-6">
+              <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-white font-semibold text-sm sm:text-base">Compliance Intelligence</h3>
+            <p className="text-gray-400 text-xs sm:text-sm mt-1">
+              Evaluates <span className="text-white font-medium">{companyName}</span> against 60+ Indian regulatory rules based on company type, state, industry, employee count, and turnover. Then uses AI to find any specialized compliances the rules engine may miss.
+            </p>
+
+            {/* Stats from last generation */}
+            {stats && stats.total > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                <span className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  {stats.rulesEngineCount} from rules engine (auto-applied)
+                </span>
+                {stats.aiCount > 0 && (
+                  <span className="px-2 py-1 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                    {stats.aiCount} from AI (reviewed)
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Missing fields warning */}
+            {stats && stats.missingFields.length > 0 && (
+              <div className="mt-2 p-2 rounded-lg bg-yellow-500/5 border border-yellow-500/15">
+                <p className="text-yellow-400/80 text-xs">
+                  Missing: {stats.missingFields.map(f => {
+                    const labels: Record<string, string> = { company_type: 'Company Type', employee_count: 'Employee Count', annual_turnover: 'Annual Turnover', state: 'State', nic_code: 'NIC Code', net_worth: 'Net Worth' }
+                    return labels[f] || f
+                  }).join(', ')}.
+                  Some rules included as precaution. Update the company profile for accuracy.
+                </p>
+              </div>
+            )}
+
+            {!hasNicCode && (
+              <p className="text-yellow-400/80 text-xs mt-2">
+                NIC code not set — industry-specific rules will be skipped. Update the company profile for full coverage.
+              </p>
+            )}
+
+            {/* Validation results summary */}
+            {validationStats && (
+              <div className="mt-3 p-3 rounded-lg bg-gray-900/50 border border-gray-700/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-400">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span className="text-white text-xs font-semibold">AI Validation Complete</span>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    {validationStats.validated - validationStats.flagged} confirmed applicable
+                  </span>
+                  {validationStats.removed > 0 && (
+                    <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">
+                      {validationStats.removed} removed (not applicable)
+                    </span>
+                  )}
+                  {validationStats.flagged - validationStats.removed > 0 && (
+                    <span className="px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                      {validationStats.flagged - validationStats.removed} uncertain (needs CA review)
+                    </span>
+                  )}
+                  {validationStats.discovered > 0 && (
+                    <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      {validationStats.discovered} new discovered (pending review)
+                    </span>
+                  )}
+                </div>
+
+                {/* Flagged items details */}
+                {validationResults && validationResults.length > 0 && (
+                  <div className="mt-2 space-y-1.5">
+                    {validationResults.map((v, i) => (
+                      <div key={i} className={`flex items-start gap-2 text-xs p-1.5 rounded ${
+                        v.verdict === 'not_applicable'
+                          ? 'bg-red-500/5 border border-red-500/10'
+                          : 'bg-yellow-500/5 border border-yellow-500/10'
+                      }`}>
+                        <span className={`flex-shrink-0 mt-0.5 ${
+                          v.verdict === 'not_applicable' ? 'text-red-400' : 'text-yellow-400'
+                        }`}>
+                          {v.verdict === 'not_applicable' ? '✕' : '?'}
+                        </span>
+                        <div className="min-w-0">
+                          <span className={`font-medium ${
+                            v.verdict === 'not_applicable' ? 'text-red-300 line-through' : 'text-yellow-300'
+                          }`}>
+                            {v.requirementName}
+                          </span>
+                          <span className="text-gray-500 ml-1.5">— {v.reason}</span>
+                          {v.sourceUrl && (
+                            <a href={v.sourceUrl} target="_blank" rel="noopener noreferrer"
+                              className="text-blue-400 hover:underline ml-1.5 inline-block">[source]</a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Discovered (missing) items */}
+                {discoveredItems && discoveredItems.length > 0 && (
+                  <div className="mt-2 space-y-1.5">
+                    <p className="text-blue-400 text-xs font-semibold mt-1">Newly Discovered:</p>
+                    {discoveredItems.map((d, i) => (
+                      <div key={i} className="flex items-start gap-2 text-xs p-1.5 rounded bg-blue-500/5 border border-blue-500/10">
+                        <span className="flex-shrink-0 mt-0.5 text-blue-400">+</span>
+                        <div className="min-w-0">
+                          <span className="font-medium text-blue-300">{d.name}</span>
+                          <span className="text-gray-500 ml-1.5">— {d.act} ({d.authority})</span>
+                          <span className="text-gray-600 ml-1.5">{Math.round(d.confidenceScore * 100)}% confidence</span>
+                        </div>
+                      </div>
+                    ))}
+                    <p className="text-gray-500 text-[10px] mt-1">Discovered items added as "pending review" — approve them in the review panel above.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Historical generation result */}
+            {historyResult && (
+              <div className="mt-3 p-2 rounded-lg bg-amber-500/5 border border-amber-500/15">
+                <p className="text-amber-400/90 text-xs">
+                  Generated {historyResult.generated} historical entries for the past {historyResult.yearsBack} year{historyResult.yearsBack !== 1 ? 's' : ''}.
+                  {historyResult.capped && ' (capped at incorporation date)'}
+                  {' '}All past-due entries marked as overdue.
+                </p>
+              </div>
+            )}
+
+            <div className="mt-3 flex items-center gap-2 flex-wrap">
+              <button
+                onClick={handleGenerate}
+                disabled={false}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M13 10V3L4 14h7v7l9-11h-7z" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                {stats ? 'Re-evaluate Compliances' : 'Generate Compliances'}
+              </button>
+              {hasExistingRequirements && (
+                <button
+                  onClick={handleValidate}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Validate with AI
+                </button>
+              )}
+              {hasExistingRequirements && maxHistoricalYears >= 1 && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowHistorySelector(!showHistorySelector)}
+                    disabled={isGeneratingHistory}
+                    className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                  >
+                    {isGeneratingHistory ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        Previous Years
+                      </>
+                    )}
+                  </button>
+                  {showHistorySelector && (
+                    <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-20 min-w-[200px]">
+                      <div className="p-2 border-b border-gray-700">
+                        <p className="text-gray-400 text-[10px] uppercase tracking-wider font-semibold">Generate for previous</p>
+                        {incorporationDate && (
+                          <p className="text-gray-500 text-[10px] mt-0.5">
+                            Incorporated: {new Date(incorporationDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </p>
+                        )}
+                      </div>
+                      {[1, 2, 3].filter(y => y <= maxHistoricalYears).map(years => (
+                        <button
+                          key={years}
+                          onClick={() => handleGenerateHistory(years)}
+                          className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center justify-between"
+                        >
+                          <span>{years} Year{years > 1 ? 's' : ''}</span>
+                          <span className="text-gray-500 text-xs">
+                            ~{years === 1 ? '12' : years === 2 ? '24' : '36'} months
+                          </span>
+                        </button>
+                      ))}
+                      {maxHistoricalYears > 3 && (
+                        <button
+                          onClick={() => handleGenerateHistory(maxHistoricalYears)}
+                          className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center justify-between border-t border-gray-700"
+                        >
+                          <span>Since Incorporation</span>
+                          <span className="text-gray-500 text-xs">
+                            {maxHistoricalYears} yr{maxHistoricalYears > 1 ? 's' : ''}
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+              {hasExistingRequirements && !incorporationDate && (
+                <p className="text-yellow-400/60 text-[10px]">Set incorporation date to enable historical generation</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Generating state ────────────────────────────────────────────────
+
+  if (viewState === 'generating') {
+    return (
+      <div className="border border-blue-500/20 rounded-xl p-6 sm:p-8 bg-blue-500/5">
+        <div className="flex flex-col items-center justify-center text-center">
+          <div className="relative mb-4">
+            <div className="w-14 h-14 border-4 border-blue-500/30 border-t-blue-400 rounded-full animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-400">
+                <path d="M13 10V3L4 14h7v7l9-11h-7z" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+          </div>
+          <h3 className="text-white font-semibold mb-1">Evaluating Compliance Rules</h3>
+          <p className="text-gray-400 text-sm max-w-md">
+            Running deterministic rules engine for <span className="text-white">{companyName}</span>, then validating with AI for specialized industry and state requirements.
+          </p>
+          <p className="text-gray-500 text-xs mt-3">Rules engine is instant. AI validation takes 10-20 seconds.</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Validating state ────────────────────────────────────────────────
+
+  if (viewState === 'validating') {
+    return (
+      <div className="border border-purple-500/20 rounded-xl p-6 sm:p-8 bg-purple-500/5">
+        <div className="flex flex-col items-center justify-center text-center">
+          <div className="relative mb-4">
+            <div className="w-14 h-14 border-4 border-purple-500/30 border-t-purple-400 rounded-full animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-400">
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+          </div>
+          <h3 className="text-white font-semibold mb-1">Validating Compliances</h3>
+          <p className="text-gray-400 text-sm max-w-md">
+            AI is reviewing each compliance requirement for <span className="text-white">{companyName}</span> to verify applicability based on thresholds, state, industry, and entity type.
+          </p>
+          <p className="text-gray-500 text-xs mt-3">This takes 15-30 seconds.</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Error state ─────────────────────────────────────────────────────
+
+  if (viewState === 'error') {
+    return (
+      <div className="border border-red-500/20 rounded-xl p-4 sm:p-6 bg-red-500/5">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-400">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="15" y1="9" x2="9" y2="15" />
+              <line x1="9" y1="9" x2="15" y2="15" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-red-400 font-semibold text-sm">Generation Failed</h3>
+            <p className="text-gray-400 text-xs mt-1">{error}</p>
+            <button
+              onClick={handleGenerate}
+              className="mt-3 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-xs font-medium transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Review state ────────────────────────────────────────────────────
+
+  const categoryGroups = requirements.reduce((acc, req) => {
+    if (!acc[req.category]) acc[req.category] = []
+    acc[req.category].push(req)
+    return acc
+  }, {} as Record<string, AIRequirementForReview[]>)
+
+  return (
+    <div className="border border-purple-500/20 rounded-xl bg-purple-500/5 overflow-hidden">
+      {/* Header */}
+      <div className="p-4 sm:p-5 border-b border-purple-500/10">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h3 className="text-white font-semibold text-sm sm:text-base flex items-center gap-2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-400">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              AI-Discovered Compliance Review
+            </h3>
+            <p className="text-gray-400 text-xs mt-1">
+              {stats && stats.rulesEngineCount > 0 && (
+                <span className="text-emerald-400">{stats.rulesEngineCount} rules auto-applied. </span>
+              )}
+              {requirements.length} AI-discovered item{requirements.length !== 1 ? 's' : ''} need review before activating.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {stats && (
+              <div className="flex items-center gap-3 text-xs text-gray-400 mr-2 hidden sm:flex">
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  {stats.highConf} high confidence
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
+                  {stats.needsReview} needs review
+                </span>
+              </div>
+            )}
+            <button
+              onClick={handleApproveAll}
+              disabled={isApprovingAll || requirements.length === 0}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1.5"
+            >
+              {isApprovingAll ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Approving...
+                </>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Approve All ({requirements.length})
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Requirements by category */}
+      <div className="divide-y divide-gray-800/50 max-h-[70vh] overflow-y-auto">
+        {Object.entries(categoryGroups).map(([category, items]) => (
+          <div key={category}>
+            {/* Category header */}
+            <div className="px-4 py-2.5 bg-gray-900/50 flex items-center gap-2 sticky top-0 z-10">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-400">
+                <path d={CATEGORY_ICONS[category] || 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'} strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="text-gray-300 text-xs font-semibold uppercase tracking-wider">{category}</span>
+              <span className="text-gray-500 text-xs">({items.length})</span>
+            </div>
+
+            {/* Items */}
+            {items.map((req) => {
+              const confLevel = getConfidenceLevel(req.confidence_score)
+              const isExpanded = expandedId === req.id
+              const isProcessing = approvingIds.has(req.id)
+
+              return (
+                <div key={req.id} className={`px-4 py-3 hover:bg-white/[0.02] transition-colors ${isProcessing ? 'opacity-50' : ''}`}>
+                  <div className="flex items-start gap-3">
+                    {/* Confidence badge */}
+                    <div className={`mt-0.5 px-2 py-0.5 rounded text-[10px] font-semibold border flex-shrink-0 ${CONFIDENCE_COLORS[confLevel]}`}>
+                      {formatConfidence(req.confidence_score)}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-white text-sm font-medium leading-tight">{req.requirement}</p>
+                          <p className="text-gray-500 text-xs mt-0.5">
+                            {req.authority && <span className="text-gray-400">{req.authority}</span>}
+                            {req.authority && req.compliance_type && <span className="mx-1.5">·</span>}
+                            {req.compliance_type && <span className="capitalize">{req.compliance_type}</span>}
+                            <span className="mx-1.5">·</span>
+                            {req.due_date ? (
+                              <span>Due: {req.due_date}</span>
+                            ) : (
+                              <span className="text-gray-600 italic">No due date</span>
+                            )}
+                          </p>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            onClick={() => setExpandedId(isExpanded ? null : req.id)}
+                            className="p-1.5 text-gray-500 hover:text-gray-300 transition-colors"
+                            title="Details"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              {isExpanded ? (
+                                <polyline points="18 15 12 9 6 15" />
+                              ) : (
+                                <polyline points="6 9 12 15 18 9" />
+                              )}
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleApprove(req.id)}
+                            disabled={isProcessing}
+                            className="p-1.5 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded transition-colors"
+                            title="Approve"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleReject(req.id)}
+                            disabled={isProcessing}
+                            className="p-1.5 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                            title="Remove"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <line x1="18" y1="6" x2="6" y2="18" />
+                              <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Expanded details */}
+                      {isExpanded && (
+                        <div className="mt-3 pl-0 space-y-2 text-xs">
+                          {req.act && (
+                            <div className="flex gap-2">
+                              <span className="text-gray-500 w-20 flex-shrink-0">Act:</span>
+                              <span className="text-gray-300">{req.act}</span>
+                            </div>
+                          )}
+                          {req.section && (
+                            <div className="flex gap-2">
+                              <span className="text-gray-500 w-20 flex-shrink-0">Section:</span>
+                              <span className="text-gray-300">{req.section}</span>
+                            </div>
+                          )}
+                          {req.penalty && (
+                            <div className="flex gap-2">
+                              <span className="text-gray-500 w-20 flex-shrink-0">Penalty:</span>
+                              <span className="text-red-400/80">{req.penalty}</span>
+                            </div>
+                          )}
+                          {req.applicability_reason && (
+                            <div className="flex gap-2">
+                              <span className="text-gray-500 w-20 flex-shrink-0">Why:</span>
+                              <span className="text-gray-300">{req.applicability_reason}</span>
+                            </div>
+                          )}
+                          {req.due_date_formula && (
+                            <div className="flex gap-2">
+                              <span className="text-gray-500 w-20 flex-shrink-0">Schedule:</span>
+                              <span className="text-gray-400 font-mono text-[11px]">{req.due_date_formula}</span>
+                            </div>
+                          )}
+                          {req.source_url && (
+                            <div className="flex gap-2">
+                              <span className="text-gray-500 w-20 flex-shrink-0">Source:</span>
+                              <a
+                                href={req.source_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-400 hover:underline truncate"
+                              >
+                                {req.source_url}
+                              </a>
+                            </div>
+                          )}
+                          {req.required_documents.length > 0 && (
+                            <div className="flex gap-2">
+                              <span className="text-gray-500 w-20 flex-shrink-0">Docs:</span>
+                              <span className="text-gray-300">{req.required_documents.join(', ')}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

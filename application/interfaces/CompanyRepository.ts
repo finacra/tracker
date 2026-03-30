@@ -25,6 +25,15 @@ export interface CompanyDetailsRecord extends CompanyRecord {
   countryCode: string | null
   nicCode: string | null
   isListed: boolean | null
+  employeeCount: number | null
+  annualTurnover: number | null  // in lakhs
+  isGstRegistered: boolean | null
+  gstNumber: string | null
+  netWorth: number | null        // in crores
+  isMsme: boolean | null
+  msmeCategory: string | null
+  hasImportsExports: boolean | null
+  isStartupDpiit: boolean | null
   createdAt?: string | null
 }
 
@@ -76,6 +85,15 @@ export interface UpdateCompanyInput {
   exDirectors?: string[] | null
   nicCode?: string | null
   isListed?: boolean | null
+  employeeCount?: number | null
+  annualTurnover?: number | null
+  isGstRegistered?: boolean | null
+  gstNumber?: string | null
+  netWorth?: number | null
+  isMsme?: boolean | null
+  msmeCategory?: string | null
+  hasImportsExports?: boolean | null
+  isStartupDpiit?: boolean | null
 }
 
 export interface CompanyRepository {

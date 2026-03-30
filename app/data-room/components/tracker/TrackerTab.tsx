@@ -13,6 +13,7 @@ import TrackerSearchAndActions from './TrackerSearchAndActions'
 import TrackerCategoryFilters from './TrackerCategoryFilters'
 import TrackerEmptyState from './TrackerEmptyState'
 import TrackerCalendarView from './TrackerCalendarView'
+import ComplianceIntelligencePanel from './ComplianceIntelligencePanel'
 
 export default function TrackerTab() {
   const {
@@ -142,6 +143,19 @@ export default function TrackerTab() {
           <span className="text-gray-600">·</span>
           <span className="text-xs">Categories and templates are country-specific</span>
         </div>
+      )}
+
+      {/* AI Compliance Intelligence */}
+      {currentCompany && (
+        <ComplianceIntelligencePanel
+          companyId={currentCompany.id}
+          companyName={currentCompany.name}
+          hasNicCode={!!currentCompany.nic_code}
+          canEdit={canEdit}
+          hasExistingRequirements={regulatoryRequirements.length > 0}
+          incorporationDate={currentCompany.incorporation_date || null}
+          onRequirementsApproved={refreshRequirements}
+        />
       )}
 
       {/* Super Filters */}

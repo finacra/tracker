@@ -58,6 +58,17 @@ export interface RegulatoryRequirement {
   updated_at: string
   created_by: string | null
   updated_by: string | null
+  // AI compliance intelligence fields
+  source?: string | null
+  confidence_score?: number | null
+  needs_ca_review?: boolean | null
+  source_url?: string | null
+  act?: string | null
+  section?: string | null
+  authority?: string | null
+  due_date_formula?: string | null
+  applicability_reason?: string | null
+  ai_batch_id?: string | null
 }
 
 export interface UserRole {
@@ -3511,7 +3522,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         target_company_id AS (SELECT id FROM final_target_id),
         -- Sidebar metadata
         sidebar_meta AS (
-          SELECT id, name, type, incorporation_date, country_code, region 
+          SELECT id, name, type, incorporation_date, country_code, region, nic_code
           FROM companies WHERE id IN (SELECT id FROM acc_ids)
         ),
         -- Company snapshot (single query)

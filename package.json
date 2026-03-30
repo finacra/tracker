@@ -13,6 +13,7 @@
     "@handsontable/react": "^16.2.0",
     "@langchain/openai": "^1.2.3",
     "@langchain/textsplitters": "^1.0.1",
+    "@perplexity-ai/perplexity_ai": "^0.26.4",
     "@prisma/client": "^5.22.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.91.1",
@@ -44,6 +45,7 @@
     "react-katex": "^3.0.1",
     "react-window": "^2.2.7",
     "resend": "^6.9.1",
+    "server-only": "^0.0.1",
     "zustand": "^5.0.11"
   },
   "devDependencies": {

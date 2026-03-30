@@ -19,6 +19,9 @@ import {
 import { trackVaultFileExport, trackVaultFileUpload, trackDocumentUpload } from '@/lib/tracking/kpi-tracker'
 import { showToast } from '@/components/ui/Toast'
 
+import CIAOverviewSection from './cia/CIAOverviewSection'
+import CIAFullscreen from './cia/CIAFullscreen'
+
 // Interface for version groups
 interface VersionGroup {
   documentType: string
@@ -143,6 +146,8 @@ export default function DocumentsTab({
   const [selectedFY, setSelectedFY] = useState<string>('')
   const [sortOption, setSortOption] = useState<'name-asc' | 'name-desc' | 'date-newest' | 'date-oldest' | 'expiry' | 'folder'>('date-newest')
   const [expiringSoonFilter, setExpiringSoonFilter] = useState<'all' | 'expiring' | 'expired'>('all')
+  const [isCIAOpen, setIsCIAOpen] = useState(false)
+  const [ciaInitialQuestion, setCIAInitialQuestion] = useState<string | undefined>(undefined)
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [expandedDocumentVersions, setExpandedDocumentVersions] = useState<Set<string>>(new Set())
   const [expandedYearGroups, setExpandedYearGroups] = useState<Record<string, Set<string>>>({})
@@ -1200,7 +1205,22 @@ export default function DocumentsTab({
           </div>
         )}
       </div>
-    
+
+      {/* AI Overview Section */}
+      {currentCompany && (
+        <CIAOverviewSection
+          companyId={currentCompany.id}
+          documentCount={vaultDocuments?.length || 0}
+          onDeepDive={() => setIsCIAOpen(true)}
+          recentDocuments={(vaultDocuments || []).slice(0, 5).map((d: any) => ({
+            name: d.file_name || d.document_name || 'Document',
+            folder: d.folder_name || d.document_type || 'Other',
+            type: d.document_type,
+            date: d.created_at,
+          }))}
+        />
+      )}
+
       {/* Expand/Collapse All Controls */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="text-sm text-gray-400">
@@ -4036,6 +4056,23 @@ export default function DocumentsTab({
             </div>
           </div>
         </div>
+      )}
+
+      {/* CIA Fullscreen Deep Dive */}
+      {currentCompany && (
+        <CIAFullscreen
+          companyId={currentCompany.id}
+          companyName={currentCompany.name || 'Company'}
+          isOpen={isCIAOpen}
+          onClose={() => { setIsCIAOpen(false); setCIAInitialQuestion(undefined); }}
+          suggestedQuestions={[
+            'What are my overdue compliances?',
+            'Summarize my uploaded documents',
+            'What filings are due this month?',
+            'What penalties am I facing?',
+          ]}
+          initialQuestion={ciaInitialQuestion}
+        />
       )}
     </div>
   )

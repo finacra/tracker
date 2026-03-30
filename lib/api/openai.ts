@@ -131,6 +131,63 @@ export async function generateBatchBusinessImpact(
  * @param legalSection - Legal section reference
  * @returns Structured business impact analysis
  */
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+}
+
+/**
+ * Stream a chat completion from Azure OpenAI.
+ * Returns an async iterable of content delta strings.
+ */
+export async function streamChatCompletion(
+  messages: ChatMessage[]
+): Promise<AsyncIterable<string> | null> {
+  const client = getAzureOpenAIClient()
+  if (!client) {
+    console.error('Azure OpenAI client not initialized. Check environment variables.')
+    return null
+  }
+
+  const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.2-chat'
+
+  const stream = await client.chat.completions.create({
+    messages,
+    model: deployment,
+    stream: true,
+    max_completion_tokens: 4096,
+  })
+
+  return {
+    async *[Symbol.asyncIterator]() {
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content
+        if (delta) yield delta
+      }
+    },
+  }
+}
+
+/**
+ * Non-streaming chat completion. Returns the full response text.
+ */
+export async function chatCompletion(
+  messages: ChatMessage[]
+): Promise<string | null> {
+  const client = getAzureOpenAIClient()
+  if (!client) return null
+
+  const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.2-chat'
+
+  const response = await client.chat.completions.create({
+    messages,
+    model: deployment,
+    max_completion_tokens: 200,
+  })
+
+  return response.choices[0]?.message?.content || null
+}
+
 export async function generateBusinessImpact(
   requirement: string,
   penalty: string,

@@ -1,3 +1,4 @@
+import 'server-only'
 import { PassportAuthGateway } from '@/infrastructure/auth/passport/PassportAuthGateway'
 import { PassportAuthService } from '@/infrastructure/auth/passport/PassportAuthService'
 import { PassportSessionProvider } from '@/infrastructure/auth/passport/PassportSessionProvider'

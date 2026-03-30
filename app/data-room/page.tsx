@@ -104,6 +104,8 @@ interface Company {
   year: string;
   country_code?: string;
   region?: string;
+  nic_code?: string | null;
+  incorporation_date?: string | null;
 }
 
 interface Director {
@@ -442,6 +444,8 @@ function DataRoomPageInner() {
           year: c.incorporation_date ? new Date(c.incorporation_date).getFullYear().toString() : "N/A",
           country_code: c.country_code || "IN",
           region: c.region || "APAC",
+          nic_code: c.nic_code || null,
+          incorporation_date: c.incorporation_date || null,
         }));
         setCompanies(formattedCompanies);
         
@@ -2167,7 +2171,7 @@ function DataRoomPageInner() {
 
   // Date normalization utilities for consistency
   // Normalize date to UTC midnight for consistent comparisons (avoids timezone issues)
-  const normalizeDate = (
+  const normalizeDate = useCallback((
     dateStr: string | Date | null | undefined,
   ): Date | null => {
     if (!dateStr) return null;
@@ -2181,7 +2185,7 @@ function DataRoomPageInner() {
     } catch {
       return null;
     }
-  };
+  }, []);
 
   // Compare dates ignoring time (for due date comparisons)
   const compareDates = (
@@ -2846,7 +2850,7 @@ function DataRoomPageInner() {
   };
 
   // Helper to get form frequency for a requirement
-  const getFormFrequency = (requirement: string): string | null => {
+  const getFormFrequency = useCallback((requirement: string): string | null => {
     if (!countryConfig?.regulatory?.formFrequencies) return null;
 
     const reqLower = requirement.toLowerCase();
@@ -2860,10 +2864,10 @@ function DataRoomPageInner() {
       }
     }
     return null;
-  };
+  }, [countryConfig?.regulatory?.formFrequencies]);
 
   // Helper to find relevant legal sections for a requirement
-  const getRelevantLegalSections = (
+  const getRelevantLegalSections = useCallback((
     requirement: string,
     category: string,
   ): Array<{
@@ -2899,10 +2903,10 @@ function DataRoomPageInner() {
     });
 
     return relevantSections;
-  };
+  }, [countryConfig?.regulatory?.legalSections]);
 
   // Helper to get authority for category
-  const getAuthorityForCategory = (category: string): string | null => {
+  const getAuthorityForCategory = useCallback((category: string): string | null => {
     if (!countryConfig?.regulatory?.authorities) return null;
 
     const categoryMap: Record<
@@ -2921,7 +2925,7 @@ function DataRoomPageInner() {
     return authorityKey
       ? countryConfig.regulatory.authorities[authorityKey] || null
       : null;
-  };
+  }, [countryConfig?.regulatory?.authorities]);
 
   // Helper to map folder names to compliance categories (country-aware)
   const getCategoryFromFolder = (folderName: string): string | null => {
@@ -4913,6 +4917,7 @@ function DataRoomPageInner() {
       )}
 
       <ToastContainer />
+
     </div>
   );
 }

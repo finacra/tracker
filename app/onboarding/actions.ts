@@ -215,6 +215,78 @@ export async function completeOnboarding(
     // Don't throw - company is created successfully
   }
 
+  // Trigger AI compliance intelligence generation in the background
+  // (non-blocking — company creation succeeds regardless)
+  // Use formData values since CompanyRecord only has id/name
+  if (nicCode) {
+    const incorpDateParsed = formData.dateOfIncorporation ? new Date(formData.dateOfIncorporation) : null
+    import('@/lib/services/compliance-intelligence').then(async ({ generateComplianceIntelligence }) => {
+      // Wait briefly for the DB trigger to apply templates first
+      await new Promise(resolve => setTimeout(resolve, 2000))
+
+      // Fetch template-applied requirements so AI skips them
+      const { Prisma: PNS } = await import('@prisma/client')
+      const { prisma: db } = await import('@/lib/prisma')
+      const existingRows = await db.$queryRaw<any[]>(
+        PNS.sql`SELECT category, requirement, compliance_type
+          FROM regulatory_requirements
+          WHERE company_id = ${company.id}::uuid`
+      )
+      const existingCompliances = (existingRows || []).map((r: any) => ({
+        category: r.category as string,
+        requirement: r.requirement as string,
+        compliance_type: r.compliance_type as string | null,
+      }))
+
+      generateComplianceIntelligence({
+        id: company.id,
+        name: formData.companyName,
+        type: formData.companyType ?? null,
+        nic_code: nicCode ?? null,
+        state: formData.state ?? null,
+        is_listed: isListed ?? null,
+        incorporation_date: incorpDateParsed,
+        country_code: formData.countryCode ?? 'IN',
+        industries: formData.industries ?? [],
+        industry_categories: formData.industryCategories ?? [],
+      }, existingCompliances).then(async (result) => {
+        if (result.success && result.requirements.length > 0) {
+          // Bulk insert AI-generated requirements (reuse PNS and db from above)
+          for (const req of result.requirements) {
+            const dueDateStr = req.due_date ? req.due_date.toISOString().split('T')[0] : null
+            const requiredDocsJson = JSON.stringify(req.required_documents || [])
+            await db.$queryRaw(
+              PNS.sql`INSERT INTO regulatory_requirements (
+                company_id, category, requirement, description, status, due_date, penalty,
+                is_critical, compliance_type, entity_type, industry, industry_category,
+                year_type, country_code, required_documents, source, confidence_score,
+                needs_ca_review, source_url, act, section, authority, due_date_formula,
+                applicability_reason, ai_batch_id, app_created_by, app_updated_by, created_at, updated_at
+              ) VALUES (
+                ${company.id}::uuid, ${req.category}::text, ${req.requirement}::text,
+                ${req.description || null}::text, ${req.status}::text, ${dueDateStr}::date,
+                ${req.penalty || null}::text, ${req.is_critical}::boolean,
+                ${req.compliance_type || null}::text, ${req.entity_type || null}::text,
+                ${req.industry || null}::text, ${req.industry_category || null}::text,
+                ${req.year_type || 'FY'}::text, ${req.country_code || 'IN'}::text,
+                ${requiredDocsJson}::jsonb, ${req.source}::text, ${req.confidence_score}::double precision,
+                ${req.needs_ca_review}::boolean, ${req.source_url || null}::text,
+                ${req.act || null}::text, ${req.section || null}::text, ${req.authority || null}::text,
+                ${req.due_date_formula || null}::text, ${req.applicability_reason || null}::text,
+                ${req.ai_batch_id || null}::text, ${user.id}::uuid, ${user.id}::uuid, NOW(), NOW()
+              )`
+            )
+          }
+          console.log(`[completeOnboarding] AI compliance: ${result.requirements.length} items generated for company ${company.id}`)
+        }
+      }).catch((err) => {
+        console.error('[completeOnboarding] AI compliance generation error (non-blocking):', err)
+      })
+    }).catch(() => {
+      // Module import failed — non-blocking
+    })
+  }
+
   return { success: true, companyId: company.id }
 }
 
@@ -224,6 +296,7 @@ export async function updateCompany(
     companyName?: string
     companyType?: string
     panNumber?: string
+    cinNumber?: string
     industries?: string[]
     address?: string
     city?: string
@@ -237,6 +310,16 @@ export async function updateCompany(
     otherIndustryCategory?: string
     directors?: any[]
     exDirectors?: string
+    // Compliance intelligence fields
+    employeeCount?: string
+    annualTurnover?: string
+    isGstRegistered?: boolean
+    gstNumber?: string
+    netWorth?: string
+    isMsme?: string       // 'yes' | 'no' | ''
+    msmeCategory?: string
+    hasImportsExports?: boolean
+    isStartupDpiit?: boolean
   }
 ) {
   // SECURITY: Validate companyId to prevent injection
@@ -249,6 +332,16 @@ export async function updateCompany(
     directorRepository
   } = createServerContainer()
   const user = await requireCurrentUser()
+
+  // Extract NIC code and listing status from CIN if available
+  let nicCode: string | null | undefined = undefined
+  let isListed: boolean | null | undefined = undefined
+  if (formData.cinNumber) {
+    const { parseCIN } = await import('@/utils/cin-parser')
+    const parsed = parseCIN(formData.cinNumber)
+    if (parsed.nicCode) nicCode = parsed.nicCode
+    if (parsed.isListed !== null) isListed = parsed.isListed
+  }
 
   // Update Company in public schema
   const updateData: import('@/application/interfaces/CompanyRepository').UpdateCompanyInput = {
@@ -264,7 +357,27 @@ export async function updateCompany(
     phoneNumber: formData.phoneNumber,
     email: formData.email,
     landline: formData.landline,
-    otherInfo: formData.other
+    otherInfo: formData.other,
+    // Compliance intelligence fields
+    employeeCount: formData.employeeCount !== undefined
+      ? (formData.employeeCount ? parseInt(formData.employeeCount, 10) || null : null)
+      : undefined,
+    annualTurnover: formData.annualTurnover !== undefined
+      ? (formData.annualTurnover ? parseFloat(formData.annualTurnover) || null : null)
+      : undefined,
+    isGstRegistered: formData.isGstRegistered !== undefined ? formData.isGstRegistered : undefined,
+    gstNumber: formData.gstNumber !== undefined ? (formData.gstNumber || null) : undefined,
+    netWorth: formData.netWorth !== undefined
+      ? (formData.netWorth ? parseFloat(formData.netWorth) || null : null)
+      : undefined,
+    isMsme: formData.isMsme !== undefined
+      ? (formData.isMsme === 'yes' ? true : formData.isMsme === 'no' ? false : null)
+      : undefined,
+    msmeCategory: formData.msmeCategory !== undefined ? (formData.msmeCategory || null) : undefined,
+    hasImportsExports: formData.hasImportsExports !== undefined ? formData.hasImportsExports : undefined,
+    isStartupDpiit: formData.isStartupDpiit !== undefined ? formData.isStartupDpiit : undefined,
+    nicCode,
+    isListed,
   }
 
   // Add industries if provided

@@ -194,91 +194,92 @@ If no changes, return [].
 
 ---
 
-## Stage 2: Document Intelligence
+## Stage 2: Document Vault Intelligence
 
-Once the compliance calendar is live, the next layer is understanding documents.
+Once the compliance calendar is live, the next layer is making the document vault smart.
 
-### 2.1 Notice & Document Ingestion
+### 2.1 Document Upload Intelligence
 
 When a user uploads any document to the vault:
 
 ```
-Document uploaded
+Document uploaded to vault
        │
        ▼
   Classification (Perplexity + Claude)
-  - Category: GST Notice / Income Tax / MCA / SEBI / Labour / Other
-  - Sub-type: Show Cause / Demand / Clarification Request / Order / Reminder
-  - Entity extraction: Company name, GSTIN/PAN, period, assessment year
-  - Reference numbers: Notice ref, DIN, ARN, case number
-  - Key amounts: Tax demand, interest, penalty
-  - Response deadline: Extracted from notice text
+  - Category: Incorporation / Board Resolution / Financial Statement / Tax Filing /
+               Agreement / Certificate / Registration / Other
+  - Sub-type: MOA, AOA, Share Certificate, Board Minutes, Balance Sheet, etc.
+  - Entity extraction: Company name, CIN, dates, parties, amounts
+  - Reference numbers: SRN, form numbers, registration IDs
+  - Validity/expiry: Certificate validity, agreement term
        │
        ▼
-  Mapping to compliance tracker
-  - Match notice to existing compliance item (e.g., GST notice → GSTR-3B item)
-  - Auto-link in tracker: "Notice received" status update
-  - If no matching item → create new tracker entry
+  Auto-tagging & organization
+  - Match document to relevant compliance item in tracker
+  - Auto-tag with category, sub-category, financial year
+  - Suggest folder placement based on classification
+  - Flag if a required document template is now fulfilled
        │
        ▼
-  Response intelligence (Perplexity + Claude)
-  - "What does Section 73 GST notice mean?"
-  - "What documents are needed to respond?"
-  - "What is the standard ground of reply?"
-  - Draft response letter generated (template + specifics)
+  Content extraction & search indexing
+  - OCR for scanned documents
+  - Key fields extracted and stored as metadata
+  - Full-text search enabled across vault
+  - Linked to compliance calendar (e.g., "AOC-4 filed" → attach filing receipt)
        │
        ▼
-  CA review
-  - Draft shown to CA with all citations
-  - CA edits, approves, downloads
-  - Response filed date recorded in tracker
+  Completeness check
+  - "You have 12/18 required documents uploaded"
+  - "Missing: Board resolution for auditor appointment, DSC registration certificate"
+  - Priority flags for documents needed before upcoming deadlines
 ```
 
-### 2.2 Document Intelligence Prompt (Notice Analysis)
+### 2.2 Document Intelligence Prompt (Vault Analysis)
 
 ```typescript
-const analyzeNoticePrompt = (documentText: string, company: CompanyProfile) => `
-Analyze this compliance notice for an Indian company and extract structured data.
+const analyzeDocumentPrompt = (documentText: string, company: CompanyProfile) => `
+Analyze this document uploaded to a compliance document vault for an Indian company.
 
 Company: ${company.name} (${company.type})
 NIC: ${company.nicCode}
 State: ${company.stateName}
 
-Notice text:
+Document text:
 """
 ${documentText}
 """
 
 Extract and return:
 {
-  "noticeType": "GST Show Cause Notice",
-  "issuingAuthority": "GST Department, Telangana",
-  "relevantAct": "CGST Act 2017",
-  "relevantSection": "Section 73",
-  "referenceNumber": "...",
-  "assessmentPeriod": "April 2023 - March 2024",
-  "demandedAmount": 450000,
-  "interestAmount": 45000,
-  "penaltyAmount": 45000,
-  "responseDeadline": "2025-04-15",
-  "groundsOfNotice": "Mismatch between GSTR-1 and GSTR-3B",
-  "documentsToAttach": ["Reconciliation statement", "Books of accounts", "Bank statements"],
-  "standardDefense": "Explain the mismatch with reconciliation...",
-  "urgency": "high",
-  "draftResponseOutline": "..."
+  "documentType": "Board Resolution",
+  "category": "Corporate Governance",
+  "subCategory": "Board Minutes",
+  "relevantAct": "Companies Act 2013",
+  "relevantSection": "Section 179",
+  "dateOfDocument": "2025-03-15",
+  "financialYear": "2024-25",
+  "keyEntities": ["Director A", "Director B"],
+  "keyAmounts": [],
+  "validityPeriod": null,
+  "expiryDate": null,
+  "relatedComplianceItems": ["board-meeting-quarterly"],
+  "suggestedTags": ["board-resolution", "q4-2025", "corporate-governance"],
+  "suggestedFolder": "Board Meetings/FY 2024-25",
+  "completenessNote": "This fulfills the Q4 board meeting minutes requirement"
 }
 `
 ```
 
-### 2.3 Drafted Response Generation
+### 2.3 Document Completeness Dashboard
 
-Claude generates a formal legal response letter using:
-- Extracted notice details
-- Company's compliance history from tracker
-- Perplexity-fetched relevant case laws and CBDT/GSTN circulars
-- Standard legal language for Indian compliance responses
+The vault shows a completeness view per company:
+- Required documents checklist (derived from compliance calendar)
+- Upload status: uploaded / missing / expired
+- Upcoming deadlines that need supporting documents
+- One-click upload prompt for missing documents
 
-CA edits and approves. We store the final response in vault linked to the notice.
+> **Note:** Notice handling (show cause notices, tax demands, etc.) is a separate feature under the Notices tab, currently in prototype stage. Document vault intelligence focuses on organizing and indexing compliance documents, not notice response workflows.
 
 ---
 
@@ -512,11 +513,11 @@ LAYER 1: Real-time Compliance Intelligence (Perplexity)
   → Weekly regulatory change detection
   → CA reviews, not creates
 
-LAYER 2: Document Intelligence (Perplexity + Claude)
-  → Notice classification + field extraction
-  → Mapping to compliance tracker
-  → Draft response generation
-  → CA edits and approves
+LAYER 2: Document Vault Intelligence (Perplexity + Claude)
+  → Auto-classify uploaded documents (type, category, FY)
+  → Map documents to compliance tracker items
+  → Completeness dashboard (missing docs flagged)
+  → Full-text search + metadata extraction
 
 LAYER 3: Proactive Regulatory Feed (Perplexity)
   → Company-specific regulatory news
@@ -548,11 +549,11 @@ LAYER 6: Reconciliation (AA Framework + Portal APIs)
 ### Phase A — Foundation (Now → April 7)
 - [x] NIC code database (done)
 - [x] CIN parser for NIC extraction (done)
-- [ ] Perplexity API account + key setup
-- [ ] Build compliance prompt template
-- [ ] Build deadline formula engine
-- [ ] CA review interface for generated compliances
-- [ ] Wire to company onboarding (post-CIN verification)
+- [x] Perplexity API account + key setup (done — SDK + env configured)
+- [x] Build compliance prompt template (done — lib/services/compliance-intelligence.ts)
+- [x] Build deadline formula engine (done — lib/services/deadline-engine.ts)
+- [x] CA review interface for generated compliances (done — ComplianceIntelligencePanel.tsx)
+- [x] Wire to company onboarding (done — auto-triggers on completeOnboarding)
 
 ### Phase B — Intelligence Layer (April 8–30)
 - [ ] Weekly regulatory change detection cron
@@ -560,11 +561,11 @@ LAYER 6: Reconciliation (AA Framework + Portal APIs)
 - [ ] Compliance Sentinel risk scoring (overdue, at-risk, upcoming)
 - [ ] Email + in-app alerts
 
-### Phase C — Document Intelligence (May 1–20)
-- [ ] Notice upload → classification pipeline
-- [ ] Field extraction and tracker mapping
-- [ ] Draft response generation
-- [ ] CA response review + approval workflow
+### Phase C — Document Vault Intelligence (May 1–20)
+- [ ] Document upload → auto-classification pipeline
+- [ ] Metadata extraction + search indexing
+- [ ] Document-to-compliance-item mapping
+- [ ] Completeness dashboard (missing docs per company)
 
 ### Phase D — Filing Automation (May 21 – June 15)
 - [ ] GSTN OAuth integration
@@ -591,7 +592,7 @@ LAYER 6: Reconciliation (AA Framework + Portal APIs)
 |---|---|---|
 | Build compliance calendar | 2-4 hours per client | 5 min review |
 | Monitor regulatory changes | Read MCA/CBDT bulletins daily | Get pushed alerts, review weekly |
-| Handle notice | 3-5 hours research + drafting | 30 min edit + approve AI draft |
+| Organize documents | Manual sorting + naming + filing | Auto-classified, tagged, linked to compliance |
 | GST filing | 2-3 hours data gathering + filing | 10 min review + approve |
 | MCA filing | 1-2 hours | 15 min review + approve |
 | Reconciliation | 4-8 hours in Excel | Review exception queue (30 min) |
@@ -612,4 +613,4 @@ The firm grows revenue without proportionally growing headcount.
 | MCA21 API | ROC filings | Apply for access |
 | Account Aggregator | Bank feeds | Apply (FIP/FIU license) |
 | TRACES API | TDS filing | Apply for access |
-| MicroVista KYC API | CIN/DIN verification | In use (debugging) |
+| MicroVista KYC API | CIN/DIN verification | In use |

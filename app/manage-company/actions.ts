@@ -40,6 +40,16 @@ type ManageCompanyData = {
     other: string
     industryCategories: string[]
     otherIndustryCategory: string
+    // Compliance intelligence fields
+    employeeCount: string
+    annualTurnover: string
+    isGstRegistered: boolean
+    gstNumber: string
+    netWorth: string
+    isMsme: string          // 'yes' | 'no' | ''
+    msmeCategory: string
+    hasImportsExports: boolean
+    isStartupDpiit: boolean
   }
   exDirectors: string
   directors: DirectorDto[]
@@ -67,10 +77,15 @@ export async function getManageCompanyData(companyIdParam: string | null): Promi
       return { success: false, redirectTo: '/data-room' }
     }
 
-    const [company, membership] = await Promise.all([
-      companyRepository.getDetailsById(companyId),
-      companyMembershipRepository.findRole(user.id, companyId),
-    ])
+    let company, membership
+    try {
+      ;[company, membership] = await Promise.all([
+        companyRepository.getDetailsById(companyId),
+        companyMembershipRepository.findRole(user.id, companyId),
+      ])
+    } catch (detailsError: any) {
+      return { success: false, error: 'Failed to load company: ' + detailsError.message }
+    }
 
     if (!company) {
       return { success: false, redirectTo: '/data-room' }
@@ -107,6 +122,16 @@ export async function getManageCompanyData(companyIdParam: string | null): Promi
           other: company.otherInfo || '',
           industryCategories: company.industryCategories,
           otherIndustryCategory: company.otherIndustryCategory || '',
+          // Compliance intelligence fields
+          employeeCount: company.employeeCount != null ? String(company.employeeCount) : '',
+          annualTurnover: company.annualTurnover != null ? String(company.annualTurnover) : '',
+          isGstRegistered: company.isGstRegistered ?? false,
+          gstNumber: company.gstNumber || '',
+          netWorth: company.netWorth != null ? String(company.netWorth) : '',
+          isMsme: company.isMsme === true ? 'yes' : company.isMsme === false ? 'no' : '',
+          msmeCategory: company.msmeCategory || '',
+          hasImportsExports: company.hasImportsExports ?? false,
+          isStartupDpiit: company.isStartupDpiit ?? false,
         },
         exDirectors: company.exDirectors.join(', '),
         directors: directors.map((director) => ({

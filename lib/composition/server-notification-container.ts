@@ -1,3 +1,4 @@
+import 'server-only'
 import { PassportAuthService } from '@/infrastructure/auth/passport/PassportAuthService'
 import { PrismaNotificationRepository } from '@/infrastructure/persistence/prisma/PrismaNotificationRepository'
 import { PrismaUserRepository } from '@/infrastructure/persistence/prisma/PrismaUserRepository'

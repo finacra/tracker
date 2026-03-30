@@ -128,6 +128,15 @@ export default function RequirementDesktopTableView({
             DOCUMENTS
           </th>
           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+            PENALTY
+          </th>
+          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+            CALC PENALTY
+          </th>
+          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden xl:table-cell">
+            LEGAL ACTION
+          </th>
+          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
             FILED ON
           </th>
           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden xl:table-cell">
@@ -141,15 +150,6 @@ export default function RequirementDesktopTableView({
               ACTIONS
             </th>
           )}
-          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
-            PENALTY
-          </th>
-          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
-            CALC PENALTY
-          </th>
-          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden xl:table-cell">
-            LEGAL ACTION
-          </th>
         </tr>
       </thead>
       <tbody>
@@ -328,6 +328,9 @@ export default function RequirementDesktopTableView({
                   </td>
                   <td className="px-6 py-4">
                     {(() => {
+                      if (!req.dueDate) {
+                        return <span className="text-gray-500 text-sm italic">No due date</span>
+                      }
                       const daysDelayed = calculateDelay(req.dueDate, req.status)
                       return (
                         <div className="flex flex-col">
@@ -409,6 +412,114 @@ export default function RequirementDesktopTableView({
                               +{requiredDocs.length - 3}
                             </span>
                           )}
+                        </div>
+                      )
+                    })()}
+                  </td>
+                  <td className="px-6 py-4 hidden lg:table-cell">
+                    <div className="text-gray-300 text-sm break-words max-w-[150px]" title={req.penalty || ''}>
+                      {req.penalty ? (req.penalty.length > 30 ? req.penalty.substring(0, 30) + '...' : req.penalty) : '-'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 hidden lg:table-cell">
+                    {(() => {
+                      const daysDelayed = calculateDelay(req.dueDate, req.status)
+                      const calculatedPenalty = calculatePenalty(req.penalty || null, daysDelayed, req.penalty_base_amount, req.penalty_config)
+                      const needsBaseAmount =
+                        calculatedPenalty.startsWith('Cannot calculate - Please provide') ||
+                        calculatedPenalty.includes('Needs')
+                      if (needsBaseAmount && canEdit) {
+                        const inputVal = baseAmountInputs[req.id] ?? ''
+                        const isSaving = savingBaseAmount[req.id] ?? false
+                        return (
+                          <div className="space-y-1.5 min-w-[160px]">
+                            <div className="text-yellow-400 text-[10px] leading-tight">Base amount required</div>
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                value={inputVal}
+                                onChange={e => setBaseAmountInputs(prev => ({ ...prev, [req.id]: e.target.value }))}
+                                placeholder="e.g. 50000"
+                                className="w-24 px-2 py-1 text-xs bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-500 focus:outline-none focus:border-white/40"
+                                onKeyDown={async e => {
+                                  if (e.key === 'Enter') {
+                                    const amount = parseFloat(inputVal)
+                                    if (!isNaN(amount) && amount > 0) {
+                                      setSavingBaseAmount(prev => ({ ...prev, [req.id]: true }))
+                                      try {
+                                        const result = await updateRequirement(req.id, currentCompany?.id || null, { penalty_base_amount: amount })
+                                        if (result.success) {
+                                          setRegulatoryRequirements(prev => prev.map(r => r.id === req.id ? { ...r, penalty_base_amount: amount } : r))
+                                          setBaseAmountInputs(prev => { const n = { ...prev }; delete n[req.id]; return n })
+                                          showToast('Base amount saved', 'success')
+                                        } else {
+                                          showToast(result.error || 'Failed to save', 'error')
+                                        }
+                                      } catch {
+                                        showToast('Failed to save base amount', 'error')
+                                      } finally {
+                                        setSavingBaseAmount(prev => ({ ...prev, [req.id]: false }))
+                                      }
+                                    }
+                                  }
+                                }}
+                              />
+                              <button
+                                disabled={isSaving || !inputVal}
+                                onClick={async () => {
+                                  const amount = parseFloat(inputVal)
+                                  if (isNaN(amount) || amount <= 0) return
+                                  setSavingBaseAmount(prev => ({ ...prev, [req.id]: true }))
+                                  try {
+                                    const result = await updateRequirement(req.id, currentCompany?.id || null, { penalty_base_amount: amount })
+                                    if (result.success) {
+                                      setRegulatoryRequirements(prev => prev.map(r => r.id === req.id ? { ...r, penalty_base_amount: amount } : r))
+                                      setBaseAmountInputs(prev => { const n = { ...prev }; delete n[req.id]; return n })
+                                      showToast('Base amount saved', 'success')
+                                    } else {
+                                      showToast(result.error || 'Failed to save', 'error')
+                                    }
+                                  } catch {
+                                    showToast('Failed to save base amount', 'error')
+                                  } finally {
+                                    setSavingBaseAmount(prev => ({ ...prev, [req.id]: false }))
+                                  }
+                                }}
+                                className="px-2 py-1 text-[10px] bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded transition-colors"
+                              >
+                                {isSaving ? '...' : 'Save'}
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      }
+                      if (calculatedPenalty === '-') {
+                        return <div className="text-gray-500 text-sm">-</div>
+                      }
+                      if (needsBaseAmount || calculatedPenalty.startsWith('Cannot calculate') || calculatedPenalty.startsWith('Refer')) {
+                        return (
+                          <div className="text-yellow-400 text-xs max-w-xs" title={calculatedPenalty}>
+                            {calculatedPenalty}
+                          </div>
+                        )
+                      }
+                      return (
+                        <div className="text-red-400 text-sm font-semibold">
+                          {calculatedPenalty}
+                        </div>
+                      )
+                    })()}
+                  </td>
+                  <td className="px-6 py-4 hidden xl:table-cell">
+                    {/* Possible Legal Action Column */}
+                    {(() => {
+                      const legalAction = req.possible_legal_action
+                      if (!legalAction) {
+                        return <div className="text-gray-500 text-sm">-</div>
+                      }
+                      return (
+                        <div className="text-white text-xs max-w-[150px]" title={legalAction}>
+                          {legalAction.length > 40 ? legalAction.substring(0, 40) + '...' : legalAction}
                         </div>
                       )
                     })()}
@@ -554,114 +665,6 @@ export default function RequirementDesktopTableView({
                       </div>
                     </td>
                   )}
-                  <td className="px-6 py-4 hidden lg:table-cell">
-                    <div className="text-gray-300 text-sm break-words max-w-[150px]" title={req.penalty || ''}>
-                      {req.penalty ? (req.penalty.length > 30 ? req.penalty.substring(0, 30) + '...' : req.penalty) : '-'}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 hidden lg:table-cell">
-                    {(() => {
-                      const daysDelayed = calculateDelay(req.dueDate, req.status)
-                      const calculatedPenalty = calculatePenalty(req.penalty || null, daysDelayed, req.penalty_base_amount, req.penalty_config)
-                      const needsBaseAmount =
-                        calculatedPenalty.startsWith('Cannot calculate - Please provide') ||
-                        calculatedPenalty.includes('Needs')
-                      if (needsBaseAmount && canEdit) {
-                        const inputVal = baseAmountInputs[req.id] ?? ''
-                        const isSaving = savingBaseAmount[req.id] ?? false
-                        return (
-                          <div className="space-y-1.5 min-w-[160px]">
-                            <div className="text-yellow-400 text-[10px] leading-tight">Base amount required</div>
-                            <div className="flex items-center gap-1">
-                              <input
-                                type="number"
-                                value={inputVal}
-                                onChange={e => setBaseAmountInputs(prev => ({ ...prev, [req.id]: e.target.value }))}
-                                placeholder="e.g. 50000"
-                                className="w-24 px-2 py-1 text-xs bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-500 focus:outline-none focus:border-white/40"
-                                onKeyDown={async e => {
-                                  if (e.key === 'Enter') {
-                                    const amount = parseFloat(inputVal)
-                                    if (!isNaN(amount) && amount > 0) {
-                                      setSavingBaseAmount(prev => ({ ...prev, [req.id]: true }))
-                                      try {
-                                        const result = await updateRequirement(req.id, currentCompany?.id || null, { penalty_base_amount: amount })
-                                        if (result.success) {
-                                          setRegulatoryRequirements(prev => prev.map(r => r.id === req.id ? { ...r, penalty_base_amount: amount } : r))
-                                          setBaseAmountInputs(prev => { const n = { ...prev }; delete n[req.id]; return n })
-                                          showToast('Base amount saved', 'success')
-                                        } else {
-                                          showToast(result.error || 'Failed to save', 'error')
-                                        }
-                                      } catch {
-                                        showToast('Failed to save base amount', 'error')
-                                      } finally {
-                                        setSavingBaseAmount(prev => ({ ...prev, [req.id]: false }))
-                                      }
-                                    }
-                                  }
-                                }}
-                              />
-                              <button
-                                disabled={isSaving || !inputVal}
-                                onClick={async () => {
-                                  const amount = parseFloat(inputVal)
-                                  if (isNaN(amount) || amount <= 0) return
-                                  setSavingBaseAmount(prev => ({ ...prev, [req.id]: true }))
-                                  try {
-                                    const result = await updateRequirement(req.id, currentCompany?.id || null, { penalty_base_amount: amount })
-                                    if (result.success) {
-                                      setRegulatoryRequirements(prev => prev.map(r => r.id === req.id ? { ...r, penalty_base_amount: amount } : r))
-                                      setBaseAmountInputs(prev => { const n = { ...prev }; delete n[req.id]; return n })
-                                      showToast('Base amount saved', 'success')
-                                    } else {
-                                      showToast(result.error || 'Failed to save', 'error')
-                                    }
-                                  } catch {
-                                    showToast('Failed to save base amount', 'error')
-                                  } finally {
-                                    setSavingBaseAmount(prev => ({ ...prev, [req.id]: false }))
-                                  }
-                                }}
-                                className="px-2 py-1 text-[10px] bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded transition-colors"
-                              >
-                                {isSaving ? '...' : 'Save'}
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      }
-                      if (calculatedPenalty === '-') {
-                        return <div className="text-gray-500 text-sm">-</div>
-                      }
-                      if (needsBaseAmount || calculatedPenalty.startsWith('Cannot calculate') || calculatedPenalty.startsWith('Refer')) {
-                        return (
-                          <div className="text-yellow-400 text-xs max-w-xs" title={calculatedPenalty}>
-                            {calculatedPenalty}
-                          </div>
-                        )
-                      }
-                      return (
-                        <div className="text-red-400 text-sm font-semibold">
-                          {calculatedPenalty}
-                        </div>
-                      )
-                    })()}
-                  </td>
-                  <td className="px-6 py-4 hidden xl:table-cell">
-                    {/* Possible Legal Action Column */}
-                    {(() => {
-                      const legalAction = req.possible_legal_action
-                      if (!legalAction) {
-                        return <div className="text-gray-500 text-sm">-</div>
-                      }
-                      return (
-                        <div className="text-white text-xs max-w-[150px]" title={legalAction}>
-                          {legalAction.length > 40 ? legalAction.substring(0, 40) + '...' : legalAction}
-                        </div>
-                      )
-                    })()}
-                  </td>
                 </tr>
               )
             })}

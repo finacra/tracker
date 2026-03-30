@@ -84,24 +84,18 @@ export class PrismaCompanyMembershipRepository implements CompanyMembershipRepos
 
     async findRole(userId: string, companyId: string): Promise<CompanyMembership | null> {
         // Optimized: Single query using UNION to check both Passport and Supabase users
-        // This avoids multiple sequential queries
+        // Matches data-room acc_ids logic: check app_user_id, user_id, and auth_identities
         const rows = await prisma.$queryRaw<any[]>`
             SELECT ur.*
             FROM user_roles ur
             WHERE ur.company_id = ${companyId}::uuid
-            AND ur.app_user_id = ${userId}::uuid
+            AND (ur.app_user_id = ${userId}::uuid OR ur.user_id = ${userId}::uuid)
             UNION ALL
             SELECT ur.*
             FROM user_roles ur
             INNER JOIN auth_identities ai ON ai.legacy_auth_id = ur.user_id::text
             WHERE ur.company_id = ${companyId}::uuid
             AND ai.app_user_id = ${userId}::uuid AND ai.provider = 'supabase'
-            UNION ALL
-            SELECT ur.*
-            FROM user_roles ur
-            WHERE ur.company_id = ${companyId}::uuid
-            AND ur.user_id = ${userId}::uuid
-            AND NOT EXISTS (SELECT 1 FROM app_users WHERE id = ${userId}::uuid)
             LIMIT 1
         `
         return rows.length > 0 ? this.mapRow(rows[0]) : null
