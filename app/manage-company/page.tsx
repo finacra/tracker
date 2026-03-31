@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import CircuitBackground from '@/components/ui/CircuitBackground'
 import Header from '@/components/layout/Header'
@@ -10,6 +10,7 @@ import { getManageCompanyData } from '@/app/manage-company/actions'
 import { verifyDIN } from '@/lib/api/cin-din'
 import { trackCompanyEdit } from '@/lib/tracking/kpi-tracker'
 import { useCompanyCountry } from '@/hooks/useCompanyCountry'
+import { parseCIN } from '@/utils/cin-parser'
 
 const INDUSTRY_CATEGORIES = [
   'Startups & MSMEs',
@@ -83,6 +84,13 @@ function ManageCompanyPageInner() {
     hasImportsExports: false,
     isStartupDpiit: false,
   })
+
+  // Parse CIN to extract NIC code and other details
+  const cinParsed = useMemo(() => {
+    if (!formData.cinNumber || countryCode !== 'IN') return null
+    const result = parseCIN(formData.cinNumber)
+    return result.isValid ? result : null
+  }, [formData.cinNumber, countryCode])
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -377,6 +385,58 @@ function ManageCompanyPageInner() {
                   readOnly
                   className="w-full px-4 py-3 bg-gray-900/50 border border-gray-800 rounded-lg text-gray-500 cursor-not-allowed font-light"
                 />
+
+                {/* NIC Classification Card */}
+                {cinParsed && (
+                  <div className="mt-3 p-3 sm:p-4 bg-gray-900/80 border border-gray-700 rounded-lg space-y-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <svg width="14" height="14" className="sm:w-4 sm:h-4 text-emerald-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                        <polyline points="22 4 12 14.01 9 11.01" />
+                      </svg>
+                      <span className="text-xs sm:text-sm font-medium text-emerald-400">CIN Decoded</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs sm:text-sm">
+                      <div className="text-gray-500">Listing Status</div>
+                      <div className="text-gray-200">{cinParsed.isListed ? 'Listed' : 'Unlisted'}</div>
+
+                      <div className="text-gray-500">State of Registration</div>
+                      <div className="text-gray-200">{cinParsed.stateName || cinParsed.stateCode || '—'}</div>
+
+                      <div className="text-gray-500">Year of Incorporation</div>
+                      <div className="text-gray-200">{cinParsed.yearOfIncorporation || '—'}</div>
+
+                      <div className="text-gray-500">Company Type</div>
+                      <div className="text-gray-200">{cinParsed.companyTypeName || cinParsed.companyTypeCode || '—'}</div>
+                    </div>
+
+                    {cinParsed.nicDetails && (
+                      <>
+                        <div className="border-t border-gray-700/60 my-2"></div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs sm:text-sm font-medium text-gray-300">Industry Classification (NIC 2008)</span>
+                        </div>
+                        <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs sm:text-sm">
+                          <span className="text-gray-500">Section</span>
+                          <span className="text-gray-200">{cinParsed.nicDetails.section} — {cinParsed.nicDetails.sectionName}</span>
+
+                          <span className="text-gray-500">Division</span>
+                          <span className="text-gray-200">{cinParsed.nicDetails.divisionCode} — {cinParsed.nicDetails.divisionName}</span>
+
+                          <span className="text-gray-500">Group</span>
+                          <span className="text-gray-200">{cinParsed.nicDetails.groupCode} — {cinParsed.nicDetails.groupName}</span>
+
+                          <span className="text-gray-500">Class</span>
+                          <span className="text-gray-200">{cinParsed.nicDetails.classCode} — {cinParsed.nicDetails.className}</span>
+
+                          <span className="text-gray-500">Sub-class</span>
+                          <span className="text-gray-200">{cinParsed.nicDetails.code} — {cinParsed.nicDetails.description}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

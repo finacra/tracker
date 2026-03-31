@@ -1,6 +1,16 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
+import {
+  loadCIAHistory,
+  createCIAConversation,
+  addCIAMessage,
+  updateCIAMessage,
+  renameCIAConversation,
+  deleteCIAConversation,
+  type DBConversation,
+  type DBMessage,
+} from '@/app/data-room/actions-cia'
 
 export interface CIAMessage {
   id: string
@@ -18,64 +28,32 @@ export interface CIAConversation {
   updatedAt: number
 }
 
-interface StoredHistory {
-  conversations: CIAConversation[]
-}
-
-function storageKey(companyId: string): string {
-  return `cia-history-${companyId}`
-}
-
-function loadHistory(companyId: string): CIAConversation[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const raw = localStorage.getItem(storageKey(companyId))
-    if (!raw) return []
-    const parsed: StoredHistory = JSON.parse(raw)
-    return parsed.conversations || []
-  } catch {
-    return []
-  }
-}
-
-function saveHistory(companyId: string, conversations: CIAConversation[]) {
-  if (typeof window === 'undefined') return
-  try {
-    const data: StoredHistory = { conversations }
-    localStorage.setItem(storageKey(companyId), JSON.stringify(data))
-  } catch {
-    // localStorage full or unavailable
-  }
-}
-
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
-}
-
-export function useCIAHistory(companyId: string) {
+export function useCIAHistory(companyId: string, userId?: string) {
   const [conversations, setConversations] = useState<CIAConversation[]>([])
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
-  const initialized = useRef(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Load on mount / company change
+  // Load from DB on mount / company change
   useEffect(() => {
-    const loaded = loadHistory(companyId)
-    setConversations(loaded)
-    setActiveConversationId(null)
-    initialized.current = true
-  }, [companyId])
-
-  // Persist whenever conversations change (after init)
-  useEffect(() => {
-    if (initialized.current) {
-      saveHistory(companyId, conversations)
-    }
-  }, [conversations, companyId])
+    if (!companyId || !userId) return
+    let cancelled = false
+    setIsLoading(true)
+    loadCIAHistory(companyId, userId).then((loaded) => {
+      if (cancelled) return
+      setConversations(loaded)
+      setActiveConversationId(null)
+      setIsLoading(false)
+    }).catch(() => {
+      if (!cancelled) setIsLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [companyId, userId])
 
   const activeConversation = conversations.find(c => c.id === activeConversationId) || null
 
-  const createConversation = useCallback((): string => {
-    const id = generateId()
+  const createConversation = useCallback(async (): Promise<string> => {
+    if (!userId) return ''
+    const id = await createCIAConversation(companyId, userId)
     const conv: CIAConversation = {
       id,
       name: 'New Chat',
@@ -86,14 +64,15 @@ export function useCIAHistory(companyId: string) {
     setConversations(prev => [conv, ...prev])
     setActiveConversationId(id)
     return id
-  }, [])
+  }, [companyId, userId])
 
-  const addMessage = useCallback((conversationId: string, message: Omit<CIAMessage, 'id' | 'timestamp'>) => {
-    const newMsg: CIAMessage = {
-      ...message,
-      id: generateId(),
-      timestamp: Date.now(),
-    }
+  const addMessage = useCallback(async (
+    conversationId: string,
+    message: Omit<CIAMessage, 'id' | 'timestamp'>
+  ): Promise<string> => {
+    // Optimistic local update with temp ID
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    const newMsg: CIAMessage = { ...message, id: tempId, timestamp: Date.now() }
     setConversations(prev =>
       prev.map(c =>
         c.id === conversationId
@@ -101,15 +80,36 @@ export function useCIAHistory(companyId: string) {
           : c
       )
     )
-    return newMsg.id
+    // Persist to DB
+    const dbId = await addCIAMessage(conversationId, message.role, message.content, message.sources)
+    // Replace temp ID with real DB ID
+    setConversations(prev =>
+      prev.map(c =>
+        c.id === conversationId
+          ? { ...c, messages: c.messages.map(m => m.id === tempId ? { ...m, id: dbId } : m) }
+          : c
+      )
+    )
+    return dbId
   }, [])
 
-  const updateLastAssistantMessage = useCallback((conversationId: string, content: string, sources?: { name: string; similarity: number }[]) => {
+  const updateLastAssistantMessage = useCallback(async (
+    conversationId: string,
+    content: string,
+    sources?: { name: string; similarity: number }[]
+  ) => {
+    // Find message ID before state update
+    const conv = conversations.find(c => c.id === conversationId)
+    let msgId: string | undefined
+    if (conv) {
+      for (let i = conv.messages.length - 1; i >= 0; i--) {
+        if (conv.messages[i].role === 'assistant') { msgId = conv.messages[i].id; break }
+      }
+    }
     setConversations(prev =>
       prev.map(c => {
         if (c.id !== conversationId) return c
         const msgs = [...c.messages]
-        // Find last assistant message
         for (let i = msgs.length - 1; i >= 0; i--) {
           if (msgs[i].role === 'assistant') {
             msgs[i] = { ...msgs[i], content, ...(sources ? { sources } : {}) }
@@ -119,19 +119,25 @@ export function useCIAHistory(companyId: string) {
         return { ...c, messages: msgs, updatedAt: Date.now() }
       })
     )
+    // Persist to DB
+    if (msgId && !msgId.startsWith('temp-')) {
+      await updateCIAMessage(msgId, content, sources).catch(() => {})
+    }
   }, [])
 
-  const renameConversation = useCallback((conversationId: string, name: string) => {
+  const renameConversation = useCallback(async (conversationId: string, name: string) => {
     setConversations(prev =>
       prev.map(c => (c.id === conversationId ? { ...c, name } : c))
     )
+    await renameCIAConversation(conversationId, name).catch(() => {})
   }, [])
 
-  const deleteConversation = useCallback((conversationId: string) => {
+  const deleteConversation = useCallback(async (conversationId: string) => {
     setConversations(prev => prev.filter(c => c.id !== conversationId))
     if (activeConversationId === conversationId) {
       setActiveConversationId(null)
     }
+    await deleteCIAConversation(conversationId).catch(() => {})
   }, [activeConversationId])
 
   return {
@@ -144,5 +150,6 @@ export function useCIAHistory(companyId: string) {
     updateLastAssistantMessage,
     renameConversation,
     deleteConversation,
+    isLoading,
   }
 }

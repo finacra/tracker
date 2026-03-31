@@ -49,6 +49,27 @@ export async function completeOnboarding(
     confidenceScore?: string
     documents: Array<{ type: string; path: string; name: string }>
     exDirectors?: string
+    // Compliance intelligence fields
+    employeeCount?: string
+    annualTurnover?: string
+    isGstRegistered?: boolean
+    gstNumber?: string
+    netWorth?: string
+    isMsme?: string
+    msmeCategory?: string
+    hasImportsExports?: boolean
+    isStartupDpiit?: boolean
+    // CIN API fields (auto-populated)
+    authorisedCapital?: string
+    paidUpCapital?: string
+    subscribedCapital?: string
+    companyCategory?: string
+    companySubcategory?: string
+    classOfCompany?: string
+    rocName?: string
+    companyStatus?: string
+    dateOfLastAgm?: string
+    balanceSheetDate?: string
   },
   directors: DirectorInput[]
 ) {
@@ -116,6 +137,25 @@ export async function completeOnboarding(
     exDirectors: exDirectorsArray,
     nicCode,
     isListed,
+    employeeCount: formData.employeeCount ? parseInt(formData.employeeCount, 10) : null,
+    annualTurnover: formData.annualTurnover ? parseFloat(formData.annualTurnover) : null,
+    isGstRegistered: formData.isGstRegistered ?? null,
+    gstNumber: formData.gstNumber || null,
+    netWorth: formData.netWorth ? parseFloat(formData.netWorth) : null,
+    isMsme: formData.isMsme === 'yes' ? true : formData.isMsme === 'no' ? false : null,
+    msmeCategory: formData.msmeCategory || null,
+    hasImportsExports: formData.hasImportsExports ?? null,
+    isStartupDpiit: formData.isStartupDpiit ?? null,
+    authorisedCapital: formData.authorisedCapital ? parseFloat(formData.authorisedCapital) : null,
+    paidUpCapital: formData.paidUpCapital ? parseFloat(formData.paidUpCapital) : null,
+    subscribedCapital: formData.subscribedCapital ? parseFloat(formData.subscribedCapital) : null,
+    companyCategory: formData.companyCategory || null,
+    companySubcategory: formData.companySubcategory || null,
+    classOfCompany: formData.classOfCompany || null,
+    rocName: formData.rocName || null,
+    companyStatus: formData.companyStatus || null,
+    dateOfLastAgm: formData.dateOfLastAgm || null,
+    balanceSheetDate: formData.balanceSheetDate || null,
   })
 
   // 1b. Assign admin role to the company creator

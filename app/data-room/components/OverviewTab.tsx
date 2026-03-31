@@ -1,7 +1,8 @@
 'use client'
 
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { parseCIN } from '@/utils/cin-parser'
 
 interface Director {
   id: string
@@ -27,6 +28,15 @@ interface EntityDetails {
   phoneNumber: string
   industryCategory: string
   directors: Director[]
+  // CIN API fields
+  authorisedCapital?: string | null
+  paidUpCapital?: string | null
+  companyCategory?: string | null
+  classOfCompany?: string | null
+  rocName?: string | null
+  companyStatus?: string | null
+  dateOfLastAgm?: string | null
+  balanceSheetDate?: string | null
 }
 
 interface Company {
@@ -63,6 +73,15 @@ export default function OverviewTab({
   formatDateForDisplay,
 }: OverviewTabProps) {
   const router = useRouter()
+
+  // Parse CIN to derive NIC classification (works for Indian companies)
+  const parsedCIN = useMemo(() => {
+    if (!entityDetails?.registrationId || currentCompany?.country_code !== 'IN') return null
+    const cin = entityDetails.registrationId
+    if (cin === 'Not Provided') return null
+    const result = parseCIN(cin)
+    return result.isValid ? result : null
+  }, [entityDetails?.registrationId, currentCompany?.country_code])
 
   return (
     <div>
@@ -167,6 +186,107 @@ export default function OverviewTab({
               <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-0.5">Industry Category</label>
               <div className="text-white text-base sm:text-lg font-medium break-words flex-1">{entityDetails.industryCategory}</div>
             </div>
+
+            {/* NIC Classification Card — derived from CIN */}
+            {parsedCIN && (
+              <div className="mt-2 p-3 sm:p-4 bg-gray-900/60 border border-white/10 rounded-lg space-y-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg width="14" height="14" className="sm:w-4 sm:h-4 text-emerald-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                    <polyline points="22 4 12 14.01 9 11.01" />
+                  </svg>
+                  <span className="text-xs sm:text-sm font-medium text-emerald-400">CIN Classification</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs sm:text-sm">
+                  <div className="text-gray-500">Listing Status</div>
+                  <div className="text-gray-200">{parsedCIN.isListed ? 'Listed' : 'Unlisted'}</div>
+
+                  <div className="text-gray-500">State of Registration</div>
+                  <div className="text-gray-200">{parsedCIN.stateName || parsedCIN.stateCode || '—'}</div>
+
+                  <div className="text-gray-500">Year of Incorporation</div>
+                  <div className="text-gray-200">{parsedCIN.yearOfIncorporation || '—'}</div>
+
+                  <div className="text-gray-500">Company Type</div>
+                  <div className="text-gray-200">{parsedCIN.companyTypeName || parsedCIN.companyTypeCode || '—'}</div>
+                </div>
+
+                {parsedCIN.nicDetails && (
+                  <>
+                    <div className="border-t border-white/5 my-2"></div>
+                    <div className="text-xs sm:text-sm font-medium text-gray-300 mb-1">Industry Classification (NIC 2008)</div>
+                    <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs sm:text-sm">
+                      <span className="text-gray-500">Section</span>
+                      <span className="text-gray-200">{parsedCIN.nicDetails.section} — {parsedCIN.nicDetails.sectionName}</span>
+
+                      <span className="text-gray-500">Division</span>
+                      <span className="text-gray-200">{parsedCIN.nicDetails.divisionCode} — {parsedCIN.nicDetails.divisionName}</span>
+
+                      <span className="text-gray-500">Group</span>
+                      <span className="text-gray-200">{parsedCIN.nicDetails.groupCode} — {parsedCIN.nicDetails.groupName}</span>
+
+                      <span className="text-gray-500">Class</span>
+                      <span className="text-gray-200">{parsedCIN.nicDetails.classCode} — {parsedCIN.nicDetails.className}</span>
+
+                      <span className="text-gray-500">Sub-class</span>
+                      <span className="text-gray-200">{parsedCIN.nicDetails.code} — {parsedCIN.nicDetails.description}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* MCA / CIN API Data */}
+            {(entityDetails.authorisedCapital || entityDetails.paidUpCapital || entityDetails.rocName || entityDetails.companyStatus) && (
+              <div className="mt-2 p-3 sm:p-4 bg-gray-900/60 border border-white/10 rounded-lg">
+                <div className="text-xs sm:text-sm font-medium text-gray-300 mb-2">MCA Records</div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs sm:text-sm">
+                  {entityDetails.companyStatus && (
+                    <>
+                      <div className="text-gray-500">Status</div>
+                      <div className="text-gray-200">{entityDetails.companyStatus}</div>
+                    </>
+                  )}
+                  {entityDetails.authorisedCapital && (
+                    <>
+                      <div className="text-gray-500">Authorised Capital</div>
+                      <div className="text-gray-200">{Number(entityDetails.authorisedCapital).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}</div>
+                    </>
+                  )}
+                  {entityDetails.paidUpCapital && (
+                    <>
+                      <div className="text-gray-500">Paid-up Capital</div>
+                      <div className="text-gray-200">{Number(entityDetails.paidUpCapital).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}</div>
+                    </>
+                  )}
+                  {entityDetails.companyCategory && (
+                    <>
+                      <div className="text-gray-500">Category</div>
+                      <div className="text-gray-200">{entityDetails.companyCategory}</div>
+                    </>
+                  )}
+                  {entityDetails.rocName && (
+                    <>
+                      <div className="text-gray-500">ROC</div>
+                      <div className="text-gray-200">{entityDetails.rocName}</div>
+                    </>
+                  )}
+                  {entityDetails.dateOfLastAgm && (
+                    <>
+                      <div className="text-gray-500">Last AGM</div>
+                      <div className="text-gray-200">{entityDetails.dateOfLastAgm}</div>
+                    </>
+                  )}
+                  {entityDetails.balanceSheetDate && (
+                    <>
+                      <div className="text-gray-500">Balance Sheet Date</div>
+                      <div className="text-gray-200">{entityDetails.balanceSheetDate}</div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Directors */}
             <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">

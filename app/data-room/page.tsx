@@ -126,12 +126,21 @@ interface EntityDetails {
   companyName: string;
   type: string;
   regDate: string;
-  taxId: string; // Country-specific: PAN (India), VAT (GCC), EIN (USA)
-  registrationId: string; // Country-specific: CIN (India), Trade License (UAE), Commercial Registration (GCC), EIN (USA)
+  taxId: string;
+  registrationId: string;
   address: string;
   phoneNumber: string;
   industryCategory: string;
   directors: Director[];
+  // CIN API fields
+  authorisedCapital?: string | null;
+  paidUpCapital?: string | null;
+  companyCategory?: string | null;
+  classOfCompany?: string | null;
+  rocName?: string | null;
+  companyStatus?: string | null;
+  dateOfLastAgm?: string | null;
+  balanceSheetDate?: string | null;
 }
 
 // Generate ICS calendar file from regulatory requirements

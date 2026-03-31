@@ -77,6 +77,16 @@ model Company {
   msme_category           String?   @db.VarChar(10)
   has_imports_exports      Boolean?  @default(false)
   is_startup_dpiit        Boolean?  @default(false)
+  authorised_capital      Decimal?  @db.Decimal(15, 2)
+  paid_up_capital         Decimal?  @db.Decimal(15, 2)
+  subscribed_capital      Decimal?  @db.Decimal(15, 2)
+  company_category        String?
+  company_subcategory     String?
+  class_of_company        String?
+  roc_name                String?
+  company_status          String?
+  date_of_last_agm        DateTime? @db.Date
+  balance_sheet_date      DateTime? @db.Date
   created_at              DateTime  @default(now()) @db.Timestamptz
   updated_at              DateTime  @default(now()) @db.Timestamptz
 
@@ -84,6 +94,30 @@ model Company {
   notifications CompanyNotification[]
 
   @@map("companies")
+}
+
+model CiaConversation {
+  id         String       @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id String       @db.Uuid
+  user_id    String       @db.Uuid
+  name       String       @default("New Chat")
+  created_at DateTime     @default(now()) @db.Timestamptz
+  updated_at DateTime     @default(now()) @db.Timestamptz
+  messages   CiaMessage[]
+
+  @@map("cia_conversations")
+}
+
+model CiaMessage {
+  id              String          @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  conversation_id String          @db.Uuid
+  role            String          @db.VarChar(10)
+  content         String
+  sources         Json?
+  created_at      DateTime        @default(now()) @db.Timestamptz
+  conversation    CiaConversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+
+  @@map("cia_messages")
 }
 
 model CompanyNotification {

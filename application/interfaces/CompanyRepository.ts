@@ -34,6 +34,16 @@ export interface CompanyDetailsRecord extends CompanyRecord {
   msmeCategory: string | null
   hasImportsExports: boolean | null
   isStartupDpiit: boolean | null
+  authorisedCapital: number | null
+  paidUpCapital: number | null
+  subscribedCapital: number | null
+  companyCategory: string | null
+  companySubcategory: string | null
+  classOfCompany: string | null
+  rocName: string | null
+  companyStatus: string | null
+  dateOfLastAgm: string | null
+  balanceSheetDate: string | null
   createdAt?: string | null
 }
 
@@ -65,6 +75,25 @@ export interface CreateCompanyInput {
   exDirectors?: string[] | null
   nicCode?: string | null
   isListed?: boolean | null
+  employeeCount?: number | null
+  annualTurnover?: number | null
+  isGstRegistered?: boolean | null
+  gstNumber?: string | null
+  netWorth?: number | null
+  isMsme?: boolean | null
+  msmeCategory?: string | null
+  hasImportsExports?: boolean | null
+  isStartupDpiit?: boolean | null
+  authorisedCapital?: number | null
+  paidUpCapital?: number | null
+  subscribedCapital?: number | null
+  companyCategory?: string | null
+  companySubcategory?: string | null
+  classOfCompany?: string | null
+  rocName?: string | null
+  companyStatus?: string | null
+  dateOfLastAgm?: string | null
+  balanceSheetDate?: string | null
 }
 
 export interface UpdateCompanyInput {
@@ -94,6 +123,16 @@ export interface UpdateCompanyInput {
   msmeCategory?: string | null
   hasImportsExports?: boolean | null
   isStartupDpiit?: boolean | null
+  authorisedCapital?: number | null
+  paidUpCapital?: number | null
+  subscribedCapital?: number | null
+  companyCategory?: string | null
+  companySubcategory?: string | null
+  classOfCompany?: string | null
+  rocName?: string | null
+  companyStatus?: string | null
+  dateOfLastAgm?: string | null
+  balanceSheetDate?: string | null
 }
 
 export interface CompanyRepository {

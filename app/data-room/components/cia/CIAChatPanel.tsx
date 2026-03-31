@@ -6,6 +6,7 @@ import CIAMessageList from './CIAMessageList'
 import CIAInput from './CIAInput'
 import { useCIAHistory, type CIAMessage } from './useCIAHistory'
 import { useCIAChat, type Source } from './useCIAChat'
+import { useAuth } from '@/hooks/useAuth'
 
 interface Props {
   companyId: string
@@ -15,12 +16,13 @@ interface Props {
 }
 
 export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQuestions }: Props) {
-  const history = useCIAHistory(companyId)
+  const { user } = useAuth()
+  const history = useCIAHistory(companyId, user?.id)
   const [streamingContent, setStreamingContent] = useState('')
   const [pendingSources, setPendingSources] = useState<Source[]>([])
   const contentAccumulator = useRef('')
 
-  const ensureConversation = useCallback((): string => {
+  const ensureConversation = useCallback(async (): Promise<string> => {
     if (history.activeConversationId) return history.activeConversationId
     return history.createConversation()
   }, [history])
@@ -59,13 +61,11 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
   })
 
   const handleSend = useCallback(
-    (text: string) => {
-      const convId = ensureConversation()
+    async (text: string) => {
+      const convId = await ensureConversation()
 
-      // Add user message
+      // Add messages (fire and forget — optimistic UI)
       history.addMessage(convId, { role: 'user', content: text })
-
-      // Add placeholder assistant message
       history.addMessage(convId, { role: 'assistant', content: '' })
 
       // Build messages array for the API

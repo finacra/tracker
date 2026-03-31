@@ -111,23 +111,43 @@ export function parseCIN(cin: string): ParsedCIN {
 
   const isListed = status === 'L';
   const year = parseInt(yearStr, 10);
-  const nicDetails = NIC_CODE_MAP[nicCode] ?? null;
+  let nicDetails = NIC_CODE_MAP[nicCode] ?? null;
   const stateName = STATE_CODES[stateCode] ?? null;
   const companyTypeName = COMPANY_TYPES[companyTypeCode] ?? null;
 
+  const warnings: string[] = [];
   if (!nicDetails) {
-    errors.push(`NIC code ${nicCode} not found in NIC 2008 classification`);
+    // Fallback: find any code in the same division to get division/section info
+    const divisionCode = nicCode.substring(0, 2);
+    const ref = Object.values(NIC_CODE_MAP).find(c => c.divisionCode === divisionCode);
+    if (ref) {
+      nicDetails = {
+        code: nicCode,
+        description: `NIC sub-class ${nicCode} (not in NIC 2008 directory)`,
+        classCode: nicCode.substring(0, 4),
+        className: ref.className,
+        groupCode: nicCode.substring(0, 3),
+        groupName: ref.groupName,
+        divisionCode: ref.divisionCode,
+        divisionName: ref.divisionName,
+        section: ref.section,
+        sectionName: ref.sectionName,
+      };
+      warnings.push(`Exact NIC sub-class ${nicCode} not in directory — showing division-level classification`);
+    } else {
+      warnings.push(`NIC code ${nicCode} not found in NIC 2008 classification`);
+    }
   }
   if (!stateName) {
-    errors.push(`Unknown state code: ${stateCode}`);
+    warnings.push(`Unknown state code: ${stateCode}`);
   }
   if (year < 1850 || year > new Date().getFullYear()) {
-    errors.push(`Unusual year of incorporation: ${year}`);
+    warnings.push(`Unusual year of incorporation: ${year}`);
   }
 
   return {
     raw,
-    isValid: errors.length === 0,
+    isValid: true, // CIN regex matched — structurally valid
     isListed,
     nicCode,
     nicDetails,
@@ -137,7 +157,7 @@ export function parseCIN(cin: string): ParsedCIN {
     companyTypeCode,
     companyTypeName,
     serialNumber,
-    errors,
+    errors: warnings,
   };
 }
 

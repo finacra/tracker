@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import CIAMessageList from './CIAMessageList'
 import { useCIAHistory, type CIAConversation } from './useCIAHistory'
 import { useCIAChat, type Source } from './useCIAChat'
+import { useAuth } from '@/hooks/useAuth'
 
 interface Props {
   companyId: string
@@ -281,7 +282,8 @@ function CIAInput({ value, onChange, onSubmit, onAbort, isStreaming, placeholder
 type Section = 'search' | 'history' | 'discover'
 
 export default function CIAFullscreen({ companyId, companyName, isOpen, onClose, suggestedQuestions, initialQuestion }: Props) {
-  const history = useCIAHistory(companyId)
+  const { user } = useAuth()
+  const history = useCIAHistory(companyId, user?.id)
   const [streamingContent, setStreamingContent] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -509,9 +511,9 @@ export default function CIAFullscreen({ companyId, companyName, isOpen, onClose,
       : doSpeak()
   }, [startVoiceListen])
 
-  const ensureConversation = useCallback((): string => {
+  const ensureConversation = useCallback(async (): Promise<string> => {
     if (history.activeConversationId) { activeConvIdRef.current = history.activeConversationId; return history.activeConversationId }
-    const id = history.createConversation(); activeConvIdRef.current = id; return id
+    const id = await history.createConversation(); activeConvIdRef.current = id; return id
   }, [history])
 
   const chat = useCIAChat({
@@ -533,17 +535,18 @@ export default function CIAFullscreen({ companyId, companyName, isOpen, onClose,
     }, []),
   })
 
-  const handleSend = useCallback((text: string) => {
-    const convId = ensureConversation()
+  const handleSend = useCallback(async (text: string) => {
+    const convId = await ensureConversation()
     stopSpeaking(); voiceRecRef.current?.abort(); setSidebarOpen(false); setShowSuggestions(false); setCompletedSteps(0); setActiveSection('search'); setActiveTab('answer')
     if (voiceModeRef.current) setVoiceState('processing')
-    history.addMessage(convId, { role: 'user', content: text })
-    history.addMessage(convId, { role: 'assistant', content: '' })
     const conv = history.conversations.find(c => c.id === convId)
     const apiMessages = [
       ...(conv?.messages || []).filter(m => m.content).map(m => ({ role: m.role, content: m.content })),
       { role: 'user' as const, content: text },
     ]
+    // Add messages (fire and forget — optimistic UI updates immediately)
+    history.addMessage(convId, { role: 'user', content: text })
+    history.addMessage(convId, { role: 'assistant', content: '' })
     contentAccumulator.current = ''; pendingSourcesRef.current = []; setStreamingContent('')
     chat.sendMessage(apiMessages)
   }, [ensureConversation, history, chat])
@@ -609,7 +612,7 @@ export default function CIAFullscreen({ companyId, companyName, isOpen, onClose,
             onClick={() => { setSidebarOpen(false); onClose() }}
           />
           <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '6px 0' }} />
-          <NavItem icon={IconNew} label="New thread" onClick={() => { history.createConversation(); setActiveSection('search'); setSidebarOpen(false) }} />
+          <NavItem icon={IconNew} label="New thread" onClick={async () => { await history.createConversation(); setActiveSection('search'); setSidebarOpen(false) }} />
           <NavItem icon={IconHistory} label="History" active={activeSection === 'history'} onClick={() => { setActiveSection('history'); setSidebarOpen(false) }} />
           <NavItem icon={IconStar} label="Discover" active={activeSection === 'discover'} onClick={() => { setActiveSection('discover'); setSidebarOpen(false) }} />
         </div>
@@ -691,7 +694,7 @@ export default function CIAFullscreen({ companyId, companyName, isOpen, onClose,
                 {showDotsMenu && (
                   <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: '#1e1e1e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', zIndex: 200, minWidth: '190px', padding: '4px' }}>
                     <button
-                      onClick={() => { history.createConversation(); setActiveSection('search'); setCompletedSteps(0); setShowSuggestions(false); setShowDotsMenu(false) }}
+                      onClick={async () => { await history.createConversation(); setActiveSection('search'); setCompletedSteps(0); setShowSuggestions(false); setShowDotsMenu(false) }}
                       style={{ display: 'flex', alignItems: 'center', gap: '9px', width: '100%', padding: '8px 12px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#c8c8c8', fontSize: '13px', borderRadius: '5px', textAlign: 'left' }}
                       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)' }}
                       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}

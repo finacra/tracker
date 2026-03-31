@@ -36,9 +36,53 @@ function formatInline(str: string): React.ReactNode {
   return parts.length === 1 ? parts[0] : <>{parts}</>
 }
 
+/* ── Strip LaTeX to plain readable text ── */
+function stripLatex(text: string): string {
+  return text
+    // Block math: \[ ... \] or $$ ... $$
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_, inner) => stripLatexInner(inner))
+    .replace(/\$\$([\s\S]*?)\$\$/g, (_, inner) => stripLatexInner(inner))
+    // Inline math: \( ... \) or $ ... $
+    .replace(/\\\(([\s\S]*?)\\\)/g, (_, inner) => stripLatexInner(inner))
+    .replace(/(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)/g, (_, inner) => stripLatexInner(inner))
+}
+
+function stripLatexInner(tex: string): string {
+  return tex
+    .replace(/\\boxed\{([^}]*)\}/g, '$1')
+    .replace(/\\text\{([^}]*)\}/g, '$1')
+    .replace(/\\textbf\{([^}]*)\}/g, '$1')
+    .replace(/\\mathrm\{([^}]*)\}/g, '$1')
+    .replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g, '($1/$2)')
+    .replace(/\\sqrt\{([^}]*)\}/g, 'sqrt($1)')
+    .replace(/\\(?:times|cdot)/g, ' x ')
+    .replace(/\\(?:approx)/g, ' ≈ ')
+    .replace(/\\(?:neq|ne)/g, ' ≠ ')
+    .replace(/\\(?:leq|le)/g, ' ≤ ')
+    .replace(/\\(?:geq|ge)/g, ' ≥ ')
+    .replace(/\\(?:pm)/g, ' ± ')
+    .replace(/\\(?:infty)/g, '∞')
+    .replace(/\\(?:sum)/g, 'Σ')
+    .replace(/\\(?:prod)/g, 'Π')
+    .replace(/\\(?:pi)/g, 'π')
+    .replace(/\\(?:alpha)/g, 'α')
+    .replace(/\\(?:beta)/g, 'β')
+    .replace(/\\(?:gamma)/g, 'γ')
+    .replace(/\\(?:delta)/g, 'δ')
+    .replace(/\\(?:theta)/g, 'θ')
+    .replace(/\\(?:lambda)/g, 'λ')
+    .replace(/\\(?:sigma)/g, 'σ')
+    .replace(/\\(?:mu)/g, 'μ')
+    .replace(/\\[a-zA-Z]+/g, '') // strip remaining commands
+    .replace(/[{}]/g, '')
+    .replace(/\^(\w)/g, '$1')
+    .replace(/_(\w)/g, '$1')
+    .trim()
+}
+
 /* ── Full markdown renderer ── */
 function renderMarkdown(text: string) {
-  const lines = text.split('\n')
+  const lines = stripLatex(text).split('\n')
   const elements: React.ReactNode[] = []
   let ulBuffer: string[] = []
   let olBuffer: string[] = []
@@ -193,7 +237,7 @@ function SourcePills({ sources }: { sources: { name: string; similarity: number 
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2">
             <path d="M2 1h4l2 2v5a1 1 0 01-1 1H3a1 1 0 01-1-1V2a1 1 0 011-1z" />
           </svg>
-          {s.name}
+          {s.name.replace(/^\*+/, '').replace(/_/g, ' ')}
           <span className="opacity-50">{s.similarity}%</span>
         </span>
       ))}

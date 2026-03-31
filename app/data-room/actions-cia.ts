@@ -1,6 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/utils/supabase/admin'
+import { prisma } from '@/lib/prisma'
 
 export interface CIAOverview {
   healthScore: number // 0-100
@@ -69,4 +70,104 @@ export async function getCIAOverview(companyId: string): Promise<CIAOverview> {
     documentCount,
     suggestedQuestions: suggestedQuestions.slice(0, 4),
   }
+}
+
+// ─── CIA Conversation History (DB persistence) ───
+
+export interface DBConversation {
+  id: string
+  name: string
+  createdAt: number
+  updatedAt: number
+  messages: DBMessage[]
+}
+
+export interface DBMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  sources?: { name: string; similarity: number }[]
+  timestamp: number
+}
+
+/** Load all conversations for a company+user */
+export async function loadCIAHistory(companyId: string, userId: string): Promise<DBConversation[]> {
+  const rows = await prisma.ciaConversation.findMany({
+    where: { company_id: companyId, user_id: userId },
+    include: { messages: { orderBy: { created_at: 'asc' } } },
+    orderBy: { updated_at: 'desc' },
+  })
+  return rows.map(r => ({
+    id: r.id,
+    name: r.name,
+    createdAt: r.created_at.getTime(),
+    updatedAt: r.updated_at.getTime(),
+    messages: r.messages.map(m => ({
+      id: m.id,
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+      sources: m.sources as any ?? undefined,
+      timestamp: m.created_at.getTime(),
+    })),
+  }))
+}
+
+/** Create a new conversation */
+export async function createCIAConversation(companyId: string, userId: string, name?: string): Promise<string> {
+  const conv = await prisma.ciaConversation.create({
+    data: { company_id: companyId, user_id: userId, name: name || 'New Chat' },
+  })
+  return conv.id
+}
+
+/** Add a message to a conversation */
+export async function addCIAMessage(
+  conversationId: string,
+  role: 'user' | 'assistant',
+  content: string,
+  sources?: { name: string; similarity: number }[]
+): Promise<string> {
+  const [msg] = await Promise.all([
+    prisma.ciaMessage.create({
+      data: {
+        conversation_id: conversationId,
+        role,
+        content,
+        sources: sources ? JSON.parse(JSON.stringify(sources)) : undefined,
+      },
+    }),
+    prisma.ciaConversation.update({
+      where: { id: conversationId },
+      data: { updated_at: new Date() },
+    }),
+  ])
+  return msg.id
+}
+
+/** Update the last assistant message (after streaming completes) */
+export async function updateCIAMessage(
+  messageId: string,
+  content: string,
+  sources?: { name: string; similarity: number }[]
+) {
+  await prisma.ciaMessage.update({
+    where: { id: messageId },
+    data: {
+      content,
+      sources: sources ? JSON.parse(JSON.stringify(sources)) : undefined,
+    },
+  })
+}
+
+/** Rename a conversation */
+export async function renameCIAConversation(conversationId: string, name: string) {
+  await prisma.ciaConversation.update({
+    where: { id: conversationId },
+    data: { name },
+  })
+}
+
+/** Delete a conversation (cascade deletes messages) */
+export async function deleteCIAConversation(conversationId: string) {
+  await prisma.ciaConversation.delete({ where: { id: conversationId } })
 }

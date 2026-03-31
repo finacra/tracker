@@ -3,11 +3,12 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { verifyCIN, verifyDIN, type CINDirectorData, type DINDirectorData } from '@/lib/api/cin-din'
-import { 
-  detectEntity, 
-  mapEntitySubTypeToFormValue, 
-  mapIndustryToCategories 
+import {
+  detectEntity,
+  mapEntitySubTypeToFormValue,
+  mapIndustryToCategories
 } from '@/lib/utils/entity-detection'
+import { parseCIN, type ParsedCIN } from '@/utils/cin-parser'
 import { useAuth } from '@/hooks/useAuth'
 import { useUserSubscription } from '@/hooks/useCompanyAccess'
 import { completeOnboarding, uploadFileToStorage } from './actions'
@@ -78,7 +79,35 @@ export default function OnboardingPage() {
     yearType: 'FY' as 'FY' | 'CY',
     countryCode: 'IN',
     documents: {} as Record<string, File | null>,
+    // Compliance intelligence fields
+    employeeCount: '',
+    annualTurnover: '',
+    isGstRegistered: false,
+    gstNumber: '',
+    netWorth: '',
+    isMsme: '',
+    msmeCategory: '',
+    hasImportsExports: false,
+    isStartupDpiit: false,
+    // CIN API fields (auto-populated)
+    authorisedCapital: '',
+    paidUpCapital: '',
+    subscribedCapital: '',
+    companyCategory: '',
+    companySubcategory: '',
+    classOfCompany: '',
+    rocName: '',
+    companyStatus: '',
+    dateOfLastAgm: '',
+    balanceSheetDate: '',
   })
+
+  // Auto-parse CIN whenever cinNumber changes — drives the NIC classification card
+  const parsedCIN = useMemo(() => {
+    if (!formData.cinNumber || countryCode !== 'IN') return null
+    const result = parseCIN(formData.cinNumber.trim())
+    return result.isValid ? result : null
+  }, [formData.cinNumber, countryCode])
 
   // Redirect to login if not authenticated
   // Allow users to access onboarding even if they have companies (to create new companies)
@@ -208,7 +237,7 @@ export default function OnboardingPage() {
     if (countryCode !== 'IN') {
       return
     }
-    
+
     if (!formData.cinNumber.trim()) {
       setErrors((prev) => ({ ...prev, cinNumber: `Please enter ${countryConfig.labels.registrationId}` }))
       return
@@ -217,96 +246,42 @@ export default function OnboardingPage() {
     setIsVerifyingCIN(true)
     setErrors((prev) => ({ ...prev, cinNumber: '' }))
 
+    // parsedCIN is auto-computed via useMemo — use it directly
+    const parsed = parseCIN(formData.cinNumber.trim())
+
     const result = await verifyCIN(formData.cinNumber.trim())
-    
+
     if (!result.success) {
-      setErrors((prev) => ({ ...prev, cinNumber: result.error }))
+      // Even if API fails, if CIN parsed successfully we can still use parsed data
+      if (parsed.isValid) {
+        setIsCINVerified(true)
+        applyParsedCINData(parsed, null, [])
+      } else {
+        setErrors((prev) => ({ ...prev, cinNumber: result.error }))
+      }
       setIsVerifyingCIN(false)
       return
     }
 
     const response = result.data
     console.log('CIN Response received:', JSON.stringify(response, null, 2))
-    
-    if (!response.data?.data?.companyData) {
-      setErrors((prev) => ({ ...prev, cinNumber: 'No company data found in response' }))
-      setIsVerifyingCIN(false)
-      return
-    }
 
-    const companyData = response.data.data.companyData
-    const directorData = response.data.data.directorData || []
-    
+    const companyData = response.data?.data?.companyData || {}
+    const directorData = response.data?.data?.directorData || []
+    const hasApiData = companyData && Object.keys(companyData).length > 0 && companyData.company
+
     console.log('Company Data:', companyData)
     console.log('Director Data:', directorData)
+    console.log('Parsed CIN:', parsed)
 
-    // Use entity detection system
-    const detection = detectEntity(companyData, true)
+    // Use entity detection system (with API data if available)
+    const detection = detectEntity(hasApiData ? companyData : { cin: formData.cinNumber.trim() }, true)
     setEntityDetection(detection)
     setIsCINVerified(true)
-    
+
     console.log('Entity Detection Result:', detection)
-    
-    // Map to form values
-    const formCompanyType = mapEntitySubTypeToFormValue(detection.entitySubType)
-    const formCategories = mapIndustryToCategories(detection.industryPrimary, detection.entitySubType)
-    
-    const cin = companyData.cin || formData.cinNumber
-    
-    // Parse address to extract city, state, PIN
-    const address = companyData.registeredaddress || companyData.mcamdscompanyaddress || ''
-    const { city, state, pinCode } = parseAddress(address)
-    
-    // Check for phone/mobile in company data
-    const phoneNumber = (companyData as any).mobileNumber || 
-                       (companyData as any).phoneNumber || 
-                       (companyData as any).contactNumber || 
-                       ''
-    
-    // Determine industry selection:
-    // If the detected industry is in our INDUSTRIES list, select it
-    // Otherwise, select 'Other' and put the specific industry name in the text field
-    const isKnownIndustry = detection.industryPrimary && INDUSTRIES.includes(detection.industryPrimary as any)
-    const selectedIndustries = isKnownIndustry
-      ? [detection.industryPrimary as any]
-      : detection.industryPrimary && detection.industryPrimary !== 'Other'
-        ? ['Other' as any] // Select 'Other' checkbox when industry doesn't match our list
-        : []
-    
-    // Determine industry category "Other" text:
-    // If formCategories includes 'Other', auto-fill the text field with the raw API industry
-    const needsOtherCategoryText = formCategories.includes('Other')
-    // Use the raw API company activity/description or the detected industry name
-    const rawApiDescription = (companyData as any).principalBusinessActivity || 
-                              (companyData as any).industrialClass || 
-                              (companyData as any).mainDivision ||
-                              detection.industryPrimary || ''
-    
-    setFormData((prev) => ({
-      ...prev,
-      companyName: companyData.company || prev.companyName,
-      companyType: formCompanyType || prev.companyType,
-      // Set industries — select matching or 'Other' with specific name
-      industries: selectedIndustries.length > 0
-        ? selectedIndustries
-        : prev.industries,
-      dateOfIncorporation: formatDate(companyData.dateOfIncorporation) || prev.dateOfIncorporation,
-      address: address || prev.address,
-      city: city || prev.city,
-      state: state || prev.state,
-      pinCode: pinCode || prev.pinCode,
-      phoneNumber: phoneNumber || prev.phoneNumber,
-      email: companyData.emailAddress || prev.email,
-      cinNumber: cin,
-      // Auto-select detected industry categories
-      industryCategories: formCategories.length > 0 
-        ? formCategories
-        : prev.industryCategories,
-      // Auto-fill "Other" industry category text if needed
-      otherIndustryCategory: needsOtherCategoryText
-        ? rawApiDescription
-        : prev.otherIndustryCategory,
-    }))
+
+    applyParsedCINData(parsed, hasApiData ? companyData : null, directorData)
 
     // Add directors from CIN response
     if (directorData.length > 0) {
@@ -320,7 +295,7 @@ export default function OnboardingPage() {
           din: dir.din || (dir as any).DIN || dir.dinOrPAN || (dir as any).DINOrPAN || '',
           designation: dir.designation || (dir as any).Designation || '',
           dob: formatDate(dir.dob || (dir as any).DOB) || '',
-          verified: false, // Will be verified using DIN
+          verified: false,
           source: 'cin' as const,
         }
       })
@@ -329,14 +304,13 @@ export default function OnboardingPage() {
     }
 
     // Check for ex-directors in CIN response (if available)
-    const exDirectorData = (response.data?.data as any)?.exDirectorData || 
+    const exDirectorData = (response.data?.data as any)?.exDirectorData ||
                           (response.data?.data as any)?.formerDirectorData ||
                           (response.data?.data as any)?.exDirectors ||
                           (response.data?.data as any)?.formerDirectors ||
                           []
-    
+
     if (Array.isArray(exDirectorData) && exDirectorData.length > 0) {
-      // Format ex-directors as comma-separated names
       const exDirectorNames = exDirectorData
         .map((exDir: any) => {
           const firstName = exDir.firstName || exDir.FirstName || exDir.first_name || ''
@@ -345,13 +319,82 @@ export default function OnboardingPage() {
           return [firstName, middleName, lastName].filter(Boolean).join(' ').trim()
         })
         .filter((name: string) => name.length > 0)
-      
+
       if (exDirectorNames.length > 0) {
         setExDirectors(exDirectorNames.join(', '))
       }
     }
 
     setIsVerifyingCIN(false)
+  }
+
+  /** Apply parsed CIN + optional API data to form fields */
+  const applyParsedCINData = (parsed: ParsedCIN, companyData: any | null, directorData: any[]) => {
+    // Map to form values using entity detection
+    const detection = companyData
+      ? detectEntity(companyData, true)
+      : detectEntity({ cin: parsed.raw }, true)
+
+    const formCompanyType = mapEntitySubTypeToFormValue(detection.entitySubType)
+    const formCategories = mapIndustryToCategories(detection.industryPrimary, detection.entitySubType)
+
+    // Parse address from API data
+    const address = companyData?.registeredaddress || companyData?.mcamdscompanyaddress || ''
+    const { city: apiCity, state: apiState, pinCode: apiPinCode } = parseAddress(address)
+
+    // Use parsed CIN state as fallback when API doesn't return address
+    const fallbackState = parsed.stateName || ''
+
+    const phoneNumber = companyData?.mobileNumber || companyData?.phoneNumber || companyData?.contactNumber || ''
+
+    // Determine industry from NIC code (parsed CIN) or entity detection
+    const nicIndustry = detection.industryPrimary
+    const isKnownIndustry = nicIndustry && INDUSTRIES.includes(nicIndustry as any)
+    const selectedIndustries = isKnownIndustry
+      ? [nicIndustry as any]
+      : nicIndustry && nicIndustry !== 'Other'
+        ? ['Other' as any]
+        : []
+
+    const needsOtherCategoryText = formCategories.includes('Other')
+    const rawApiDescription = companyData?.principalBusinessActivity ||
+                              companyData?.industrialClass ||
+                              companyData?.mainDivision ||
+                              // Fallback: use NIC description from parsed CIN
+                              parsed.nicDetails?.description ||
+                              detection.industryPrimary || ''
+
+    // Use parsed CIN year as fallback for date of incorporation
+    const apiDate = companyData?.dateOfIncorporation ? formatDate(companyData.dateOfIncorporation) : ''
+    const fallbackDate = parsed.yearOfIncorporation ? `${parsed.yearOfIncorporation}-01-01` : ''
+
+    setFormData((prev) => ({
+      ...prev,
+      companyName: companyData?.company || prev.companyName,
+      companyType: formCompanyType || prev.companyType,
+      industries: selectedIndustries.length > 0 ? selectedIndustries : prev.industries,
+      dateOfIncorporation: apiDate || fallbackDate || prev.dateOfIncorporation,
+      address: address || prev.address,
+      city: apiCity || prev.city,
+      state: apiState || fallbackState || prev.state,
+      pinCode: apiPinCode || prev.pinCode,
+      phoneNumber: phoneNumber || prev.phoneNumber,
+      email: companyData?.emailAddress || prev.email,
+      cinNumber: companyData?.cin || formData.cinNumber,
+      industryCategories: formCategories.length > 0 ? formCategories : prev.industryCategories,
+      otherIndustryCategory: needsOtherCategoryText ? rawApiDescription : prev.otherIndustryCategory,
+      // CIN API fields
+      authorisedCapital: companyData?.authorisedCapital || prev.authorisedCapital,
+      paidUpCapital: companyData?.paidUpCapital || prev.paidUpCapital,
+      subscribedCapital: companyData?.subscribedCapital || prev.subscribedCapital,
+      companyCategory: companyData?.companyCategory || prev.companyCategory,
+      companySubcategory: companyData?.companySubcategory || prev.companySubcategory,
+      classOfCompany: companyData?.classOfCompany || prev.classOfCompany,
+      rocName: companyData?.rocName || prev.rocName,
+      companyStatus: companyData?.llpStatus || prev.companyStatus,
+      dateOfLastAgm: companyData?.dateOfLastAGM || prev.dateOfLastAgm,
+      balanceSheetDate: companyData?.balanceSheetDate || prev.balanceSheetDate,
+    }))
   }
 
   const handleDINVerification = async (directorId: string, din: string) => {
@@ -948,6 +991,64 @@ export default function OnboardingPage() {
                       value={formData.cinNumber}
                     />
                   )}
+
+                  {/* NIC Classification Card — shown when CIN format is valid */}
+                  {parsedCIN && (
+                    <div className="mt-3 p-3 sm:p-4 bg-gray-900/80 border border-gray-700 rounded-lg space-y-2">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg width="14" height="14" className="sm:w-4 sm:h-4 text-emerald-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                          <polyline points="22 4 12 14.01 9 11.01" />
+                        </svg>
+                        <span className="text-xs sm:text-sm font-medium text-emerald-400">CIN Decoded</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs sm:text-sm">
+                        <div className="text-gray-500">Listing Status</div>
+                        <div className="text-gray-200">{parsedCIN.isListed ? 'Listed' : 'Unlisted'}</div>
+
+                        <div className="text-gray-500">State of Registration</div>
+                        <div className="text-gray-200">{parsedCIN.stateName || parsedCIN.stateCode || '—'}</div>
+
+                        <div className="text-gray-500">Year of Incorporation</div>
+                        <div className="text-gray-200">{parsedCIN.yearOfIncorporation || '—'}</div>
+
+                        <div className="text-gray-500">Company Type</div>
+                        <div className="text-gray-200">{parsedCIN.companyTypeName || parsedCIN.companyTypeCode || '—'}</div>
+                      </div>
+
+                      {parsedCIN.nicDetails && (
+                        <>
+                          <div className="border-t border-gray-700/60 my-2"></div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs sm:text-sm font-medium text-gray-300">Industry Classification (NIC 2008)</span>
+                          </div>
+                          <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs sm:text-sm">
+                            <span className="text-gray-500">Section</span>
+                            <span className="text-gray-200">{parsedCIN.nicDetails.section} — {parsedCIN.nicDetails.sectionName}</span>
+
+                            <span className="text-gray-500">Division</span>
+                            <span className="text-gray-200">{parsedCIN.nicDetails.divisionCode} — {parsedCIN.nicDetails.divisionName}</span>
+
+                            <span className="text-gray-500">Group</span>
+                            <span className="text-gray-200">{parsedCIN.nicDetails.groupCode} — {parsedCIN.nicDetails.groupName}</span>
+
+                            <span className="text-gray-500">Class</span>
+                            <span className="text-gray-200">{parsedCIN.nicDetails.classCode} — {parsedCIN.nicDetails.className}</span>
+
+                            <span className="text-gray-500">Sub-class</span>
+                            <span className="text-gray-200">{parsedCIN.nicDetails.code} — {parsedCIN.nicDetails.description}</span>
+                          </div>
+                        </>
+                      )}
+
+                      {parsedCIN.nicCode && !parsedCIN.nicDetails && (
+                        <div className="text-xs text-amber-400/80 mt-1">
+                          NIC code {parsedCIN.nicCode} not found in NIC 2008 classification
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
             {/* Company Name */}
@@ -1360,6 +1461,143 @@ export default function OnboardingPage() {
                 placeholder="Enter any other information"
                 className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
               />
+            </div>
+
+            {/* Compliance Profile Section */}
+            <div className="space-y-4 pt-2">
+              <div className="border-t border-gray-700/60 pt-4">
+                <h4 className="text-white font-medium text-sm mb-1">Compliance Profile</h4>
+                <p className="text-gray-500 text-xs mb-4">These fields help determine which regulatory compliances apply to your company. Fill what you can — you can update later.</p>
+              </div>
+
+              {/* Row 1: Employee Count + Annual Turnover */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">Employee Count</label>
+                  <input
+                    type="number"
+                    name="employeeCount"
+                    value={formData.employeeCount}
+                    onChange={handleInputChange}
+                    placeholder="e.g. 25"
+                    min="0"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  />
+                  <p className="text-gray-600 text-[10px] mt-1">Determines PF (20+), ESI (10+), POSH (10+), Gratuity (10+)</p>
+                </div>
+                <div>
+                  <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">Annual Turnover (in Lakhs)</label>
+                  <input
+                    type="number"
+                    name="annualTurnover"
+                    value={formData.annualTurnover}
+                    onChange={handleInputChange}
+                    placeholder="e.g. 500 for 5 Crore"
+                    min="0"
+                    step="0.01"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  />
+                  <p className="text-gray-600 text-[10px] mt-1">Determines Tax Audit (100L+), E-Invoicing (500L+), GST Audit (500L+)</p>
+                </div>
+              </div>
+
+              {/* Row 2: Net Worth + GST */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">Net Worth (in Crores)</label>
+                  <input
+                    type="number"
+                    name="netWorth"
+                    value={formData.netWorth}
+                    onChange={handleInputChange}
+                    placeholder="e.g. 10"
+                    min="0"
+                    step="0.01"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  />
+                  <p className="text-gray-600 text-[10px] mt-1">Determines CSR (500Cr+), CARO thresholds</p>
+                </div>
+                <div>
+                  <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">GSTIN</label>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={formData.isGstRegistered}
+                        onChange={(e) => setFormData(prev => ({ ...prev, isGstRegistered: e.target.checked, gstNumber: e.target.checked ? prev.gstNumber : '' }))}
+                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 bg-gray-800 border-gray-600 rounded focus:ring-gray-500"
+                      />
+                      <span className="text-gray-400 text-xs">GST Registered</span>
+                    </label>
+                    {formData.isGstRegistered && (
+                      <input
+                        type="text"
+                        name="gstNumber"
+                        value={formData.gstNumber}
+                        onChange={handleInputChange}
+                        placeholder="22AAAAA0000A1Z5"
+                        maxLength={15}
+                        className="flex-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 3: MSME + Category */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">MSME Status</label>
+                  <select
+                    name="isMsme"
+                    value={formData.isMsme}
+                    onChange={handleInputChange}
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none font-light cursor-pointer"
+                  >
+                    <option value="">Not sure / Not applicable</option>
+                    <option value="yes">Yes — MSME Registered</option>
+                    <option value="no">No</option>
+                  </select>
+                </div>
+                {formData.isMsme === 'yes' && (
+                  <div>
+                    <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">MSME Category</label>
+                    <select
+                      name="msmeCategory"
+                      value={formData.msmeCategory}
+                      onChange={handleInputChange}
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none font-light cursor-pointer"
+                    >
+                      <option value="">Select category</option>
+                      <option value="micro">Micro</option>
+                      <option value="small">Small</option>
+                      <option value="medium">Medium</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Row 4: Boolean flags */}
+              <div className="flex flex-wrap gap-3 sm:gap-4">
+                <label className="flex items-center gap-2 p-2.5 sm:p-3 bg-gray-900 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formData.hasImportsExports}
+                    onChange={(e) => setFormData(prev => ({ ...prev, hasImportsExports: e.target.checked }))}
+                    className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 bg-gray-800 border-gray-600 rounded focus:ring-gray-500"
+                  />
+                  <span className="text-gray-300 text-xs sm:text-sm font-light">Has Imports / Exports</span>
+                </label>
+                <label className="flex items-center gap-2 p-2.5 sm:p-3 bg-gray-900 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formData.isStartupDpiit}
+                    onChange={(e) => setFormData(prev => ({ ...prev, isStartupDpiit: e.target.checked }))}
+                    className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 bg-gray-800 border-gray-600 rounded focus:ring-gray-500"
+                  />
+                  <span className="text-gray-300 text-xs sm:text-sm font-light">DPIIT-Recognized Startup</span>
+                </label>
+              </div>
             </div>
 
             {/* Directors Section */}

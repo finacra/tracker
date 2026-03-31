@@ -14,7 +14,10 @@ export class PrismaCompanyRepository implements CompanyRepository {
               industry, address, city, state, pin_code, phone_number, email, landline,
               other_info, industry_categories, other_industry_category, ex_directors, country_code,
               nic_code, is_listed, employee_count, annual_turnover, is_gst_registered, gst_number,
-              net_worth, is_msme, msme_category, has_imports_exports, is_startup_dpiit
+              net_worth, is_msme, msme_category, has_imports_exports, is_startup_dpiit,
+              authorised_capital, paid_up_capital, subscribed_capital, company_category,
+              company_subcategory, class_of_company, roc_name, company_status,
+              date_of_last_agm, balance_sheet_date
        FROM companies WHERE id = ${companyId}::uuid`
     )
 
@@ -54,6 +57,16 @@ export class PrismaCompanyRepository implements CompanyRepository {
       msmeCategory: data.msme_category ?? null,
       hasImportsExports: data.has_imports_exports ?? null,
       isStartupDpiit: data.is_startup_dpiit ?? null,
+      authorisedCapital: data.authorised_capital != null ? Number(data.authorised_capital) : null,
+      paidUpCapital: data.paid_up_capital != null ? Number(data.paid_up_capital) : null,
+      subscribedCapital: data.subscribed_capital != null ? Number(data.subscribed_capital) : null,
+      companyCategory: data.company_category ?? null,
+      companySubcategory: data.company_subcategory ?? null,
+      classOfCompany: data.class_of_company ?? null,
+      rocName: data.roc_name ?? null,
+      companyStatus: data.company_status ?? null,
+      dateOfLastAgm: data.date_of_last_agm ?? null,
+      balanceSheetDate: data.balance_sheet_date ?? null,
     }
   }
 
@@ -163,6 +176,25 @@ export class PrismaCompanyRepository implements CompanyRepository {
         ex_directors: input.exDirectors || [],
         nic_code: input.nicCode || null,
         is_listed: input.isListed ?? null,
+        employee_count: input.employeeCount ?? null,
+        annual_turnover: input.annualTurnover ?? null,
+        is_gst_registered: input.isGstRegistered ?? null,
+        gst_number: input.gstNumber || null,
+        net_worth: input.netWorth ?? null,
+        is_msme: input.isMsme ?? null,
+        msme_category: input.msmeCategory || null,
+        has_imports_exports: input.hasImportsExports ?? null,
+        is_startup_dpiit: input.isStartupDpiit ?? null,
+        authorised_capital: input.authorisedCapital ?? null,
+        paid_up_capital: input.paidUpCapital ?? null,
+        subscribed_capital: input.subscribedCapital ?? null,
+        company_category: input.companyCategory || null,
+        company_subcategory: input.companySubcategory || null,
+        class_of_company: input.classOfCompany || null,
+        roc_name: input.rocName || null,
+        company_status: input.companyStatus || null,
+        date_of_last_agm: input.dateOfLastAgm ? new Date(input.dateOfLastAgm) : null,
+        balance_sheet_date: input.balanceSheetDate ? new Date(input.balanceSheetDate) : null,
       },
       select: { id: true, name: true, user_id: true },
     })
@@ -204,6 +236,16 @@ export class PrismaCompanyRepository implements CompanyRepository {
         msme_category: input.msmeCategory !== undefined ? input.msmeCategory : undefined,
         has_imports_exports: input.hasImportsExports !== undefined ? input.hasImportsExports : undefined,
         is_startup_dpiit: input.isStartupDpiit !== undefined ? input.isStartupDpiit : undefined,
+        authorised_capital: input.authorisedCapital !== undefined ? input.authorisedCapital : undefined,
+        paid_up_capital: input.paidUpCapital !== undefined ? input.paidUpCapital : undefined,
+        subscribed_capital: input.subscribedCapital !== undefined ? input.subscribedCapital : undefined,
+        company_category: input.companyCategory !== undefined ? input.companyCategory : undefined,
+        company_subcategory: input.companySubcategory !== undefined ? input.companySubcategory : undefined,
+        class_of_company: input.classOfCompany !== undefined ? input.classOfCompany : undefined,
+        roc_name: input.rocName !== undefined ? input.rocName : undefined,
+        company_status: input.companyStatus !== undefined ? input.companyStatus : undefined,
+        date_of_last_agm: input.dateOfLastAgm !== undefined ? (input.dateOfLastAgm ? new Date(input.dateOfLastAgm) : null) : undefined,
+        balance_sheet_date: input.balanceSheetDate !== undefined ? (input.balanceSheetDate ? new Date(input.balanceSheetDate) : null) : undefined,
       },
     })
   }
@@ -244,7 +286,10 @@ export class PrismaCompanyRepository implements CompanyRepository {
              industry, address, city, state, pin_code, phone_number, email, landline,
              other_info, industry_categories, other_industry_category, ex_directors, country_code,
              nic_code, is_listed, employee_count, annual_turnover, is_gst_registered, gst_number,
-             net_worth, is_msme, msme_category, has_imports_exports, is_startup_dpiit, created_at
+             net_worth, is_msme, msme_category, has_imports_exports, is_startup_dpiit,
+             authorised_capital, paid_up_capital, subscribed_capital, company_category,
+             company_subcategory, class_of_company, roc_name, company_status,
+             date_of_last_agm, balance_sheet_date, created_at
       FROM companies
       ORDER BY created_at DESC
     `
@@ -281,6 +326,16 @@ export class PrismaCompanyRepository implements CompanyRepository {
       msmeCategory: data.msme_category ?? null,
       hasImportsExports: data.has_imports_exports ?? null,
       isStartupDpiit: data.is_startup_dpiit ?? null,
+      authorisedCapital: data.authorised_capital != null ? Number(data.authorised_capital) : null,
+      paidUpCapital: data.paid_up_capital != null ? Number(data.paid_up_capital) : null,
+      subscribedCapital: data.subscribed_capital != null ? Number(data.subscribed_capital) : null,
+      companyCategory: data.company_category ?? null,
+      companySubcategory: data.company_subcategory ?? null,
+      classOfCompany: data.class_of_company ?? null,
+      rocName: data.roc_name ?? null,
+      companyStatus: data.company_status ?? null,
+      dateOfLastAgm: data.date_of_last_agm ?? null,
+      balanceSheetDate: data.balance_sheet_date ?? null,
       createdAt: data.created_at ? data.created_at.toISOString() : null,
     }))
   }
