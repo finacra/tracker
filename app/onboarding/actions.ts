@@ -109,7 +109,10 @@ export async function completeOnboarding(
       .filter((name: string) => name.length > 0)
     : null
 
-  const company = await companyRepository.create({
+  console.log('[ONBOARD] Creating company for user:', user.id, 'canonicalId:', user.canonicalId)
+  let company
+  try {
+  company = await companyRepository.create({
     userId: user.id,
     appUserId: user.canonicalId,
     name: formData.companyName,
@@ -157,6 +160,11 @@ export async function completeOnboarding(
     dateOfLastAgm: formData.dateOfLastAgm || null,
     balanceSheetDate: formData.balanceSheetDate || null,
   })
+  console.log('[ONBOARD] Company created:', company.id)
+  } catch (createErr: any) {
+    console.error('[ONBOARD] Company create FAILED:', createErr.message || createErr)
+    throw createErr
+  }
 
   // 1b. Assign admin role to the company creator
   try {
