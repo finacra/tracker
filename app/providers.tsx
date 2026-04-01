@@ -56,27 +56,36 @@ export function Providers({ children }: { children: React.ReactNode }) {
     const requestId = ++appUserRequestIdRef.current
 
     if (!session) {
+      console.log('[SYNC] No session, clearing user')
       resolvedAppUserIdRef.current = null
       setAppUser(null)
       return null
     }
 
     if (resolvedAppUserIdRef.current === session.userId) {
+      console.log('[SYNC] Already resolved for', session.userId, '→ returning cached appUser:', appUser?.id || 'null')
       return appUser
     }
 
     try {
+      console.log('[SYNC] Fetching /api/auth/profile for', session.userId)
       const response = await fetch('/api/auth/profile', {
         method: 'GET',
+        credentials: 'include',
         cache: 'no-store',
       })
+
+      console.log('[SYNC] Profile response status:', response.status)
 
       if (!response.ok) {
         throw new Error(`Profile request failed with status ${response.status}`)
       }
 
       const payload = (await response.json()) as { user?: AppUser | null }
+      console.log('[SYNC] Profile payload:', payload.user ? `uid:${payload.user.id}` : 'null', 'error:', (payload as any).error || 'none')
+
       if (requestId !== appUserRequestIdRef.current) {
+        console.log('[SYNC] Stale request, ignoring')
         return null
       }
 
@@ -85,12 +94,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       setAppUser(nextAppUser)
       return nextAppUser
     } catch (error: any) {
-      // Catch "Failed to fetch" silently to avoid console flooding during page transitions
-      const isNetworkError = error.name === 'TypeError' || error.message?.includes('fetch')
-      
-      if (!isNetworkError) {
-        console.error('Error resolving canonical auth profile:', error)
-      }
+      console.error('[SYNC] Profile fetch error:', error.message || error)
 
       if (requestId !== appUserRequestIdRef.current) {
         return null
