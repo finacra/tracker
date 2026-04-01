@@ -57,19 +57,24 @@ export class PrismaSubscriptionRepository implements SubscriptionRepository {
     }
 
     async createUserTrial(userId: string, appUserId?: string | null): Promise<void> {
+        console.log('[createUserTrial] userId:', userId, 'appUserId:', appUserId)
+
         // Check if user already has an active subscription or trial
+        // Search by both user_id and app_user_id to catch Passport users
         const existing = await prisma.subscription.findFirst({
             where: {
-                user_id: userId,
                 subscription_type: 'user',
                 OR: [
-                    { status: 'active', end_date: { gt: new Date() } },
-                    { is_trial: true, trial_ends_at: { gt: new Date() } },
+                    { user_id: userId, status: 'active', end_date: { gt: new Date() } },
+                    { user_id: userId, is_trial: true, trial_ends_at: { gt: new Date() } },
+                    { app_user_id: userId, status: 'active', end_date: { gt: new Date() } },
+                    { app_user_id: userId, is_trial: true, trial_ends_at: { gt: new Date() } },
                 ],
             },
         })
 
         if (existing) {
+            console.log('[createUserTrial] Already has subscription:', existing.id)
             throw new Error('User already has an active subscription or trial')
         }
 
@@ -77,24 +82,30 @@ export class PrismaSubscriptionRepository implements SubscriptionRepository {
         const trialEnd = new Date()
         trialEnd.setDate(trialEnd.getDate() + trialDuration)
 
-        await prisma.subscription.create({
-            data: {
-                user_id: userId,
-                app_user_id: appUserId || null,
-                company_id: null,
-                subscription_type: 'user',
-                status: 'trial',
-                tier: 'enterprise',
-                billing_cycle: 'monthly',
-                amount: new Prisma.Decimal(0),
-                currency: 'INR',
-                is_trial: true,
-                trial_started_at: new Date(),
-                trial_ends_at: trialEnd,
-                start_date: new Date(),
-                end_date: trialEnd,
-            },
-        })
+        try {
+            await prisma.subscription.create({
+                data: {
+                    user_id: userId,
+                    app_user_id: appUserId || null,
+                    company_id: null,
+                    subscription_type: 'user',
+                    status: 'trial',
+                    tier: 'enterprise',
+                    billing_cycle: 'monthly',
+                    amount: new Prisma.Decimal(0),
+                    currency: 'INR',
+                    is_trial: true,
+                    trial_started_at: new Date(),
+                    trial_ends_at: trialEnd,
+                    start_date: new Date(),
+                    end_date: trialEnd,
+                },
+            })
+            console.log('[createUserTrial] SUCCESS for', userId)
+        } catch (err: any) {
+            console.error('[createUserTrial] FAILED:', err.message || err)
+            throw err
+        }
     }
 
     async createCompanyTrial(userId: string, companyId: string, appUserId?: string | null): Promise<void> {
