@@ -108,35 +108,36 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
+    let initialLoadDone = false
+
     // Initial load: wait for session AND app profile before releasing loading state
     authAdapter.getSession().then(async (session) => {
       console.log('[PROVIDERS] getSession result:', session ? `uid:${session.userId} email:${session.email}` : 'null')
       const resolvedUser = await syncAppUser(session)
       console.log('[PROVIDERS] syncAppUser result:', resolvedUser ? `uid:${resolvedUser.id}` : 'null')
+      initialLoadDone = true
       setLoading(false)
-      console.log('[PROVIDERS] loading set to false, appUser:', resolvedUser ? 'SET' : 'NULL')
-      // Track login after appUser is resolved
       await trackLoginOnce(session, undefined, resolvedUser)
     }).catch(err => {
       console.error('[PROVIDERS] getSession error:', err)
+      initialLoadDone = true
       setLoading(false)
     })
 
     const { unsubscribe } = authAdapter.onAuthStateChange(async (_event, session) => {
-      // For auth events, we update sync status but only toggle loading if it was forced back to true
-      // or if we want to ensure data consistency before UI updates.
+      // Skip if initial load hasn't finished — avoid racing with getSession above
+      if (!initialLoadDone) return
       if (!session) {
         trackedLoginUserIdRef.current = null
       }
       const resolvedUser = await syncAppUser(session)
       setLoading(false)
-      // Track login after appUser is resolved
       await trackLoginOnce(session, _event, resolvedUser)
     })
 
     return () => unsubscribe()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authAdapter]) // Only authAdapter changes, authProvider is constant
+  }, [authAdapter])
 
   const signOut = async () => {
     trackedLoginUserIdRef.current = null
