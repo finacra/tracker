@@ -127,20 +127,18 @@ export async function addCIAMessage(
   content: string,
   sources?: { name: string; similarity: number }[]
 ): Promise<string> {
-  const [msg] = await Promise.all([
-    prisma.ciaMessage.create({
-      data: {
-        conversation_id: conversationId,
-        role,
-        content,
-        sources: sources ? JSON.parse(JSON.stringify(sources)) : undefined,
-      },
-    }),
-    prisma.ciaConversation.update({
-      where: { id: conversationId },
-      data: { updated_at: new Date() },
-    }),
-  ])
+  const msg = await prisma.ciaMessage.create({
+    data: {
+      conversation_id: conversationId,
+      role,
+      content,
+      sources: sources ? JSON.parse(JSON.stringify(sources)) : undefined,
+    },
+  })
+  await prisma.ciaConversation.update({
+    where: { id: conversationId },
+    data: { updated_at: new Date() },
+  })
   return msg.id
 }
 
