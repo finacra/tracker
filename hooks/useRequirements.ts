@@ -21,7 +21,7 @@ export function useRequirements(
   const { enabled = true, hasAccess = true } = options
 
   const [requirements, setRequirements] = useState<RegulatoryRequirement[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true) // Start true — prevents empty state flash before first fetch
 
   // Tracks which companyId the current in-flight request is for.
   // Updated immediately on each fetch call. When a response arrives, we
