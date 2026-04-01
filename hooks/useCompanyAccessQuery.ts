@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { getCompanyAccessState } from '@/app/data-room/actions'
 import { queryKeys } from '@/lib/react-query/query-keys'
+import { useAuth } from '@/hooks/useAuth'
 import type { CompanyAccessSnapshot } from '@/domain/types/CompanyAccess'
 
 interface UseCompanyAccessOptions {
@@ -16,6 +17,9 @@ export function useCompanyAccessQuery({
   enabled = true,
   initialData,
 }: UseCompanyAccessOptions) {
+  const { user, loading: authLoading } = useAuth()
+  const isAuthReady = !authLoading && !!user
+
   return useQuery({
     queryKey: queryKeys.companyAccess(companyId),
     queryFn: async () => {
@@ -28,9 +32,10 @@ export function useCompanyAccessQuery({
       }
       return result.access
     },
-    enabled: enabled && !!companyId,
+    enabled: enabled && !!companyId && isAuthReady,
     initialData,
-    staleTime: 5 * 60 * 1000, // 5 minutes - access doesn't change frequently
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: 2,
   })
 }

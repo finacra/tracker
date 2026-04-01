@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { getUserSubscriptionSummary } from '@/app/data-room/actions'
 import { queryKeys } from '@/lib/react-query/query-keys'
+import { useAuth } from '@/hooks/useAuth'
 
 interface UserSubscriptionSummary {
   hasSubscription: boolean
@@ -23,6 +24,13 @@ export function useUserSubscriptionQuery({
   enabled = true,
   initialData,
 }: UseUserSubscriptionOptions = {}) {
+  const { user, loading: authLoading } = useAuth()
+
+  // Don't fire the query until auth is resolved — prevents
+  // server action from running without a session cookie,
+  // which returns hasSubscription: false prematurely.
+  const isAuthReady = !authLoading && !!user
+
   return useQuery({
     queryKey: queryKeys.userSubscription(),
     queryFn: async () => {
@@ -32,9 +40,10 @@ export function useUserSubscriptionQuery({
       }
       return result.summary
     },
-    enabled,
+    enabled: enabled && isAuthReady,
     initialData,
-    staleTime: 2 * 60 * 1000, // 2 minutes - subscription can change
+    staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
+    retry: 2,
   })
 }
