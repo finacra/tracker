@@ -145,7 +145,9 @@ export default function OnboardingPage() {
   // Check if user needs to subscribe first (no subscription or trial at all)
   // Allow access if user has subscription OR trial
   const hasActiveAccess = hasSubscription || (isTrial && trialDaysRemaining > 0)
-  
+
+  console.log('[ONBOARDING] Auth:', { user: user?.id, loading, subLoading, hasSubscription, isTrial, trialDaysRemaining, hasActiveAccess, currentCompanyCount, companyLimit, canCreateCompany, tier })
+
   if (!hasActiveAccess && currentCompanyCount === 0) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">

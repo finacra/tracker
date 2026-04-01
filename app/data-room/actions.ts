@@ -293,11 +293,15 @@ export async function getUserSubscriptionSummary(): Promise<{
       companyRepository.listOwnedByUser(user.id),
     ])
 
+    console.log('[SUB_SUMMARY] userId:', user.id, 'subscription:', JSON.stringify(subscription), 'companies:', companies.length)
+
     const hasActiveSubscription = Boolean(
       subscription?.hasSubscription ||
       (subscription?.isTrial && (subscription?.trialDaysRemaining ?? 0) > 0)
     )
     const companyLimit = subscription?.companyLimit ?? 0
+
+    console.log('[SUB_SUMMARY] hasActive:', hasActiveSubscription, 'tier:', subscription?.tier, 'isTrial:', subscription?.isTrial, 'trialDays:', subscription?.trialDaysRemaining, 'limit:', companyLimit)
 
     return {
       success: true,

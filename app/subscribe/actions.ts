@@ -141,14 +141,24 @@ export async function createTrialSubscription(targetCompanyId: string | null): P
   try {
     const { authService, companyRepository, subscriptionRepository } = createServerContainer()
     const user = await authService.requireCurrentUser()
+    console.log('[TRIAL] User:', user.id, 'canonicalId:', user.canonicalId)
     const ownedCompanies = await companyRepository.listOwnedByUser(user.id)
+    console.log('[TRIAL] Owned companies:', ownedCompanies.length)
 
     if (ownedCompanies.length === 0) {
-      await subscriptionRepository.createUserTrial(user.id, user.canonicalId)
+      console.log('[TRIAL] No companies, creating user trial for', user.id)
+      try {
+        await subscriptionRepository.createUserTrial(user.id, user.canonicalId)
+        console.log('[TRIAL] User trial created successfully')
+      } catch (trialErr: any) {
+        console.error('[TRIAL] createUserTrial FAILED:', trialErr.message || trialErr)
+        throw trialErr
+      }
       return { success: true, redirectTo: '/onboarding' }
     }
 
     const finalCompanyId = validCompanyId || ownedCompanies[0]?.id || null
+    console.log('[TRIAL] finalCompanyId:', finalCompanyId)
     if (!finalCompanyId) {
       return { success: false, error: 'Please select a company for the trial' }
     }
@@ -159,6 +169,7 @@ export async function createTrialSubscription(targetCompanyId: string | null): P
     }
 
     if (await subscriptionRepository.hasUsedEnterpriseUserTrial(user.id)) {
+      console.log('[TRIAL] Enterprise trial already used')
       return {
         success: false,
         error: 'Your account has already used its Enterprise trial. Please subscribe to continue.',
@@ -166,6 +177,7 @@ export async function createTrialSubscription(targetCompanyId: string | null): P
     }
 
     if (await subscriptionRepository.hasUsedCompanyTrial(finalCompanyId)) {
+      console.log('[TRIAL] Company trial already used for', finalCompanyId)
       return {
         success: false,
         error: 'This company has already used its trial. Please subscribe to continue.',
@@ -173,8 +185,10 @@ export async function createTrialSubscription(targetCompanyId: string | null): P
     }
 
     await subscriptionRepository.createCompanyTrial(user.id, finalCompanyId, user.canonicalId)
+    console.log('[TRIAL] Company trial created for', finalCompanyId)
     return { success: true, redirectTo: `/data-room?company_id=${finalCompanyId}` }
   } catch (error: any) {
+    console.error('[TRIAL] Error:', error.message || error)
     return {
       success: false,
       error: error.message || 'Failed to create trial',
