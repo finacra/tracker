@@ -106,10 +106,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Initial load: wait for session AND app profile before releasing loading state
     authAdapter.getSession().then(async (session) => {
+      console.log('[PROVIDERS] getSession result:', session ? `uid:${session.userId} email:${session.email}` : 'null')
       const resolvedUser = await syncAppUser(session)
+      console.log('[PROVIDERS] syncAppUser result:', resolvedUser ? `uid:${resolvedUser.id}` : 'null')
       setLoading(false)
+      console.log('[PROVIDERS] loading set to false, appUser:', resolvedUser ? 'SET' : 'NULL')
       // Track login after appUser is resolved
       await trackLoginOnce(session, undefined, resolvedUser)
+    }).catch(err => {
+      console.error('[PROVIDERS] getSession error:', err)
+      setLoading(false)
     })
 
     const { unsubscribe } = authAdapter.onAuthStateChange(async (_event, session) => {
