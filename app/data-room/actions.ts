@@ -3417,6 +3417,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
       canCreateCompany: boolean
     }
     initialEntityDetails?: any
+    initialRequirements?: any[]
     hiddenTemplates: string[]
     hiddenCompliances: string[]
     userRole: 'superadmin' | 'admin' | 'editor' | 'viewer'
@@ -3553,7 +3554,11 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
           WHERE company_id = (SELECT id FROM target_company_id) 
           ORDER BY created_at ASC
         ) ds) as directors,
-        -- Requirements removed: loaded separately via getRegulatoryRequirements for better performance
+        (SELECT json_agg(rq.*) FROM (
+          SELECT * FROM regulatory_requirements
+          WHERE company_id = (SELECT id FROM target_company_id)
+          ORDER BY category, requirement
+        ) rq) as requirements,
         (SELECT json_agg(ds2.*) FROM (
           SELECT * FROM company_documents_internal 
           WHERE company_id = (SELECT id FROM target_company_id) 
@@ -3715,6 +3720,12 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
           canCreateCompany: hasActiveSub && Number(pulse.owned_count || 0) < subState.companyLimit,
         },
         initialEntityDetails: formattedDetails,
+        initialRequirements: ((pulse.requirements || []) as any[]).map((req: any) => ({
+          ...req,
+          required_documents: Array.isArray(req.required_documents)
+            ? req.required_documents
+            : (req.required_documents ? [req.required_documents] : [])
+        })),
         hiddenTemplates: (pulse.hidden_templates || []).map((t: any) => `${t.folder_name}:${t.document_name}`),
         hiddenCompliances: (pulse.hidden_compliances || []).map((c: any) => c.requirement_id),
         userRole: (isSuperadminResult ? 'superadmin' : pulse.explicit_role || 'viewer') as any,

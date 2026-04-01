@@ -512,10 +512,13 @@ function DataRoomPageInner() {
         // Note: setRole is no longer used - React Query manages role state
         
         updateLoadingMessage("⚖️ Loading compliance requirements...");
-        
-        // 5. Populate documents if available for the selected company
-        // Requirements are now loaded separately via fetchRegulatoryRequirements for better performance
+
+        // 5. Populate requirements + documents from init state (eliminates second fetch)
         if (selected?.id === data.currentCompanyId) {
+            if (data.initialRequirements && data.initialRequirements.length > 0) {
+                setRegulatoryRequirements(data.initialRequirements);
+                markRequirementsFresh(selected.id);
+            }
             if (data.initialVaultDocuments) {
                 setVaultDocuments(data.initialVaultDocuments);
                 vaultDocumentsFetchedRef.current = selected.id;
