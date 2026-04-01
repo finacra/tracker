@@ -633,8 +633,10 @@ export async function updateRequirement(
  * @param date - Due date (string or Date object)
  * @param yearType - Optional year type (FY for Financial Year, CY for Calendar Year). Defaults to FY
  */
-function calculatePeriodKey(complianceType: string | null, date: string | Date, yearType: 'FY' | 'CY' = 'FY'): string {
+function calculatePeriodKey(complianceType: string | null, date: string | Date | null, yearType: 'FY' | 'CY' = 'FY'): string {
+  if (!date) return ''
   const d = typeof date === 'string' ? new Date(date) : date
+  if (isNaN(d.getTime())) return ''
   const year = d.getFullYear()
   const month = d.getMonth() + 1 // 1-indexed
 
