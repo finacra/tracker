@@ -296,70 +296,66 @@ async function bulkInsertRulesEngineResults(
   const now = new Date()
   let totalInserted = 0
 
-  await prisma.$transaction(async (tx) => {
-    for (const ec of evaluated) {
-      const rule = ec.rule
-      const complianceType = frequencyToComplianceType(rule.frequency)
-      const requiredDocs = rule.documentsRequired || []
-      const requiredDocsArray = `{${requiredDocs.map((d: string) => `"${d.replace(/"/g, '\\"')}"`).join(',')}}`
-      const matchReasons = ec.matchedConditions.join('; ')
-      const missingWarnings = ec.missingData.length > 0
-        ? `\n\n⚠️ Missing data: ${ec.missingData.join('; ')}`
-        : ''
-      const description = `${rule.applicabilityReason}${missingWarnings}`
+  // Sequential inserts (no interactive transaction — compatible with PgBouncer)
+  for (const ec of evaluated) {
+    const rule = ec.rule
+    const complianceType = frequencyToComplianceType(rule.frequency)
+    const requiredDocs = rule.documentsRequired || []
+    const requiredDocsArray = `{${requiredDocs.map((d: string) => `"${d.replace(/"/g, '\\"')}"`).join(',')}}`
+    const matchReasons = ec.matchedConditions.join('; ')
+    const missingWarnings = ec.missingData.length > 0
+      ? `\n\n⚠️ Missing data: ${ec.missingData.join('; ')}`
+      : ''
+    const description = `${rule.applicabilityReason}${missingWarnings}`
 
-      // For recurring compliances, generate per-period entries (next 12 months)
-      const isRecurring = ['monthly', 'quarterly', 'half-yearly', 'annual'].includes(rule.frequency)
+    const isRecurring = ['monthly', 'quarterly', 'half-yearly', 'annual'].includes(rule.frequency)
 
-      if (isRecurring && rule.dueDateFormula) {
-        const deadlines = computeDeadlines(rule.dueDateFormula, fyProfile, 12)
+    if (isRecurring && rule.dueDateFormula) {
+      const deadlines = computeDeadlines(rule.dueDateFormula, fyProfile, 12)
 
-        if (deadlines.length > 0) {
-          for (const dl of deadlines) {
-            const dueDate = dl.date.toISOString().split('T')[0]
-            const periodKey = dl.period || null
-            const periodLabel = dl.label || null
-            const status = dl.date < now ? 'overdue' : 'not_started'
+      if (deadlines.length > 0) {
+        for (const dl of deadlines) {
+          const dueDate = dl.date.toISOString().split('T')[0]
+          const periodKey = dl.period || null
+          const periodLabel = dl.label || null
+          const status = dl.date < now ? 'overdue' : 'not_started'
 
-            await tx.$queryRaw(
-              Prisma.sql`INSERT INTO regulatory_requirements (
-                company_id, category, requirement, description, status,
-                due_date, penalty, is_critical, compliance_type,
-                year_type, country_code, required_documents,
-                source, confidence_score, needs_ca_review,
-                source_url, act, section, authority,
-                due_date_formula, applicability_reason, ai_batch_id,
-                period_key, period_label,
-                app_created_by, app_updated_by, created_at, updated_at
-              ) VALUES (
-                ${companyId}::uuid, ${rule.category}::text, ${rule.name}::text,
-                ${description}::text, ${status}::text, ${dueDate}::date,
-                ${rule.penalty}::text, ${rule.isCritical}::boolean,
-                ${complianceType || null}::text, 'FY'::text, 'IN'::text,
-                ${requiredDocsArray}::text[], 'rules_engine'::text,
-                ${1.0}::double precision, ${false}::boolean,
-                ${rule.sourceUrl}::text, ${rule.act}::text, ${rule.section}::text,
-                ${rule.authority}::text, ${rule.dueDateFormula}::text,
-                ${matchReasons}::text, ${batchId}::text,
-                ${periodKey}::text, ${periodLabel}::text,
-                ${userId}::uuid, ${userId}::uuid, NOW(), NOW()
-              ) ON CONFLICT (company_id, requirement, period_key)
-                WHERE period_key IS NOT NULL DO NOTHING`
-            )
-            totalInserted++
-          }
-        } else {
-          // Fallback: formula didn't produce deadlines — insert single entry
-          await insertSingleRequirement(tx, companyId, rule, complianceType, description, requiredDocsArray, matchReasons, batchId, userId, fyProfile)
+          await prisma.$queryRaw(
+            Prisma.sql`INSERT INTO regulatory_requirements (
+              company_id, category, requirement, description, status,
+              due_date, penalty, is_critical, compliance_type,
+              year_type, country_code, required_documents,
+              source, confidence_score, needs_ca_review,
+              source_url, act, section, authority,
+              due_date_formula, applicability_reason, ai_batch_id,
+              period_key, period_label,
+              app_created_by, app_updated_by, created_at, updated_at
+            ) VALUES (
+              ${companyId}::uuid, ${rule.category}::text, ${rule.name}::text,
+              ${description}::text, ${status}::text, ${dueDate}::date,
+              ${rule.penalty}::text, ${rule.isCritical}::boolean,
+              ${complianceType || null}::text, 'FY'::text, 'IN'::text,
+              ${requiredDocsArray}::text[], 'rules_engine'::text,
+              ${1.0}::double precision, ${false}::boolean,
+              ${rule.sourceUrl}::text, ${rule.act}::text, ${rule.section}::text,
+              ${rule.authority}::text, ${rule.dueDateFormula}::text,
+              ${matchReasons}::text, ${batchId}::text,
+              ${periodKey}::text, ${periodLabel}::text,
+              ${userId}::uuid, ${userId}::uuid, NOW(), NOW()
+            ) ON CONFLICT (company_id, requirement, period_key)
+              WHERE period_key IS NOT NULL DO NOTHING`
+          )
           totalInserted++
         }
       } else {
-        // One-time / event-based — single entry, no period
-        await insertSingleRequirement(tx, companyId, rule, complianceType, description, requiredDocsArray, matchReasons, batchId, userId, fyProfile)
+        await insertSingleRequirement(prisma, companyId, rule, complianceType, description, requiredDocsArray, matchReasons, batchId, userId, fyProfile)
         totalInserted++
       }
+    } else {
+      await insertSingleRequirement(prisma, companyId, rule, complianceType, description, requiredDocsArray, matchReasons, batchId, userId, fyProfile)
+      totalInserted++
     }
-  }, { timeout: 30000 })
+  }
 
   return totalInserted
 }
@@ -413,14 +409,13 @@ async function bulkInsertAIRequirements(
   requirements: GeneratedRequirement[],
   userId: string
 ): Promise<void> {
-  // Use a transaction to insert all requirements atomically
-  await prisma.$transaction(async (tx) => {
-    for (const req of requirements) {
-      const dueDateStr = req.due_date ? req.due_date.toISOString().split('T')[0] : null
-      const reqDocs = req.required_documents || []
-      const reqDocsArray = `{${reqDocs.map((d: string) => `"${d.replace(/"/g, '\\"')}"`).join(',')}}`
+  // Sequential inserts (no interactive transaction — compatible with PgBouncer)
+  for (const req of requirements) {
+    const dueDateStr = req.due_date ? req.due_date.toISOString().split('T')[0] : null
+    const reqDocs = req.required_documents || []
+    const reqDocsArray = `{${reqDocs.map((d: string) => `"${d.replace(/"/g, '\\"')}"`).join(',')}}`
 
-      await tx.$queryRaw(
+    await prisma.$queryRaw(
         Prisma.sql`INSERT INTO regulatory_requirements (
           company_id,
           category,
@@ -482,9 +477,8 @@ async function bulkInsertAIRequirements(
           NOW(),
           NOW()
         )`
-      )
-    }
-  }, { timeout: 30000 })
+    )
+  }
 }
 
 // ── Get AI-Generated Requirements Pending Review ───────────────────────────
@@ -770,64 +764,61 @@ export async function generateHistoricalCompliances(
     const fyProfile = buildIndianFYProfile(incorpDate)
     let totalGenerated = 0
 
-    await prisma.$transaction(async (tx) => {
-      for (const rule of existingRules) {
-        if (!rule.due_date_formula) continue
+    // Sequential inserts (no interactive transaction — compatible with PgBouncer)
+    for (const rule of existingRules) {
+      if (!rule.due_date_formula) continue
 
-        // Compute deadlines going backward from now
-        const monthsBack = actualYearsBack * 12
-        const deadlines = computeDeadlines(
-          rule.due_date_formula,
-          fyProfile,
-          monthsBack,
-          effectiveStart // reference date = start of historical period
-        )
+      const monthsBack = actualYearsBack * 12
+      const deadlines = computeDeadlines(
+        rule.due_date_formula,
+        fyProfile,
+        monthsBack,
+        effectiveStart
+      )
 
-        // Filter only past deadlines (before today)
-        const pastDeadlines = deadlines.filter(dl => dl.date < now)
+      const pastDeadlines = deadlines.filter(dl => dl.date < now)
 
-        for (const dl of pastDeadlines) {
-          const dueDate = dl.date.toISOString().split('T')[0]
-          const periodKey = dl.period || null
-          const periodLabel = dl.label || null
-          const reqDocs = Array.isArray(rule.required_documents) ? rule.required_documents : []
-          const reqDocsArray = `{${reqDocs.map((d: string) => `"${d.replace(/"/g, '\\"')}"`).join(',')}}`
+      for (const dl of pastDeadlines) {
+        const dueDate = dl.date.toISOString().split('T')[0]
+        const periodKey = dl.period || null
+        const periodLabel = dl.label || null
+        const reqDocs = Array.isArray(rule.required_documents) ? rule.required_documents : []
+        const reqDocsArray = `{${reqDocs.map((d: string) => `"${d.replace(/"/g, '\\"')}"`).join(',')}}`
 
-          try {
-            await tx.$queryRaw(
-              Prisma.sql`INSERT INTO regulatory_requirements (
-                company_id, category, requirement, description, status,
-                due_date, penalty, is_critical, compliance_type,
-                year_type, country_code, required_documents,
-                source, confidence_score, needs_ca_review,
-                source_url, act, section, authority,
-                due_date_formula, applicability_reason,
-                period_key, period_label,
-                app_created_by, app_updated_by, created_at, updated_at
-              ) VALUES (
-                ${companyId}::uuid, ${rule.category}::text, ${rule.requirement}::text,
-                ${rule.description || null}::text, 'overdue'::text, ${dueDate}::date,
-                ${rule.penalty || null}::text, ${rule.is_critical || false}::boolean,
-                ${rule.compliance_type || null}::text, ${rule.year_type || 'FY'}::text,
-                ${rule.country_code || 'IN'}::text, ${reqDocsArray}::text[],
-                ${rule.source || 'rules_engine'}::text,
-                ${rule.confidence_score || 1.0}::double precision,
-                ${false}::boolean, ${rule.source_url || null}::text,
-                ${rule.act || null}::text, ${rule.section || null}::text,
-                ${rule.authority || null}::text, ${rule.due_date_formula}::text,
-                ${rule.applicability_reason || null}::text,
-                ${periodKey}::text, ${periodLabel}::text,
-                ${user.id}::uuid, ${user.id}::uuid, NOW(), NOW()
-              ) ON CONFLICT (company_id, requirement, period_key)
-                WHERE period_key IS NOT NULL DO NOTHING`
-            )
-            totalGenerated++
-          } catch {
-            // Skip constraint violations silently
-          }
+        try {
+          await prisma.$queryRaw(
+            Prisma.sql`INSERT INTO regulatory_requirements (
+              company_id, category, requirement, description, status,
+              due_date, penalty, is_critical, compliance_type,
+              year_type, country_code, required_documents,
+              source, confidence_score, needs_ca_review,
+              source_url, act, section, authority,
+              due_date_formula, applicability_reason,
+              period_key, period_label,
+              app_created_by, app_updated_by, created_at, updated_at
+            ) VALUES (
+              ${companyId}::uuid, ${rule.category}::text, ${rule.requirement}::text,
+              ${rule.description || null}::text, 'overdue'::text, ${dueDate}::date,
+              ${rule.penalty || null}::text, ${rule.is_critical || false}::boolean,
+              ${rule.compliance_type || null}::text, ${rule.year_type || 'FY'}::text,
+              ${rule.country_code || 'IN'}::text, ${reqDocsArray}::text[],
+              ${rule.source || 'rules_engine'}::text,
+              ${rule.confidence_score || 1.0}::double precision,
+              ${false}::boolean, ${rule.source_url || null}::text,
+              ${rule.act || null}::text, ${rule.section || null}::text,
+              ${rule.authority || null}::text, ${rule.due_date_formula}::text,
+              ${rule.applicability_reason || null}::text,
+              ${periodKey}::text, ${periodLabel}::text,
+              ${user.id}::uuid, ${user.id}::uuid, NOW(), NOW()
+            ) ON CONFLICT (company_id, requirement, period_key)
+              WHERE period_key IS NOT NULL DO NOTHING`
+          )
+          totalGenerated++
+        } catch {
+          // Skip constraint violations silently
         }
       }
-    }, { timeout: 60000 })
+    }
 
     return {
       success: true,
