@@ -33,7 +33,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https:",
-              "connect-src 'self' https://*.supabase.co https://api.razorpay.com https://checkout.razorpay.com https://kycapi.microvistatech.com https://api.openai.com https://api.resend.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net",
+              "connect-src 'self' https://*.supabase.co https://api.razorpay.com https://checkout.razorpay.com https://lumberjack.razorpay.com https://cdn.razorpay.com https://kycapi.microvistatech.com https://api.openai.com https://api.resend.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://va.vercel-scripts.com",
               "frame-src https://checkout.razorpay.com https://api.razorpay.com",
               "object-src 'none'",
               "base-uri 'self'",
