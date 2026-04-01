@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
 import { useAnyCompanyAccess, useUserSubscription } from '@/hooks/useCompanyAccess'
+import { queryKeys } from '@/lib/react-query/query-keys'
 import {
   createTrialSubscription,
   getCompanySubscriptionState,
@@ -20,6 +22,7 @@ import { trackSubscriptionEvent, trackConversion } from '@/lib/analytics'
 function SubscribePageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
   const { user, loading: authLoading, signOut, displayName, displayEmail } = useAuth()
   const { hasSubscription, isTrial, trialDaysRemaining, currentCompanyCount, isLoading: subLoading } = useUserSubscription()
   const { accessibleCompanyIds, isLoading: anyAccessLoading } = useAnyCompanyAccess()
@@ -274,6 +277,9 @@ function SubscribePageInner() {
 
       trackSubscriptionEvent('trial_start', 'starter', undefined, undefined)
       trackConversion('trial_start')
+
+      // Invalidate subscription cache so /onboarding sees hasSubscription: true immediately
+      await queryClient.invalidateQueries({ queryKey: queryKeys.userSubscription() })
 
       if (result.redirectTo) {
         router.push(result.redirectTo)
