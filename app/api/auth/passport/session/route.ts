@@ -10,6 +10,7 @@ import { prisma } from '@/lib/prisma'
 export async function GET() {
   try {
     const session = await getSession()
+    console.log('[SESSION] getSession →', session ? `uid:${session.appUserId} email:${session.email}` : 'null')
 
     if (!session) {
       return NextResponse.json({ session: null })
@@ -20,9 +21,10 @@ export async function GET() {
       where: { id: session.appUserId },
       select: { id: true },
     })
+    console.log('[SESSION] DB check →', userExists ? 'EXISTS' : 'NOT FOUND')
 
     if (!userExists) {
-      // User was deleted — clear stale session cookie
+      console.log('[SESSION] Clearing stale cookie for deleted user:', session.appUserId)
       await clearSession()
       return NextResponse.json({ session: null })
     }

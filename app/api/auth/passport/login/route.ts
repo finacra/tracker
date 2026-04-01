@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
       })
 
     const user = await loginUser()
+    console.log('[LOGIN] Result:', user ? `uid:${user.appUserId} email:${user.email}` : 'FAILED')
 
     if (!user) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
