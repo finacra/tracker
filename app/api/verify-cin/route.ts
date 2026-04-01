@@ -79,10 +79,13 @@ export async function POST(request: NextRequest) {
       data = JSON.parse(responseText)
     } catch (e) {
       console.error('Failed to parse CIN response:', responseText)
-      return NextResponse.json(
-        { error: 'Invalid response from CIN API', details: responseText },
-        { status: 500 }
-      )
+      // Upstream returned empty/invalid — return success with empty data
+      // so the client can still use CIN-parsed data (NIC code, state, etc.)
+      return NextResponse.json({
+        isSuccess: true,
+        message: 'MCA data unavailable — company details decoded from CIN',
+        data: { data: { companyData: {}, directorData: [] } }
+      })
     }
 
     // Check for API-level errors
