@@ -4627,7 +4627,7 @@ function DataRoomPageInner() {
           <TrackerContextProvider
             regulatoryRequirements={regulatoryRequirements}
             setRegulatoryRequirements={setRegulatoryRequirements}
-            isLoadingRequirements={isLoadingRequirements || isCompanySwitching}
+            isLoadingRequirements={isLoadingRequirements || isCompanySwitching || isDataRoomInitLoading}
             refreshRequirements={refreshRequirements}
             hiddenCompliances={hiddenCompliances}
             setHiddenCompliances={setHiddenCompliances}
