@@ -80,6 +80,7 @@ export default function RequirementDesktopTableView({
 }: RequirementDesktopTableViewProps) {
   const [baseAmountInputs, setBaseAmountInputs] = useState<Record<string, string>>({})
   const [savingBaseAmount, setSavingBaseAmount] = useState<Record<string, boolean>>({})
+  const [openDocChecklist, setOpenDocChecklist] = useState<string | null>(null)
 
   const uploadedDocSet = new Set(
     vaultDocuments
@@ -363,9 +364,11 @@ export default function RequirementDesktopTableView({
                       }
                       const uploadedCount = requiredDocs.filter((doc: string) => isDocUploaded(req.id, doc)).length
                       const allDone = uploadedCount === requiredDocs.length
+                      const isOpen = openDocChecklist === req.id
                       return (
-                        <div className="relative group">
+                        <div className="relative">
                           <button
+                            onClick={() => setOpenDocChecklist(isOpen ? null : req.id)}
                             className={`px-2.5 py-1 text-xs rounded-lg border flex items-center gap-1.5 transition-colors ${
                               allDone
                                 ? 'bg-green-500/15 text-green-400 border-green-500/30'
@@ -373,7 +376,6 @@ export default function RequirementDesktopTableView({
                                   ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30'
                                   : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500'
                             }`}
-                            title="Click to view document checklist"
                           >
                             {allDone ? (
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
@@ -382,52 +384,66 @@ export default function RequirementDesktopTableView({
                             )}
                             <span>{uploadedCount}/{requiredDocs.length}</span>
                           </button>
-                          {/* Hover popup checklist */}
-                          <div className="absolute z-50 left-0 top-full mt-1 w-72 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 p-3">
-                            <div className="text-xs font-medium text-gray-300 mb-2 flex items-center gap-1.5">
-                              <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                              Required Documents
-                            </div>
-                            <div className="space-y-1.5">
-                              {requiredDocs.map((doc: string, idx: number) => {
-                                const uploaded = isDocUploaded(req.id, doc)
-                                return (
-                                  <div key={idx} className="flex items-center gap-2">
-                                    {uploaded ? (
-                                      <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                                    ) : (
-                                      <div className="w-4 h-4 rounded border border-gray-600 flex-shrink-0" />
-                                    )}
-                                    {uploaded ? (
-                                      <span className="text-xs text-green-400/90 line-through decoration-green-500/40">{doc}</span>
-                                    ) : (
-                                      <button
-                                        onClick={() => setDocumentUploadModal({
-                                          isOpen: true,
-                                          requirementId: req.id,
-                                          requirement: req.requirement,
-                                          category: req.category,
-                                          documentName: doc,
-                                          complianceType: req.compliance_type || 'one-time',
-                                          dueDate: req.dueDate,
-                                          financialYear: (req as any).financial_year || null,
-                                          allRequiredDocs: requiredDocs
-                                        })}
-                                        className="text-xs text-blue-400 hover:text-blue-300 hover:underline cursor-pointer text-left"
-                                      >
-                                        {doc}
-                                      </button>
-                                    )}
+                          {/* Click popup checklist */}
+                          {isOpen && (
+                            <>
+                              <div className="fixed inset-0 z-40" onClick={() => setOpenDocChecklist(null)} />
+                              <div className="absolute z-50 left-0 top-full mt-1 w-80 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="text-sm font-medium text-gray-200 flex items-center gap-2">
+                                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                                    Required Documents
                                   </div>
-                                )
-                              })}
-                            </div>
-                            {!allDone && (
-                              <div className="mt-2 pt-2 border-t border-gray-700/50 text-[10px] text-gray-500">
-                                Click a document name to upload
+                                  <button onClick={() => setOpenDocChecklist(null)} className="text-gray-500 hover:text-gray-300 p-0.5">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                  </button>
+                                </div>
+                                <div className="text-[10px] text-gray-500 mb-3">{uploadedCount} of {requiredDocs.length} uploaded</div>
+                                <div className="space-y-2">
+                                  {requiredDocs.map((doc: string, idx: number) => {
+                                    const uploaded = isDocUploaded(req.id, doc)
+                                    return (
+                                      <div key={idx} className={`flex items-start gap-2.5 p-2 rounded-lg ${uploaded ? 'bg-green-500/5' : 'bg-gray-800/50'}`}>
+                                        {uploaded ? (
+                                          <svg className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                        ) : (
+                                          <div className="w-4 h-4 rounded border border-gray-600 flex-shrink-0 mt-0.5" />
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                          <div className={`text-xs ${uploaded ? 'text-green-400/90' : 'text-gray-300'}`}>{doc}</div>
+                                          {!uploaded && (
+                                            <button
+                                              onClick={() => {
+                                                setOpenDocChecklist(null)
+                                                setDocumentUploadModal({
+                                                  isOpen: true,
+                                                  requirementId: req.id,
+                                                  requirement: req.requirement,
+                                                  category: req.category,
+                                                  documentName: doc,
+                                                  complianceType: req.compliance_type || 'one-time',
+                                                  dueDate: req.dueDate,
+                                                  financialYear: (req as any).financial_year || null,
+                                                  allRequiredDocs: requiredDocs
+                                                })
+                                              }}
+                                              className="text-[11px] text-blue-400 hover:text-blue-300 mt-0.5 flex items-center gap-1"
+                                            >
+                                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                                              Upload
+                                            </button>
+                                          )}
+                                          {uploaded && (
+                                            <span className="text-[10px] text-green-500/60">Uploaded</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
                               </div>
-                            )}
-                          </div>
+                            </>
+                          )}
                         </div>
                       )
                     })()}
