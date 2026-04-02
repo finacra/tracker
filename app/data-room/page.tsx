@@ -3507,7 +3507,11 @@ function DataRoomPageInner() {
 
       // Upload file to storage via server action (works for both Supabase and Passport users)
       const fileExt = uploadFile.name.split(".").pop();
-      const fileName = `${documentUploadModal.requirementId}-${documentUploadModal.documentName}-${Date.now()}.${fileExt}`;
+      const safeName = documentUploadModal.documentName
+        .replace(/[^a-zA-Z0-9_\-]/g, '_')
+        .replace(/_+/g, '_')
+        .slice(0, 80);
+      const fileName = `${documentUploadModal.requirementId}-${safeName}-${Date.now()}.${fileExt}`;
       const filePath = `${currentCompany.id}/compliance/${fileName}`;
 
       const fileArrayBuffer = await uploadFile.arrayBuffer();
