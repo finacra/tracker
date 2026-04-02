@@ -504,9 +504,10 @@ export default function DocumentsTab({
     }
   }
 
-  // Computed: Filter and sort documents
+  // Computed: Filter and sort documents (exclude tracker-uploaded docs from vault view)
   const allDocuments = useMemo(() => {
     return (vaultDocuments || [])
+      .filter(doc => !doc.requirement_id) // Tracker docs shown in tracker, not vault
       .filter(doc => {
         // If no FY selected, show all documents
         if (!selectedFY) return true

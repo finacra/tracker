@@ -64,7 +64,7 @@ export class PrismaDocumentRepository implements DocumentRepository {
     async getCompanyDocuments(companyId: string): Promise<CompanyDocumentRecord[]> {
         try {
             const rows = await prisma.companyDocument.findMany({
-                where: { company_id: companyId, requirement_id: null },
+                where: { company_id: companyId },
                 orderBy: { created_at: 'desc' },
             })
 

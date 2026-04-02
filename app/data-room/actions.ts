@@ -3558,7 +3558,6 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         (SELECT json_agg(ds2.*) FROM (
           SELECT * FROM company_documents_internal
           WHERE company_id = (SELECT id FROM target_company_id)
-          AND requirement_id IS NULL
           ORDER BY created_at DESC
         ) ds2) as documents,
         (SELECT role FROM user_roles 

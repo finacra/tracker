@@ -84,8 +84,8 @@ export default function RequirementDesktopTableView({
 
   const uploadedDocSet = new Set(
     vaultDocuments
-      .filter(d => d.requirementId)
-      .map(d => `${d.requirementId}::${(d.document_type || '').toLowerCase().trim()}`)
+      .filter(d => d.requirement_id || d.requirementId)
+      .map(d => `${d.requirement_id || d.requirementId}::${(d.document_type || '').toLowerCase().trim()}`)
   )
   const isDocUploaded = (reqId: string, docName: string) =>
     uploadedDocSet.has(`${reqId}::${docName.toLowerCase().trim()}`)
