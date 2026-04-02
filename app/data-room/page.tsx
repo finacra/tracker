@@ -1485,8 +1485,15 @@ function DataRoomPageInner() {
       });
     }
 
+    // Also include folders from uploaded documents (covers tracker uploads with custom folder names)
+    (vaultDocuments || []).forEach((doc: any) => {
+      if (doc.folder_name && !countryFolders.has(doc.folder_name)) {
+        countryFolders.add(doc.folder_name);
+      }
+    });
+
     return Array.from(countryFolders);
-  }, [DEFAULT_FOLDERS, documentTemplates, countryCode]);
+  }, [DEFAULT_FOLDERS, documentTemplates, countryCode, vaultDocuments]);
 
   // Merge database templates with defaults, filtering out hidden templates
   const predefinedDocuments = useMemo(() => {
