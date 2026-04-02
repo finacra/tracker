@@ -73,17 +73,23 @@ export function useRequirements(
 
   useEffect(() => {
     if (!companyId || !enabled || !hasAccess) {
-      activeCompanyRef.current = null
-      fetchedForRef.current = null
-      startTransition(() => {
-        setRequirements([])
-        setIsLoading(false)
-      })
+      // Only clear if we don't already have pre-seeded data for this company
+      if (fetchedForRef.current !== companyId) {
+        activeCompanyRef.current = null
+        fetchedForRef.current = null
+        startTransition(() => {
+          setRequirements([])
+          setIsLoading(false)
+        })
+      }
       return
     }
 
     // Already have fresh data for this company — skip
-    if (fetchedForRef.current === companyId) return
+    if (fetchedForRef.current === companyId) {
+      setIsLoading(false)
+      return
+    }
 
     fetchForCompany(companyId)
   }, [companyId, enabled, hasAccess, fetchForCompany])

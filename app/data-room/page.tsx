@@ -514,10 +514,12 @@ function DataRoomPageInner() {
         updateLoadingMessage("⚖️ Loading compliance requirements...");
 
         // 5. Populate requirements + documents from init state (eliminates second fetch)
+        console.log('[DataRoomInit] Requirements:', data.initialRequirements?.length || 0, 'selected:', selected?.id, 'currentCompanyId:', data.currentCompanyId)
         if (selected?.id === data.currentCompanyId) {
             if (data.initialRequirements && data.initialRequirements.length > 0) {
                 setRegulatoryRequirements(data.initialRequirements);
                 markRequirementsFresh(selected.id);
+                console.log('[DataRoomInit] Pre-populated', data.initialRequirements.length, 'requirements')
             }
             if (data.initialVaultDocuments) {
                 setVaultDocuments(data.initialVaultDocuments);
