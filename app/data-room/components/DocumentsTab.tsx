@@ -2175,21 +2175,44 @@ export default function DocumentsTab({
                   )
                 })()}
     
-                {/* Document Name */}
+                {/* Document Name — combo box: select from predefined or type custom */}
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                     Document Name <span className="text-red-500">*</span>
                   </label>
+                  {(() => {
+                    const folderDocNames = uploadFormData.folder ? (predefinedDocuments[uploadFormData.folder] || []) : []
+                    return (
+                      <div className="space-y-2">
+                        {folderDocNames.length > 0 && (
+                          <select
+                            value={folderDocNames.includes(uploadFormData.documentName) ? uploadFormData.documentName : ''}
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                setUploadFormData((prev) => ({ ...prev, documentName: e.target.value }))
+                              }
+                            }}
+                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
+                          >
+                            <option value="">Select from predefined documents</option>
+                            {folderDocNames.map((name: string) => (
+                              <option key={name} value={name}>{name}</option>
+                            ))}
+                          </select>
+                        )}
+                        <input
+                          type="text"
+                          value={uploadFormData.documentName}
+                          onChange={(e) => {
+                            setUploadFormData((prev) => ({ ...prev, documentName: e.target.value }))
+                          }}
+                          placeholder={folderDocNames.length > 0 ? "Or type a custom document name" : "Enter document name"}
+                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                        />
+                      </div>
+                    )
+                  })()}
                   <div className="relative">
-                    <input
-                      type="text"
-                      value={uploadFormData.documentName}
-                      onChange={(e) => {
-                        setUploadFormData((prev) => ({ ...prev, documentName: e.target.value }))
-                      }}
-                      placeholder="Enter document name"
-                      className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
-                    />
                     {/* Folder Suggestion Badge */}
                     {uploadFormData.documentName && !uploadFormData.folder && (() => {
                       const suggestions = suggestFoldersForDocument(uploadFormData.documentName)
