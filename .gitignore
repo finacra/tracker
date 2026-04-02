@@ -48,3 +48,5 @@ next-env.d.ts
 diagnostic-*.sql
 result.txt
 dummy_test_doc.txt
+
+.vercel

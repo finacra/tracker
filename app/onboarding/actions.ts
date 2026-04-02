@@ -109,7 +109,6 @@ export async function completeOnboarding(
       .filter((name: string) => name.length > 0)
     : null
 
-  console.log('[ONBOARD] Creating company for user:', user.id, 'canonicalId:', user.canonicalId)
   let company
   try {
   company = await companyRepository.create({
@@ -160,7 +159,6 @@ export async function completeOnboarding(
     dateOfLastAgm: formData.dateOfLastAgm || null,
     balanceSheetDate: formData.balanceSheetDate || null,
   })
-  console.log('[ONBOARD] Company created:', company.id)
   } catch (createErr: any) {
     console.error('[ONBOARD] Company create FAILED:', createErr.message || createErr)
     throw createErr

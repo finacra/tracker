@@ -57,8 +57,6 @@ export class PrismaSubscriptionRepository implements SubscriptionRepository {
     }
 
     async createUserTrial(userId: string, appUserId?: string | null): Promise<void> {
-        console.log('[createUserTrial] userId:', userId, 'appUserId:', appUserId)
-
         // Check if user already has an active subscription or trial
         // Search by both user_id and app_user_id to catch Passport users
         const existing = await prisma.subscription.findFirst({
@@ -74,7 +72,6 @@ export class PrismaSubscriptionRepository implements SubscriptionRepository {
         })
 
         if (existing) {
-            console.log('[createUserTrial] Already has subscription:', existing.id)
             throw new Error('User already has an active subscription or trial')
         }
 
@@ -101,7 +98,6 @@ export class PrismaSubscriptionRepository implements SubscriptionRepository {
                     end_date: trialEnd,
                 },
             })
-            console.log('[createUserTrial] SUCCESS for', userId)
         } catch (err: any) {
             console.error('[createUserTrial] FAILED:', err.message || err)
             throw err

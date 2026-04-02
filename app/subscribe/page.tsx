@@ -165,7 +165,6 @@ function SubscribePageInner() {
   // If user already has subscription, redirect to data-room or onboarding (only once, prevent loops)
   const hasRedirectedToDataRoomRef = useRef(false)
   useEffect(() => {
-    console.log('[SUBSCRIBE] Check redirect:', { hasSubscription, isTrial, trialDaysRemaining, subLoading, user: user?.id, showUpgrade, hasRedirected: hasRedirectedToDataRoomRef.current })
     if (hasRedirectedToDataRoomRef.current) return
     if (subLoading) return
     if (!user) return
@@ -173,7 +172,6 @@ function SubscribePageInner() {
     if (hasSubscription && (isTrial ? trialDaysRemaining > 0 : true) && !showUpgrade) {
       hasRedirectedToDataRoomRef.current = true
       const target = companyId ? `/data-room?company_id=${companyId}` : '/data-room'
-      console.log('[SUBSCRIBE] Has active sub, redirecting to:', target)
       router.replace(target)
     }
   }, [hasSubscription, isTrial, trialDaysRemaining, subLoading, companyId, router, user, showUpgrade])

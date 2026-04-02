@@ -355,63 +355,79 @@ export default function RequirementDesktopTableView({
                     })()}
                   </td>
                   <td className="px-6 py-4 hidden md:table-cell">
-                    {/* Documents Required Column */}
+                    {/* Documents Required Column — clickable checklist */}
                     {(() => {
                       const requiredDocs = (req as any).required_documents || []
                       if (!Array.isArray(requiredDocs) || requiredDocs.length === 0) {
                         return <div className="text-gray-500 text-sm">-</div>
                       }
+                      const uploadedCount = requiredDocs.filter((doc: string) => isDocUploaded(req.id, doc)).length
+                      const allDone = uploadedCount === requiredDocs.length
                       return (
-                        <div className="flex flex-wrap gap-1">
-                          {requiredDocs.slice(0, 3).map((doc: string, idx: number) => {
-                            const uploaded = isDocUploaded(req.id, doc)
-                            return uploaded ? (
-                              <span
-                                key={idx}
-                                className="px-2 py-0.5 text-xs rounded-full bg-green-500/20 text-green-400 border border-green-500/30 flex items-center gap-1"
-                                title={`${doc} — uploaded`}
-                              >
-                                <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                </svg>
-                                <span>{doc.length > 12 ? doc.substring(0, 12) + '...' : doc}</span>
-                              </span>
+                        <div className="relative group">
+                          <button
+                            className={`px-2.5 py-1 text-xs rounded-lg border flex items-center gap-1.5 transition-colors ${
+                              allDone
+                                ? 'bg-green-500/15 text-green-400 border-green-500/30'
+                                : uploadedCount > 0
+                                  ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30'
+                                  : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500'
+                            }`}
+                            title="Click to view document checklist"
+                          >
+                            {allDone ? (
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                             ) : (
-                              <button
-                                key={idx}
-                                onClick={() => {
-                                  setDocumentUploadModal({
-                                    isOpen: true,
-                                    requirementId: req.id,
-                                    requirement: req.requirement,
-                                    category: req.category,
-                                    documentName: doc,
-                                    complianceType: req.compliance_type || 'one-time',
-                                    dueDate: req.dueDate,
-                                    financialYear: (req as any).financial_year || null,
-                                    allRequiredDocs: requiredDocs
-                                  })
-                                }}
-                                className="group px-2 py-0.5 text-xs rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 hover:border-blue-400 transition-colors flex items-center gap-1"
-                                title={`Click to upload ${doc}`}
-                              >
-                                <span>{doc.length > 12 ? doc.substring(0, 12) + '...' : doc}</span>
-                                <svg
-                                  className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                </svg>
-                              </button>
-                            )
-                          })}
-                          {requiredDocs.length > 3 && (
-                            <span className="px-2 py-0.5 text-xs rounded-full bg-gray-700 text-gray-400">
-                              +{requiredDocs.length - 3}
-                            </span>
-                          )}
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            )}
+                            <span>{uploadedCount}/{requiredDocs.length}</span>
+                          </button>
+                          {/* Hover popup checklist */}
+                          <div className="absolute z-50 left-0 top-full mt-1 w-72 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 p-3">
+                            <div className="text-xs font-medium text-gray-300 mb-2 flex items-center gap-1.5">
+                              <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                              Required Documents
+                            </div>
+                            <div className="space-y-1.5">
+                              {requiredDocs.map((doc: string, idx: number) => {
+                                const uploaded = isDocUploaded(req.id, doc)
+                                return (
+                                  <div key={idx} className="flex items-center gap-2">
+                                    {uploaded ? (
+                                      <svg className="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                    ) : (
+                                      <div className="w-4 h-4 rounded border border-gray-600 flex-shrink-0" />
+                                    )}
+                                    {uploaded ? (
+                                      <span className="text-xs text-green-400/90 line-through decoration-green-500/40">{doc}</span>
+                                    ) : (
+                                      <button
+                                        onClick={() => setDocumentUploadModal({
+                                          isOpen: true,
+                                          requirementId: req.id,
+                                          requirement: req.requirement,
+                                          category: req.category,
+                                          documentName: doc,
+                                          complianceType: req.compliance_type || 'one-time',
+                                          dueDate: req.dueDate,
+                                          financialYear: (req as any).financial_year || null,
+                                          allRequiredDocs: requiredDocs
+                                        })}
+                                        className="text-xs text-blue-400 hover:text-blue-300 hover:underline cursor-pointer text-left"
+                                      >
+                                        {doc}
+                                      </button>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                            {!allDone && (
+                              <div className="mt-2 pt-2 border-t border-gray-700/50 text-[10px] text-gray-500">
+                                Click a document name to upload
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )
                     })()}

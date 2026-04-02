@@ -10,7 +10,6 @@ import { prisma } from '@/lib/prisma'
 export async function GET() {
   try {
     const session = await getSession()
-    console.log('[SESSION] getSession →', session ? `uid:${session.appUserId} email:${session.email}` : 'null')
 
     if (!session) {
       return NextResponse.json({ session: null })
@@ -24,7 +23,6 @@ export async function GET() {
         select: { id: true },
       })
       userExists = !!row
-      console.log('[SESSION] DB check →', userExists ? 'EXISTS' : 'NOT FOUND', 'for', session.appUserId)
     } catch (dbErr: any) {
       console.error('[SESSION] DB check FAILED:', dbErr.message || dbErr)
       // If DB check fails, still return the session (fail-open)
@@ -38,14 +36,12 @@ export async function GET() {
     }
 
     if (!userExists) {
-      console.log('[SESSION] Clearing stale cookie for deleted user:', session.appUserId)
       try { await clearSession() } catch (e) { console.error('[SESSION] clearSession failed:', e) }
       const resp = NextResponse.json({ session: null })
       resp.cookies.delete('passport_session')
       return resp
     }
 
-    console.log('[SESSION] Returning valid session for', session.appUserId)
     return NextResponse.json({
       session: {
         appUserId: session.appUserId,

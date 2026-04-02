@@ -56,36 +56,29 @@ export function Providers({ children }: { children: React.ReactNode }) {
     const requestId = ++appUserRequestIdRef.current
 
     if (!session) {
-      console.log('[SYNC] No session, clearing user')
       resolvedAppUserIdRef.current = null
       setAppUser(null)
       return null
     }
 
     if (resolvedAppUserIdRef.current === session.userId) {
-      console.log('[SYNC] Already resolved for', session.userId, '→ returning cached appUser:', appUser?.id || 'null')
       return appUser
     }
 
     try {
-      console.log('[SYNC] Fetching /api/auth/profile for', session.userId)
       const response = await fetch('/api/auth/profile', {
         method: 'GET',
         credentials: 'include',
         cache: 'no-store',
       })
 
-      console.log('[SYNC] Profile response status:', response.status)
-
       if (!response.ok) {
         throw new Error(`Profile request failed with status ${response.status}`)
       }
 
       const payload = (await response.json()) as { user?: AppUser | null }
-      console.log('[SYNC] Profile payload:', payload.user ? `uid:${payload.user.id}` : 'null', 'error:', (payload as any).error || 'none')
 
       if (requestId !== appUserRequestIdRef.current) {
-        console.log('[SYNC] Stale request, ignoring')
         return null
       }
 
@@ -112,9 +105,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     // Initial load: wait for session AND app profile before releasing loading state
     authAdapter.getSession().then(async (session) => {
-      console.log('[PROVIDERS] getSession result:', session ? `uid:${session.userId} email:${session.email}` : 'null')
       const resolvedUser = await syncAppUser(session)
-      console.log('[PROVIDERS] syncAppUser result:', resolvedUser ? `uid:${resolvedUser.id}` : 'null')
       initialLoadDone = true
       setLoading(false)
       await trackLoginOnce(session, undefined, resolvedUser)

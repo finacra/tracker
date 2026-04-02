@@ -293,15 +293,11 @@ export async function getUserSubscriptionSummary(): Promise<{
       companyRepository.listOwnedByUser(user.id),
     ])
 
-    console.log('[SUB_SUMMARY] userId:', user.id, 'subscription:', JSON.stringify(subscription), 'companies:', companies.length)
-
     const hasActiveSubscription = Boolean(
       subscription?.hasSubscription ||
       (subscription?.isTrial && (subscription?.trialDaysRemaining ?? 0) > 0)
     )
     const companyLimit = subscription?.companyLimit ?? 0
-
-    console.log('[SUB_SUMMARY] hasActive:', hasActiveSubscription, 'tier:', subscription?.tier, 'isTrial:', subscription?.isTrial, 'trialDays:', subscription?.trialDaysRemaining, 'limit:', companyLimit)
 
     return {
       success: true,
@@ -3560,8 +3556,9 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
           ORDER BY category, requirement
         ) rq) as requirements,
         (SELECT json_agg(ds2.*) FROM (
-          SELECT * FROM company_documents_internal 
-          WHERE company_id = (SELECT id FROM target_company_id) 
+          SELECT * FROM company_documents_internal
+          WHERE company_id = (SELECT id FROM target_company_id)
+          AND requirement_id IS NULL
           ORDER BY created_at DESC
         ) ds2) as documents,
         (SELECT role FROM user_roles 

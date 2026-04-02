@@ -35,9 +35,24 @@
 - Vercel serverless deployment (cold starts matter)
 - Server actions for all data fetching (no API routes for data)
 
+## Auth — Known Pitfalls
+
+9. **Passport JWT + Supabase PgBouncer.** This project uses Passport JWT sessions (not Supabase Auth). The `user_id` column in DB tables may have FK constraints pointing to `auth.users` which Passport users don't exist in. When adding new tables with `user_id`, **never** add FK constraints to `auth.users`. If a FK error like `user_id_fkey` appears, the constraint must be dropped.
+
+10. **Auth race condition in `providers.tsx`.** The `AuthProvider` has two concurrent auth flows: `getSession().then(syncAppUser)` (immediate) and `onAuthStateChange` (500ms delay). Both call `syncAppUser` which uses `appUserRequestIdRef` to discard stale responses. The `onAuthStateChange` callback **must not fire** until the initial load completes, or it will increment the counter and cause the initial fetch to be discarded. Never add additional `syncAppUser` callers without understanding this ordering.
+
+11. **Trace the full auth chain before debugging auth issues.** The auth flow is: `passport_session` cookie → `PassportMiddlewareAuthCheck` (proxy.ts) → `/api/auth/passport/session` (JWT verify + DB check) → `PassportClientAuthAdapter.getSession()` → `syncAppUser` → `/api/auth/profile` → `setAppUser`. When auth fails, start from the **client side** (`providers.tsx` console logs), not the server. The server endpoints almost always work — the bugs are in client-side race conditions.
+
+12. **No interactive Prisma transactions.** `prisma.$transaction(async (tx) => ...)` is **incompatible** with Supabase's PgBouncer in transaction mode. It causes "Transaction not found" errors on Vercel. Use sequential `prisma.$queryRaw` calls instead. All bulk inserts in this project use `ON CONFLICT DO NOTHING` so they're idempotent without transaction wrapping.
+
+13. **DB wipe invalidates sessions.** Truncating `app_users` leaves stale `passport_session` cookies in browsers. The session endpoint (`/api/auth/passport/session`) checks if the user exists in DB and clears the cookie if not. But the proxy middleware (`proxy.ts`) does NOT — it only verifies the JWT signature. After a DB wipe, users must clear cookies or re-register.
+
 ## What NOT to Do
 
 - Don't add `useEffect` waterfalls — effects that trigger state changes that trigger more effects
 - Don't call `createServerContainer()` in helper functions that are called from server actions that already have a container
 - Don't fix symptoms (UI flicker, loading states) without investigating the root cause (server performance)
 - Don't treat client-side workarounds (refs, guards, debouncing) as solutions for server-side problems
+- Don't add `user_id` foreign keys referencing `auth.users` — Passport users exist in `app_users`, not `auth.users`
+- Don't use `prisma.$transaction(async (tx) => ...)` — use sequential queries (PgBouncer incompatible)
+- Don't add concurrent callers to `syncAppUser` in `providers.tsx` without guarding against the requestId race

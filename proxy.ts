@@ -39,13 +39,9 @@ export default async function proxy(request: NextRequest) {
   // Use the abstract auth check — no direct Supabase coupling here
   const { result, response } = await authCheck.check(request)
 
-  // Always log auth results in production for debugging redirect loops
-  console.log('[PROXY]', pathname, result.authenticated ? `auth:YES uid:${result.userId}` : 'auth:NO')
-
   // Protect routes that require authentication
   if (!result.authenticated) {
     const target = pathname === '/subscribe' ? '/login' : '/home'
-    console.log('[PROXY] Not authenticated, redirecting', pathname, '→', target)
     const url = request.nextUrl.clone()
     url.pathname = target
     return NextResponse.redirect(url)
@@ -98,15 +94,11 @@ export default async function proxy(request: NextRequest) {
         LIMIT 1
       `
 
-      console.log('[PROXY] Email check for', result.userId, '→ found:', user?.length ?? 0, 'rows')
-
       if (user && user.length > 0) {
         const userData = user[0]
         const isEmailPasswordUser = userData.has_password
         const isGoogleOAuthUser = userData.has_google_auth && !userData.has_password
         const isEmailVerified = userData.email_verified === true
-
-        console.log('[PROXY] User data:', { isEmailPasswordUser, isGoogleOAuthUser, isEmailVerified, email: userData.primary_email })
 
         // Google OAuth users: Skip verification check (emails are verified by Google)
         if (isGoogleOAuthUser) {
@@ -158,8 +150,6 @@ export default async function proxy(request: NextRequest) {
             return NextResponse.redirect(url)
           }
         }
-      } else {
-        console.log('[PROXY] User NOT found in DB for uid:', result.userId, '— allowing through (fail-open)')
       }
     } catch (error) {
       console.error('[PROXY] Error checking email verification:', error)
