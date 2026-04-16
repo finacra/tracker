@@ -9,6 +9,10 @@ import { handleAPIError } from '@/lib/errors/handle-error'
  * so it plugs directly into applyParsedCINData().
  */
 
+// Perplexity sonar-pro with web search can stretch past the Hobby 10s default.
+export const maxDuration = 60
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
   try {
     const { cin, companyName } = await request.json()

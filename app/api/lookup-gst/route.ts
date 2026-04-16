@@ -1,5 +1,3 @@
-'use server'
-
 import { NextRequest, NextResponse } from 'next/server'
 import { handleAPIError } from '@/lib/errors/handle-error'
 
@@ -10,6 +8,12 @@ import { handleAPIError } from '@/lib/errors/handle-error'
  * Input: { companyName, cin?, pan? }
  * Output: { success, gstNumbers, pan?, stateRegistrations }
  */
+
+// Perplexity sonar-pro with web search commonly takes 20–40s; the Hobby
+// default of 10s would reliably return a Vercel-level 502. Pro plans honour
+// up to 300s — 60s is a safe ceiling that still fails fast if Perplexity hangs.
+export const maxDuration = 60
+export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
