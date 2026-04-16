@@ -569,6 +569,17 @@ model CompanyDocument {
   // document drops out of tracker + vault views.
   deleted_at            DateTime? @db.Timestamptz
 
+  // Draft state — the Document Intelligence Agent creates a row as soon
+  // as the file is uploaded, runs analysis, and returns suggestions. The
+  // row stays `is_draft = true` until the user confirms (or edits) the
+  // suggestions; the vault + tracker views ignore drafts. Existing rows
+  // keep the default `false` so the migration is a no-op for them.
+  is_draft              Boolean   @default(false)
+
+  // Agent suggestions waiting for user confirmation on a draft. JSON so
+  // the shape can evolve without a migration; emptied on finalize.
+  agent_suggestions     Json?
+
   created_at            DateTime? @default(now()) @db.Timestamptz
   created_by            String?   @db.Uuid
   updated_at            DateTime? @default(now()) @db.Timestamptz
@@ -576,6 +587,7 @@ model CompanyDocument {
   @@index([company_id, folder_id])
   @@index([parent_document_id])
   @@index([company_id, is_latest, deleted_at])
+  @@index([company_id, is_draft])
   @@map("company_documents_internal")
 }
 

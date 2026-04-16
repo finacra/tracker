@@ -777,6 +777,8 @@ export async function updateRequirementStatus(
           .from('company_documents_internal')
           .select('document_type, period_key')
           .eq('company_id', reqCompanyId)
+          .eq('is_draft', false)
+          .is('deleted_at', null)
 
         if (docsError) {
           console.error('Error checking documents:', docsError)
@@ -2838,6 +2840,8 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
       .from('company_documents_internal')
       .select('*')
       .eq('company_id', params.companyId)
+      .eq('is_draft', false)
+      .is('deleted_at', null)
       .in('id', params.documentIds)
 
     if (docsError || !documents || documents.length === 0) {
@@ -3518,6 +3522,8 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         (SELECT json_agg(ds2.*) FROM (
           SELECT * FROM company_documents_internal
           WHERE company_id = (SELECT id FROM target_company_id)
+            AND is_draft = false
+            AND deleted_at IS NULL
           ORDER BY created_at DESC
         ) ds2) as documents,
         (SELECT role FROM user_roles 

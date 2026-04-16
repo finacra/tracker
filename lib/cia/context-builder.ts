@@ -171,6 +171,8 @@ async function fetchDocumentInventory(companyId: string): Promise<DocumentInvent
     .from('company_documents_internal')
     .select('file_name, folder_name, document_type')
     .eq('company_id', companyId)
+    .eq('is_draft', false)
+    .is('deleted_at', null)
 
   if (error || !data) return { totalDocuments: 0, folders: [] }
 
