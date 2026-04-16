@@ -144,7 +144,15 @@ export async function handlePassportCallback(
       appUser = await userRepository.findByEmail(email)
 
       if (appUser) {
-        // Existing user - create Passport identity
+        // Existing user — create Passport identity. Also mark the email as
+        // verified: Google has already confirmed ownership of this address,
+        // so any downstream gate that checks email_verified should pass
+        // from now on without asking the user to click a second link.
+        const { prisma } = await import('@/lib/prisma')
+        await prisma.appUser.update({
+          where: { id: appUser.id },
+          data: { email_verified: true, email_verified_at: new Date() },
+        })
         identity = await authIdentityRepository.create({
           appUserId: appUser.id,
           provider: 'passport',
@@ -166,6 +174,8 @@ export async function handlePassportCallback(
             primary_email: email,
             full_name: fullName,
             status: 'active',
+            email_verified: true,
+            email_verified_at: new Date(),
           },
         })
 

@@ -106,7 +106,14 @@ export async function GET(request: NextRequest) {
       appUser = await userRepository.findByEmail(email)
 
       if (appUser) {
-        // Existing user - create Passport identity
+        // Existing user - create Passport identity. Converge email_verified
+        // to true: Google has confirmed ownership of this address, so any
+        // gate that trusts email_verified should pass immediately.
+        const { prisma } = await import('@/lib/prisma')
+        await prisma.appUser.update({
+          where: { id: appUser.id },
+          data: { email_verified: true, email_verified_at: new Date() } as any,
+        })
         identity = await authIdentityRepository.create({
           appUserId: appUser.id,
           provider: 'passport',

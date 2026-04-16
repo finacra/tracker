@@ -137,14 +137,27 @@ export async function createTrialSubscription(targetCompanyId: string | null): P
     const { authService, companyRepository, subscriptionRepository } = createServerContainer()
     const user = await authService.requireCurrentUser()
 
-    // Block trial creation until email is verified. Without this, an
-    // unverified user can burn their one-time trial slot on /subscribe
-    // (which the proxy intentionally leaves accessible) and then get
-    // bounced to /verify-email — losing the trial for good.
-    const emailCheck = await prisma.$queryRaw<Array<{ email_verified: boolean | null }>>`
-      SELECT email_verified FROM public.app_users WHERE id = ${user.id}::uuid LIMIT 1
+    // Block trial creation until the user's email is confirmed. Google
+    // OAuth users are trusted via their Google identity even if the
+    // legacy app_users.email_verified flag hasn't converged yet — the
+    // same logic the proxy middleware uses for page-level access.
+    const emailCheck = await prisma.$queryRaw<Array<{ email_verified: boolean | null; is_google: boolean }>>`
+      SELECT
+        au.email_verified,
+        EXISTS(
+          SELECT 1 FROM public.auth_identities ai
+          WHERE ai.app_user_id = au.id
+            AND ai.provider = 'passport'
+            AND ai.legacy_auth_id IS NOT NULL
+            AND ai.legacy_auth_id != ''
+            AND au.password_hash IS NULL
+        ) AS is_google
+      FROM public.app_users au
+      WHERE au.id = ${user.id}::uuid
+      LIMIT 1
     `
-    if (!emailCheck[0] || emailCheck[0].email_verified !== true) {
+    const row = emailCheck[0]
+    if (!row || (row.email_verified !== true && !row.is_google)) {
       return { success: false, error: 'Please verify your email before starting a trial.' }
     }
 
