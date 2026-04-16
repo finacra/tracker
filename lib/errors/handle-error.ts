@@ -28,8 +28,24 @@ export function safeLog(context: string, error: unknown): void {
 /**
  * For server actions — returns { success, error } instead of throwing.
  * Never leaks internal error details to the client.
+ *
+ * Per CLAUDE.md § Debugging rule 9: ALWAYS log the raw error message +
+ * stack to Vercel runtime logs before redacting. Without this, Vercel logs
+ * look clean while the client sees "Something went wrong" and we loop on
+ * "retry while I tail logs". Do not remove these console.error lines.
  */
 export function handleActionError(error: unknown): { success: false; error: string } {
+  // Global error logger — fires for every error, regardless of class.
+  // Always-on because Vercel logs are the only persistent audit trail.
+  const rawMessage = error instanceof Error ? error.message : String(error)
+  const stack = error instanceof Error ? error.stack : undefined
+  console.error(
+    '[handleActionError]',
+    (error as any)?.constructor?.name || 'UnknownError',
+    rawMessage,
+    stack || '(no stack)',
+  )
+
   // Zod validation errors — return field-level details
   if (error instanceof ZodError) {
     const messages = error.issues.map(i => `${i.path.join('.')}: ${i.message}`)
@@ -51,8 +67,17 @@ export function handleActionError(error: unknown): { success: false; error: stri
     return { success: false, error: error.message }
   }
 
-  // Unknown/programmer errors — never leak internals
+  // Unknown/programmer errors — always logged to Vercel via the global
+  // console.error above. On non-production environments we ALSO surface
+  // the raw message + top stack frames in the response so the browser
+  // console shows the real error without requiring Vercel log access.
+  // Strip this before going to prod — gated on VERCEL_ENV !== 'production'.
   safeLog('UnhandledActionError', error)
+  if (process.env.VERCEL_ENV !== 'production') {
+    const topFrames = stack ? stack.split('\n').slice(1, 4).join(' | ') : ''
+    const clsName = (error as any)?.constructor?.name || 'Error'
+    return { success: false, error: `DEV[${clsName}] ${rawMessage} :: ${topFrames}` }
+  }
   return { success: false, error: 'Something went wrong. Please try again.' }
 }
 

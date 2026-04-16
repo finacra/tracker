@@ -21,11 +21,15 @@ async function getCurrentUserOrNull() {
 export async function getNotifications(
   options: { unreadOnly?: boolean; limit?: number } = {}
 ): Promise<{ success: boolean; notifications?: Notification[]; unreadCount?: number; error?: string }> {
+  console.log('[SA:getNotifications] enter', options)
   try {
     const { authService, notificationRepository } = createServerNotificationContainer()
     const user = await authService.requireCurrentUser()
     const useCase = new GetUserNotifications(notificationRepository)
     const result = await useCase.execute(user.id, options)
+
+    console.log('[SA:getNotifications] ok',
+      { count: result.notifications.length, unreadCount: result.unreadCount })
 
     return {
       success: true,
@@ -33,6 +37,9 @@ export async function getNotifications(
       unreadCount: result.unreadCount,
     }
   } catch (error) {
+    console.error('[SA:getNotifications] threw',
+      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : '')
     return handleActionError(error)
   }
 }

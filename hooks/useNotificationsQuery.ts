@@ -35,11 +35,16 @@ export function useNotificationsQuery(options: { enabled?: boolean; limit?: numb
   return useQuery({
     queryKey: [...queryKeys.notifications(), 'list', limit ?? 'all'],
     queryFn: async () => {
-      const result = await getNotifications({ limit })
-      if (!result.success) throw new Error(result.error || 'Failed to fetch notifications')
-      // Keep the global badge in sync whenever we fetch the full list
-      setNotificationCount(result.unreadCount ?? 0)
-      return result.notifications as Notification[]
+      try {
+        const result = await getNotifications({ limit })
+        if (!result.success) throw new Error(result.error || 'Failed to fetch notifications')
+        // Keep the global badge in sync whenever we fetch the full list
+        setNotificationCount(result.unreadCount ?? 0)
+        return result.notifications as Notification[]
+      } catch (err) {
+        console.error('[useNotificationsQuery] queryFn threw', err, (err as any)?.stack)
+        throw err
+      }
     },
     enabled,
     staleTime: 30 * 1000,       // treat data fresh for 30 s
@@ -62,11 +67,16 @@ export function useUnreadCountQuery(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: [...queryKeys.notifications(), 'unread-count'],
     queryFn: async () => {
-      const result = await getNotifications({ unreadOnly: true, limit: 50 })
-      if (!result.success) throw new Error(result.error || 'Failed to fetch unread count')
-      const count = result.unreadCount ?? 0
-      setNotificationCount(count)
-      return count
+      try {
+        const result = await getNotifications({ unreadOnly: true, limit: 50 })
+        if (!result.success) throw new Error(result.error || 'Failed to fetch unread count')
+        const count = result.unreadCount ?? 0
+        setNotificationCount(count)
+        return count
+      } catch (err) {
+        console.error('[useUnreadCountQuery] queryFn threw', err, (err as any)?.stack)
+        throw err
+      }
     },
     enabled,
     staleTime: 60 * 1000,        // poll every minute

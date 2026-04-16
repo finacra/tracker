@@ -218,8 +218,10 @@ export async function getCompanyAccessState(companyId: string | null): Promise<{
   access?: import('@/domain/types/CompanyAccess').CompanyAccessSnapshot
   error?: string
 }> {
+  console.log('[SA:getCompanyAccessState] enter', { companyId })
   try {
     if (companyId === null || !validateCompanyId(companyId)) {
+      console.warn('[SA:getCompanyAccessState] invalid companyId', companyId)
       return { success: false, error: 'Invalid company ID format' }
     }
 
@@ -228,8 +230,16 @@ export async function getCompanyAccessState(companyId: string | null): Promise<{
     const useCase = new GetCompanyAccessSnapshot(accessService)
     const access = await useCase.execute(user.id, companyId)
 
+    console.log('[SA:getCompanyAccessState] ok', {
+      companyId,
+      hasAccess: access.hasAccess,
+      trialDaysRemaining: access.trialDaysRemaining,
+    })
     return { success: true, access }
   } catch (error) {
+    console.error('[SA:getCompanyAccessState] threw',
+      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : '')
     return handleActionError(error)
   }
 }
@@ -239,14 +249,19 @@ export async function getAccessibleCompanyState(): Promise<{
   accessibleCompanyIds?: string[]
   error?: string
 }> {
+  console.log('[SA:getAccessibleCompanyState] enter')
   try {
     const { authService, accessService } = createServerContainer()
     const user = await authService.requireCurrentUser()
     const useCase = new GetAccessibleCompanyIds(accessService)
     const accessibleCompanyIds = await useCase.execute(user.id)
 
+    console.log('[SA:getAccessibleCompanyState] ok', { count: accessibleCompanyIds.length })
     return { success: true, accessibleCompanyIds }
   } catch (error) {
+    console.error('[SA:getAccessibleCompanyState] threw',
+      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : '')
     return handleActionError(error)
   }
 }
@@ -411,10 +426,12 @@ export async function getRegulatoryRequirements(
 }> {
   const startTime = Date.now()
   const isDev = process.env.NODE_ENV === 'development'
-  
+  console.log('[SA:getRegulatoryRequirements] enter', { companyId, hasProvidedUser: !!providedUser, providedIsSuperadmin })
+
   try {
     // SECURITY: Validate companyId if provided
     if (companyId !== null && !validateCompanyId(companyId)) {
+      console.warn('[SA:getRegulatoryRequirements] invalid companyId', companyId)
       return { success: false, error: 'Invalid company ID format' }
     }
 
@@ -427,6 +444,7 @@ export async function getRegulatoryRequirements(
       const useCase = new GetCompanyRequirements(accessService, requirementRepository)
       const requirements = await useCase.execute(user.id, companyId, providedIsSuperadmin)
 
+      console.log('[SA:getRegulatoryRequirements] ok company', { companyId, count: requirements.length })
       return { success: true, requirements: requirements as RegulatoryRequirement[] }
     }
 
@@ -455,8 +473,12 @@ export async function getRegulatoryRequirements(
         : (req.required_documents ? [req.required_documents] : [])
     }))
 
+    console.log('[SA:getRegulatoryRequirements] ok superadmin', { count: normalizedData.length })
     return { success: true, requirements: normalizedData as RegulatoryRequirement[] }
   } catch (error) {
+    console.error('[SA:getRegulatoryRequirements] threw',
+      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : '')
     return handleActionError(error)
   }
 }
