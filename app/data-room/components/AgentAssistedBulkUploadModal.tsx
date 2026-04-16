@@ -153,8 +153,17 @@ export default function AgentAssistedBulkUploadModal({
         const up = await uploadFileToStorage(filePath, buf, file.type || 'application/octet-stream')
         if (!up.success) throw new Error(up.error || 'Upload failed')
 
-        const a = await uploadAndAnalyze(companyId, { filePath, fileName: file.name })
-        if (!a.success || !a.documentId) throw new Error(a.error || 'Analysis failed')
+        console.log('[BulkAgent] calling uploadAndAnalyze', { filePath, fileName: file.name })
+        let a: Awaited<ReturnType<typeof uploadAndAnalyze>>
+        try {
+          a = await uploadAndAnalyze(companyId, { filePath, fileName: file.name })
+        } catch (rpcErr) {
+          // Server action itself failed (400 / network / stale cache) — still
+          // mark as ready with empty fields so the user can fill manually.
+          console.error('[BulkAgent] uploadAndAnalyze RPC threw', rpcErr)
+          a = { success: false, error: rpcErr instanceof Error ? rpcErr.message : 'Analysis unavailable' }
+        }
+        console.log('[BulkAgent] result', { success: a.success, documentId: a.documentId, error: a.error, hasSuggestion: !!a.suggestion, errors: a.analysisErrors })
 
         const s = a.suggestion
         const findFolderBySlug = (slug: string | null) =>
@@ -163,7 +172,7 @@ export default function AgentAssistedBulkUploadModal({
 
         setRows((prev) => prev.map((r, i) => i === index ? {
           ...r,
-          documentId: a.documentId!,
+          documentId: a.documentId || '',
           fileName: s?.name || r.fileName,
           documentName: s?.documentType || '',
           folderId,
@@ -180,10 +189,11 @@ export default function AgentAssistedBulkUploadModal({
           requirementId: s?.requirementId || '',
           supersedesDocumentId: s?.candidateSupersedesDocumentId || '',
           confidence: s?.confidence || 0,
-          reasoning: s?.reasoning || '',
+          reasoning: a.success ? (s?.reasoning || '') : (a.error || 'Agent unavailable — fill fields manually'),
           status: 'ready',
         } : r))
       } catch (err) {
+        console.error('[BulkAgent] fatal error for file', file.name, err)
         setRows((prev) => prev.map((r, i) => i === index ? {
           ...r, status: 'error', error: err instanceof Error ? err.message : 'Failed'
         } : r))
@@ -443,6 +453,11 @@ function StatusBadge({ status, error }: { status: DraftRow['status']; error?: st
   if (status === 'ready') return <span className="text-emerald-300">Ready</span>
   if (status === 'saving') return <span className="text-blue-300">Saving…</span>
   if (status === 'saved') return <span className="text-emerald-300">Saved</span>
-  if (status === 'error') return <span className="text-red-300" title={error}>Error</span>
+  if (status === 'error') return (
+    <div>
+      <span className="text-red-300">Error</span>
+      {error && <div className="text-red-400 text-[9px] mt-0.5 max-w-[200px] break-words">{error}</div>}
+    </div>
+  )
   return null
 }
