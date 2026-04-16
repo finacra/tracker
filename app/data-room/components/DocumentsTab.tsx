@@ -18,6 +18,8 @@ import {
 } from '@/app/data-room/actions'
 import { trackVaultFileExport, trackVaultFileUpload, trackDocumentUpload } from '@/lib/tracking/kpi-tracker'
 import { showToast } from '@/components/ui/Toast'
+import AgentAssistedUploadModal from './AgentAssistedUploadModal'
+import AgentAssistedBulkUploadModal from './AgentAssistedBulkUploadModal'
 
 import CIAOverviewSection from './cia/CIAOverviewSection'
 import CIAFullscreen from './cia/CIAFullscreen'
@@ -156,6 +158,9 @@ export default function DocumentsTab({
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [isSendModalOpen, setIsSendModalOpen] = useState(false)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
+  const [isAgentUploadOpen, setIsAgentUploadOpen] = useState(false)
+  const [isAgentBulkOpen, setIsAgentBulkOpen] = useState(false)
+  const [agentUploadDefaultFolderId, setAgentUploadDefaultFolderId] = useState<string | null>(null)
   const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false)
   const [isEmailTemplateOpen, setIsEmailTemplateOpen] = useState(false)
   const [isAdvancedOptionsOpen, setIsAdvancedOptionsOpen] = useState(false)
@@ -1079,7 +1084,10 @@ export default function DocumentsTab({
             <span className="sm:hidden">Send</span>
           </button>
           <button
-            onClick={() => setIsBulkUploadModalOpen(true)}
+            onClick={() => {
+              setAgentUploadDefaultFolderId(null)
+              setIsAgentBulkOpen(true)
+            }}
             className="bg-black border border-white/20 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-white/40/50 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
           >
             <svg
@@ -1099,9 +1107,13 @@ export default function DocumentsTab({
             </svg>
             <span className="hidden sm:inline">Bulk Upload</span>
             <span className="sm:hidden">Bulk</span>
+            <span className="ml-1 px-1.5 py-0.5 rounded text-[9px] bg-emerald-900/50 text-emerald-300 uppercase tracking-wider">AI</span>
           </button>
           <button
-            onClick={() => setIsUploadModalOpen(true)}
+            onClick={() => {
+              setAgentUploadDefaultFolderId(null)
+              setIsAgentUploadOpen(true)
+            }}
             className="bg-white text-black px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
           >
             <svg
@@ -1121,6 +1133,7 @@ export default function DocumentsTab({
             </svg>
             <span className="hidden sm:inline">Upload Documents</span>
             <span className="sm:hidden">Upload</span>
+            <span className="ml-1 px-1.5 py-0.5 rounded text-[9px] bg-emerald-500/20 text-emerald-700 uppercase tracking-wider">AI</span>
           </button>
         </div>
       </div>
@@ -4095,6 +4108,33 @@ export default function DocumentsTab({
             'What penalties am I facing?',
           ]}
           initialQuestion={ciaInitialQuestion}
+        />
+      )}
+
+      {/* Agent-assisted single-file upload (PRD v1.1 §2.1 / §2.2) */}
+      {isAgentUploadOpen && currentCompany?.id && (
+        <AgentAssistedUploadModal
+          isOpen={isAgentUploadOpen}
+          companyId={currentCompany.id}
+          defaultFolderId={agentUploadDefaultFolderId}
+          onClose={() => {
+            setIsAgentUploadOpen(false)
+            setAgentUploadDefaultFolderId(null)
+          }}
+          onFinalized={() => {
+            // Refetch the vault so the newly-finalized document appears.
+            fetchVaultDocuments()
+          }}
+        />
+      )}
+
+      {/* Agent-assisted bulk upload */}
+      {isAgentBulkOpen && currentCompany?.id && (
+        <AgentAssistedBulkUploadModal
+          isOpen={isAgentBulkOpen}
+          companyId={currentCompany.id}
+          onClose={() => setIsAgentBulkOpen(false)}
+          onFinalized={() => fetchVaultDocuments()}
         />
       )}
     </div>
