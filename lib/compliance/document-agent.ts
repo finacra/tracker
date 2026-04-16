@@ -5,6 +5,7 @@ import { SYSTEM_TAXONOMY } from '@/lib/vault/taxonomy'
 import { getRulesInForce, fyPeriod } from './catalogue'
 import { currentIndianFY } from './facts'
 import { processDocumentContent } from '@/lib/utils/document-processor'
+import { applyGuardrails } from './agent-guardrails'
 
 /**
  * Document Intelligence Agent — v1
@@ -405,6 +406,20 @@ export async function analyzeAndStoreSuggestion(options: {
   }
 
   if (result.suggestion) {
+    // Run deterministic guardrails — corrects hallucinated rule IDs,
+    // validates folder slugs, etc. The agent's output is a draft;
+    // guardrails make it trustworthy.
+    try {
+      result.suggestion = await applyGuardrails(options.companyId, result.suggestion)
+      console.log('[document-agent] guardrails applied', {
+        requirementId: result.suggestion.requirementId,
+        folderSlug: result.suggestion.folderSlug,
+      })
+    } catch (guardErr) {
+      console.error('[document-agent] guardrails failed (non-fatal):',
+        guardErr instanceof Error ? guardErr.message : guardErr)
+    }
+
     // Round-trip through JSON.stringify so any undefined values become
     // absent keys instead of tripping Prisma's JsonValue type guard.
     const safeJson = JSON.parse(JSON.stringify(result.suggestion))
