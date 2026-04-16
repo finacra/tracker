@@ -178,10 +178,15 @@ FIELD COMPLETION RULES — fill EVERY field, think holistically:
   * For quarterly: last day of the quarter's final month.
   * For licences/certificates: the explicit expiry date on the document.
   * For one-time (COI, MOA, AOA, Share Certs): leave null (no expiry).
-- requirementId: match against the compliance obligations list above. For MCA
-  filings look for rules containing "mgt-7", "aoc-4", "dir-kyc", "adt-1", etc.
-  For TDS returns look for "tds-return". For ITR look for "itr-". For GST
-  look for "gstr-". Always populate this when there's a match.
+- requirementId: MUST be an EXACT id from the compliance obligations list above.
+  Do NOT invent your own id — copy-paste one from the list. If no rule matches,
+  leave requirementId as null. Common mappings:
+  MGT-7/MGT-7A → find the rule with "mgt7" in its id
+  AOC-4 → find the rule with "aoc4" in its id
+  TDS returns → find the rule with "tds-return" in its id
+  ITR → find the rule with "itr" in its id
+  GSTR → find the rule with "gstr" in its id
+  DIR-3 KYC → find the rule with "din-kyc" in its id
 
 For facts: only emit facts grounded in the document; confidence ≥ 0.6; follow
 the same kinds used elsewhere (rent.monthly_payment, contractor.annual_spend,
