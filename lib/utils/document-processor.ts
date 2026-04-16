@@ -46,7 +46,7 @@ export async function processDocumentContent(documentId: string, companyId: stri
       } catch (ocrError: unknown) {
         const msg = ocrError instanceof Error ? ocrError.message : String(ocrError);
         console.error(`${LOG_PREFIX} ❌ OCR failed: ${msg}`);
-        return;
+        throw new Error(`OCR failed for ${ext} file: ${msg}`);
       }
     } else {
       // PDF → try pdf-parse first (fast, free), fall back to OCR if it yields nothing
@@ -78,14 +78,14 @@ export async function processDocumentContent(documentId: string, companyId: stri
         } catch (ocrError: unknown) {
           const msg = ocrError instanceof Error ? ocrError.message : String(ocrError);
           console.error(`${LOG_PREFIX} ❌ OCR failed: ${msg}`);
-          return;
+          throw new Error(`PDF OCR fallback failed: ${msg}`);
         }
       }
     }
 
     if (!text.trim()) {
       console.warn(`${LOG_PREFIX} ⚠️ No text could be extracted from this document.`);
-      return;
+      throw new Error('No text could be extracted from this document (pdf-parse returned empty, OCR not attempted or returned empty)');
     }
 
     console.log(`${LOG_PREFIX} 🔍 ${text.length} characters ready for chunking.`);
