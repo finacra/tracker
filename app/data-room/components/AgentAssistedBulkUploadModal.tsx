@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useAuth } from '@/hooks/useAuth'
 import { uploadFileToStorage } from '../document-actions'
 import {
   uploadAndAnalyze,
@@ -66,6 +67,7 @@ export default function AgentAssistedBulkUploadModal({
   companyId,
   onFinalized,
 }: Props) {
+  const { user } = useAuth()
   const [stage, setStage] = useState<'picking' | 'processing' | 'review' | 'saving' | 'done'>('picking')
   const [rows, setRows] = useState<DraftRow[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
@@ -140,7 +142,11 @@ export default function AgentAssistedBulkUploadModal({
       setRows((prev) => prev.map((r, i) => i === index ? { ...r, status: 'analyzing' } : r))
 
       const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase()
-      const filePath = `${companyId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const uniqueName = `${Date.now()}-${sanitizedName}`
+      const filePath = user?.id
+        ? `${user.id}/${companyId}/${uniqueName}`
+        : `${companyId}/${uniqueName}`
 
       try {
         const buf = await file.arrayBuffer()

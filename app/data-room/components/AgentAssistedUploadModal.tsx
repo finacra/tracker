@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useAuth } from '@/hooks/useAuth'
 import { uploadFileToStorage } from '../document-actions'
 import {
   uploadAndAnalyze,
@@ -67,6 +68,7 @@ export default function AgentAssistedUploadModal({
   defaultFolderId = null,
   defaultRequirementId = null,
 }: Props) {
+  const { user } = useAuth()
   const [stage, setStage] = useState<Stage>('picking')
   const [file, setFile] = useState<File | null>(null)
   const [draftId, setDraftId] = useState<string | null>(null)
@@ -186,16 +188,30 @@ export default function AgentAssistedUploadModal({
     setFile(picked)
     setStage('uploading')
 
-    const ext = picked.name.slice(picked.name.lastIndexOf('.')).toLowerCase()
-    const filePath = `${companyId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`
+    // Match existing upload path pattern: userId/companyId/fileName
+    // Supabase storage policies enforce the userId prefix for auth.
+    const sanitizedName = picked.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const uniqueName = `${Date.now()}-${sanitizedName}`
+    const filePath = user?.id
+      ? `${user.id}/${companyId}/${uniqueName}`
+      : `${companyId}/${uniqueName}`
+
+    console.log('[AgentUpload] uploading', { filePath, size: picked.size, type: picked.type })
 
     try {
       const buf = await picked.arrayBuffer()
       const up = await uploadFileToStorage(filePath, buf, picked.type || 'application/octet-stream')
+      console.log('[AgentUpload] storage result', up)
       if (!up.success) throw new Error(up.error || 'Upload failed')
 
       setStage('analyzing')
       const analyze = await uploadAndAnalyze(companyId, { filePath, fileName: picked.name })
+      console.log('[AgentUpload] analyze result', {
+        success: analyze.success,
+        documentId: analyze.documentId,
+        hasSuggestion: !!analyze.suggestion,
+        errors: analyze.analysisErrors,
+      })
       if (!analyze.success || !analyze.documentId) {
         showToast(analyze.error || 'Analysis failed', 'error')
         setStage('picking')
@@ -206,6 +222,7 @@ export default function AgentAssistedUploadModal({
       setAnalysisErrors(analyze.analysisErrors || [])
       setStage('review')
     } catch (err) {
+      console.error('[AgentUpload] failed', err, (err as any)?.stack)
       showToast(err instanceof Error ? err.message : 'Upload failed', 'error')
       setStage('picking')
     }
