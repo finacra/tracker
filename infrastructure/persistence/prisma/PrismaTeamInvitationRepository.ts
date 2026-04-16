@@ -41,12 +41,13 @@ export class PrismaTeamInvitationRepository implements TeamInvitationRepository 
     }
 
     async markAccepted(invitationId: string, userId: string): Promise<void> {
-        await prisma.teamInvitation.update({
-            where: { id: invitationId },
-            data: {
-                accepted_at: new Date(),
-                accepted_by_user_id: userId,
-            },
-        })
+        // Conditional update — only claim an invite that hasn't been accepted.
+        // Silent no-op if another caller already won the race.
+        await prisma.$executeRaw`
+            UPDATE public.team_invitations
+            SET accepted_at = NOW(), accepted_by_user_id = ${userId}::uuid
+            WHERE id = ${invitationId}::uuid
+              AND accepted_at IS NULL
+        `
     }
 }

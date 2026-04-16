@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Verify invite token
-    const { teamInvitationRepository, userRepository } = createServerContainer()
+    const { teamInvitationRepository, userRepository, companyMembershipRepository } = createServerContainer()
     const invite = await teamInvitationRepository.findByToken(inviteToken)
 
     if (!invite) {
@@ -91,29 +91,46 @@ export async function POST(req: NextRequest) {
       console.error('[Invite Signup] Failed to send verification email:', error)
     })
 
-    // 4. Accept the invitation
-    // We need to create a session first, then accept the invitation
+    // 4. Accept the invitation atomically, in the same request that created
+    // the user. Doing this server-side (instead of relying on the client to
+    // call acceptTeamInvitation after session set) prevents the "signup
+    // succeeded but membership was never written" class of bug.
+    //
+    // markAccepted is a conditional update that only succeeds when
+    // accepted_at IS NULL — if a racing caller won, we leave membership
+    // alone (a second upsertRole would still be idempotent, but the
+    // conditional write is the authoritative single-winner signal).
+    const claimed = await prisma.$queryRaw<Array<{ id: string }>>`
+      UPDATE public.team_invitations
+      SET accepted_at = NOW(), accepted_by_user_id = ${user.id}::uuid
+      WHERE id = ${invite.id}::uuid
+        AND accepted_at IS NULL
+      RETURNING id
+    `
+
+    if (claimed && claimed.length > 0) {
+      await companyMembershipRepository.upsertRole(user.id, invite.companyId, invite.role, user.id)
+    }
+
+    // 5. Create session
     const sessionUser: PassportSessionUser = {
       appUserId: user.id,
       email: user.primary_email,
       googleId: '',
     }
 
-    const response = NextResponse.json({ 
-      success: true, 
+    const response = NextResponse.json({
+      success: true,
       user: {
         id: user.id,
         email: user.primary_email,
         emailVerified: false,
       },
+      companyId: invite.companyId,
       message: 'Account created successfully. Please check your email to verify your account.'
     })
 
     await setSessionInResponse(sessionUser, response)
-
-    // 5. Accept the invitation (this requires authentication, so we need to do it server-side)
-    // We'll accept it in a separate call after the session is set
-    // For now, return success and let the client call acceptTeamInvitation
 
     return response
   } catch (error) {

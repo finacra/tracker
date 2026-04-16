@@ -3,6 +3,7 @@
 import { createServerContainer } from '@/lib/composition/server-container'
 import { handleActionError } from '@/lib/errors/handle-error'
 import { validateCompanyId } from '@/lib/utils/input-validation'
+import { prisma } from '@/lib/prisma'
 
 export async function getCompanyTrialEligibility(
   companyId: string | null,
@@ -135,6 +136,18 @@ export async function createTrialSubscription(targetCompanyId: string | null): P
   try {
     const { authService, companyRepository, subscriptionRepository } = createServerContainer()
     const user = await authService.requireCurrentUser()
+
+    // Block trial creation until email is verified. Without this, an
+    // unverified user can burn their one-time trial slot on /subscribe
+    // (which the proxy intentionally leaves accessible) and then get
+    // bounced to /verify-email — losing the trial for good.
+    const emailCheck = await prisma.$queryRaw<Array<{ email_verified: boolean | null }>>`
+      SELECT email_verified FROM public.app_users WHERE id = ${user.id}::uuid LIMIT 1
+    `
+    if (!emailCheck[0] || emailCheck[0].email_verified !== true) {
+      return { success: false, error: 'Please verify your email before starting a trial.' }
+    }
+
     const ownedCompanies = await companyRepository.listOwnedByUser(user.id)
 
     if (ownedCompanies.length === 0) {
