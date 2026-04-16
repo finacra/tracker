@@ -179,14 +179,16 @@ export async function analyzeDocument(options: {
   companyId: string
   documentId: string
   companyState?: string | null
+  rawText?: string  // when provided, skip chunk reassembly entirely
 }): Promise<{
   suggestion: DocumentAgentSuggestion | null
   errors: string[]
 }> {
   const errors: string[] = []
 
-  // Text — wait briefly for chunks to land from processDocumentContent.
-  const text = await waitForChunks(options.documentId)
+  // Use rawText if provided (from inline extraction), otherwise fall back
+  // to reassembling from chunks (legacy path for docs already processed).
+  const text = options.rawText || await waitForChunks(options.documentId)
   if (!text.trim()) {
     errors.push('no_text_available')
     return { suggestion: null, errors }
@@ -293,11 +295,13 @@ export async function analyzeAndStoreSuggestion(options: {
   })
   if (!doc) return { suggestion: null, errors: ['document_not_found'] }
 
-  // Run text extraction INLINE so every step's result goes directly into
-  // the response — no more "check server logs". Each step appends to
-  // serverLog[] which is returned as analysisErrors so the browser
-  // console shows everything.
+  // Extract text INLINE and pass it directly to the agent. The agent
+  // only needs raw text — it doesn't need chunks or embeddings. Those
+  // are for CIA semantic search and can be generated in the background
+  // later (via processDocumentContent). This eliminates the dependency
+  // on the chunk pipeline which was failing silently at the embedding step.
   const serverLog: string[] = []
+  let extractedText = ''
   try {
     const { createStorageAdapter } = await import('@/lib/storage/factory')
     const storage = createStorageAdapter()
@@ -307,7 +311,6 @@ export async function analyzeAndStoreSuggestion(options: {
     serverLog.push(`downloaded: ${buffer.length} bytes`)
 
     const ext = doc.file_path.slice(doc.file_path.lastIndexOf('.')).toLowerCase()
-    let text = ''
 
     // Step 1: try pdf-parse for PDFs
     if (ext === '.pdf') {
@@ -319,41 +322,37 @@ export async function analyzeAndStoreSuggestion(options: {
         const result = await actualParser(buffer, {
           pagerender: (pageData: any) => pageData.getTextContent().then((tc: any) => tc.items.map((i: any) => i.str).join(' '))
         })
-        text = result.text || ''
-        serverLog.push(`pdf-parse: ${text.trim().length} chars`)
+        extractedText = result.text || ''
+        serverLog.push(`pdf-parse: ${extractedText.trim().length} chars`)
       } catch (pdfErr) {
         serverLog.push(`pdf-parse FAILED: ${pdfErr instanceof Error ? pdfErr.message : String(pdfErr)}`)
       }
     }
 
     // Step 2: OCR fallback if text is thin
-    if (text.trim().length < 100) {
-      serverLog.push(`text too short (${text.trim().length}), trying Azure DI OCR...`)
+    if (extractedText.trim().length < 100) {
+      serverLog.push(`text too short (${extractedText.trim().length}), trying Azure DI OCR...`)
       try {
         const { extractTextWithOCR } = await import('@/lib/utils/document-intelligence')
-        text = await extractTextWithOCR(buffer)
-        serverLog.push(`OCR success: ${text.length} chars`)
+        extractedText = await extractTextWithOCR(buffer)
+        serverLog.push(`OCR success: ${extractedText.length} chars`)
       } catch (ocrErr) {
         const msg = ocrErr instanceof Error ? ocrErr.message : String(ocrErr)
         serverLog.push(`OCR FAILED: ${msg}`)
       }
     }
 
-    // Step 3: chunk + embed if we have text
-    if (text.trim().length > 0) {
-      serverLog.push(`chunking ${text.length} chars...`)
-      try {
-        await processDocumentContent(doc.id, doc.company_id, doc.file_path)
-        const chunkCount = await prisma.$queryRaw<[{ c: bigint }]>`
-          SELECT count(*)::bigint as c FROM document_chunks_internal WHERE document_id = ${doc.id}::uuid
-        `
-        serverLog.push(`chunks written: ${Number(chunkCount[0]?.c || 0)}`)
-      } catch (chunkErr) {
-        serverLog.push(`chunking FAILED: ${chunkErr instanceof Error ? chunkErr.message : String(chunkErr)}`)
-      }
-    } else {
+    if (!extractedText.trim()) {
       serverLog.push('NO TEXT EXTRACTED — cannot analyze')
+    } else {
+      serverLog.push(`text ready: ${extractedText.trim().length} chars for agent`)
     }
+
+    // Background: kick off the full chunk + embed pipeline for CIA
+    // semantic search. Non-blocking — don't await.
+    processDocumentContent(doc.id, doc.company_id, doc.file_path).catch(err =>
+      console.error('[document-agent] background chunk/embed failed (non-fatal):', err instanceof Error ? err.message : err)
+    )
   } catch (err) {
     serverLog.push(`FATAL: ${err instanceof Error ? err.message : String(err)}`)
   }
@@ -369,6 +368,7 @@ export async function analyzeAndStoreSuggestion(options: {
     companyId: options.companyId,
     documentId: options.documentId,
     companyState: company?.state ?? null,
+    rawText: extractedText || undefined,  // pass text directly — skip chunk reassembly
   })
 
   // Surface ALL processing steps so the browser console shows exactly
