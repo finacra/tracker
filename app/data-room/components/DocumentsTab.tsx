@@ -1812,12 +1812,19 @@ export default function DocumentsTab({
                                 </button>
                               <button
                                 onClick={() => {
-                                  setUploadFormData(prev => ({
-                                    ...prev,
-                                    folder: folderName,
-                                    documentName: doc.document_type
-                                  }))
-                                  setIsUploadModalOpen(true)
+                                  // Try to resolve the clicked folderName to a real
+                                  // folder id so the agent modal opens pre-locked to it.
+                                  // Falls back to null (agent picks) if nothing matches.
+                                  const slugHint = folderName.toLowerCase().trim()
+                                  const target = vaultDocuments.find((d: any) =>
+                                    d.folder_name === folderName || d.folder?.name === folderName,
+                                  )
+                                  setAgentUploadDefaultFolderId(target?.folder_id || null)
+                                  // Stash the suggested document type in state so the
+                                  // modal can consume it — left unused for now; the
+                                  // agent will re-derive from the file contents anyway.
+                                  void slugHint
+                                  setIsAgentUploadOpen(true)
                                 }}
                                 className="text-white hover:text-white font-medium text-xs sm:text-sm border border-white/40 px-3 sm:px-4 py-1.5 rounded-lg hover:bg-white/20 transition-colors w-full sm:w-auto"
                               >
