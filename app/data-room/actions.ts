@@ -3694,6 +3694,11 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
       }
     }
   } catch (error) {
+    // TEMP diagnostic: surface the real error to Vercel logs so we can see
+    // what's crashing. handleActionError redacts + returns a generic string.
+    console.error('[getDataRoomInitState][DIAG]',
+      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : '')
     return handleActionError(error)
   }
 }
