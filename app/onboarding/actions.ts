@@ -113,6 +113,16 @@ export async function completeOnboarding(
       .filter((name: string) => name.length > 0)
     : null
 
+  // PAN is required for Indian companies — downstream tax-compliance rules
+  // (ITR, TDS returns, advance tax instalments) all key off it. The client
+  // form enforces this already; the server re-enforces to prevent API-level
+  // bypass and to surface a clear error rather than a cryptic constraint
+  // failure later.
+  const trimmedPan = (formData.panNumber || '').trim()
+  if ((formData.countryCode || 'IN') === 'IN' && !trimmedPan) {
+    throw new Error('PAN is required for Indian companies')
+  }
+
   let company
   try {
   company = await companyRepository.create({
@@ -120,7 +130,7 @@ export async function completeOnboarding(
     appUserId: user.canonicalId,
     name: formData.companyName,
     type: formData.companyType,
-    taxId: formData.panNumber || null,
+    taxId: trimmedPan || null,
     registrationId: formData.cinNumber,
     industry: firstIndustry,
     industries: formData.industries.length > 0 ? formData.industries : null,
@@ -415,6 +425,17 @@ export async function updateCompany(
     const parsed = parseCIN(formData.cinNumber)
     if (parsed.nicCode) nicCode = parsed.nicCode
     if (parsed.isListed !== null) isListed = parsed.isListed
+  }
+
+  // If the caller is explicitly updating PAN (string passed, even empty),
+  // reject a blank value for Indian companies. Undefined = "no change", so
+  // a partial update that doesn't touch PAN doesn't trigger this.
+  if (typeof formData.panNumber === 'string') {
+    const trimmed = formData.panNumber.trim()
+    const existing = await companyRepository.getDetailsById(companyId)
+    if (!trimmed && (existing?.countryCode || 'IN') === 'IN') {
+      throw new Error('PAN is required for Indian companies')
+    }
   }
 
   // Update Company in public schema

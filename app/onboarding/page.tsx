@@ -830,8 +830,12 @@ export default function OnboardingPage() {
     if (!formData.companyType) {
       newErrors.companyType = 'Please select a company type'
     }
-    // Tax ID validation - country-specific using validators
-    if (formData.panNumber.trim() && countryValidator) {
+    // Tax ID (PAN) — required for Indian companies per PRD v1.1 §1.1/1.4.
+    // The `companies.tax_id` column holds PAN; downstream compliance rules
+    // (TDS, ITR, advance tax) require it to derive the Income Tax portal ID.
+    if (!formData.panNumber.trim()) {
+      newErrors.panNumber = `${countryConfig.labels.taxId || 'PAN'} is required`
+    } else if (countryValidator) {
       const taxValidation = countryValidator.validateTaxId(formData.panNumber)
       if (!taxValidation.isValid) {
         newErrors.panNumber = taxValidation.error || 'Invalid tax ID format'
@@ -1201,10 +1205,10 @@ export default function OnboardingPage() {
               )}
             </div>
 
-            {/* Tax ID / PAN Number */}
+            {/* Tax ID / PAN Number — mandatory per PRD §1.1 */}
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                  {countryConfig.labels.taxId} <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
+                  {countryConfig.labels.taxId} <span className="text-red-400 ml-0.5">*</span>
                 </label>
                 <input
                   type="text"

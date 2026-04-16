@@ -442,17 +442,33 @@ function ManageCompanyPageInner() {
               </div>
             </div>
 
+            {!formData.panNumber.trim() && countryCode === 'IN' && (
+              <div className="mb-5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+                <p className="text-sm text-amber-200 font-light">
+                  <span className="font-medium">Add your PAN.</span>{' '}
+                  PAN is required for compliance tracking (ITR, TDS, advance tax).
+                  Fill it below before saving to keep the tracker accurate.
+                </p>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">
                   {countryConfig.labels.taxId}
+                  {countryCode === 'IN' && <span className="text-red-400 ml-1">*</span>}
                 </label>
                 <input
                   type="text"
                   name="panNumber"
                   value={formData.panNumber}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                  required={countryCode === 'IN'}
+                  className={`w-full px-4 py-3 bg-gray-900 border rounded-lg text-white font-light focus:outline-none focus:ring-1 transition-colors ${
+                    !formData.panNumber.trim() && countryCode === 'IN'
+                      ? 'border-amber-500/60 focus:border-amber-400 focus:ring-amber-400'
+                      : 'border-gray-700 focus:border-gray-600 focus:ring-gray-600'
+                  }`}
                 />
               </div>
               <div>
