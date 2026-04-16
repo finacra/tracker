@@ -94,6 +94,17 @@ export default async function proxy(request: NextRequest) {
         LIMIT 1
       `
 
+      if (!user || user.length === 0) {
+        // Cookie decodes to a valid JWT, but the app_user row is gone
+        // (e.g., DB wipe, account hard-deletion). Don't let the stale cookie
+        // keep them pseudo-authenticated for another 7 days.
+        const stale = NextResponse.redirect(new URL('/home', request.url))
+        stale.cookies.delete('passport_session')
+        stale.cookies.delete('email_verified')
+        stale.cookies.delete('email_verified_user_id')
+        return stale
+      }
+
       if (user && user.length > 0) {
         const userData = user[0]
         const isEmailPasswordUser = userData.has_password
