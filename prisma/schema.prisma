@@ -539,7 +539,8 @@ model CompanyDocument {
   id                    String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   company_id            String    @db.Uuid
   document_type         String?
-  folder_name           String?
+  folder_name           String?                            // legacy — kept for back-compat until fully migrated
+  folder_id             String?   @db.Uuid                 // new: FK to vault_folders
   file_path             String
   file_name             String?
   registration_date     DateTime? @db.Date
@@ -555,9 +556,55 @@ model CompanyDocument {
   period_start          DateTime? @db.Date
   period_end            DateTime? @db.Date
   requirement_id        String?   @db.Uuid
-  created_at            DateTime? @default(now()) @db.Timestamptz
 
+  // Version chain — replaces the old "group by created_at" heuristic.
+  // When the user uploads a replacement, we insert a new row and point
+  // its parent_document_id at the old one, then mark the old row
+  // is_latest = false. Keeps full history; UI can walk the chain.
+  parent_document_id    String?   @db.Uuid
+  version_number        Int       @default(1)
+  is_latest             Boolean   @default(true)
+
+  // Soft delete so references from assessments/filings survive but the
+  // document drops out of tracker + vault views.
+  deleted_at            DateTime? @db.Timestamptz
+
+  created_at            DateTime? @default(now()) @db.Timestamptz
+  created_by            String?   @db.Uuid
+  updated_at            DateTime? @default(now()) @db.Timestamptz
+
+  @@index([company_id, folder_id])
+  @@index([parent_document_id])
+  @@index([company_id, is_latest, deleted_at])
   @@map("company_documents_internal")
+}
+
+// ── Vault Folder Tree ─────────────────────────────────────────────────────
+// A per-company folder hierarchy. Seeded system folders (kind = "system")
+// implement the PRD v1.1 §2.2 / §3.1 taxonomy:
+//   Top-level (5): Constitutional Docs, Licences, Statutory Compliances,
+//                  Financials, MCA Filings
+//   Constitutional Docs nested (7): MOA, AOA, COI, PAN, TAN,
+//                  Share Certificates, DIN Certificates
+//   Statutory Compliances nested (5): Advance Tax, TDS, ITR Computation
+//                  & Acknowledgement, Tax Audit, GST
+// User-created folders (kind = "user") can be added anywhere — at the
+// top level or nested under any existing folder. The document-intelligence
+// agent picks the best match at upload time; users can override.
+model VaultFolder {
+  id           String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id   String   @db.Uuid
+  parent_id    String?  @db.Uuid                 // null = top-level
+  slug         String                             // "constitutional", "moa", "tds" — stable machine id
+  name         String                             // display name
+  kind         String   @default("user")          // "system" | "user"
+  sort_order   Int      @default(0)
+  created_at   DateTime @default(now()) @db.Timestamptz
+  updated_at   DateTime @default(now()) @updatedAt @db.Timestamptz
+
+  @@unique([company_id, parent_id, slug])
+  @@index([company_id, parent_id])
+  @@map("vault_folders")
 }
 
 model DocumentTemplate {

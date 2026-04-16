@@ -9,6 +9,7 @@ import { handleActionError } from '@/lib/errors/handle-error'
 import { prisma } from '@/lib/prisma'
 import { validateGSTN, parseGSTN } from '@/lib/utils/gstn'
 import { recordOnboardingFacts } from '@/lib/compliance/facts'
+import { ensureSystemFolders } from '@/lib/vault/folders'
 
 async function requireCurrentUser() {
   const { authService } = createServerContainer()
@@ -214,6 +215,15 @@ export async function completeOnboarding(
   } catch (roleError) {
     console.error('Role assignment error:', roleError)
     // Don't throw - the company owner can still access via user_id on companies table
+  }
+
+  // 1d. Seed the five system top-level folders + their nested sub-folders
+  // (PRD §2.2 / §3.1). Idempotent; safe to call again later if a company
+  // onboarded before this rollout.
+  try {
+    await ensureSystemFolders(company.id)
+  } catch (folderErr) {
+    console.error('[onboarding] Vault folder seed failed (non-fatal):', folderErr instanceof Error ? folderErr.message : folderErr)
   }
 
   // 1c. Record declared facts into the fact store so the new applicability
