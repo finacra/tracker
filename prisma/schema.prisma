@@ -280,6 +280,43 @@ model CompanyFact {
   @@map("company_facts")
 }
 
+// ── Compliance Assessments ────────────────────────────────────────────────
+// The evaluator's output: per-company × per-rule × per-financial-year
+// decision of whether the rule actually applies, with the reasoning the
+// user can read. Tracker UI reads this table (not ComplianceRule directly)
+// so thresholds, facts, and user overrides all feed into one surface.
+//
+// One row per (company, rule_id, financial_year). Re-evaluation updates
+// in place and bumps assessed_at; the row keeps a trail of factsCited so
+// CAs can audit what the agent saw.
+model ComplianceAssessment {
+  id                String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id        String   @db.Uuid
+  rule_id           String                      // references compliance_rules.id (string key)
+  financial_year    String                      // "2026-27" etc.
+
+  applicable        Boolean                     // tracker shows the item iff this is true
+  reasoning         String                      // 1-3 sentences, cites fact ids
+  confidence        Float    @default(1.0)      // 0..1 — lower for LLM-assisted decisions
+  evaluator_kind    String                      // "deterministic" | "llm_assisted" | "user_override"
+
+  facts_cited       String[] @default([])       // CompanyFact ids the decision used
+
+  // User override — takes precedence over any re-evaluation until cleared.
+  user_overridden   Boolean  @default(false)
+  user_override_note String?
+  overridden_by     String?  @db.Uuid           // app_user_id of the overrider
+  overridden_at     DateTime? @db.Timestamptz
+
+  assessed_at       DateTime @default(now()) @db.Timestamptz
+  assessed_by       String   @default("agent:v1")  // "agent:<version>" | "user:<id>"
+
+  @@unique([company_id, rule_id, financial_year])
+  @@index([company_id, financial_year])
+  @@index([rule_id])
+  @@map("compliance_assessments")
+}
+
 model CiaConversation {
   id         String       @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   company_id String       @db.Uuid
