@@ -143,10 +143,10 @@ export async function finalizeDocument(
     })
     if (!draft) return { success: false, error: 'Draft not found' }
 
-    // Validate folder belongs to this company
+    // Validate folder belongs to this company + get its name for legacy compat
     const folder = await prisma.vaultFolder.findFirst({
       where: { id: confirmed.folderId, company_id: companyId },
-      select: { id: true },
+      select: { id: true, name: true },
     })
     if (!folder) return { success: false, error: 'Target folder not found' }
 
@@ -201,7 +201,7 @@ export async function finalizeDocument(
         document_type: cleanDocType,
         file_name: cleanFileName,
         folder_id: folder.id,
-        folder_name: null,                      // retiring legacy column for new rows
+        folder_name: folder.name,               // legacy field — vault UI still groups by this
         period_type: confirmed.periodType ?? null,
         period_financial_year: confirmed.periodFinancialYear ?? null,
         period_key: confirmed.periodKey ?? null,
