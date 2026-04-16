@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { authService, paymentRepository, subscriptionRepository } = createServerContainer()
+    const { authService, paymentRepository, subscriptionRepository, companyRepository } = createServerContainer()
     const user = await authService.getCurrentUser()
 
     if (!user) {
@@ -163,9 +163,21 @@ export async function POST(request: NextRequest) {
       console.error('Error activating subscription:', subscriptionError)
     }
 
+    // Decide post-payment destination server-side (same pattern as createTrialSubscription):
+    // - Fresh user (no companies) → /onboarding so they can create one
+    // - Otherwise → /data-room scoped to the paid company or their first company
+    const ownedCompanies = await companyRepository.listOwnedByUser(user.id)
+    const destinationCompanyId = payment.companyId || ownedCompanies[0]?.id || null
+    const redirectTo = ownedCompanies.length === 0
+      ? '/onboarding'
+      : destinationCompanyId
+        ? `/data-room?company_id=${destinationCompanyId}`
+        : '/data-room'
+
     return NextResponse.json({
       success: true,
       message: 'Payment verified and subscription activated',
+      redirectTo,
     })
   } catch (error) {
     return handleAPIError(error)

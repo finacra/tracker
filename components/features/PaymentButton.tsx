@@ -69,8 +69,7 @@ export default function PaymentButton({ tier, billingCycle, price, companyId, cl
 
             if (verification.success) {
               alert('Payment successful! Your subscription has been activated.')
-              // Redirect to data-room after successful payment
-              window.location.href = '/data-room'
+              window.location.href = verification.redirectTo || '/onboarding'
             }
           } catch (error) {
             console.error('Payment verification error:', error)
