@@ -145,8 +145,13 @@ export const COUNTRY_CONFIGS: Record<string, CountryConfig> = {
       commonForms: [
         // GST Forms
         'GSTR-1', 'GSTR-3B', 'GSTR-4', 'GSTR-5', 'GSTR-5A', 'GSTR-6', 'GSTR-7', 'GSTR-8', 'GSTR-9', 'GSTR-9C', 'CMP-08', 'ITC-04', 'IFF',
-        // Income Tax Forms
-        'ITR-1', 'ITR-2', 'ITR-3', 'ITR-4', 'ITR-5', 'ITR-6', 'ITR-7', 'Form 24Q', 'Form 26Q', 'Form 27Q', 'Form 27EQ',
+        // Income Tax Forms. IT Act 2025 (effective 1 April 2026) renumbers
+        // the TDS/TCS forms: 24Q/26Q → 140, 27Q → 144, Form 16 → Form 168,
+        // Form 16A → Form 168A. Old numbers kept for searchability and for
+        // historical filings on or before 31 March 2026.
+        'ITR-1', 'ITR-2', 'ITR-3', 'ITR-4', 'ITR-5', 'ITR-6', 'ITR-7',
+        'Form 140', 'Form 144', 'Form 168', 'Form 168A',
+        'Form 24Q', 'Form 26Q', 'Form 27Q', 'Form 27EQ',
         // MCA/RoC Forms
         'AOC-4', 'MGT-7', 'MGT-7A', 'DIR-3 KYC', 'DIR-12', 'PAS-3', 'BEN-2', 'INC-22A', 'ADT-01', 'CRA-2', 'LLP Form 8', 'LLP Form 11',
         // EPFO Forms

@@ -458,7 +458,10 @@ export async function queryReportEnrichment(
   ).join('\n')
 
   const prompt = `For each Indian regulatory compliance requirement below, provide:
-1. The exact legal section and act (e.g., "Section 234F of Income Tax Act, 1961")
+1. The exact legal section and act. For income-tax matters occurring on or after
+   1 April 2026, cite the **Income Tax Act 2025** (e.g., Section 427 for TDS
+   late-filing fee, Section 393 for non-salary TDS, Section 394 for TCS).
+   For historical events on or before 31 March 2026, cite the Income Tax Act 1961.
 2. The specific penalty provision with amounts
 3. Business impact analysis (financial, reputation, and operational consequences of non-compliance)
 
@@ -467,7 +470,9 @@ ${reqList}
 
 Return structured JSON for each requirement using the requirementKey exactly as given in brackets.`
 
-  const systemInstructions = `You are an Indian regulatory compliance expert. For each requirement, research the exact legal provisions, penalty clauses, and business consequences. Be specific with section numbers, penalty amounts, and real-world business impacts. Use current Indian law as of 2026.`
+  const systemInstructions = `You are an Indian regulatory compliance expert. For each requirement, research the exact legal provisions, penalty clauses, and business consequences. Be specific with section numbers, penalty amounts, and real-world business impacts.
+
+Use current Indian law as of 2026. Note: the Income Tax Act 2025 came into force on 1 April 2026 and supersedes the Income Tax Act 1961 for all deductions and filings from that date onward. TDS sections 192–206CCA of 1961 are consolidated into Sections 392 (Salary), 393 (all other TDS), and 394 (TCS) under the new Act. Rates and thresholds are unchanged; only section and form numbers (24Q/26Q → 140, 27Q → 144, Form 16 → 168, Form 16A → 168A) and challan codes changed. Sections 206AB and 206CCA are deleted.`
 
   const response = await client.responses.create({
     preset: 'pro-search' as any,

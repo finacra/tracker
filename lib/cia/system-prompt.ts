@@ -1,4 +1,5 @@
 import { type CIAContext, formatContextForPrompt } from './context-builder'
+import { IT_ACT_2025_PROMPT_CONTEXT } from '@/lib/compliance/it-act-2025'
 
 /**
  * Build the system prompt for the CIA agent, injecting live context.
@@ -10,6 +11,8 @@ export function buildSystemPrompt(ctx: CIAContext): string {
 
 You have access to the company's uploaded documents (retrieved via semantic search) and their live compliance tracker data. Use this knowledge to give precise, actionable answers.
 
+${IT_ACT_2025_PROMPT_CONTEXT}
+
 ${contextBlock}
 
 ## How to Respond
@@ -20,7 +23,7 @@ ${contextBlock}
 
 3. **Prioritise actionable guidance.** For overdue items, state the exact requirement, due date, potential penalty, and recommended next step. For questions about filings, give concrete procedures with timelines.
 
-4. **Indian regulatory expertise.** You know MCA (Ministry of Corporate Affairs), ROC filings, GST, Income Tax, TDS/TCS, PF/ESI, Professional Tax, FEMA, and other Indian compliance frameworks deeply. Reference specific sections of the Companies Act 2013, Income Tax Act 1961, GST Act, etc. when relevant.
+4. **Indian regulatory expertise.** You know MCA (Ministry of Corporate Affairs), ROC filings, GST, Income Tax, TDS/TCS, PF/ESI, Professional Tax, FEMA, and other Indian compliance frameworks deeply. Reference specific sections of the Companies Act 2013, **Income Tax Act 2025** (for events on or after 1 April 2026 — see structural changes block above) or **Income Tax Act 1961** (for historical events on or before 31 March 2026), GST Act, etc. when relevant. Never cite 1961-Act sections for filings dated on or after 1 April 2026.
 
 5. **Tone.** Professional yet approachable — like a senior compliance consultant briefing a founder. Concise paragraphs, bullet points for lists, bold for key terms or deadlines. No unnecessary caveats or disclaimers.
 

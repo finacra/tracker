@@ -167,8 +167,8 @@ export const EXAMPLE_ROWS: CSVTemplateRow[] = [
   },
   {
     category: 'Income Tax',
-    requirement: 'TDS Return - Form 24Q/26Q',
-    description: 'Quarterly TDS return for salary and non-salary deductions',
+    requirement: 'TDS Return - Form 140 (formerly 24Q/26Q)',
+    description: 'Quarterly TDS return for salary and non-salary deductions. IT Act 2025 effective 1 April 2026 renames 24Q/26Q to Form 140 and consolidates TDS under Section 393.',
     compliance_type: 'quarterly',
     entity_types: 'Private Limited Company,Public Limited Company,LLP',
     industries: 'IT & Technology Services,Healthcare,Finance,Professional Services',
@@ -182,8 +182,8 @@ export const EXAMPLE_ROWS: CSVTemplateRow[] = [
     penalty_type: 'daily',
     penalty_rate: '200',
     penalty_cap: '100000',
-    required_documents: 'Form 24Q,Form 26Q,TDS Certificates',
-    possible_legal_action: 'Penalty u/s 271H',
+    required_documents: 'Form 140 (formerly 24Q/26Q),Form 144 (formerly 27Q),Form 168/168A (TDS Certificates; formerly Form 16/16A)',
+    possible_legal_action: 'Penalty u/s 448 (formerly 271H)',
     is_critical: 'true',
     is_active: 'true'
   },

@@ -109,9 +109,11 @@ function mapCategoryToLegalFramework(category: string): string {
 function buildSearchQuery(category: string, requirement: string, legalFramework: string): string {
   const baseQuery = `${legalFramework} ${requirement} penalty section India`
   
-  // Add category-specific keywords
+  // Add category-specific keywords. Income-tax queries target the 2025 Act
+  // (effective 1 April 2026) because filings from now on are governed by it;
+  // we include the 1961 name so historical precedents still surface.
   if (category === 'Income Tax') {
-    return `Income Tax Act 1961 ${requirement} penalty late filing section`
+    return `Income Tax Act 2025 (formerly Income Tax Act 1961) ${requirement} penalty late filing section`
   } else if (category === 'GST') {
     return `GST Act 2017 ${requirement} penalty late filing section`
   } else if (category === 'RoC' || category === 'MCA') {
