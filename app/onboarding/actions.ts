@@ -8,6 +8,7 @@ import { validateCompanyId, sanitizeStringInput, isValidUUID } from '@/lib/utils
 import { handleActionError } from '@/lib/errors/handle-error'
 import { prisma } from '@/lib/prisma'
 import { validateGSTN, parseGSTN } from '@/lib/utils/gstn'
+import { recordOnboardingFacts } from '@/lib/compliance/facts'
 
 async function requireCurrentUser() {
   const { authService } = createServerContainer()
@@ -213,6 +214,30 @@ export async function completeOnboarding(
   } catch (roleError) {
     console.error('Role assignment error:', roleError)
     // Don't throw - the company owner can still access via user_id on companies table
+  }
+
+  // 1c. Record declared facts into the fact store so the new applicability
+  // engine can reason over them alongside document-extracted evidence.
+  // Non-blocking — a failure here must not prevent company creation.
+  try {
+    await recordOnboardingFacts({
+      companyId: company.id,
+      createdBy: user.id,
+      employeeCount: formData.employeeCount ? parseInt(formData.employeeCount, 10) : null,
+      annualTurnoverRupees: formData.annualTurnover
+        ? Math.round(parseFloat(formData.annualTurnover) * 100000) // form collects lakhs
+        : null,
+      netWorthRupees: formData.netWorth
+        ? Math.round(parseFloat(formData.netWorth) * 10000000) // form collects crores
+        : null,
+      isGstRegistered: formData.isGstRegistered ?? null,
+      isMsme: formData.isMsme === 'yes' ? true : formData.isMsme === 'no' ? false : null,
+      msmeCategory: formData.msmeCategory || null,
+      hasImportsExports: formData.hasImportsExports ?? null,
+      isStartupDpiit: formData.isStartupDpiit ?? null,
+    })
+  } catch (factErr) {
+    console.error('[onboarding] Fact ingestion failed (non-fatal):', factErr instanceof Error ? factErr.message : factErr)
   }
 
   // 2. Insert Directors
@@ -496,6 +521,34 @@ export async function updateCompany(
   } catch (companyError) {
     console.error('Company update error:', companyError)
     throw new Error('Failed to update company')
+  }
+
+  // Refresh declared facts from the edited form. Only fields the caller
+  // actually submitted are touched — `undefined` means "no change", so a
+  // partial update never wipes an existing fact.
+  try {
+    await recordOnboardingFacts({
+      companyId,
+      createdBy: user.id,
+      employeeCount: formData.employeeCount !== undefined
+        ? (formData.employeeCount ? parseInt(formData.employeeCount, 10) : null)
+        : undefined,
+      annualTurnoverRupees: formData.annualTurnover !== undefined
+        ? (formData.annualTurnover ? Math.round(parseFloat(formData.annualTurnover) * 100000) : null)
+        : undefined,
+      netWorthRupees: formData.netWorth !== undefined
+        ? (formData.netWorth ? Math.round(parseFloat(formData.netWorth) * 10000000) : null)
+        : undefined,
+      isGstRegistered: formData.isGstRegistered,
+      isMsme: formData.isMsme !== undefined
+        ? (formData.isMsme === 'yes' ? true : formData.isMsme === 'no' ? false : null)
+        : undefined,
+      msmeCategory: formData.msmeCategory,
+      hasImportsExports: formData.hasImportsExports,
+      isStartupDpiit: formData.isStartupDpiit,
+    })
+  } catch (factErr) {
+    console.error('[updateCompany] Fact refresh failed (non-fatal):', factErr instanceof Error ? factErr.message : factErr)
   }
 
   // Sync GST registrations if provided. Replace-all semantics: delete every

@@ -217,6 +217,69 @@ model ComplianceRule {
   @@map("compliance_rules")
 }
 
+// ── Company Facts ─────────────────────────────────────────────────────────
+// The ground truth about what a company actually did in a given period.
+// One row per atomic fact — e.g., "paid ₹22,000/month rent to M/s Patel
+// Estates from 2025-04-01 to 2026-03-31". The applicability evaluator
+// reads these rows to decide whether threshold-gated rules apply.
+//
+// Facts come from three sources: user declarations (onboarding/manage-
+// company forms), document extraction (rent agreements, payroll slips,
+// contractor invoices), and API pulls (GST portal, MCA filings). The
+// `source_kind` + `confidence` fields let the evaluator weight them
+// accordingly and ask the user to confirm low-confidence facts.
+model CompanyFact {
+  id             String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id     String   @db.Uuid
+
+  // Dotted namespace so rules can match fact families without a rigid
+  // enum: "rent.monthly_payment", "contractor.annual_spend",
+  // "salary.employee_count", "gst.registered_state", "turnover.annual"
+  kind           String
+
+  // Period the fact covers. Facts are snapshots for a window — a rent
+  // amount for FY25, an employee count as of a certain date, etc.
+  period_start   DateTime @db.Date
+  period_end     DateTime @db.Date
+
+  // Monetary or numeric value (rupees unless the kind implies otherwise).
+  // Null for categorical facts like "gst.registered_state".
+  amount         Decimal? @db.Decimal(15, 2)
+
+  // Optional unit override so the evaluator doesn't have to hardcode per-kind.
+  unit           String?  // "rupees_per_month" | "rupees_per_year" | "count" | "string"
+
+  // Categorical payload (state name, counterparty, etc.). JSON so a fact
+  // can carry richer structure (invoice number, vendor GSTIN) without
+  // schema churn.
+  payload        Json?
+
+  // Human-friendly identifier of the other party (landlord, contractor)
+  // so the evaluator can group by payee when thresholds are per-payee.
+  counterparty   String?
+
+  // Where this fact came from.
+  source_kind    String   // "user_declared" | "document_extracted" | "api_pull" | "system_derived"
+  source_doc_id  String?  @db.Uuid  // link to company_documents row when extracted
+  source_ref     String?             // URL/identifier for api_pull / system_derived
+  confidence     Float    @default(1.0)  // 0..1 — 1 = explicit user input, lower = inferred
+
+  // Corrections: when a fact is wrong, we insert a new fact and point
+  // superseded_by_id at it rather than editing in place. Keeps an
+  // audit trail for historical recomputation.
+  superseded_by_id String? @db.Uuid
+
+  created_at     DateTime @default(now()) @db.Timestamptz
+  created_by     String?  @db.Uuid       // app_user_id of declarer (null for extracted)
+  updated_at     DateTime @default(now()) @updatedAt @db.Timestamptz
+
+  @@index([company_id, kind])
+  @@index([company_id, period_start, period_end])
+  @@index([kind, period_start])
+  @@index([source_doc_id])
+  @@map("company_facts")
+}
+
 model CiaConversation {
   id         String       @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   company_id String       @db.Uuid
