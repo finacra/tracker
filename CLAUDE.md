@@ -38,14 +38,21 @@
 
 ## Debugging — Non-Negotiable
 
-9. **When a preview/prod error is surfacing but Vercel logs aren't catching it, don't loop on "try again while I tail logs". Add diagnostics in code on the same commit that fixes other issues.** Vercel CLI `logs` only streams from "now" and sessions expire in 5 minutes — any error that already fired is gone. Every time you need more visibility than the logs give you:
+9. **`console.log` is always reliable — use it aggressively. Don't loop on "try again while I tail Vercel logs".** Vercel CLI `logs` streams from "now" only (5-min session), the preview-log UI lags, and browser Network tabs hide server-action payloads. `console.log` in the function body shows up in Vercel runtime logs the moment the code runs, and in the browser DevTools Console for client-side, every time. It is the lowest-friction, highest-reliability diagnostic we have. Prefer it over any other approach.
 
-   - **At every server-action boundary** (both happy and error paths), add a `console.log` / `console.error` with a stable prefix (e.g. `[uploadAndAnalyze] ok …` / `[uploadAndAnalyze] threw …`) and include `error.message + error.stack` on the error path. `handleActionError` redacts by design, so the raw message must be logged before it runs.
-   - **At every client-side boundary** where the error shows up (catch in `onClick`, `onChange`, mutation handler, effect), log the full error including the response body if it came from a `fetch`. A browser "unexpected response" or bare 400 gives you nothing; `console.error('[ActionName]', err, err?.stack, err?.response?.data)` gives you the line.
-   - **For server actions** whose returns might not be JSON-serialisable (Prisma Decimal / Date / BigInt / class instance), add a `console.log(JSON.stringify(returnValue))` right before the `return` so a serialisation failure shows a specific key.
-   - **For LLM calls**, log the raw response (or the first 2k chars) before attempting `JSON.parse`, so truncation / unexpected shape is visible. Also log the prompt size and the `max_completion_tokens` so token-ceiling bugs are obvious.
-   - **When you push a fix, push the diagnostic in the same commit.** Don't "fix then add logs later" — if the fix doesn't fully work, the next repro must yield the root cause without another deploy.
-   - **Clean the diagnostics out** only after the flow is confirmed stable (user-verified or green E2E test). Leaving them in long-term is noise; removing them too early starts the loop over.
+   **Log aggressively — err on the side of too many `console.log`s, not too few. The cost of a few extra log lines is tiny compared to an extra deploy round-trip.**
+
+   Every time you need more visibility than raw stack traces give you, add logs in the SAME commit as the fix:
+
+   - **Every server-action boundary** (happy AND error paths) gets a `console.log` / `console.error` with a stable prefix — e.g. `[uploadAndAnalyze] ok …` / `[uploadAndAnalyze] threw …`. On the error path include `error.message + error.stack`. `handleActionError` redacts by design, so the raw message must be logged BEFORE it runs, never after.
+   - **Every client-side catch** (in `onClick` / `onChange` / mutation handlers / effects / fetchers) logs the full error + any response body: `console.error('[ActionName]', err, err?.stack, err?.response?.data)`. A bare "unexpected response" or 400 gives you nothing; this gives you the line.
+   - **Server actions that might return non-JSON-serialisable values** (Prisma Decimal / Date / BigInt / class instance) get `console.log('[name] returning', JSON.stringify(returnValue))` right before `return`. A serialisation failure surfaces the specific key.
+   - **LLM calls** log the raw response (first ~2k chars) BEFORE `JSON.parse`, plus the prompt size and `max_completion_tokens`. Truncation and token-ceiling bugs become obvious.
+   - **Database calls that can race or partial-fail** log the input values and the returned row count. A silent `updateMany` affecting 0 rows is a common invisible bug.
+   - **Ship diagnostics in the same commit as the fix.** If the fix doesn't fully work, the next repro must already have the answer in the logs. Never "fix now, add logs later".
+   - **Remove `console.log`s only after the flow is user-verified stable** — green build + green E2E or explicit user confirmation. Leaving them long-term is noise; removing them too early restarts the loop.
+
+   If the user is frustrated about repeated log-tailing attempts, that is signal you under-logged. Add more logs, not better tailing.
 
 ## Critical Paths (must be fast)
 
