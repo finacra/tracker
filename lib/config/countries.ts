@@ -108,6 +108,8 @@ export const COUNTRY_CONFIGS: Record<string, CountryConfig> = {
         'Private Limited',
         'Public Limited',
         'LLP',
+        'One Person Company',
+        'Section 8',
         'Partnership',
         'Sole Proprietorship'
       ],

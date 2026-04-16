@@ -50,14 +50,18 @@ export function buildIndianFYProfile(incorporationDate: Date, referenceDate?: Da
 
 /**
  * Parse a due-date formula and generate deadline instances for the next N months.
+ * @param startFrom - Optional earlier date to include deadlines from (e.g., FY start).
+ *                     Deadlines between startFrom and ref are included.
  */
 export function computeDeadlines(
   formula: string,
   profile: CompanyDateProfile,
   monthsAhead: number = 12,
-  referenceDate?: Date
+  referenceDate?: Date,
+  startFrom?: Date
 ): ComputedDeadline[] {
   const ref = referenceDate || new Date()
+  const lowerBound = startFrom || ref
   const deadlines: ComputedDeadline[] = []
 
   if (!formula || formula.trim() === '') return deadlines
@@ -66,19 +70,25 @@ export function computeDeadlines(
 
   try {
     // ── Monthly: "day:DD,offset:+1month" ──
+    // The due date is in the NEXT month, but the period label should reflect
+    // the COVERED month (e.g., TDS deducted in April → due May 7 → label "Apr 2026")
     if (normalized.includes('day:') && normalized.includes('offset:+1month')) {
       const dayMatch = normalized.match(/day:(\d+)/)
       if (dayMatch) {
         const day = parseInt(dayMatch[1], 10)
+        // Start generating from lowerBound month to cover full FY
+        const startMonth = lowerBound < ref ? lowerBound : ref
         for (let i = 0; i < monthsAhead; i++) {
-          const d = new Date(ref.getFullYear(), ref.getMonth() + 1 + i, 1)
+          const d = new Date(startMonth.getFullYear(), startMonth.getMonth() + 1 + i, 1)
           const actualDay = Math.min(day, daysInMonth(d.getFullYear(), d.getMonth()))
           const deadline = new Date(d.getFullYear(), d.getMonth(), actualDay)
-          if (deadline > ref) {
+          if (deadline >= lowerBound) {
+            // The covered period is the PREVIOUS month (the month work was done in)
+            const coveredMonth = new Date(d.getFullYear(), d.getMonth() - 1, 1)
             deadlines.push({
               date: deadline,
-              label: formatMonthLabel(deadline),
-              period: `${deadline.getFullYear()}-${String(deadline.getMonth() + 1).padStart(2, '0')}`,
+              label: `For ${formatMonthLabel(coveredMonth)}`,
+              period: `${coveredMonth.getFullYear()}-${String(coveredMonth.getMonth() + 1).padStart(2, '0')}`,
             })
           }
         }
@@ -90,11 +100,12 @@ export function computeDeadlines(
       const dayMatch = normalized.match(/day:(\d+)/)
       if (dayMatch) {
         const day = parseInt(dayMatch[1], 10)
+        const startMonth = lowerBound < ref ? lowerBound : ref
         for (let i = 0; i < monthsAhead; i++) {
-          const d = new Date(ref.getFullYear(), ref.getMonth() + i, 1)
+          const d = new Date(startMonth.getFullYear(), startMonth.getMonth() + i, 1)
           const actualDay = Math.min(day, daysInMonth(d.getFullYear(), d.getMonth()))
           const deadline = new Date(d.getFullYear(), d.getMonth(), actualDay)
-          if (deadline > ref) {
+          if (deadline >= lowerBound) {
             deadlines.push({
               date: deadline,
               label: formatMonthLabel(deadline),
@@ -125,7 +136,7 @@ export function computeDeadlines(
           const finalDate = specificDay
             ? new Date(deadline.getFullYear(), deadline.getMonth(), Math.min(specificDay, daysInMonth(deadline.getFullYear(), deadline.getMonth())))
             : new Date(deadline.getFullYear(), deadline.getMonth() + 1, 0)
-          if (finalDate > ref) {
+          if (finalDate >= lowerBound) {
             const fyLabel = `FY${fyEnd.getFullYear() - 1}-${String(fyEnd.getFullYear()).slice(2)}`
             deadlines.push({
               date: finalDate,
@@ -140,23 +151,36 @@ export function computeDeadlines(
     // ── Fixed date: "fixed:monDD" e.g. "fixed:jun15", "fixed:sep30" ──
     else if (normalized.startsWith('fixed:')) {
       const part = normalized.replace('fixed:', '').trim()
-      const dates = parseMonthDay(part, ref, monthsAhead)
+      const dates = parseMonthDay(part, lowerBound, monthsAhead)
       for (const d of dates) {
-        if (d.date > ref) {
+        if (d.date >= lowerBound) {
           deadlines.push(d)
         }
       }
     }
 
-    // ── Days after incorporation: "months_after_incorp:Ndays" or "days_after_incorp:N" ──
+    // ── Days after incorporation: "months_after_incorp:Ndays", "days_after_incorp:N", etc. ──
     else if (normalized.includes('after_incorp')) {
+      // Support formats: "days_after_incorp:180", "months_after_incorp:30days", "30 days after incorp"
+      const colonDaysMatch = normalized.match(/days_after_incorp:(\d+)/)
       const daysMatch = normalized.match(/(\d+)\s*days?/)
       const monthsMatch = normalized.match(/(\d+)\s*months?/)
-      if (daysMatch) {
+      if (colonDaysMatch) {
+        const days = parseInt(colonDaysMatch[1], 10)
+        const deadline = new Date(profile.incorporationDate)
+        deadline.setDate(deadline.getDate() + days)
+        if (deadline >= lowerBound) {
+          deadlines.push({
+            date: deadline,
+            label: 'Post-incorporation',
+            period: 'one-time',
+          })
+        }
+      } else if (daysMatch) {
         const days = parseInt(daysMatch[1], 10)
         const deadline = new Date(profile.incorporationDate)
         deadline.setDate(deadline.getDate() + days)
-        if (deadline > ref) {
+        if (deadline >= lowerBound) {
           deadlines.push({
             date: deadline,
             label: 'Post-incorporation',
@@ -166,7 +190,7 @@ export function computeDeadlines(
       } else if (monthsMatch) {
         const months = parseInt(monthsMatch[1], 10)
         const deadline = addMonths(profile.incorporationDate, months)
-        if (deadline > ref) {
+        if (deadline >= lowerBound) {
           deadlines.push({
             date: deadline,
             label: 'Post-incorporation',
@@ -180,9 +204,9 @@ export function computeDeadlines(
     else if (normalized.startsWith('quarterly:')) {
       const parts = normalized.replace('quarterly:', '').split(',').map(s => s.trim())
       for (const part of parts) {
-        const dates = parseMonthDay(part, ref, monthsAhead)
+        const dates = parseMonthDay(part, lowerBound, monthsAhead)
         for (const d of dates) {
-          if (d.date > ref) {
+          if (d.date >= lowerBound) {
             deadlines.push(d)
           }
         }
@@ -194,9 +218,9 @@ export function computeDeadlines(
       const prefix = normalized.startsWith('half_yearly:') ? 'half_yearly:' : 'half-yearly:'
       const parts = normalized.replace(prefix, '').split(',').map(s => s.trim())
       for (const part of parts) {
-        const dates = parseMonthDay(part, ref, monthsAhead)
+        const dates = parseMonthDay(part, lowerBound, monthsAhead)
         for (const d of dates) {
-          if (d.date > ref) {
+          if (d.date >= lowerBound) {
             deadlines.push(d)
           }
         }
@@ -206,9 +230,9 @@ export function computeDeadlines(
     // ── Annual: "annual:mon_dd" ──
     else if (normalized.startsWith('annual:')) {
       const part = normalized.replace('annual:', '').trim()
-      const dates = parseMonthDay(part, ref, monthsAhead)
+      const dates = parseMonthDay(part, lowerBound, monthsAhead)
       for (const d of dates) {
-        if (d.date > ref) {
+        if (d.date >= lowerBound) {
           deadlines.push(d)
         }
       }
@@ -234,9 +258,10 @@ export function computeDeadlines(
 export function computeNextDeadline(
   formula: string,
   profile: CompanyDateProfile,
-  referenceDate?: Date
+  referenceDate?: Date,
+  startFrom?: Date
 ): Date | null {
-  const deadlines = computeDeadlines(formula, profile, 14, referenceDate)
+  const deadlines = computeDeadlines(formula, profile, 14, referenceDate, startFrom)
   return deadlines.length > 0 ? deadlines[0].date : null
 }
 

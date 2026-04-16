@@ -186,9 +186,9 @@ export default function RequirementFormModal({
       } else {
         showToast(`Failed: ${result.error}`, 'error')
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving requirement:', error)
-      showToast(`Error: ${error.message}`, 'error')
+      showToast(`Error: ${error instanceof Error ? error.message : 'Something went wrong'}`, 'error')
     }
   }
 

@@ -51,7 +51,7 @@ export const CONDITIONAL_RULES: ComplianceRule[] = [
     frequency: 'monthly',
     dueDateFormula: 'day:15,offset:+1month',
     dueDescription: '15th of the following month',
-    penalty: 'Damages: 5% to 25% of arrears depending on delay. Interest @ 12% p.a.',
+    penalty: 'Interest @ 12% p.a. on delayed payment. Damages: 5% (up to 2 months late), 10% (2-4 months), 15% (4-6 months), 25% (6+ months) of arrears. Up to 200% penalty of contribution amount for persistent default.',
     isCritical: true,
     documentsRequired: ['ECR (Electronic Challan cum Return)', 'Challan'],
     sourceUrl: 'https://unifiedportal-epfo.epfindia.gov.in/',
@@ -59,7 +59,7 @@ export const CONDITIONAL_RULES: ComplianceRule[] = [
       minEmployees: 20,
     },
     effectiveFrom: '1952-11-04',
-    lastVerified: '2026-03-15',
+    lastVerified: '2026-04-06',
     verifiedBy: 'System',
     notes: 'Employer contributes 12% of basic + DA. Employee contributes 12%. Admin charges: 0.50%.',
     applicabilityReason: 'Monthly PF payment and ECR filing for establishments with 20+ employees',
@@ -101,7 +101,7 @@ export const CONDITIONAL_RULES: ComplianceRule[] = [
     frequency: 'monthly',
     dueDateFormula: 'day:15,offset:+1month',
     dueDescription: '15th of the following month',
-    penalty: 'Simple interest @ 12% p.a. on delayed payment. Damages up to 25% of contribution.',
+    penalty: 'Simple interest @ 12% p.a. on delayed payment. Damages up to 25% of contribution. Up to 200% penalty of the tax amount for persistent non-compliance.',
     isCritical: true,
     documentsRequired: ['Challan', 'Employee contribution details'],
     sourceUrl: 'https://www.esic.gov.in/',
@@ -109,7 +109,7 @@ export const CONDITIONAL_RULES: ComplianceRule[] = [
       minEmployees: 10,
     },
     effectiveFrom: '1948-04-19',
-    lastVerified: '2026-03-15',
+    lastVerified: '2026-04-06',
     verifiedBy: 'System',
     notes: 'Employer: 3.25% of wages. Employee: 0.75% of wages. Total: 4%.',
     applicabilityReason: 'Monthly ESI contribution for establishments with 10+ employees',
@@ -373,6 +373,60 @@ export const CONDITIONAL_RULES: ComplianceRule[] = [
   },
 
   // ═══════════════════════════════════════════════════════════════════════
+  // GST — QRMP SCHEME (Turnover ≤ ₹5Cr)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  {
+    id: 'gstr1-quarterly-qrmp',
+    name: 'GSTR-1 — Quarterly Outward Supplies Return (QRMP Scheme)',
+    category: 'GST',
+    act: 'Central Goods and Services Tax Act, 2017',
+    section: 'Section 37 read with Notification 83/2020',
+    authority: 'GSTN / CBIC',
+    frequency: 'quarterly',
+    dueDateFormula: 'quarterly:apr13,jul13,oct13,jan13',
+    dueDescription: '13th of the month following the quarter end (QRMP taxpayers)',
+    penalty: '₹50/day (₹25 CGST + ₹25 SGST), max ₹5,000.',
+    isCritical: false,
+    documentsRequired: ['Sales invoices', 'Credit/debit notes', 'IFF (Invoice Furnishing Facility) for month 1 & 2'],
+    sourceUrl: 'https://www.gst.gov.in/',
+    conditions: {
+      isGstRegistered: true,
+      maxTurnoverLakhs: 500, // ₹5 Crore — QRMP eligibility
+    },
+    effectiveFrom: '2021-01-01',
+    lastVerified: '2026-04-06',
+    verifiedBy: 'System',
+    notes: 'QRMP scheme is optional for turnover ≤ ₹5Cr. Monthly IFF available for B2B invoices in months 1 & 2 of each quarter.',
+    applicabilityReason: 'GST-registered taxpayers with turnover ≤ ₹5Cr can opt for quarterly GSTR-1 under QRMP scheme',
+  },
+
+  {
+    id: 'gstr3b-quarterly-qrmp',
+    name: 'GSTR-3B — Quarterly Summary Return (QRMP Scheme)',
+    category: 'GST',
+    act: 'Central Goods and Services Tax Act, 2017',
+    section: 'Section 39 read with Notification 84/2020',
+    authority: 'GSTN / CBIC',
+    frequency: 'quarterly',
+    dueDateFormula: 'quarterly:apr22,jul22,oct22,jan22',
+    dueDescription: '22nd/24th of the month following the quarter end (varies by state)',
+    penalty: '₹50/day (₹25 CGST + ₹25 SGST), max ₹5,000. Interest @ 18% p.a. on tax paid late.',
+    isCritical: false,
+    documentsRequired: ['Summary of outward/inward supplies', 'ITC details', 'PMT-06 challan for months 1 & 2'],
+    sourceUrl: 'https://www.gst.gov.in/',
+    conditions: {
+      isGstRegistered: true,
+      maxTurnoverLakhs: 500,
+    },
+    effectiveFrom: '2021-01-01',
+    lastVerified: '2026-04-06',
+    verifiedBy: 'System',
+    notes: 'QRMP taxpayers must pay tax monthly via PMT-06 challan by 25th. Quarterly return filed by 22nd/24th. Payment due dates: 25th of each month.',
+    applicabilityReason: 'GST-registered taxpayers with turnover ≤ ₹5Cr can opt for quarterly GSTR-3B under QRMP scheme',
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
   // NET WORTH / CSR THRESHOLDS
   // ═══════════════════════════════════════════════════════════════════════
 
@@ -554,6 +608,28 @@ export const CONDITIONAL_RULES: ComplianceRule[] = [
   // ═══════════════════════════════════════════════════════════════════════
   // MSME
   // ═══════════════════════════════════════════════════════════════════════
+
+  {
+    id: 'msme-45day-payment',
+    name: 'MSME 45-Day Vendor Payment Compliance (Section 43B(h))',
+    category: 'Others',
+    act: 'MSMED Act, 2006 read with Income Tax Act, 1961',
+    section: 'Section 15/16 of MSMED Act; Section 43B(h) of IT Act',
+    authority: 'MSME Facilitation Council / Income Tax Department',
+    frequency: 'event-based',
+    dueDateFormula: 'event-based:per_invoice',
+    dueDescription: 'Payment to MSME suppliers within 45 days of acceptance/deemed acceptance of goods/services',
+    penalty: 'Interest at 3x bank rate compounded monthly (MSMED Act). 30% of outstanding disallowed as expense u/s 43B(h) of IT Act if not paid within 45 days.',
+    isCritical: true,
+    documentsRequired: ['MSME supplier list', 'Invoice dates', 'Payment receipts', 'Udyam registration certificates of suppliers'],
+    sourceUrl: 'https://samadhaan.msme.gov.in/',
+    conditions: {},
+    effectiveFrom: '2024-04-01',
+    lastVerified: '2026-04-06',
+    verifiedBy: 'System',
+    notes: 'Applies to ALL companies paying MSME-registered vendors. The buyer company (not the MSME entity) faces the disallowance. Must track MSME status of all vendors.',
+    applicabilityReason: 'All companies must pay MSME-registered suppliers within 45 days or face tax disallowance',
+  },
 
   {
     id: 'udyam-registration',

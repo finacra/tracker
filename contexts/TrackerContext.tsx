@@ -6,6 +6,7 @@ import {
   useContext,
   useState,
   useMemo,
+  useEffect,
   type ReactNode,
 } from 'react'
 import { EMPTY_REQUIREMENT_FORM, type RequirementForm } from '@/app/data-room/components/tracker/RequirementFormModal'
@@ -65,6 +66,8 @@ interface TrackerContextValue extends TrackerExternalData {
   // Filter state
   trackerView: 'list' | 'calendar'
   setTrackerView: (v: 'list' | 'calendar') => void
+  sortMode: 'chronological' | 'category'
+  setSortMode: (v: 'chronological' | 'category') => void
   selectedTrackerFY: string
   setSelectedTrackerFY: (v: string) => void
   selectedMonth: string | null
@@ -152,6 +155,7 @@ export function TrackerContextProvider({
 
   // ── Filter state ────────────────────────────────────────────────────────────
   const [trackerView, setTrackerView] = useState<'list' | 'calendar'>('list')
+  const [sortMode, setSortMode] = useState<'chronological' | 'category'>('chronological')
   const [selectedTrackerFY, setSelectedTrackerFY] = useState('')
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
   const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState(false)
@@ -168,6 +172,14 @@ export function TrackerContextProvider({
   const [selectedRequirements, setSelectedRequirements] = useState<Set<string>>(new Set())
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth())
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear())
+
+  // ── Default FY to current financial year on mount ───────────────────────────
+  const { financialYears } = external
+  useEffect(() => {
+    if (!selectedTrackerFY && financialYears.length > 0) {
+      setSelectedTrackerFY(financialYears[0])
+    }
+  }, [financialYears]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Modal / form state ──────────────────────────────────────────────────────
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -276,7 +288,8 @@ export function TrackerContextProvider({
 
     const result = filtered.filter((req) => {
       if (categoryFilter !== 'all') {
-        if (categoryFilter === 'critical' && !(req.isCritical || req.status === 'overdue')) return false
+        if (categoryFilter === 'critical' && !req.isCritical) return false
+        if (categoryFilter === 'overdue' && req.status !== 'overdue') return false
         if (categoryFilter === 'pending' && req.status !== 'pending') return false
         if (categoryFilter === 'upcoming' && req.status !== 'upcoming') return false
         if (categoryFilter === 'completed' && req.status !== 'completed') return false
@@ -303,6 +316,16 @@ export function TrackerContextProvider({
         if (!text.includes(q)) return false
       }
       return true
+    })
+
+    // Always sort chronologically by due date (ascending)
+    result.sort((a, b) => {
+      const dateA = normalizeDate(a.dueDate)
+      const dateB = normalizeDate(b.dueDate)
+      if (!dateA && !dateB) return 0
+      if (!dateA) return 1
+      if (!dateB) return -1
+      return dateA.getTime() - dateB.getTime()
     })
 
     const duration = performance.now() - startTime
@@ -347,10 +370,17 @@ export function TrackerContextProvider({
         category,
         items: filteredRequirements
           .filter((r) => r.category === category)
-          .sort((a, b) => (a.dueDate || '').localeCompare(b.dueDate || '')),
+          .sort((a, b) => {
+            const da = normalizeDate(a.dueDate)
+            const db = normalizeDate(b.dueDate)
+            if (!da && !db) return 0
+            if (!da) return 1
+            if (!db) return -1
+            return da.getTime() - db.getTime()
+          }),
       }))
       .filter((g) => g.items.length > 0)
-  }, [filteredRequirements, categoryOrder])
+  }, [filteredRequirements, categoryOrder, normalizeDate])
 
   // ── Derived: requirementsByDate ──────────────────────────────────────────────
   const requirementsByDate = useMemo(() => {
@@ -374,6 +404,7 @@ export function TrackerContextProvider({
 
     // Filter state
     trackerView, setTrackerView,
+    sortMode, setSortMode,
     selectedTrackerFY, setSelectedTrackerFY,
     selectedMonth, setSelectedMonth,
     isMonthDropdownOpen, setIsMonthDropdownOpen,

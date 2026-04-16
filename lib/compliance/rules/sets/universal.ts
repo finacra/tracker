@@ -134,7 +134,7 @@ export const UNIVERSAL_RULES: ComplianceRule[] = [
     effectiveFrom: '1961-04-01',
     lastVerified: '2026-03-15',
     verifiedBy: 'System',
-    notes: 'Every entity making payments subject to TDS must deduct and file returns. Practically all companies.',
+    notes: 'Every entity making payments subject to TDS must deduct and file returns. Practically all companies. Form numbers may change under the new Income Tax Act when notified — currently 24Q (salary) and 26Q (non-salary) remain effective.',
     applicabilityReason: 'Any entity deducting TDS must file quarterly TDS returns',
   },
 
@@ -156,6 +156,7 @@ export const UNIVERSAL_RULES: ComplianceRule[] = [
     effectiveFrom: '1961-04-01',
     lastVerified: '2026-03-15',
     verifiedBy: 'System',
+    notes: 'Form numbers may change under the new Income Tax Act when notified — currently 24Q (salary) and 26Q (non-salary) remain effective.',
     applicabilityReason: 'Any entity deducting TDS must file quarterly TDS returns',
   },
 
@@ -177,6 +178,7 @@ export const UNIVERSAL_RULES: ComplianceRule[] = [
     effectiveFrom: '1961-04-01',
     lastVerified: '2026-03-15',
     verifiedBy: 'System',
+    notes: 'Form numbers may change under the new Income Tax Act when notified — currently 24Q (salary) and 26Q (non-salary) remain effective.',
     applicabilityReason: 'Any entity deducting TDS must file quarterly TDS returns',
   },
 
@@ -198,6 +200,7 @@ export const UNIVERSAL_RULES: ComplianceRule[] = [
     effectiveFrom: '1961-04-01',
     lastVerified: '2026-03-15',
     verifiedBy: 'System',
+    notes: 'Form numbers may change under the new Income Tax Act when notified — currently 24Q (salary) and 26Q (non-salary) remain effective.',
     applicabilityReason: 'Any entity deducting TDS must file quarterly TDS returns',
   },
 

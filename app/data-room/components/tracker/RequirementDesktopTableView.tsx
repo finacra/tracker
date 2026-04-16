@@ -651,7 +651,7 @@ export default function RequirementDesktopTableView({
                               } else {
                                 showToast(result.error || 'Failed to remove compliance', 'error')
                               }
-                            } catch (error: any) {
+                            } catch (error) {
                               console.error('Error hiding compliance:', error)
                               showToast('Failed to remove compliance', 'error')
                             }
@@ -680,9 +680,9 @@ export default function RequirementDesktopTableView({
                                 } else {
                                   showToast(result.error || 'Failed to delete', 'error')
                                 }
-                              } catch (error: any) {
+                              } catch (error) {
                                 console.error('Error deleting requirement:', error)
-                                showToast(error.message || 'Error deleting requirement', 'error')
+                                showToast(error instanceof Error ? error.message : 'Error deleting requirement', 'error')
                               }
                             }}
                             className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
