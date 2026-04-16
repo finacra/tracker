@@ -115,13 +115,20 @@ export async function processDocumentContent(documentId: string, companyId: stri
       })
     );
 
-    const validChunks = chunkData.filter((c): c is NonNullable<typeof c> => c !== null && c.embedding !== null);
+    // Keep chunks even without embeddings — the text content is valuable
+    // for the document agent + CIA text search. Embeddings can be retried
+    // later via reprocessDocument. Filter only truly failed chunks (null).
+    const validChunks = chunkData.filter((c): c is NonNullable<typeof c> => c !== null);
+    const embeddedCount = validChunks.filter(c => c.embedding !== null).length;
 
     if (validChunks.length === 0) {
-      throw new Error(`All ${chunks.length} embedding calls failed.`);
+      throw new Error(`All ${chunks.length} chunk processing calls failed.`);
     }
 
-    console.log(`${LOG_PREFIX} ${validChunks.length}/${chunks.length} chunks embedded.`);
+    console.log(`${LOG_PREFIX} ${validChunks.length}/${chunks.length} chunks valid, ${embeddedCount} with embeddings.`);
+    if (embeddedCount === 0) {
+      console.warn(`${LOG_PREFIX} ⚠️ 0 embeddings generated — Azure OpenAI embedding may be failing. Text chunks saved without vectors. CIA semantic search will be degraded until embeddings are regenerated.`);
+    }
 
     // 5. Save to DB
     console.log(`${LOG_PREFIX} 💾 Saving ${validChunks.length} chunks to Supabase...`);
