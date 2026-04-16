@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import GstRegistrationsSection from './GstRegistrationsSection'
 
 interface Company {
   id: string
@@ -14,7 +15,7 @@ interface Company {
 interface GSTTabProps {
   // Data
   currentCompany: Company | null
-  
+
   // Functions
   formatCurrency: (amount: number, countryCode?: string) => string
 }
@@ -36,6 +37,11 @@ export default function GSTTab({
 
   return (
     <div className="space-y-6">
+      {/* Registrations: the authoritative list of this company's GSTINs,
+          with state + within/outside classification. Renders independently
+          of the portal-integration wizard below. */}
+      {currentCompany && <GstRegistrationsSection companyId={currentCompany.id} />}
+
       {/* GST Integration Flow */}
       {gstStep === 'connect' && (
         <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-8">
