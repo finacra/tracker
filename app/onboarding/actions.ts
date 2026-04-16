@@ -6,6 +6,8 @@ import { generateEmbedding } from '@/lib/utils/embeddings'
 import { processDocumentContent } from '@/lib/utils/document-processor'
 import { validateCompanyId, sanitizeStringInput, isValidUUID } from '@/lib/utils/input-validation'
 import { handleActionError } from '@/lib/errors/handle-error'
+import { prisma } from '@/lib/prisma'
+import { validateGSTN, parseGSTN } from '@/lib/utils/gstn'
 
 async function requireCurrentUser() {
   const { authService } = createServerContainer()
@@ -55,6 +57,7 @@ export async function completeOnboarding(
     annualTurnover?: string
     isGstRegistered?: boolean
     gstNumber?: string
+    gstRegistrations?: Array<{ gstin: string; state: string }>
     netWorth?: string
     isMsme?: string
     msmeCategory?: string
@@ -162,6 +165,30 @@ export async function completeOnboarding(
   })
   } catch (createErr) {
     return handleActionError(createErr)
+  }
+
+  // 1a. Persist GSTIN registrations — one row per GSTIN, with state stamped
+  // at save time (derived from the GSTIN's first two digits when available,
+  // otherwise taken verbatim from the form). Invalid/blank entries are
+  // silently dropped so an empty repeater row doesn't block the submit.
+  const normalizedGstRegistrations = (formData.gstRegistrations || [])
+    .map((reg) => {
+      const gstin = (reg.gstin || '').toUpperCase().trim()
+      if (!gstin) return null
+      const derivedState = parseGSTN(gstin)?.stateName
+      return { gstin, state: (reg.state || derivedState || '').trim() || null }
+    })
+    .filter((r): r is { gstin: string; state: string | null } => r !== null && validateGSTN(r.gstin))
+
+  if (normalizedGstRegistrations.length > 0) {
+    await prisma.gstRegistration.createMany({
+      data: normalizedGstRegistrations.map((r) => ({
+        company_id: company.id,
+        gstin: r.gstin,
+        state: r.state,
+      })),
+      skipDuplicates: true,
+    })
   }
 
   // 1b. Assign admin role to the company creator

@@ -72,7 +72,6 @@ model Company {
   annual_turnover         Decimal?  @db.Decimal(15, 2)
   is_gst_registered       Boolean?  @default(false)
   gst_number              String?   @db.VarChar(15)
-  gst_numbers             String[]  @default([])
   qrmp_eligible           Boolean?  @default(false)
   net_worth               Decimal?  @db.Decimal(15, 2)
   is_msme                 Boolean?
@@ -92,10 +91,26 @@ model Company {
   created_at              DateTime  @default(now()) @db.Timestamptz
   updated_at              DateTime  @default(now()) @db.Timestamptz
 
-  requirements  RegulatoryRequirement[]
-  notifications CompanyNotification[]
+  requirements       RegulatoryRequirement[]
+  notifications      CompanyNotification[]
+  gst_registrations  GstRegistration[]
 
   @@map("companies")
+}
+
+model GstRegistration {
+  id         String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id String   @db.Uuid
+  gstin      String   @db.VarChar(15)
+  state      String?
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @db.Timestamptz
+
+  company    Company  @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@unique([company_id, gstin])
+  @@index([company_id])
+  @@map("gst_registrations")
 }
 
 model CiaConversation {

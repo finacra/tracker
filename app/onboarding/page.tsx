@@ -9,6 +9,7 @@ import {
   mapIndustryToCategories
 } from '@/lib/utils/entity-detection'
 import { parseCIN, type ParsedCIN } from '@/utils/cin-parser'
+import { parseGSTN, extractPANFromGSTN } from '@/lib/utils/gstn'
 import { useAuth } from '@/hooks/useAuth'
 import { useUserSubscription } from '@/hooks/useCompanyAccess'
 import { completeOnboarding, uploadFileToStorage } from './actions'
@@ -85,6 +86,10 @@ export default function OnboardingPage() {
     annualTurnover: '',
     isGstRegistered: false,
     gstNumber: '',
+    // Multiple GSTINs — each row carries its own state (derived from the
+    // first two digits of the GSTIN). "Within state" vs "outside state" is
+    // computed at read time by comparing each row's state to formData.state.
+    gstRegistrations: [] as Array<{ gstin: string; state: string }>,
     netWorth: '',
     isMsme: '',
     msmeCategory: '',
@@ -351,29 +356,33 @@ export default function OnboardingPage() {
 
     setIsVerifyingCIN(false)
 
-    // Auto-lookup GST number via Perplexity (non-blocking, runs in background)
+    // Auto-lookup GST numbers via Perplexity (non-blocking, runs in background).
+    // Populates every discovered GSTIN + state into the registrations list; the
+    // first row mirrors to the legacy gstNumber field for downstream callers.
     const companyNameForGST = companyData?.company || formData.companyName
     const panForGST = formData.panNumber || (parsed?.isValid ? '' : '')
-    if (companyNameForGST && !formData.gstNumber) {
+    if (companyNameForGST && formData.gstRegistrations.length === 0) {
       lookupGST({
         companyName: companyNameForGST,
         cin: formData.cinNumber.trim(),
         pan: panForGST || undefined,
       }).then((gstResult) => {
         if (gstResult.found && gstResult.gstNumbers && gstResult.gstNumbers.length > 0) {
-          const primaryGST = gstResult.gstNumbers[0]
+          const registrations = gstResult.gstNumbers.map(g => ({ gstin: g.gstn, state: g.state }))
           setFormData(prev => ({
             ...prev,
             isGstRegistered: true,
-            gstNumber: primaryGST.gstn,
-            // Auto-fill PAN from GST if not already set
+            gstRegistrations: registrations,
+            gstNumber: registrations[0].gstin,
             ...((!prev.panNumber && gstResult.pan) ? { panNumber: gstResult.pan } : {}),
           }))
-          const stateCount = new Set(gstResult.gstNumbers.map(g => g.state)).size
-          const msg = gstResult.gstNumbers.length > 1
-            ? `Found ${gstResult.gstNumbers.length} GST registrations across ${stateCount} state(s)`
-            : `GST number found: ${primaryGST.gstn} (${primaryGST.state})`
-          showToast(msg, 'success')
+          const stateCount = new Set(registrations.map(r => r.state)).size
+          showToast(
+            registrations.length > 1
+              ? `Found ${registrations.length} GSTINs across ${stateCount} state${stateCount > 1 ? 's' : ''}`
+              : `GST number found: ${registrations[0].gstin} (${registrations[0].state})`,
+            'success',
+          )
         }
       }).catch(() => {
         // Non-critical — silently ignore GST lookup failures
@@ -1608,81 +1617,149 @@ export default function OnboardingPage() {
                   <p className="text-gray-600 text-[10px] mt-1">Determines CSR (500Cr+), CARO thresholds</p>
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">GSTIN</label>
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
+                  <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">GSTINs</label>
+
+                  <div className="flex items-center gap-3 mb-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={formData.isGstRegistered}
-                        onChange={(e) => setFormData(prev => ({ ...prev, isGstRegistered: e.target.checked, gstNumber: e.target.checked ? prev.gstNumber : '' }))}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev,
+                          isGstRegistered: e.target.checked,
+                          // Seed a first row when toggling on; clear list when toggling off.
+                          gstRegistrations: e.target.checked
+                            ? (prev.gstRegistrations.length > 0 ? prev.gstRegistrations : [{ gstin: '', state: '' }])
+                            : [],
+                          gstNumber: e.target.checked ? prev.gstNumber : '',
+                        }))}
                         className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 bg-gray-800 border-gray-600 rounded focus:ring-gray-500"
                       />
                       <span className="text-gray-400 text-xs">GST Registered</span>
                     </label>
-                    {formData.isGstRegistered && (
-                      <>
-                        <input
-                          type="text"
-                          name="gstNumber"
-                          value={formData.gstNumber}
-                          onChange={(e) => {
-                            handleInputChange(e)
-                            // Auto-extract PAN from GSTN when 15 chars entered
-                            const gstn = e.target.value.toUpperCase().trim()
-                            if (gstn.length === 15) {
-                              const pan = gstn.slice(2, 12)
-                              if (/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan) && !formData.panNumber) {
-                                setFormData(prev => ({ ...prev, panNumber: pan }))
-                              }
+
+                    {formData.isGstRegistered && formData.gstRegistrations.length === 0 && formData.companyName && (
+                      <button
+                        type="button"
+                        disabled={isLookingUpGST}
+                        onClick={async () => {
+                          setIsLookingUpGST(true)
+                          try {
+                            const result = await lookupGST({
+                              companyName: formData.companyName,
+                              cin: formData.cinNumber || undefined,
+                              pan: formData.panNumber || undefined,
+                            })
+                            if (result.found && result.gstNumbers && result.gstNumbers.length > 0) {
+                              const registrations = result.gstNumbers.map(g => ({ gstin: g.gstn, state: g.state }))
+                              const firstPan = extractPANFromGSTN(registrations[0].gstin)
+                              setFormData(prev => ({
+                                ...prev,
+                                gstRegistrations: registrations,
+                                gstNumber: registrations[0].gstin,
+                                ...(!prev.panNumber && (result.pan || firstPan) ? { panNumber: result.pan || firstPan || '' } : {}),
+                              }))
+                              const stateCount = new Set(registrations.map(r => r.state)).size
+                              showToast(
+                                registrations.length > 1
+                                  ? `Found ${registrations.length} GSTINs across ${stateCount} state${stateCount > 1 ? 's' : ''}`
+                                  : `GST found: ${registrations[0].gstin} (${registrations[0].state})`,
+                                'success',
+                              )
+                            } else {
+                              showToast('No GST registration found for this company', 'info')
                             }
-                          }}
-                          placeholder="22AAAAA0000A1Z5"
-                          maxLength={15}
-                          className="flex-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors uppercase"
-                        />
-                        {!formData.gstNumber && formData.companyName && (
-                          <button
-                            type="button"
-                            disabled={isLookingUpGST}
-                            onClick={async () => {
-                              setIsLookingUpGST(true)
-                              try {
-                                const result = await lookupGST({
-                                  companyName: formData.companyName,
-                                  cin: formData.cinNumber || undefined,
-                                  pan: formData.panNumber || undefined,
-                                })
-                                if (result.found && result.gstNumbers && result.gstNumbers.length > 0) {
-                                  const primary = result.gstNumbers[0]
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    gstNumber: primary.gstn,
-                                    ...(!prev.panNumber && result.pan ? { panNumber: result.pan } : {}),
-                                  }))
-                                  showToast(`GST found: ${primary.gstn} (${primary.state})`, 'success')
-                                } else {
-                                  showToast('No GST registration found for this company', 'info')
-                                }
-                              } catch {
-                                showToast('GST lookup failed', 'error')
-                              }
-                              setIsLookingUpGST(false)
-                            }}
-                            className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-gray-300 text-xs hover:bg-gray-700 hover:text-white transition-colors whitespace-nowrap disabled:opacity-50"
-                          >
-                            {isLookingUpGST ? (
-                              <span className="flex items-center gap-1.5">
-                                <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                                Looking up...
-                              </span>
-                            ) : (
-                              <>Find GST</>
-                            )}
-                          </button>
+                          } catch {
+                            showToast('GST lookup failed', 'error')
+                          }
+                          setIsLookingUpGST(false)
+                        }}
+                        className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-gray-300 text-xs hover:bg-gray-700 hover:text-white transition-colors whitespace-nowrap disabled:opacity-50"
+                      >
+                        {isLookingUpGST ? (
+                          <span className="flex items-center gap-1.5">
+                            <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                            Looking up...
+                          </span>
+                        ) : (
+                          <>Find GST</>
                         )}
-                      </>
+                      </button>
                     )}
                   </div>
+
+                  {formData.isGstRegistered && (
+                    <div className="space-y-2">
+                      {formData.gstRegistrations.map((reg, idx) => {
+                        const homeState = formData.state?.trim()
+                        const isWithin = homeState && reg.state && reg.state.toLowerCase() === homeState.toLowerCase()
+                        return (
+                          <div key={idx} className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={reg.gstin}
+                              onChange={(e) => {
+                                const gstin = e.target.value.toUpperCase().trim().slice(0, 15)
+                                const parsed = parseGSTN(gstin)
+                                setFormData(prev => {
+                                  const next = [...prev.gstRegistrations]
+                                  next[idx] = { gstin, state: parsed?.stateName || next[idx].state }
+                                  const panUpdate = (!prev.panNumber && gstin.length === 15)
+                                    ? { panNumber: extractPANFromGSTN(gstin) || '' }
+                                    : {}
+                                  return {
+                                    ...prev,
+                                    gstRegistrations: next,
+                                    // Keep legacy single gstNumber mirrored with the first row for
+                                    // downstream compatibility until callers migrate.
+                                    gstNumber: idx === 0 ? gstin : prev.gstNumber,
+                                    ...panUpdate,
+                                  }
+                                })
+                              }}
+                              placeholder="22AAAAA0000A1Z5"
+                              maxLength={15}
+                              className="flex-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors uppercase"
+                            />
+                            <div className="w-40 px-3 py-2 bg-gray-900/50 border border-gray-800 rounded-lg text-gray-400 text-xs flex items-center justify-between">
+                              <span className="truncate">{reg.state || '—'}</span>
+                              {reg.state && (
+                                <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${isWithin ? 'bg-emerald-900/40 text-emerald-300' : 'bg-amber-900/40 text-amber-300'}`}>
+                                  {isWithin ? 'Within' : 'Outside'}
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setFormData(prev => {
+                                const next = prev.gstRegistrations.filter((_, i) => i !== idx)
+                                return {
+                                  ...prev,
+                                  gstRegistrations: next,
+                                  gstNumber: next[0]?.gstin || '',
+                                }
+                              })}
+                              className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                              title="Remove"
+                              aria-label={`Remove GSTIN row ${idx + 1}`}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        )
+                      })}
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({
+                          ...prev,
+                          gstRegistrations: [...prev.gstRegistrations, { gstin: '', state: '' }],
+                        }))}
+                        className="text-xs text-gray-400 hover:text-white transition-colors"
+                      >
+                        + Add another GSTIN
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
 
