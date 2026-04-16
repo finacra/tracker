@@ -144,6 +144,79 @@ model CompanyComplianceExclusion {
   @@map("company_compliance_exclusions")
 }
 
+// ── Compliance Rule Catalogue ─────────────────────────────────────────────
+// Versioned source of truth for every compliance obligation the tracker
+// can raise. Replaces the hard-coded TS rule sets in
+// lib/compliance/rules/sets/*. Each row is "rule X as in force from
+// effectiveFrom to effectiveTo"; when an Act changes (e.g., IT Act 1961 →
+// 2025 on 2026-04-01) we insert new rows rather than mutating old ones,
+// so historical tracker renders stay correct.
+//
+// The companion CompanyFact + ComplianceAssessment tables (added in
+// later phases) turn these rules into per-company applicability
+// decisions driven by real facts, not just attribute guesses.
+model ComplianceRule {
+  // Stable logical id, e.g., "tds.return.q1@itact2025". Kept readable
+  // because CAs will sometimes write SQL against this table.
+  id                 String    @id
+
+  category           String                              // RoC / GST / Income Tax / Payroll / ...
+  name               String
+  description        String?
+  act                String                              // "Income Tax Act, 2025"
+  section_ref        String                              // "Section 393"
+  legacy_section_ref String?                             // "Section 200(3)" (when the rule supersedes an older section)
+  authority          String                              // "Income Tax Department (TRACES)"
+  frequency          String                              // monthly / quarterly / half-yearly / annual / one-time / event-based
+  due_date_formula   String?
+  due_description    String?
+  penalty            String?
+  is_critical        Boolean   @default(false)
+  documents_required String[]  @default([])
+  form_refs          Json?                               // { primary: "Form 140", legacy: ["24Q","26Q"] }
+  source_url         String?
+
+  // Temporal — the rule is in force during [effective_from, effective_to]
+  effective_from     DateTime  @db.Date
+  effective_to       DateTime? @db.Date
+
+  // Act-transition chain so we can trace "this rule replaced that rule"
+  supersedes_rule_id     String?
+  superseded_by_rule_id  String?
+
+  // Machine-readable applicability — lets the deterministic evaluator
+  // decide yes/no/maybe from facts without needing an LLM for every rule.
+  // triggerKind values:
+  //   "always"             — always applies while entity matches entity_scope
+  //   "payment_above"      — triggered when a qualifying payment exceeds threshold_amount on threshold_basis
+  //   "turnover_above"     — annual turnover above threshold_amount
+  //   "event_based"        — fires on a specific event (hiring, listing, etc.)
+  trigger_kind       String    @default("always")
+  threshold_amount   Decimal?  @db.Decimal(15, 2)
+  threshold_basis    String?                             // "per_month_per_payee" | "annual_aggregate" | "single_txn" | "annual_turnover"
+
+  // Structured scope that maps 1:1 to the existing RuleConditions type.
+  // Keeping it JSON so adding a new condition (e.g., "isSection8") never
+  // needs a migration.
+  entity_scope       Json      @default("{}")
+
+  // Provenance
+  applicability_reason String?
+  notes                String?
+  last_verified        DateTime? @db.Date
+  verified_by          String?
+
+  created_at         DateTime  @default(now()) @db.Timestamptz
+  updated_at         DateTime  @default(now()) @updatedAt @db.Timestamptz
+
+  @@index([category])
+  @@index([effective_from])
+  @@index([effective_to])
+  @@index([act])
+  @@index([supersedes_rule_id])
+  @@map("compliance_rules")
+}
+
 model CiaConversation {
   id         String       @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   company_id String       @db.Uuid
