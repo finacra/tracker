@@ -72,6 +72,8 @@ model Company {
   annual_turnover         Decimal?  @db.Decimal(15, 2)
   is_gst_registered       Boolean?  @default(false)
   gst_number              String?   @db.VarChar(15)
+  gst_numbers             String[]  @default([])
+  qrmp_eligible           Boolean?  @default(false)
   net_worth               Decimal?  @db.Decimal(15, 2)
   is_msme                 Boolean?
   msme_category           String?   @db.VarChar(10)

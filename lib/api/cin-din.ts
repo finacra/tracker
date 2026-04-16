@@ -1,3 +1,79 @@
+// ── GST Lookup (via Perplexity AI) ────────────────────────────────────────
+
+export interface GSTLookupResult {
+  success: boolean
+  found: boolean
+  companyName?: string
+  pan?: string
+  gstNumbers?: Array<{ gstn: string; state: string; status: string }>
+  taxpayerType?: string
+  error?: string
+}
+
+/**
+ * Lookup GST registration for a company using Perplexity AI.
+ * GST data is publicly available on gst.gov.in.
+ */
+export async function lookupGST(params: {
+  companyName?: string
+  cin?: string
+  pan?: string
+}): Promise<GSTLookupResult> {
+  try {
+    const response = await fetch('/api/lookup-gst', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    })
+
+    const data = await response.json()
+
+    if (data.error) {
+      return { success: false, found: false, error: data.error }
+    }
+
+    return {
+      success: true,
+      found: data.found || false,
+      companyName: data.companyName || '',
+      pan: data.pan || '',
+      gstNumbers: data.gstNumbers || [],
+      taxpayerType: data.taxpayerType || '',
+    }
+  } catch (error) {
+    console.error('Error looking up GST:', error)
+    return { success: false, found: false, error: 'Failed to lookup GST. Please try again.' }
+  }
+}
+
+/**
+ * Fallback company lookup via Perplexity AI when KYC API fails.
+ * Returns data in the same shape as CIN verification API.
+ */
+export async function lookupCompanyByPerplexity(params: {
+  cin?: string
+  companyName?: string
+}): Promise<{ success: true; data: CINVerificationResponse } | { success: false; error: string }> {
+  try {
+    const response = await fetch('/api/lookup-company', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    })
+
+    const data = await response.json()
+
+    if (data.error) {
+      return { success: false, error: data.error }
+    }
+
+    return { success: true, data }
+  } catch (error) {
+    console.error('Error looking up company via Perplexity:', error)
+    return { success: false, error: 'AI company lookup failed. Please enter details manually.' }
+  }
+}
+
 // Types for CIN/DIN API responses
 
 export interface CINCompanyData {
@@ -175,10 +251,11 @@ export async function verifyCIN(cin: string): Promise<{ success: true; data: CIN
     }
 
     return { success: true, data }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error verifying CIN:', error)
     let errorMessage = 'Failed to verify CIN. Please try again.'
-    if (error.message?.includes('fetch') || error.message?.includes('network')) {
+    const errMsg = error instanceof Error ? error.message : ''
+    if (errMsg.includes('fetch') || errMsg.includes('network')) {
       errorMessage = 'Network error. Please check your connection and try again.'
     }
     return { success: false, error: errorMessage }
@@ -215,10 +292,11 @@ export async function verifyDIN(din: string): Promise<{ success: true; data: DIN
     }
 
     return { success: true, data }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error verifying DIN:', error)
     let errorMessage = 'Failed to verify DIN. Please try again.'
-    if (error.message?.includes('fetch') || error.message?.includes('network')) {
+    const errMsg = error instanceof Error ? error.message : ''
+    if (errMsg.includes('fetch') || errMsg.includes('network')) {
       errorMessage = 'Network error. Please check your connection and try again.'
     }
     return { success: false, error: errorMessage }
