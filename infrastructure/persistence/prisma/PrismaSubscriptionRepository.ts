@@ -98,8 +98,8 @@ export class PrismaSubscriptionRepository implements SubscriptionRepository {
                     end_date: trialEnd,
                 },
             })
-        } catch (err: any) {
-            console.error('[createUserTrial] FAILED:', err.message || err)
+        } catch (err) {
+            console.error('[createUserTrial] FAILED:', err instanceof Error ? err.message : err)
             throw err
         }
     }

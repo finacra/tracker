@@ -543,9 +543,9 @@ function DataRoomPageInner() {
           console.log(`[DataRoomInit] Initialization took ${(performance.now() - startTime).toFixed(2)}ms`);
           console.log(`[DataRoomInit] Final selected company: ${selected?.name} (${selected?.id})`);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error("[DataRoomInit] Initialization error:", err);
-        setInitError(err.message || "Failed to initialize Data Room");
+        setInitError(err instanceof Error ? err.message : "Failed to initialize Data Room");
         setIsDataRoomInitLoading(false);
         setIsLoadingCompanies(false);
         setIsLoading(false);
@@ -743,9 +743,9 @@ function DataRoomPageInner() {
         console.error("[fetchVaultDocuments] Failed to load vault documents:", result.error);
         setVaultDocuments([]);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("[fetchVaultDocuments] Error fetching vault documents:", err);
-      if (err.message?.includes('UnrecognizedActionError')) {
+      if (err instanceof Error && err.message?.includes('UnrecognizedActionError')) {
         window.location.reload();
       }
       setVaultDocuments([]);
@@ -2096,9 +2096,9 @@ function DataRoomPageInner() {
       } else {
         showToast("Upload failed: Unknown error", "error");
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Upload failed:", error);
-      showToast("Upload failed: " + error.message, "error");
+      showToast("Upload failed: " + (error instanceof Error ? error.message : 'Something went wrong'), "error");
     } finally {
       setIsUploading(false);
     }
@@ -2811,9 +2811,9 @@ function DataRoomPageInner() {
         );
         showToast(`Failed to update status: ${result.error}`, "error");
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error updating status:", error);
-      showToast(`Error: ${error.message}`, "error");
+      showToast(`Error: ${error instanceof Error ? error.message : 'Something went wrong'}`, "error");
     }
   };
 
@@ -3591,8 +3591,8 @@ function DataRoomPageInner() {
             console.error("Failed to track document upload:", err);
           });
         }
-      } catch (uploadError: any) {
-        throw new Error(uploadError.message || "Failed to upload document");
+      } catch (uploadError) {
+        throw new Error(uploadError instanceof Error ? uploadError.message : "Failed to upload document");
       }
 
       setUploadStage("Verifying upload...");
@@ -3714,9 +3714,9 @@ function DataRoomPageInner() {
         setUploadStage("");
         setPreviewFileUrl(null);
       }, 1500);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error uploading document:", error);
-      showToast(`âŒ Error uploading document: ${error.message}`, "error");
+      showToast(`âŒ Error uploading document: ${error instanceof Error ? error.message : 'Something went wrong'}`, "error");
       setUploadProgress(0);
       setUploadStage("");
     } finally {

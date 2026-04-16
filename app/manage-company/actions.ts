@@ -1,6 +1,7 @@
 'use server'
 
 import { createServerContainer } from '@/lib/composition/server-container'
+import { handleActionError } from '@/lib/errors/handle-error'
 import { validateCompanyId } from '@/lib/utils/input-validation'
 
 type DirectorDto = {
@@ -83,8 +84,8 @@ export async function getManageCompanyData(companyIdParam: string | null): Promi
         companyRepository.getDetailsById(companyId),
         companyMembershipRepository.findRole(user.id, companyId),
       ])
-    } catch (detailsError: any) {
-      return { success: false, error: 'Failed to load company: ' + detailsError.message }
+    } catch (error) {
+      return handleActionError(error)
     }
 
     if (!company) {
@@ -150,10 +151,7 @@ export async function getManageCompanyData(companyIdParam: string | null): Promi
         })),
       },
     }
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || 'Failed to load company data',
-    }
+  } catch (error) {
+    return handleActionError(error)
   }
 }

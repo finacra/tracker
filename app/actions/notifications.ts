@@ -6,6 +6,7 @@ import { MarkUserNotificationsRead } from '@/application/use-cases/notifications
 import { MarkAllUserNotificationsRead } from '@/application/use-cases/notifications/MarkAllUserNotificationsRead'
 import type { AppNotification } from '@/domain/models/Notification'
 import { createServerContainer } from '@/lib/composition/server-container'
+import { handleActionError } from '@/lib/errors/handle-error'
 
 export type Notification = AppNotification
 
@@ -31,9 +32,8 @@ export async function getNotifications(
       notifications: result.notifications as Notification[],
       unreadCount: result.unreadCount,
     }
-  } catch (error: any) {
-    console.error('Error in getNotifications:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -57,9 +57,8 @@ export async function markNotificationsRead(
     await useCase.execute(user.id, ids)
 
     return { success: true }
-  } catch (error: any) {
-    console.error('Error in markNotificationsRead:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -79,8 +78,7 @@ export async function markAllNotificationsRead(): Promise<{ success: boolean; er
     await useCase.execute(user.id)
 
     return { success: true }
-  } catch (error: any) {
-    console.error('Error in markAllNotificationsRead:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }

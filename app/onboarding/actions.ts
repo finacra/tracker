@@ -5,6 +5,7 @@ import { createServerContainer } from '@/lib/composition/server-container'
 import { generateEmbedding } from '@/lib/utils/embeddings'
 import { processDocumentContent } from '@/lib/utils/document-processor'
 import { validateCompanyId, sanitizeStringInput, isValidUUID } from '@/lib/utils/input-validation'
+import { handleActionError } from '@/lib/errors/handle-error'
 
 async function requireCurrentUser() {
   const { authService } = createServerContainer()
@@ -159,9 +160,8 @@ export async function completeOnboarding(
     dateOfLastAgm: formData.dateOfLastAgm || null,
     balanceSheetDate: formData.balanceSheetDate || null,
   })
-  } catch (createErr: any) {
-    console.error('[ONBOARD] Company create FAILED:', createErr.message || createErr)
-    throw createErr
+  } catch (createErr) {
+    return handleActionError(createErr)
   }
 
   // 1b. Assign admin role to the company creator
@@ -506,9 +506,8 @@ export async function getCompanyDirectors(companyId: string) {
   try {
     const directors = await directorRepository.getByCompanyId(companyId)
     return { success: true, directors }
-  } catch (error: any) {
-    console.error('Error fetching directors:', error)
-    return { success: false, directors: [], error: error.message }
+  } catch (error) {
+    return { ...handleActionError(error), directors: [] }
   }
 }
 
@@ -606,9 +605,8 @@ export async function uploadFileToStorage(filePath: string, fileData: ArrayBuffe
 
     if (uploadError) throw uploadError
     return { success: true }
-  } catch (err: any) {
-    console.error('Error uploading file to storage:', err)
-    return { success: false, error: err.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -625,9 +623,8 @@ export async function getDownloadUrl(filePath: string) {
 
     if (error) throw error
     return { success: true, url: data.signedUrl }
-  } catch (err: any) {
-    console.error('Error creating signed URL:', err)
-    return { success: false, error: err.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -653,8 +650,7 @@ export async function deleteDocument(documentId: string, filePath: string) {
     
     try {
       await storage.deleteFile('company-documents', [sanitizedFilePath])
-    } catch (storageError: any) {
-      console.error('Storage deletion error:', storageError)
+    } catch (storageError) {
       // Continue anyway to try and clean up metadata
     }
 
@@ -662,9 +658,8 @@ export async function deleteDocument(documentId: string, filePath: string) {
     await documentRepository.deleteCompanyDocument(documentId)
 
     return { success: true }
-  } catch (err: any) {
-    console.error('Error deleting document:', err)
-    return { success: false, error: err.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -680,12 +675,8 @@ export async function getDocumentTemplates() {
         default_frequency: template.defaultFrequency,
       })),
     }
-  } catch (err: any) {
-    console.error('Error fetching templates:', err)
-    if (err?.code === 'PGRST106' || err?.message?.includes('does not exist')) {
-      return { success: true, templates: [] }
-    }
-    return { success: false, templates: [] }
+  } catch (error) {
+    return { ...handleActionError(error), templates: [] }
   }
 }
 
@@ -748,11 +739,7 @@ export async function getCompanyDocuments(companyId: string) {
         requirement_id: document.requirementId || null,
       })),
     }
-  } catch (err: any) {
-    console.error('[getCompanyDocuments] Error:', err)
-    if (err?.code === 'PGRST106' || err?.message?.includes('does not exist')) {
-      return { success: true, documents: [], warning: 'Storage table not found' }
-    }
-    return { success: false, error: err.message, documents: [] }
+  } catch (error) {
+    return { ...handleActionError(error), documents: [] }
   }
 }

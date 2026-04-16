@@ -247,9 +247,9 @@ function SubscribePageInner() {
               setError('Payment verification failed. Please try again.')
               setIsStartingTrial(false)
             }
-          } catch (error: any) {
+          } catch (error) {
             console.error('Payment verification error:', error)
-            setError(`Payment verification failed: ${error.message}`)
+            setError(`Payment verification failed: ${error instanceof Error ? error.message : 'Something went wrong'}`)
             setIsStartingTrial(false)
           }
         },
@@ -259,9 +259,9 @@ function SubscribePageInner() {
           },
         },
       })
-    } catch (err: any) {
+    } catch (err) {
       console.error('Trial verification error:', err)
-      setError(err.message || 'Failed to start trial verification')
+      setError(err instanceof Error ? err.message : 'Failed to start trial verification')
       setIsStartingTrial(false)
     }
   }
@@ -282,9 +282,9 @@ function SubscribePageInner() {
       if (result.redirectTo) {
         router.push(result.redirectTo)
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Trial creation error:', err)
-      setError(err.message || 'Failed to create trial')
+      setError(err instanceof Error ? err.message : 'Failed to create trial')
       setIsStartingTrial(false)
     }
   }

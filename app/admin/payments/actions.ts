@@ -1,6 +1,7 @@
 'use server'
 
 import { createServerContainer } from '@/lib/composition/server-container'
+import { handleActionError } from '@/lib/errors/handle-error'
 
 export async function getTransactionHistory(options: {
   status?: 'all' | 'completed' | 'pending' | 'failed' | 'refunded'
@@ -32,12 +33,7 @@ export async function getTransactionHistory(options: {
         companyName: payment.companyId ? companyNameMap.get(payment.companyId) ?? null : null,
       })),
     }
-  } catch (error: any) {
-    console.error('Error loading transaction history:', error)
-    return {
-      success: false,
-      error: error.message || 'Failed to load transaction history',
-      payments: [],
-    }
+  } catch (error) {
+    return { ...handleActionError(error), payments: [] }
   }
 }

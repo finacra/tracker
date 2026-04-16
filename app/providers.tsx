@@ -86,8 +86,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
       resolvedAppUserIdRef.current = session.userId
       setAppUser(nextAppUser)
       return nextAppUser
-    } catch (error: any) {
-      console.error('[SYNC] Profile fetch error:', error.message || error)
+    } catch (error) {
+      console.error('[SYNC] Profile fetch error:', error instanceof Error ? error.message : error)
 
       if (requestId !== appUserRequestIdRef.current) {
         return null

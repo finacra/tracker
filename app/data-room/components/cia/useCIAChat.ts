@@ -128,8 +128,8 @@ export function useCIAChat({ companyId, onToken, onSources, onDone, onTitle, onE
             }
           }
         }
-      } catch (error: any) {
-        if (error.name !== 'AbortError') {
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
           onError('Connection lost. Please try again.')
         }
       } finally {

@@ -321,9 +321,9 @@ function ManageCompanyPageInner() {
         }
         router.push('/data-room')
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating company:', error)
-      alert('Failed to update company: ' + error.message)
+      alert('Failed to update company: ' + (error instanceof Error ? error.message : 'Something went wrong'))
     } finally {
       setIsSubmitting(false)
     }

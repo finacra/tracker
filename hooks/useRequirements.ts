@@ -51,9 +51,9 @@ export function useRequirements(
           }
         }
       })
-    } catch (err: any) {
+    } catch (err) {
       if (activeCompanyRef.current !== id) return
-      if (err?.message?.includes('UnrecognizedActionError')) {
+      if (err instanceof Error && err.message?.includes('UnrecognizedActionError')) {
         window.location.reload()
         return
       }

@@ -881,9 +881,9 @@ function BulkUploadPage() {
       } else {
         alert('No fixes were applied')
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error resolving errors:', error)
-      alert(`Error: ${error.message || 'Failed to resolve errors'}`)
+      alert(`Error: ${error instanceof Error ? error.message : 'Failed to resolve errors'}`)
     } finally {
       setIsResolvingErrors(false)
     }

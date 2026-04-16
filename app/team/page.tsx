@@ -142,8 +142,8 @@ export default function TeamPage() {
       // Refresh subscription status
       const sub = await getTeamCompanySubscription(currentCompany.id)
       setSubscription(sub)
-    } catch (err: any) {
-      alert(`Failed to revoke trial: ${err.message}`)
+    } catch (err) {
+      alert(`Failed to revoke trial: ${err instanceof Error ? err.message : 'Something went wrong'}`)
     } finally {
       setIsRevokingTrial(false)
     }
@@ -164,8 +164,8 @@ export default function TeamPage() {
       // Refresh subscription status
       const sub = await getTeamCompanySubscription(currentCompany.id)
       setSubscription(sub)
-    } catch (err: any) {
-      alert(`Failed to extend trial: ${err.message}`)
+    } catch (err) {
+      alert(`Failed to extend trial: ${err instanceof Error ? err.message : 'Something went wrong'}`)
     } finally {
       setIsExtendingTrial(false)
     }
@@ -191,8 +191,8 @@ export default function TeamPage() {
       // Refresh subscription status
       const sub = await getTeamCompanySubscription(currentCompany.id)
       setSubscription(sub)
-    } catch (err: any) {
-      alert(`Failed to grant trial: ${err.message}`)
+    } catch (err) {
+      alert(`Failed to grant trial: ${err instanceof Error ? err.message : 'Something went wrong'}`)
     } finally {
       setIsGrantingTrial(false)
     }
@@ -238,9 +238,9 @@ export default function TeamPage() {
       } else {
         alert(`Failed to send invitation: ${result.error}`)
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error inviting team member:', error)
-      alert(`Failed to send invitation: ${error.message}`)
+      alert(`Failed to send invitation: ${error instanceof Error ? error.message : 'Something went wrong'}`)
     } finally {
       setIsInviting(false)
     }
@@ -281,9 +281,9 @@ export default function TeamPage() {
       } else {
         alert(`Failed to revoke access: ${result.error}`)
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error revoking access:', error)
-      alert(`Failed to revoke access: ${error.message}`)
+      alert(`Failed to revoke access: ${error instanceof Error ? error.message : 'Something went wrong'}`)
     }
   }
 
@@ -307,9 +307,9 @@ export default function TeamPage() {
       } else {
         alert(`Failed to change role: ${result.error}`)
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error changing role:', error)
-      alert(`Failed to change role: ${error.message}`)
+      alert(`Failed to change role: ${error instanceof Error ? error.message : 'Something went wrong'}`)
     }
   }
 

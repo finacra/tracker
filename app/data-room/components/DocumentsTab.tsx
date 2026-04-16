@@ -569,9 +569,9 @@ export default function DocumentsTab({
         console.error('[handlePreview] Failed to get preview URL:', result.error)
         showToast?.(`Failed to get document preview URL: ${result.error || 'Unknown error'}`, 'error')
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('[handlePreview] Preview error:', err)
-      showToast?.(`Error loading document preview: ${err.message || 'Unknown error'}`, 'error')
+      showToast?.(`Error loading document preview: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error')
     }
   }
 
@@ -690,9 +690,9 @@ export default function DocumentsTab({
       } else {
         showToast?.('Upload failed: Unknown error', 'error')
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Upload failed:', error)
-      showToast?.('Upload failed: ' + error.message, 'error')
+      showToast?.('Upload failed: ' + (error instanceof Error ? error.message : 'Something went wrong'), 'error')
     } finally {
       setIsUploading(false)
     }
@@ -3045,7 +3045,7 @@ export default function DocumentsTab({
                             } else {
                               failCount++
                             }
-                          } catch (error: any) {
+                          } catch (error) {
                             console.error(`Error uploading ${file.name}:`, error)
                             failCount++
                           }
@@ -3067,9 +3067,9 @@ export default function DocumentsTab({
                         setBulkUploadFileOptions({})
                         setExpandedBulkFileOptions(new Set())
                         setOpenDocumentNameDropdown(null)
-                      } catch (error: any) {
+                      } catch (error) {
                         console.error('Bulk upload failed:', error)
-                        showToast?.('Bulk upload failed: ' + error.message, 'error')
+                        showToast?.('Bulk upload failed: ' + (error instanceof Error ? error.message : 'Something went wrong'), 'error')
                       } finally {
                         setIsUploading(false)
                       }
@@ -3306,9 +3306,9 @@ export default function DocumentsTab({
     
                           setIsExportModalOpen(false)
                           setSelectedDocuments(new Set())
-                        } catch (error: any) {
+                        } catch (error) {
                           console.error('Export failed:', error)
-                          showToast?.('Export failed: ' + (error.message || 'Unknown error'), 'error')
+                          showToast?.('Export failed: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error')
                         }
                       }
                     }}
@@ -3625,9 +3625,9 @@ export default function DocumentsTab({
                         } else {
                           showToast?.('Failed to send: ' + (result.error || 'Unknown error'), 'error')
                         }
-                      } catch (error: any) {
+                      } catch (error) {
                         console.error('Error sending documents:', error)
-                        showToast?.('Error sending documents: ' + error.message, 'error')
+                        showToast?.('Error sending documents: ' + (error instanceof Error ? error.message : 'Something went wrong'), 'error')
                       } finally {
                         setIsSendingEmail(false)
                       }

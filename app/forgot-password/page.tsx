@@ -37,7 +37,7 @@ function ForgotPasswordPageInner() {
       } else {
         setError(data.error || 'Failed to send reset email')
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error requesting password reset:', error)
       setError('Failed to send reset email. Please try again.')
     } finally {

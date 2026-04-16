@@ -52,9 +52,9 @@ export async function sendPasswordResetEmail(
     })
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Password Reset] Error sending reset email:', error)
-    return { success: false, error: error.message || 'Failed to send password reset email' }
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to send password reset email' }
   }
 }
 
@@ -88,9 +88,9 @@ export async function verifyPasswordResetToken(
       userId: tokenRecord.user_id,
       email: tokenRecord.email,
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Password Reset] Error verifying token:', error)
-    return { success: false, error: error.message || 'Failed to verify reset token' }
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to verify reset token' }
   }
 }
 
@@ -127,8 +127,8 @@ export async function resetPasswordWithToken(
     `
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Password Reset] Error resetting password:', error)
-    return { success: false, error: error.message || 'Failed to reset password' }
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to reset password' }
   }
 }

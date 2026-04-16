@@ -118,7 +118,7 @@ export async function generateBatchBusinessImpact(
     }
 
     return out
-  } catch (error: any) {
+  } catch (error) {
     console.error('Azure OpenAI API error (batch):', error)
     return null
   }
@@ -268,7 +268,7 @@ Format your response as three short paragraphs (one for each area), each 2-3 sen
       reputation: reputation || 'Reputation impact analysis unavailable.',
       operations: operations || 'Operational impact analysis unavailable.'
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Azure OpenAI API error:', error)
     return null
   }

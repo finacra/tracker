@@ -72,9 +72,9 @@ export default function PaymentButton({ tier, billingCycle, price, companyId, cl
               // Redirect to data-room after successful payment
               window.location.href = '/data-room'
             }
-          } catch (error: any) {
+          } catch (error) {
             console.error('Payment verification error:', error)
-            alert(`Payment verification failed: ${error.message}`)
+            alert(`Payment verification failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
           } finally {
             setIsLoading(false)
           }
@@ -85,9 +85,9 @@ export default function PaymentButton({ tier, billingCycle, price, companyId, cl
           },
         },
       })
-    } catch (error: any) {
+    } catch (error) {
       console.error('Payment error:', error)
-      alert(`Payment failed: ${error.message}`)
+      alert(`Payment failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
       setIsLoading(false)
     }
   }

@@ -257,7 +257,7 @@ export async function enrichComplianceItem(
       exactPenalty: exactPenalty || 'Not applicable',
       businessImpact: finalBusinessImpact
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error enriching compliance item:', error)
     
     // Return fallback data

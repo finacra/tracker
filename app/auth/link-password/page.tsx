@@ -65,8 +65,8 @@ function LinkPasswordPageInner() {
       setTimeout(() => {
         router.push('/data-room')
       }, 2000)
-    } catch (error: any) {
-      setError(error.message || 'Failed to link password')
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to link password')
       setIsSubmitting(false)
     }
   }

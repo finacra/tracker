@@ -152,8 +152,8 @@ async function migrateSupabaseUsers() {
         console.log(`✓ Migrated user: ${email} (${appUser.id})`)
         migrated++
 
-      } catch (error: any) {
-        console.error(`✗ Error migrating user ${supabaseUser.id}:`, error.message)
+      } catch (error) {
+        console.error(`✗ Error migrating user ${supabaseUser.id}:`, error instanceof Error ? error.message : 'Unknown error')
         errors++
       }
     }
@@ -165,7 +165,7 @@ async function migrateSupabaseUsers() {
     console.log(`\nNote: Password hashes cannot be migrated directly.`)
     console.log(`Users will need to use the password reset flow.`)
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Migration failed:', error)
   } finally {
     await prisma.$disconnect()

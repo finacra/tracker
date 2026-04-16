@@ -1,6 +1,7 @@
 'use server'
 
 import { createServerContainer } from '@/lib/composition/server-container'
+import { handleActionError } from '@/lib/errors/handle-error'
 import { validateCompanyId } from '@/lib/utils/input-validation'
 
 export async function getCompanyTrialEligibility(
@@ -82,12 +83,8 @@ export async function getCompanyTrialEligibility(
       eligible: !hasUsedCompanyTrial,
       reason: hasUsedCompanyTrial ? 'company_trial_used' : undefined,
     }
-  } catch (error: any) {
-    console.error('Error checking company trial eligibility:', error)
-    return {
-      success: false,
-      error: error.message || 'Failed to check company trial eligibility',
-    }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -123,11 +120,8 @@ export async function getSubscribeCompanyContext(
       userCompanies: userCompanies.map((company) => ({ id: company.id, name: company.name })),
       accessibleCompanies: accessibleCompanies.map((company) => ({ id: company.id, name: company.name })),
     }
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || 'Failed to load companies',
-    }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -146,8 +140,7 @@ export async function createTrialSubscription(targetCompanyId: string | null): P
     if (ownedCompanies.length === 0) {
       try {
         await subscriptionRepository.createUserTrial(user.id, user.canonicalId)
-      } catch (trialErr: any) {
-        console.error('[TRIAL] createUserTrial FAILED:', trialErr.message || trialErr)
+      } catch (trialErr) {
         throw trialErr
       }
       return { success: true, redirectTo: '/onboarding' }
@@ -179,12 +172,8 @@ export async function createTrialSubscription(targetCompanyId: string | null): P
 
     await subscriptionRepository.createCompanyTrial(user.id, finalCompanyId, user.canonicalId)
     return { success: true, redirectTo: `/data-room?company_id=${finalCompanyId}` }
-  } catch (error: any) {
-    console.error('[TRIAL] Error:', error.message || error)
-    return {
-      success: false,
-      error: error.message || 'Failed to create trial',
-    }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -213,11 +202,7 @@ export async function getCompanySubscriptionState(
     const { subscriptionRepository } = createServerContainer()
     const subscription = await subscriptionRepository.getCompanySubscriptionState(companyId)
     return { success: true, subscription }
-  } catch (error: any) {
-    console.error('Error checking company subscription state:', error)
-    return {
-      success: false,
-      error: error.message || 'Failed to check company subscription state',
-    }
+  } catch (error) {
+    return handleActionError(error)
   }
 }

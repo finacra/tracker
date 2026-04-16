@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { verifyCIN, verifyDIN, type CINDirectorData, type DINDirectorData } from '@/lib/api/cin-din'
+import { verifyCIN, verifyDIN, lookupGST, lookupCompanyByPerplexity, type CINDirectorData, type DINDirectorData } from '@/lib/api/cin-din'
 import {
   detectEntity,
   mapEntitySubTypeToFormValue,
@@ -50,6 +50,7 @@ export default function OnboardingPage() {
   const [showAddDirector, setShowAddDirector] = useState(false)
   const [entityDetection, setEntityDetection] = useState<any>(null)
   const [isCINVerified, setIsCINVerified] = useState(false)
+  const [isLookingUpGST, setIsLookingUpGST] = useState(false)
   const [currentStep, setCurrentStep] = useState(1) // 1 = Company Details, 2 = Documents
   const [exDirectors, setExDirectors] = useState<string>('') // Comma-separated or newline-separated names
 
@@ -249,26 +250,47 @@ export default function OnboardingPage() {
     // parsedCIN is auto-computed via useMemo — use it directly
     const parsed = parseCIN(formData.cinNumber.trim())
 
-    const result = await verifyCIN(formData.cinNumber.trim())
+    // Try KYC API first
+    let result = await verifyCIN(formData.cinNumber.trim())
 
-    if (!result.success) {
-      // Even if API fails, if CIN parsed successfully we can still use parsed data
+    // Check if KYC API returned usable data
+    let response = result.success ? result.data : null
+    let companyData: any = response?.data?.data?.companyData || {}
+    let directorData: any[] = response?.data?.data?.directorData || []
+    let hasApiData = companyData && Object.keys(companyData).length > 0 && companyData.company
+
+    // Fallback: If KYC API failed or returned empty data, try Perplexity
+    if (!hasApiData) {
+      console.log('[CIN] KYC API returned no data, falling back to Perplexity AI...')
+      const aiResult = await lookupCompanyByPerplexity({
+        cin: formData.cinNumber.trim(),
+        companyName: formData.companyName || undefined,
+      })
+
+      if (aiResult.success) {
+        response = aiResult.data
+        companyData = response?.data?.data?.companyData || {}
+        directorData = response?.data?.data?.directorData || []
+        hasApiData = companyData && Object.keys(companyData).length > 0 && companyData.company
+
+        if (hasApiData) {
+          showToast('Company details found via AI search', 'success')
+        }
+      }
+    }
+
+    // If still no data after both attempts, use parsed CIN data only
+    if (!hasApiData) {
       if (parsed.isValid) {
         setIsCINVerified(true)
         applyParsedCINData(parsed, null, [])
+        showToast('Company verified from CIN structure. Some fields may need manual entry.', 'info')
       } else {
-        setErrors((prev) => ({ ...prev, cinNumber: result.error }))
+        setErrors((prev) => ({ ...prev, cinNumber: 'No company data found. Please check the CIN and try again.' }))
       }
       setIsVerifyingCIN(false)
       return
     }
-
-    const response = result.data
-    console.log('CIN Response received:', JSON.stringify(response, null, 2))
-
-    const companyData = response.data?.data?.companyData || {}
-    const directorData = response.data?.data?.directorData || []
-    const hasApiData = companyData && Object.keys(companyData).length > 0 && companyData.company
 
     console.log('Company Data:', companyData)
     console.log('Director Data:', directorData)
@@ -304,15 +326,17 @@ export default function OnboardingPage() {
     }
 
     // Check for ex-directors in CIN response (if available)
-    const exDirectorData = (response.data?.data as any)?.exDirectorData ||
-                          (response.data?.data as any)?.formerDirectorData ||
-                          (response.data?.data as any)?.exDirectors ||
-                          (response.data?.data as any)?.formerDirectors ||
+    const exDirectorData = (response?.data?.data as any)?.exDirectorData ||
+                          (response?.data?.data as any)?.formerDirectorData ||
+                          (response?.data?.data as any)?.exDirectors ||
+                          (response?.data?.data as any)?.formerDirectors ||
                           []
 
     if (Array.isArray(exDirectorData) && exDirectorData.length > 0) {
       const exDirectorNames = exDirectorData
         .map((exDir: any) => {
+          // Handle both string format (from Perplexity) and object format (from KYC API)
+          if (typeof exDir === 'string') return exDir.trim()
           const firstName = exDir.firstName || exDir.FirstName || exDir.first_name || ''
           const middleName = exDir.middleName || exDir.MiddleName || exDir.middle_name || ''
           const lastName = exDir.lastName || exDir.LastName || exDir.last_name || ''
@@ -326,6 +350,35 @@ export default function OnboardingPage() {
     }
 
     setIsVerifyingCIN(false)
+
+    // Auto-lookup GST number via Perplexity (non-blocking, runs in background)
+    const companyNameForGST = companyData?.company || formData.companyName
+    const panForGST = formData.panNumber || (parsed?.isValid ? '' : '')
+    if (companyNameForGST && !formData.gstNumber) {
+      lookupGST({
+        companyName: companyNameForGST,
+        cin: formData.cinNumber.trim(),
+        pan: panForGST || undefined,
+      }).then((gstResult) => {
+        if (gstResult.found && gstResult.gstNumbers && gstResult.gstNumbers.length > 0) {
+          const primaryGST = gstResult.gstNumbers[0]
+          setFormData(prev => ({
+            ...prev,
+            isGstRegistered: true,
+            gstNumber: primaryGST.gstn,
+            // Auto-fill PAN from GST if not already set
+            ...((!prev.panNumber && gstResult.pan) ? { panNumber: gstResult.pan } : {}),
+          }))
+          const stateCount = new Set(gstResult.gstNumbers.map(g => g.state)).size
+          const msg = gstResult.gstNumbers.length > 1
+            ? `Found ${gstResult.gstNumbers.length} GST registrations across ${stateCount} state(s)`
+            : `GST number found: ${primaryGST.gstn} (${primaryGST.state})`
+          showToast(msg, 'success')
+        }
+      }).catch(() => {
+        // Non-critical — silently ignore GST lookup failures
+      })
+    }
   }
 
   /** Apply parsed CIN + optional API data to form fields */
@@ -612,8 +665,13 @@ export default function OnboardingPage() {
     const pinMatch = address.match(/\b(\d{6})\b(?!.*\d)/)
     const pinCode = pinMatch ? pinMatch[1] : ''
     
-    // Split by comma and clean up
-    const parts = address.split(',').map(p => p.trim()).filter(p => p.length > 0)
+    // Split by comma, or if no commas, treat as a single part for city/state extraction
+    let parts = address.split(',').map(p => p.trim()).filter(p => p.length > 0)
+    // If no commas found (single part), split by spaces and try to find city/state from words
+    if (parts.length <= 1) {
+      // Try city-state mapping on the full address first (handled below)
+      parts = []
+    }
     
     let city = ''
     let state = ''
@@ -674,14 +732,46 @@ export default function OnboardingPage() {
       }
     }
     
+    // If no state found, try to detect city and infer state from known city-state mapping
+    const cityStateMap: Record<string, string> = {
+      'mumbai': 'Maharashtra', 'pune': 'Maharashtra', 'nagpur': 'Maharashtra', 'thane': 'Maharashtra', 'nashik': 'Maharashtra',
+      'delhi': 'Delhi', 'new delhi': 'Delhi', 'noida': 'Uttar Pradesh', 'gurgaon': 'Haryana', 'gurugram': 'Haryana', 'faridabad': 'Haryana', 'ghaziabad': 'Uttar Pradesh',
+      'bangalore': 'Karnataka', 'bengaluru': 'Karnataka', 'mysore': 'Karnataka', 'mangalore': 'Karnataka',
+      'hyderabad': 'Telangana', 'secunderabad': 'Telangana',
+      'chennai': 'Tamil Nadu', 'coimbatore': 'Tamil Nadu', 'madurai': 'Tamil Nadu',
+      'kolkata': 'West Bengal', 'howrah': 'West Bengal',
+      'ahmedabad': 'Gujarat', 'surat': 'Gujarat', 'vadodara': 'Gujarat', 'rajkot': 'Gujarat',
+      'jaipur': 'Rajasthan', 'udaipur': 'Rajasthan', 'jodhpur': 'Rajasthan',
+      'lucknow': 'Uttar Pradesh', 'kanpur': 'Uttar Pradesh', 'agra': 'Uttar Pradesh', 'varanasi': 'Uttar Pradesh',
+      'bhopal': 'Madhya Pradesh', 'indore': 'Madhya Pradesh',
+      'chandigarh': 'Chandigarh', 'ludhiana': 'Punjab', 'amritsar': 'Punjab',
+      'kochi': 'Kerala', 'thiruvananthapuram': 'Kerala', 'trivandrum': 'Kerala',
+      'patna': 'Bihar', 'ranchi': 'Jharkhand', 'bhubaneswar': 'Odisha',
+      'dehradun': 'Uttarakhand', 'shimla': 'Himachal Pradesh', 'jammu': 'Jammu and Kashmir', 'srinagar': 'Jammu and Kashmir',
+      'goa': 'Goa', 'panaji': 'Goa', 'guwahati': 'Assam', 'imphal': 'Manipur',
+      'raipur': 'Chhattisgarh', 'visakhapatnam': 'Andhra Pradesh', 'vijayawada': 'Andhra Pradesh',
+      'pondicherry': 'Puducherry', 'puducherry': 'Puducherry',
+    }
+
+    if (!state || !city) {
+      const addrLower = address.toLowerCase()
+      for (const [knownCity, knownState] of Object.entries(cityStateMap)) {
+        if (addrLower.includes(knownCity)) {
+          if (!city) city = knownCity.charAt(0).toUpperCase() + knownCity.slice(1)
+          if (!state) state = knownState
+          break
+        }
+      }
+    }
+
     // Clean up city name (remove common suffixes)
     if (city) {
       city = city.replace(/\s*H\.o\.?\s*/i, '').trim()
       city = city.replace(/\s*Head\s*Office\s*/i, '').trim()
     }
-    
+
     console.log('Parsed Address:', { address, city, state, pinCode })
-    
+
     return { city, state, pinCode }
   }
 
@@ -815,7 +905,7 @@ export default function OnboardingPage() {
           const uploadResult = await uploadFileToStorage(filePath, fileArrayBuffer, fileObj.type)
 
           if (!uploadResult.success) {
-            throw new Error(uploadResult.error || 'Upload failed')
+            throw new Error('error' in uploadResult ? uploadResult.error : 'Upload failed')
           }
           
           uploadedDocuments.push({
@@ -850,9 +940,9 @@ export default function OnboardingPage() {
           router.push(`/subscribe?company_id=${result.companyId}`)
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error submitting form:', error)
-      showToast('Failed to complete onboarding: ' + error.message, 'error')
+      showToast('Failed to complete onboarding: ' + (error instanceof Error ? error.message : 'Something went wrong'), 'error')
     } finally {
       setIsSubmitting(false)
     }
@@ -1530,15 +1620,67 @@ export default function OnboardingPage() {
                       <span className="text-gray-400 text-xs">GST Registered</span>
                     </label>
                     {formData.isGstRegistered && (
-                      <input
-                        type="text"
-                        name="gstNumber"
-                        value={formData.gstNumber}
-                        onChange={handleInputChange}
-                        placeholder="22AAAAA0000A1Z5"
-                        maxLength={15}
-                        className="flex-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
-                      />
+                      <>
+                        <input
+                          type="text"
+                          name="gstNumber"
+                          value={formData.gstNumber}
+                          onChange={(e) => {
+                            handleInputChange(e)
+                            // Auto-extract PAN from GSTN when 15 chars entered
+                            const gstn = e.target.value.toUpperCase().trim()
+                            if (gstn.length === 15) {
+                              const pan = gstn.slice(2, 12)
+                              if (/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan) && !formData.panNumber) {
+                                setFormData(prev => ({ ...prev, panNumber: pan }))
+                              }
+                            }
+                          }}
+                          placeholder="22AAAAA0000A1Z5"
+                          maxLength={15}
+                          className="flex-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors uppercase"
+                        />
+                        {!formData.gstNumber && formData.companyName && (
+                          <button
+                            type="button"
+                            disabled={isLookingUpGST}
+                            onClick={async () => {
+                              setIsLookingUpGST(true)
+                              try {
+                                const result = await lookupGST({
+                                  companyName: formData.companyName,
+                                  cin: formData.cinNumber || undefined,
+                                  pan: formData.panNumber || undefined,
+                                })
+                                if (result.found && result.gstNumbers && result.gstNumbers.length > 0) {
+                                  const primary = result.gstNumbers[0]
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    gstNumber: primary.gstn,
+                                    ...(!prev.panNumber && result.pan ? { panNumber: result.pan } : {}),
+                                  }))
+                                  showToast(`GST found: ${primary.gstn} (${primary.state})`, 'success')
+                                } else {
+                                  showToast('No GST registration found for this company', 'info')
+                                }
+                              } catch {
+                                showToast('GST lookup failed', 'error')
+                              }
+                              setIsLookingUpGST(false)
+                            }}
+                            className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-gray-300 text-xs hover:bg-gray-700 hover:text-white transition-colors whitespace-nowrap disabled:opacity-50"
+                          >
+                            {isLookingUpGST ? (
+                              <span className="flex items-center gap-1.5">
+                                <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                                Looking up...
+                              </span>
+                            ) : (
+                              <>Find GST</>
+                            )}
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
