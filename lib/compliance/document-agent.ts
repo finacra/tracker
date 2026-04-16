@@ -161,6 +161,28 @@ Routing rules:
 - Balance sheet, P&L, audit report (not tax audit), cash flow → "financials".
 
 If unsure, pick the BEST match and return confidence 0.6 — do NOT invent a folder.
+
+FIELD COMPLETION RULES — fill EVERY field, think holistically:
+- periodKey: for annual filings use the FY label (e.g., "2024-25"); for quarterly
+  use "YYYY-Q1" through "Q4"; for monthly use "YYYY-MM".
+- registrationDate: the date the document was FILED / signed / issued / stamped.
+  Look for: MCA filing date, SRN date, digital signature date, "Date of filing",
+  "Date of signing", acknowledgement date, certificate issue date. If absent,
+  use the document's creation date or the earliest date mentioned.
+- expiryDate: when this document's validity or compliance window ENDS. Rules:
+  * For annual compliances (MGT-7/7A, AOC-4, DIR-KYC, ITR, tax audit, GSTR-9):
+    one day before the next year's due date.
+    Example: MGT-7A filed for FY 2024-25, due date is 29 Nov 2025 →
+    expiryDate = "2026-11-28" (the day before MGT-7A due for FY 2025-26).
+  * For monthly compliances: last day of the filing month.
+  * For quarterly: last day of the quarter's final month.
+  * For licences/certificates: the explicit expiry date on the document.
+  * For one-time (COI, MOA, AOA, Share Certs): leave null (no expiry).
+- requirementId: match against the compliance obligations list above. For MCA
+  filings look for rules containing "mgt-7", "aoc-4", "dir-kyc", "adt-1", etc.
+  For TDS returns look for "tds-return". For ITR look for "itr-". For GST
+  look for "gstr-". Always populate this when there's a match.
+
 For facts: only emit facts grounded in the document; confidence ≥ 0.6; follow
 the same kinds used elsewhere (rent.monthly_payment, contractor.annual_spend,
 salary.annual_bill, headcount.total, turnover.annual, gst.registered_state,
