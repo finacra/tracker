@@ -113,6 +113,37 @@ model GstRegistration {
   @@map("gst_registrations")
 }
 
+// These two "exclusions" tables were previously defined only in raw SQL
+// migrations under supabase/migrations. Adding them here keeps
+// prisma db push from drifting and ensures any future schema change
+// goes through the same single source of truth.
+model CompanyDocumentTemplateExclusion {
+  id            String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id    String   @db.Uuid
+  document_name String
+  folder_name   String
+  created_at    DateTime? @default(now()) @db.Timestamptz
+  created_by    String?   @db.Uuid
+
+  @@unique([company_id, document_name, folder_name])
+  @@index([company_id])
+  @@index([document_name])
+  @@map("company_document_template_exclusions")
+}
+
+model CompanyComplianceExclusion {
+  id             String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id     String   @db.Uuid
+  requirement_id String   @db.Uuid
+  created_at     DateTime? @default(now()) @db.Timestamptz
+  created_by     String?   @db.Uuid
+
+  @@unique([company_id, requirement_id])
+  @@index([company_id])
+  @@index([requirement_id])
+  @@map("company_compliance_exclusions")
+}
+
 model CiaConversation {
   id         String       @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   company_id String       @db.Uuid

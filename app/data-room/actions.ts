@@ -3694,20 +3694,6 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
       }
     }
   } catch (error) {
-    // TEMP diagnostic: surface the real error to Vercel logs so we can see
-    // what's crashing. handleActionError redacts + returns a generic string.
-    console.error('[getDataRoomInitState][DIAG]',
-      error instanceof Error ? error.message : String(error),
-      error instanceof Error ? error.stack : '')
-    // TEMP: on preview, return the raw error so it lands in the browser
-    // console. Strip before shipping to production.
-    if (process.env.VERCEL_ENV !== 'production') {
-      const msg = error instanceof Error ? error.message : String(error)
-      const stackLine = error instanceof Error && error.stack
-        ? error.stack.split('\n').slice(1, 4).join(' | ')
-        : ''
-      return { success: false, error: `DIAG: ${msg} :: ${stackLine}` }
-    }
     return handleActionError(error)
   }
 }
