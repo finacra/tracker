@@ -113,10 +113,13 @@ export async function extractFactsFromDocument(options: {
   // header + material clauses.
   const truncated = text.length > 24000 ? text.slice(0, 24000) : text
 
-  const raw = await chatCompletion([
-    { role: 'system', content: SYSTEM_PROMPT },
-    { role: 'user', content: `Extract facts from this document:\n\n${truncated}` },
-  ])
+  const raw = await chatCompletion(
+    [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: `Extract facts from this document:\n\n${truncated}` },
+    ],
+    { maxTokens: 2000 },
+  )
 
   if (!raw) {
     result.errors.push('llm_unavailable')

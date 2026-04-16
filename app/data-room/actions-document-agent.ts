@@ -87,6 +87,12 @@ export async function uploadAndAnalyze(
       documentId: draft.id,
     })
 
+    console.log('[uploadAndAnalyze] ok', {
+      documentId: draft.id,
+      hasSuggestion: !!analysis.suggestion,
+      errors: analysis.errors,
+    })
+
     return {
       success: true,
       documentId: draft.id,
@@ -94,6 +100,9 @@ export async function uploadAndAnalyze(
       analysisErrors: analysis.errors,
     }
   } catch (error) {
+    console.error('[uploadAndAnalyze] threw',
+      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : '')
     return handleActionError(error)
   }
 }
@@ -212,15 +221,22 @@ export async function finalizeDocument(
 
     // Refresh the pgvector embedding to reflect the confirmed name —
     // Prisma doesn't type the Unsupported("vector") column so this goes
-    // via raw SQL.
-    const embedding = await generateEmbedding(`${cleanDocType} ${cleanFileName}`)
-    if (embedding.length > 0) {
-      const vectorLiteral = `[${embedding.join(',')}]`
-      await prisma.$executeRaw`
-        UPDATE public.company_documents_internal
-        SET embedding = ${vectorLiteral}::vector
-        WHERE id = ${draft.id}::uuid
-      `
+    // via raw SQL. Wrap in try/catch so an embedding failure (Azure
+    // hiccup, pgvector cast edge case) can't fail the whole save after
+    // the user already clicked confirm.
+    try {
+      const embedding = await generateEmbedding(`${cleanDocType} ${cleanFileName}`)
+      if (embedding.length > 0) {
+        const vectorLiteral = `[${embedding.join(',')}]`
+        await prisma.$executeRaw`
+          UPDATE public.company_documents_internal
+          SET embedding = ${vectorLiteral}::vector
+          WHERE id = ${draft.id}::uuid
+        `
+      }
+    } catch (embedErr) {
+      console.error('[finalizeDocument] embedding refresh failed (non-fatal):',
+        embedErr instanceof Error ? embedErr.message : embedErr)
     }
 
     // Persist any facts the agent emitted — only the ones still backed
@@ -253,8 +269,12 @@ export async function finalizeDocument(
       }
     }
 
+    console.log('[finalizeDocument] ok', { documentId: draft.id, versionNumber })
     return { success: true, documentId: draft.id, versionNumber }
   } catch (error) {
+    console.error('[finalizeDocument] threw',
+      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : '')
     return handleActionError(error)
   }
 }

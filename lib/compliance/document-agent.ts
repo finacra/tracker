@@ -206,10 +206,13 @@ export async function analyzeDocument(options: {
     options.companyState ?? null,
   )
 
-  const raw = await chatCompletion([
-    { role: 'system', content: system },
-    { role: 'user', content: `Document text (truncated to first 24k chars):\n\n${truncated}` },
-  ])
+  const raw = await chatCompletion(
+    [
+      { role: 'system', content: system },
+      { role: 'user', content: `Document text (truncated to first 24k chars):\n\n${truncated}` },
+    ],
+    { maxTokens: 2500 },  // JSON with folder, period, requirement, 0-30 facts ≈ 400-1500 tokens
+  )
   if (!raw) {
     errors.push('llm_unavailable')
     return { suggestion: null, errors }
@@ -312,10 +315,18 @@ export async function analyzeAndStoreSuggestion(options: {
   })
 
   if (result.suggestion) {
-    await prisma.companyDocument.update({
-      where: { id: doc.id },
-      data: { agent_suggestions: result.suggestion as any, updated_at: new Date() },
-    })
+    // Round-trip through JSON.stringify so any undefined values become
+    // absent keys instead of tripping Prisma's JsonValue type guard.
+    const safeJson = JSON.parse(JSON.stringify(result.suggestion))
+    try {
+      await prisma.companyDocument.update({
+        where: { id: doc.id },
+        data: { agent_suggestions: safeJson, updated_at: new Date() },
+      })
+    } catch (err) {
+      console.error('[document-agent] persist suggestion failed (non-fatal):',
+        err instanceof Error ? err.message : err)
+    }
   }
   return result
 }

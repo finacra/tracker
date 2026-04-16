@@ -150,10 +150,13 @@ export async function upgradeLowConfidenceAssessments(input: FallbackInput): Pro
       `Decide whether this rule applies. Return JSON only.`,
     ].join('\n')
 
-    const raw = await chatCompletion([
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: userPrompt },
-    ])
+    const raw = await chatCompletion(
+      [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userPrompt },
+      ],
+      { maxTokens: 800 },
+    )
     if (!raw) {
       result.errors.push(`llm unavailable for ${rule.id}`)
       continue

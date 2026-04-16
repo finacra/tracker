@@ -170,9 +170,16 @@ export async function streamChatCompletion(
 
 /**
  * Non-streaming chat completion. Returns the full response text.
+ *
+ * The original caller was title generation (3–6 words) so the default
+ * token ceiling is deliberately low. Callers that ask the model for
+ * structured JSON or longer prose should pass `{ maxTokens }` — a 200
+ * ceiling will silently truncate the response and break defensive
+ * JSON parsing downstream.
  */
 export async function chatCompletion(
-  messages: ChatMessage[]
+  messages: ChatMessage[],
+  options?: { maxTokens?: number }
 ): Promise<string | null> {
   const client = getAzureOpenAIClient()
   if (!client) return null
@@ -182,7 +189,7 @@ export async function chatCompletion(
   const response = await client.chat.completions.create({
     messages,
     model: deployment,
-    max_completion_tokens: 200,
+    max_completion_tokens: options?.maxTokens ?? 200,
   })
 
   return response.choices[0]?.message?.content || null
