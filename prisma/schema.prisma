@@ -650,3 +650,249 @@ model ContactSubmission {
 
   @@map("contact_submissions")
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Tables below were previously defined only in supabase/migrations/*.sql
+// and supabase/schemas/*.sql — NOT in Prisma. This caused "relation does
+// not exist" crashes on staging whenever code referenced them. Adding them
+// here makes prisma db push the single source of truth for ALL tables.
+// No more raw-SQL-only table definitions.
+// ═══════════════════════════════════════════════════════════════════════════
+
+model DocumentChunk {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_id String   @db.Uuid
+  company_id  String   @db.Uuid
+  content     String
+  embedding   Unsupported("vector(1536)")?
+  metadata    Json?    @default("{}")
+  created_at  DateTime? @default(now()) @db.Timestamptz
+
+  @@index([company_id])
+  @@index([document_id])
+  @@map("document_chunks_internal")
+}
+
+model ComplianceTemplate {
+  id                  String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  category            String
+  requirement         String
+  description         String?
+  compliance_type     String
+  entity_types        String[]  @default([])
+  industries          String[]  @default([])
+  industry_categories String[]  @default([])
+  penalty             String?
+  is_critical         Boolean?  @default(false)
+  financial_year      String?
+  due_date_offset     Int?
+  due_month           Int?
+  due_day             Int?
+  due_date            DateTime? @db.Date
+  is_active           Boolean?  @default(true)
+  created_at          DateTime? @default(now()) @db.Timestamptz
+  updated_at          DateTime? @default(now()) @db.Timestamptz
+  created_by          String?   @db.Uuid
+  updated_by          String?   @db.Uuid
+
+  @@index([category])
+  @@map("compliance_templates")
+}
+
+model CompanyFinancial {
+  id              String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id      String    @db.Uuid
+  financial_year  String
+  turnover        Decimal?  @db.Decimal
+  tax_due         Decimal?  @db.Decimal
+  pf_contribution Decimal?  @db.Decimal
+  esi_contribution Decimal? @db.Decimal
+  created_at      DateTime? @default(now()) @db.Timestamptz
+  updated_at      DateTime? @default(now()) @db.Timestamptz
+  created_by      String?   @db.Uuid
+  updated_by      String?   @db.Uuid
+
+  @@unique([company_id, financial_year])
+  @@map("company_financials")
+}
+
+model RequirementStatusHistory {
+  id             String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  requirement_id String    @db.Uuid
+  old_status     String?
+  new_status     String
+  changed_by     String?   @db.Uuid
+  changed_at     DateTime? @default(now()) @db.Timestamptz
+  notes          String?
+
+  @@index([requirement_id])
+  @@map("requirement_status_history")
+}
+
+model PasswordResetToken {
+  id         String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id    String    @db.Uuid
+  email      String
+  token      String    @unique
+  expires_at DateTime  @db.Timestamptz
+  created_at DateTime? @default(now()) @db.Timestamptz
+
+  @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id         String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id    String    @db.Uuid
+  email      String
+  token      String    @unique
+  expires_at DateTime  @db.Timestamptz
+  created_at DateTime? @default(now()) @db.Timestamptz
+
+  @@map("email_verification_tokens")
+}
+
+model KpiMetric {
+  id         String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id    String?   @db.Uuid
+  event_type String
+  metadata   Json?
+  created_at DateTime? @default(now()) @db.Timestamptz
+
+  @@index([event_type])
+  @@index([user_id])
+  @@map("kpi_metrics")
+}
+
+model EmailBatchQueue {
+  id             String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id        String    @db.Uuid
+  email_type     String
+  subject        String
+  html_content   String
+  recipient      String
+  status         String    @default("pending")
+  scheduled_for  DateTime? @db.Timestamptz
+  sent_at        DateTime? @db.Timestamptz
+  error          String?
+  retry_count    Int       @default(0)
+  created_at     DateTime? @default(now()) @db.Timestamptz
+
+  @@index([status])
+  @@index([user_id])
+  @@map("email_batch_queue")
+}
+
+model NotificationEmailLog {
+  id                String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id           String    @db.Uuid
+  notification_type String
+  email             String
+  subject           String
+  status            String    @default("sent")
+  error             String?
+  created_at        DateTime? @default(now()) @db.Timestamptz
+
+  @@index([user_id])
+  @@map("notification_email_log")
+}
+
+model LegalResearchCache {
+  id          String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  query_hash  String    @unique
+  query_text  String
+  result      Json
+  source      String?
+  expires_at  DateTime? @db.Timestamptz
+  created_at  DateTime? @default(now()) @db.Timestamptz
+
+  @@map("legal_research_cache")
+}
+
+// ── Country configuration tables ──────────────────────────────────────────
+
+model Country {
+  code                     String  @id @db.VarChar(2)
+  name                     String  @db.VarChar(100)
+  region                   String  @db.VarChar(50)
+  currency_code            String  @db.VarChar(3)
+  currency_symbol          String  @db.VarChar(10)
+  financial_year_start_month Int
+  financial_year_type      String  @db.VarChar(10)
+  date_format              String? @default("DD/MM/YYYY") @db.VarChar(20)
+  timezone                 String? @default("UTC") @db.VarChar(50)
+  tax_id_label             String  @db.VarChar(50)
+  registration_id_label    String  @db.VarChar(50)
+  created_at               DateTime? @default(now()) @db.Timestamptz
+
+  document_types           CountryDocumentType[]
+  entity_types             CountryEntityType[]
+  compliance_categories    CountryComplianceCategory[]
+  validation_rules         CountryValidationRule[]
+
+  @@map("countries")
+}
+
+model CountryDocumentType {
+  id            String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  country_code  String    @db.VarChar(2)
+  document_type String    @db.VarChar(100)
+  is_required   Boolean?  @default(false)
+  display_order Int?      @default(0)
+  created_at    DateTime? @default(now()) @db.Timestamptz
+
+  country       Country   @relation(fields: [country_code], references: [code], onDelete: Cascade)
+
+  @@unique([country_code, document_type])
+  @@map("country_document_types")
+}
+
+model CountryEntityType {
+  id                  String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  country_code        String    @db.VarChar(2)
+  entity_type         String    @db.VarChar(100)
+  display_name        String    @db.VarChar(100)
+  requires_directors  Boolean?  @default(true)
+  requires_shareholders Boolean? @default(false)
+  display_order       Int?      @default(0)
+  created_at          DateTime? @default(now()) @db.Timestamptz
+
+  country             Country   @relation(fields: [country_code], references: [code], onDelete: Cascade)
+
+  @@unique([country_code, entity_type])
+  @@map("country_entity_types")
+}
+
+model CountryComplianceCategory {
+  id            String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  country_code  String    @db.VarChar(2)
+  category_name String    @db.VarChar(100)
+  display_order Int?      @default(0)
+  created_at    DateTime? @default(now()) @db.Timestamptz
+
+  country       Country   @relation(fields: [country_code], references: [code], onDelete: Cascade)
+
+  @@unique([country_code, category_name])
+  @@map("country_compliance_categories")
+}
+
+model CountryValidationRule {
+  id                       String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  country_code             String    @db.VarChar(2)
+  field_type               String    @db.VarChar(50)
+  pattern                  String?   @db.VarChar(255)
+  min_length               Int?
+  max_length               Int?
+  required                 Boolean?  @default(true)
+  validation_function      String?
+  error_message            String?
+  verification_portal_url  String?
+  verification_instructions String?
+  metadata                 Json?     @default("{}")
+  created_at               DateTime? @default(now()) @db.Timestamptz
+  updated_at               DateTime? @default(now()) @db.Timestamptz
+
+  country                  Country   @relation(fields: [country_code], references: [code], onDelete: Cascade)
+
+  @@unique([country_code, field_type])
+  @@map("country_validation_rules")
+}
