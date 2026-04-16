@@ -4,7 +4,7 @@ const nextConfig = {
   // Increase header size limits to prevent 431 errors
   experimental: {
     serverActions: {
-      bodySizeLimit: '2mb',
+      bodySizeLimit: '20mb',
     },
   },
   // Transpile packages that need to be processed
