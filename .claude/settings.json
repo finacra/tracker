@@ -1,7 +1,27 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep -v \"//.*require\")"
+      "Bash(grep -v \"//.*require\")",
+      "Bash(find '/c/Users/camun/Documents/finnovate tracker' -name feature-flags* -o -name flags*)",
+      "Bash(npx vercel:*)",
+      "Bash(curl -sI \"https://finacraco-git-develop-finacras-projects.vercel.app/login\")",
+      "Bash(grep -l \"getRegulatoryRequirements\\\\|updateRequirementStatus\\\\|createRequirement\" \"c:/Users/camun/Documents/finnovate tracker/app/data-room/\"*.ts)",
+      "Bash(node -e ':*)",
+      "Bash(npx tsx -e ':*)",
+      "Bash(npx tsx:*)",
+      "Bash(taskkill //F //PID 37124)",
+      "Bash(tasklist)",
+      "Bash(taskkill //F //PID 99740)",
+      "Bash(curl -s -X POST http://localhost:3000/api/lookup-company -H \"Content-Type: application/json\" -d '{\"cin\":\"U86900TS2025NPL195005\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/verify-cin -H \"Content-Type: application/json\" -d '{\"cin\":\"U86900TS2025NPL195005\"}')",
+      "Bash(taskkill //F //PID 107572)",
+      "Bash(rm -rf .next)",
+      "Read(//dev/**)",
+      "Bash(curl -s http://localhost:3000/api/auth/passport/session -H \"Cookie: $\\(cat /dev/null\\)\")",
+      "Read(//c/Users/camun/.cursor/projects/c-Users-camun-Documents-finnovate-tracker/terminals/**)",
+      "Bash(grep -E '\"typecheck\"|\"tsc\"' package.json)",
+      "Bash(ls tsconfig.json)",
+      "Bash(echo \"EXIT=$?\")"
     ]
   }
 }
