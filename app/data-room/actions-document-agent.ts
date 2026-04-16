@@ -150,14 +150,16 @@ export async function finalizeDocument(
     })
     if (!folder) return { success: false, error: 'Target folder not found' }
 
-    // Validate optional requirement id exists in the catalogue
+    // Validate optional requirement id — if the agent hallucinated an ID
+    // that doesn't exist, silently clear it rather than blocking the save.
     if (confirmed.requirementId) {
       const ruleExists = await prisma.complianceRule.findUnique({
         where: { id: confirmed.requirementId },
         select: { id: true },
       })
       if (!ruleExists) {
-        return { success: false, error: 'Requirement id does not exist in rule catalogue' }
+        console.warn('[finalizeDocument] agent-suggested requirementId not in catalogue, clearing:', confirmed.requirementId)
+        confirmed.requirementId = undefined
       }
     }
 
