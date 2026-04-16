@@ -298,7 +298,17 @@ export async function analyzeAndStoreSuggestion(options: {
   try {
     console.log('[document-agent] processDocumentContent starting', { docId: doc.id, filePath: doc.file_path })
     await processDocumentContent(doc.id, doc.company_id, doc.file_path)
-    console.log('[document-agent] processDocumentContent completed')
+    // Check if any chunks were actually written — processDocumentContent
+    // returns void and exits silently (return, not throw) when OCR fails
+    // or text is empty. The only reliable signal is chunk count.
+    const chunkCount = await prisma.$queryRaw<[{ c: bigint }]>`
+      SELECT count(*)::bigint as c FROM document_chunks_internal WHERE document_id = ${doc.id}::uuid
+    `
+    const count = Number(chunkCount[0]?.c || 0)
+    console.log('[document-agent] processDocumentContent completed', { chunks: count })
+    if (count === 0) {
+      processingError = 'Text extraction produced 0 chunks. If this is a scanned PDF, Azure Document Intelligence OCR may have failed silently — check server logs for "[DocProcessor]" lines.'
+    }
   } catch (err) {
     processingError = err instanceof Error ? err.message : String(err)
     console.error('[document-agent] processDocumentContent FAILED:', processingError, err instanceof Error ? err.stack : '')

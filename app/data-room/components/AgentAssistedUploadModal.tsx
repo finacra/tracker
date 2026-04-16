@@ -347,10 +347,12 @@ export default function AgentAssistedUploadModal({
                   </>
                 ) : (
                   <div>
-                    <p className="text-sm text-amber-300 font-medium">Agent couldn't read this file</p>
+                    <p className="text-sm text-amber-300 font-medium">Agent couldn't read this file — fill fields manually</p>
                     <p className="text-xs text-gray-400 mt-1">
-                      {analysisErrors.includes('no_text_available')
-                        ? 'This looks like a scanned/image PDF. Text extraction returned empty. OCR service may not be configured.'
+                      {analysisErrors.find(e => e.startsWith('processing_failed:'))
+                        ? analysisErrors.find(e => e.startsWith('processing_failed:'))!.replace('processing_failed: ', '')
+                        : analysisErrors.includes('no_text_available')
+                        ? 'Text extraction returned empty (scanned/image PDF). Azure OCR may have failed — check the error detail below.'
                         : analysisErrors.includes('llm_unavailable')
                         ? 'AI service is temporarily unavailable.'
                         : 'Analysis failed — fill the fields manually below.'}
