@@ -102,28 +102,30 @@ export async function resetPasswordWithToken(
   newPassword: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Verify token
-    const tokenVerification = await verifyPasswordResetToken(token)
-    if (!tokenVerification.success || !tokenVerification.userId) {
-      return { success: false, error: tokenVerification.error || 'Invalid token' }
+    // Atomically claim the token: delete it and return its owner. This is the
+    // only way to guarantee single-use under concurrent requests — a separate
+    // verify-then-delete would let two racing callers both pass the check.
+    const claimed = await prisma.$queryRaw<Array<{ user_id: string }>>`
+      DELETE FROM public.password_reset_tokens
+      WHERE token = ${token}
+        AND expires_at > NOW()
+      RETURNING user_id
+    `
+
+    if (!claimed || claimed.length === 0) {
+      return { success: false, error: 'Invalid or expired reset token' }
     }
 
-    // Hash new password
+    const userId = claimed[0].user_id
+
     const bcrypt = await import('bcryptjs')
     const salt = await bcrypt.genSalt(10)
     const hash = await bcrypt.hash(newPassword, salt)
 
-    // Update password
     await prisma.$executeRaw`
       UPDATE public.app_users
       SET password_hash = ${hash}, updated_at = NOW()
-      WHERE id = ${tokenVerification.userId}::uuid
-    `
-
-    // Delete used token
-    await prisma.$executeRaw`
-      DELETE FROM public.password_reset_tokens
-      WHERE token = ${token}
+      WHERE id = ${userId}::uuid
     `
 
     return { success: true }
