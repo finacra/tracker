@@ -90,4 +90,5 @@
 - Don't add `user_id` foreign keys referencing `auth.users` — Passport users exist in `app_users`, not `auth.users`
 - Don't use `prisma.$transaction(async (tx) => ...)` — use sequential queries (PgBouncer incompatible)
 - Don't run raw SQL migrations manually — use `npx prisma db push` to sync schema changes from `prisma/schema.prisma` to the DB. This avoids schema/DB mismatches (NOT NULL constraints, missing columns, stale Prisma Client)
+- **NEVER define a table only in raw SQL (supabase/migrations/*.sql) without also adding it to `prisma/schema.prisma`.** Prisma is the single source of truth for ALL table definitions. Raw SQL is only for: seed data, RPC functions (match_document_chunks), pgvector indexes (HNSW), and one-shot data migrations. If code references a table via `$queryRaw`, `supabase.from()`, or Prisma client, that table MUST have a `model` in schema.prisma. Violation of this rule caused three separate "relation does not exist" crashes in one session.
 - Don't add concurrent callers to `syncAppUser` in `providers.tsx` without guarding against the requestId race
