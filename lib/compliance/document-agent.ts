@@ -293,26 +293,71 @@ export async function analyzeAndStoreSuggestion(options: {
   })
   if (!doc) return { suggestion: null, errors: ['document_not_found'] }
 
-  // Ensure chunks exist — idempotent; skips if already processed.
-  let processingError: string | null = null
+  // Run text extraction INLINE so every step's result goes directly into
+  // the response — no more "check server logs". Each step appends to
+  // serverLog[] which is returned as analysisErrors so the browser
+  // console shows everything.
+  const serverLog: string[] = []
   try {
-    console.log('[document-agent] processDocumentContent starting', { docId: doc.id, filePath: doc.file_path })
-    await processDocumentContent(doc.id, doc.company_id, doc.file_path)
-    // Check if any chunks were actually written — processDocumentContent
-    // returns void and exits silently (return, not throw) when OCR fails
-    // or text is empty. The only reliable signal is chunk count.
-    const chunkCount = await prisma.$queryRaw<[{ c: bigint }]>`
-      SELECT count(*)::bigint as c FROM document_chunks_internal WHERE document_id = ${doc.id}::uuid
-    `
-    const count = Number(chunkCount[0]?.c || 0)
-    console.log('[document-agent] processDocumentContent completed', { chunks: count })
-    if (count === 0) {
-      processingError = 'Text extraction produced 0 chunks. If this is a scanned PDF, Azure Document Intelligence OCR may have failed silently — check server logs for "[DocProcessor]" lines.'
+    const { createStorageAdapter } = await import('@/lib/storage/factory')
+    const storage = createStorageAdapter()
+
+    serverLog.push(`downloading: ${doc.file_path}`)
+    const buffer = await storage.downloadFile('company-documents', doc.file_path)
+    serverLog.push(`downloaded: ${buffer.length} bytes`)
+
+    const ext = doc.file_path.slice(doc.file_path.lastIndexOf('.')).toLowerCase()
+    let text = ''
+
+    // Step 1: try pdf-parse for PDFs
+    if (ext === '.pdf') {
+      try {
+        if (typeof (global as any).DOMMatrix === 'undefined') (global as any).DOMMatrix = class DOMMatrix {}
+        let parseAction: any
+        try { parseAction = require('pdf-parse/lib/pdf-parse.js') } catch { parseAction = require('pdf-parse') }
+        const actualParser = typeof parseAction === 'function' ? parseAction : (parseAction.default || parseAction)
+        const result = await actualParser(buffer, {
+          pagerender: (pageData: any) => pageData.getTextContent().then((tc: any) => tc.items.map((i: any) => i.str).join(' '))
+        })
+        text = result.text || ''
+        serverLog.push(`pdf-parse: ${text.trim().length} chars`)
+      } catch (pdfErr) {
+        serverLog.push(`pdf-parse FAILED: ${pdfErr instanceof Error ? pdfErr.message : String(pdfErr)}`)
+      }
+    }
+
+    // Step 2: OCR fallback if text is thin
+    if (text.trim().length < 100) {
+      serverLog.push(`text too short (${text.trim().length}), trying Azure DI OCR...`)
+      try {
+        const { extractTextWithOCR } = await import('@/lib/utils/document-intelligence')
+        text = await extractTextWithOCR(buffer)
+        serverLog.push(`OCR success: ${text.length} chars`)
+      } catch (ocrErr) {
+        const msg = ocrErr instanceof Error ? ocrErr.message : String(ocrErr)
+        serverLog.push(`OCR FAILED: ${msg}`)
+      }
+    }
+
+    // Step 3: chunk + embed if we have text
+    if (text.trim().length > 0) {
+      serverLog.push(`chunking ${text.length} chars...`)
+      try {
+        await processDocumentContent(doc.id, doc.company_id, doc.file_path)
+        const chunkCount = await prisma.$queryRaw<[{ c: bigint }]>`
+          SELECT count(*)::bigint as c FROM document_chunks_internal WHERE document_id = ${doc.id}::uuid
+        `
+        serverLog.push(`chunks written: ${Number(chunkCount[0]?.c || 0)}`)
+      } catch (chunkErr) {
+        serverLog.push(`chunking FAILED: ${chunkErr instanceof Error ? chunkErr.message : String(chunkErr)}`)
+      }
+    } else {
+      serverLog.push('NO TEXT EXTRACTED — cannot analyze')
     }
   } catch (err) {
-    processingError = err instanceof Error ? err.message : String(err)
-    console.error('[document-agent] processDocumentContent FAILED:', processingError, err instanceof Error ? err.stack : '')
+    serverLog.push(`FATAL: ${err instanceof Error ? err.message : String(err)}`)
   }
+  console.log('[document-agent] serverLog:', serverLog)
 
   // Pull company state (used in prompt for within/outside-state reasoning).
   const company = await prisma.company.findUnique({
@@ -326,10 +371,10 @@ export async function analyzeAndStoreSuggestion(options: {
     companyState: company?.state ?? null,
   })
 
-  // Surface processing errors alongside analysis errors so the client
-  // can show WHY the agent couldn't read the file (not just "no text").
-  if (processingError) {
-    result.errors.push(`processing_failed: ${processingError}`)
+  // Surface ALL processing steps so the browser console shows exactly
+  // what happened — download, pdf-parse, OCR, chunking — with no gaps.
+  for (const line of serverLog) {
+    result.errors.push(line)
   }
 
   if (result.suggestion) {
