@@ -388,6 +388,7 @@ export async function updateCompany(
     annualTurnover?: string
     isGstRegistered?: boolean
     gstNumber?: string
+    gstRegistrations?: Array<{ gstin: string; state: string }>
     netWorth?: string
     isMsme?: string       // 'yes' | 'no' | ''
     msmeCategory?: string
@@ -474,6 +475,38 @@ export async function updateCompany(
   } catch (companyError) {
     console.error('Company update error:', companyError)
     throw new Error('Failed to update company')
+  }
+
+  // Sync GST registrations if provided. Replace-all semantics: delete every
+  // row for this company, then re-insert whatever the form submitted (after
+  // validation + dedupe). Done sequentially because PgBouncer transaction
+  // mode rejects interactive prisma.$transaction (CLAUDE.md §12).
+  if (formData.gstRegistrations !== undefined) {
+    const normalized = formData.gstRegistrations
+      .map((reg) => {
+        const gstin = (reg.gstin || '').toUpperCase().trim()
+        if (!gstin) return null
+        const derivedState = parseGSTN(gstin)?.stateName
+        return { gstin, state: (reg.state || derivedState || '').trim() || null }
+      })
+      .filter((r): r is { gstin: string; state: string | null } => r !== null && validateGSTN(r.gstin))
+
+    // Dedupe by gstin (last write wins)
+    const byGstin = new Map<string, { gstin: string; state: string | null }>()
+    for (const r of normalized) byGstin.set(r.gstin, r)
+
+    await prisma.gstRegistration.deleteMany({ where: { company_id: companyId } })
+
+    if (byGstin.size > 0) {
+      await prisma.gstRegistration.createMany({
+        data: Array.from(byGstin.values()).map((r) => ({
+          company_id: companyId,
+          gstin: r.gstin,
+          state: r.state,
+        })),
+        skipDuplicates: true,
+      })
+    }
   }
 
   // Update directors if provided
