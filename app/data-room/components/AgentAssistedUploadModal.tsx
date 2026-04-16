@@ -324,29 +324,43 @@ export default function AgentAssistedUploadModal({
           {/* Stage: review */}
           {stage === 'review' && (
             <>
-              {suggestion && (
-                <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs uppercase tracking-wider text-gray-400">Agent suggestion</span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded ${
-                      confidencePct >= 80 ? 'bg-emerald-900/40 text-emerald-300' :
-                      confidencePct >= 60 ? 'bg-amber-900/40 text-amber-300' :
-                      'bg-red-900/40 text-red-300'
-                    }`}>
-                      {confidencePct}% confident
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-300">{suggestion.reasoning || '—'}</p>
-                  {suggestion.candidateSupersedesDocumentId && (
-                    <p className="text-xs text-amber-300">
-                      Looks like a new version of an existing document — will be linked as version N+1 when you save.
+              {/* Agent status — always visible, whether suggestion succeeded or failed */}
+              <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-4 space-y-2">
+                {suggestion ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs uppercase tracking-wider text-gray-400">Agent suggestion</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded ${
+                        confidencePct >= 80 ? 'bg-emerald-900/40 text-emerald-300' :
+                        confidencePct >= 60 ? 'bg-amber-900/40 text-amber-300' :
+                        'bg-red-900/40 text-red-300'
+                      }`}>
+                        {confidencePct}% confident
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-300">{suggestion.reasoning || '—'}</p>
+                    {suggestion.candidateSupersedesDocumentId && (
+                      <p className="text-xs text-amber-300">
+                        Looks like a new version of an existing document — will be linked as version N+1 when you save.
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <div>
+                    <p className="text-sm text-amber-300 font-medium">Agent couldn't read this file</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {analysisErrors.includes('no_text_available')
+                        ? 'This looks like a scanned/image PDF. Text extraction returned empty. OCR service may not be configured.'
+                        : analysisErrors.includes('llm_unavailable')
+                        ? 'AI service is temporarily unavailable.'
+                        : 'Analysis failed — fill the fields manually below.'}
                     </p>
-                  )}
-                  {analysisErrors.length > 0 && (
-                    <p className="text-xs text-red-300">Analysis notes: {analysisErrors.join(', ')}</p>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
+                {analysisErrors.length > 0 && (
+                  <p className="text-xs text-red-300">Notes: {analysisErrors.join(', ')}</p>
+                )}
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Document name" required>
