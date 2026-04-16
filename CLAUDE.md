@@ -36,6 +36,17 @@
 
 8. **Trace the full request lifecycle** before making changes. Client interaction → state change → which effects fire → which server actions → which DB queries. Map this out, especially for critical paths (login, page load, company switch).
 
+## Debugging — Non-Negotiable
+
+9. **When a preview/prod error is surfacing but Vercel logs aren't catching it, don't loop on "try again while I tail logs". Add diagnostics in code on the same commit that fixes other issues.** Vercel CLI `logs` only streams from "now" and sessions expire in 5 minutes — any error that already fired is gone. Every time you need more visibility than the logs give you:
+
+   - **At every server-action boundary** (both happy and error paths), add a `console.log` / `console.error` with a stable prefix (e.g. `[uploadAndAnalyze] ok …` / `[uploadAndAnalyze] threw …`) and include `error.message + error.stack` on the error path. `handleActionError` redacts by design, so the raw message must be logged before it runs.
+   - **At every client-side boundary** where the error shows up (catch in `onClick`, `onChange`, mutation handler, effect), log the full error including the response body if it came from a `fetch`. A browser "unexpected response" or bare 400 gives you nothing; `console.error('[ActionName]', err, err?.stack, err?.response?.data)` gives you the line.
+   - **For server actions** whose returns might not be JSON-serialisable (Prisma Decimal / Date / BigInt / class instance), add a `console.log(JSON.stringify(returnValue))` right before the `return` so a serialisation failure shows a specific key.
+   - **For LLM calls**, log the raw response (or the first 2k chars) before attempting `JSON.parse`, so truncation / unexpected shape is visible. Also log the prompt size and the `max_completion_tokens` so token-ceiling bugs are obvious.
+   - **When you push a fix, push the diagnostic in the same commit.** Don't "fix then add logs later" — if the fix doesn't fully work, the next repro must yield the root cause without another deploy.
+   - **Clean the diagnostics out** only after the flow is confirmed stable (user-verified or green E2E test). Leaving them in long-term is noise; removing them too early starts the loop over.
+
 ## Critical Paths (must be fast)
 
 - **Sign-in → data room load**: `getDataRoomInitState()` — single batched call
