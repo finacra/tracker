@@ -294,12 +294,14 @@ export async function analyzeAndStoreSuggestion(options: {
   if (!doc) return { suggestion: null, errors: ['document_not_found'] }
 
   // Ensure chunks exist — idempotent; skips if already processed.
+  let processingError: string | null = null
   try {
+    console.log('[document-agent] processDocumentContent starting', { docId: doc.id, filePath: doc.file_path })
     await processDocumentContent(doc.id, doc.company_id, doc.file_path)
+    console.log('[document-agent] processDocumentContent completed')
   } catch (err) {
-    // Not fatal — the agent can still attempt with whatever chunks exist.
-    console.error('[document-agent] processDocumentContent failed:',
-      err instanceof Error ? err.message : err)
+    processingError = err instanceof Error ? err.message : String(err)
+    console.error('[document-agent] processDocumentContent FAILED:', processingError, err instanceof Error ? err.stack : '')
   }
 
   // Pull company state (used in prompt for within/outside-state reasoning).
@@ -313,6 +315,12 @@ export async function analyzeAndStoreSuggestion(options: {
     documentId: options.documentId,
     companyState: company?.state ?? null,
   })
+
+  // Surface processing errors alongside analysis errors so the client
+  // can show WHY the agent couldn't read the file (not just "no text").
+  if (processingError) {
+    result.errors.push(`processing_failed: ${processingError}`)
+  }
 
   if (result.suggestion) {
     // Round-trip through JSON.stringify so any undefined values become
