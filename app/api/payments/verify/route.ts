@@ -3,6 +3,7 @@ import { createServerContainer } from '@/lib/composition/server-container'
 import crypto from 'crypto'
 import { getTierById, type BillingCycle } from '@/lib/pricing/tiers'
 import { checkRateLimit, getClientIp } from '@/lib/utils/rate-limiter'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 export async function POST(request: NextRequest) {
   // Rate limit: 20 verification attempts per IP per 15 minutes
@@ -166,11 +167,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Payment verified and subscription activated',
     })
-  } catch (error: any) {
-    console.error('Error verifying payment:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to verify payment' },
-      { status: 500 }
-    )
+  } catch (error) {
+    return handleAPIError(error)
   }
 }

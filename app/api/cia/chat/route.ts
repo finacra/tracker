@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth/passport-session'
 import { buildCIAContext } from '@/lib/cia/context-builder'
 import { buildSystemPrompt, TITLE_GENERATION_PROMPT } from '@/lib/cia/system-prompt'
 import { streamChatCompletion, chatCompletion, type ChatMessage } from '@/lib/api/openai'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 interface RequestBody {
   messages: { role: 'user' | 'assistant'; content: string }[]
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest) {
             // Title generation is best-effort
           }
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('[CIA Route] Error:', error)
         send({ type: 'error', message: 'An error occurred while processing your request.' })
       } finally {

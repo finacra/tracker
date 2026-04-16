@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerContainer } from '@/lib/composition/server-container'
 import crypto from 'crypto'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 export async function POST(request: NextRequest) {
   try {
@@ -93,12 +94,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ received: true })
-  } catch (error: any) {
-    console.error('Webhook error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Webhook processing failed' },
-      { status: 500 }
-    )
+  } catch (error) {
+    return handleAPIError(error)
   }
 }
 

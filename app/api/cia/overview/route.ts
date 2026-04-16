@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getSession } from '@/lib/auth/passport-session'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { streamChatCompletion, type ChatMessage } from '@/lib/api/openai'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 /**
  * Streaming AI Overview for the document vault.
@@ -100,7 +101,7 @@ COMPLIANCE STATUS:
         for await (const token of tokenStream) {
           controller.enqueue(encoder.encode(token))
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('[CIA Overview] Error:', error)
         controller.enqueue(encoder.encode('Failed to generate overview.'))
       } finally {

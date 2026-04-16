@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import { verifyEmailToken } from '@/lib/email/verification'
 import { setSessionInResponse } from '@/lib/auth/passport-session'
 import type { PassportSessionUser } from '@/lib/auth/passport-config'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 /**
  * Link password to existing Google OAuth account
@@ -107,8 +108,7 @@ export async function POST(req: NextRequest) {
     await setSessionInResponse(sessionUser, response)
 
     return response
-  } catch (error: any) {
-    console.error('[Link Password API] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  } catch (error) {
+    return handleAPIError(error)
   }
 }

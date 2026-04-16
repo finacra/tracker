@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyEmailToken, resendVerificationEmail } from '@/lib/email/verification'
 import { prisma } from '@/lib/prisma'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 /**
  * Email verification endpoint
@@ -82,12 +83,8 @@ export async function GET(request: NextRequest) {
     response.cookies.delete('email_verified_user_id')
 
     return response
-  } catch (error: any) {
-    console.error('[Verify Email API] Error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    )
+  } catch (error) {
+    return handleAPIError(error)
   }
 }
 
@@ -120,11 +117,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Verification email sent successfully',
     })
-  } catch (error: any) {
-    console.error('[Resend Verification Email API] Error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    )
+  } catch (error) {
+    return handleAPIError(error)
   }
 }

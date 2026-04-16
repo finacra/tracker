@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getRazorpayInstance } from '@/lib/razorpay/client'
 import { createServerContainer } from '@/lib/composition/server-container'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 /**
  * API endpoint to process refunds for trial verification payments
@@ -77,15 +78,17 @@ export async function POST(request: NextRequest) {
 
         refundedCount++
         console.log(`Refunded trial verification payment: ${payment.id}, Refund ID: ${refund.id}`)
-      } catch (error: any) {
+      } catch (error) {
         console.error(`Error refunding payment ${payment.id}:`, error)
-        errors.push(`Payment ${payment.id}: ${error.message}`)
+        const message = error instanceof Error ? error.message : String(error)
+        errors.push(`Payment ${payment.id}: ${message}`)
 
         // Mark as failed if it's a permanent error
-        if (error.statusCode === 400 || error.statusCode === 404) {
+        const statusCode = (error as any)?.statusCode
+        if (statusCode === 400 || statusCode === 404) {
           await paymentRepository.updateById(payment.id, {
             refundStatus: 'failed',
-            refundError: error.message,
+            refundError: message,
             updatedAt: new Date().toISOString(),
           })
         }
@@ -97,11 +100,7 @@ export async function POST(request: NextRequest) {
       refunded: refundedCount,
       errors: errors.length > 0 ? errors : undefined,
     })
-  } catch (error: any) {
-    console.error('Error processing refunds:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to process refunds' },
-      { status: 500 }
-    )
+  } catch (error) {
+    return handleAPIError(error)
   }
 }

@@ -3,6 +3,7 @@ import { getPassport } from '@/lib/auth/passport-config'
 import { setSessionInResponse } from '@/lib/auth/passport-session'
 import type { PassportSessionUser } from '@/lib/auth/passport-config'
 import { prisma } from '@/lib/prisma'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 export async function POST(req: NextRequest) {
   try {
@@ -70,8 +71,7 @@ export async function POST(req: NextRequest) {
     await setSessionInResponse(user, response)
 
     return response
-  } catch (error: any) {
-    console.error('[Passport Login API] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  } catch (error) {
+    return handleAPIError(error)
   }
 }

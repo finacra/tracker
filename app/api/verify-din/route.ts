@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 // API Configuration
 const API_BASE_URL = 'https://kycapi.microvistatech.com/api/v1'
@@ -131,22 +132,7 @@ export async function POST(request: NextRequest) {
     // Return successful response
     return NextResponse.json(normalizedResponse)
 
-  } catch (error: any) {
-    console.error('DIN verification error:', error)
-    
-    // Handle network errors
-    let errorMessage = error.message || 'Failed to verify DIN'
-    if (error.cause?.code === 'UND_ERR_CONNECT_TIMEOUT' || error.message?.includes('timeout')) {
-      errorMessage = 'Connection to verification service timed out. Please try again.'
-    } else if (error.cause?.code === 'ECONNREFUSED' || error.message?.includes('ECONNREFUSED')) {
-      errorMessage = 'Unable to reach verification service. Please try again later.'
-    } else if (error.message?.includes('fetch failed')) {
-      errorMessage = 'Network error. Please check your internet connection and try again.'
-    }
-    
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    )
+  } catch (error) {
+    return handleAPIError(error)
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createServerContainer } from '@/lib/composition/server-container'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 /**
  * Check if user's email is verified
@@ -60,11 +61,7 @@ export async function GET(request: NextRequest) {
       requiresVerification: isEmailPasswordUser && !isEmailVerified,
       isEmailPasswordUser,
     })
-  } catch (error: any) {
-    console.error('[Check Verification API] Error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    )
+  } catch (error) {
+    return handleAPIError(error)
   }
 }

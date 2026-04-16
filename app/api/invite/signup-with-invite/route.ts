@@ -6,6 +6,7 @@ import type { PassportSessionUser } from '@/lib/auth/passport-config'
 import { sendVerificationEmail } from '@/lib/email/verification'
 import { createServerContainer } from '@/lib/composition/server-container'
 import { acceptTeamInvitation } from '@/app/data-room/actions'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 export async function POST(req: NextRequest) {
   try {
@@ -115,8 +116,7 @@ export async function POST(req: NextRequest) {
     // For now, return success and let the client call acceptTeamInvitation
 
     return response
-  } catch (error: any) {
-    console.error('[Invite Signup API] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  } catch (error) {
+    return handleAPIError(error)
   }
 }
