@@ -1,5 +1,5 @@
 import { searchDocumentChunks, type SearchResult } from './vector-search'
-import { createAdminClient } from '@/utils/supabase/admin'
+import { prisma } from '@/lib/prisma'
 
 export interface CIAContext {
   documentChunks: SearchResult[]
@@ -104,30 +104,42 @@ ${chunk.content}`)
 }
 
 async function fetchComplianceSummary(companyId: string): Promise<ComplianceSummary> {
-  const supabase = createAdminClient()
+  // Raw SQL because Prisma schema doesn't declare all regulatory_requirements
+  // columns (e.g., financial_year) but the DB has them.
+  const rows = await prisma.$queryRawUnsafe<Array<{
+    category: string
+    requirement: string
+    status: string
+    due_date: Date | null
+    penalty: string | null
+  }>>(
+    `SELECT category, requirement, status, due_date, penalty
+     FROM regulatory_requirements
+     WHERE company_id = $1::uuid`,
+    companyId,
+  ).catch(err => {
+    console.error('[CIA:ctx] compliance query threw', err instanceof Error ? err.message : String(err))
+    return [] as any[]
+  })
 
-  const { data, error } = await supabase
-    .from('regulatory_requirements')
-    .select('id, category, requirement, status, due_date, penalty')
-    .eq('company_id', companyId)
+  const total = rows.length
+  const completed = rows.filter(r => r.status === 'completed').length
+  const overdue = rows.filter(r => r.status === 'overdue').length
+  const pending = rows.filter(r => r.status === 'pending').length
+  const notStarted = rows.filter(r => r.status === 'not_started').length
 
-  if (error || !data) return defaultComplianceSummary()
-
-  const total = data.length
-  const completed = data.filter((r: any) => r.status === 'completed').length
-  const overdue = data.filter((r: any) => r.status === 'overdue').length
-  const pending = data.filter((r: any) => r.status === 'pending').length
-  const notStarted = data.filter((r: any) => r.status === 'not_started').length
-
-  // Top overdue items
-  const overdueItems = data
-    .filter((r: any) => r.status === 'overdue' || (r.status !== 'completed' && r.due_date && new Date(r.due_date) < new Date()))
-    .sort((a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
+  const overdueItems = rows
+    .filter(r => r.status === 'overdue' || (r.status !== 'completed' && r.due_date && new Date(r.due_date) < new Date()))
+    .sort((a, b) => {
+      const ad = a.due_date ? new Date(a.due_date).getTime() : 0
+      const bd = b.due_date ? new Date(b.due_date).getTime() : 0
+      return ad - bd
+    })
     .slice(0, 5)
-    .map((r: any) => ({
+    .map(r => ({
       requirement: r.requirement,
       category: r.category,
-      dueDate: r.due_date,
+      dueDate: r.due_date ? new Date(r.due_date).toISOString().slice(0, 10) : '',
       penalty: r.penalty,
     }))
 
@@ -143,42 +155,53 @@ async function fetchComplianceSummary(companyId: string): Promise<ComplianceSumm
 }
 
 async function fetchCompanyProfile(companyId: string): Promise<CompanyProfile> {
-  const supabase = createAdminClient()
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: {
+      name: true,
+      type: true,
+      nic_code: true,
+      state: true,
+      incorporation_date: true,
+      country_code: true,
+    },
+  }).catch(err => {
+    console.error('[CIA:ctx] company query threw', err instanceof Error ? err.message : String(err))
+    return null
+  })
 
-  const { data, error } = await supabase
-    .from('companies')
-    .select('name, company_type, nic_code, state, incorporation_date, country')
-    .eq('id', companyId)
-    .single()
-
-  if (error || !data) return defaultCompanyProfile()
-
-  const row = data as any
+  if (!company) return defaultCompanyProfile()
   return {
-    name: row.name || 'Unknown',
-    companyType: row.company_type,
-    nicCode: row.nic_code,
-    state: row.state,
-    incorporationDate: row.incorporation_date,
-    country: row.country,
+    name: company.name || 'Unknown',
+    companyType: company.type,
+    nicCode: company.nic_code,
+    state: company.state,
+    incorporationDate: company.incorporation_date
+      ? new Date(company.incorporation_date).toISOString().slice(0, 10)
+      : null,
+    country: company.country_code || 'IN',
   }
 }
 
 async function fetchDocumentInventory(companyId: string): Promise<DocumentInventory> {
-  const supabase = createAdminClient()
+  const docs = await prisma.companyDocument.findMany({
+    where: {
+      company_id: companyId,
+      is_draft: false,
+      deleted_at: null,
+    },
+    select: {
+      file_name: true,
+      folder_name: true,
+      document_type: true,
+    },
+  }).catch(err => {
+    console.error('[CIA:ctx] documents query threw', err instanceof Error ? err.message : String(err))
+    return [] as Array<{ file_name: string | null; folder_name: string | null; document_type: string | null }>
+  })
 
-  const { data, error } = await supabase
-    .from('company_documents_internal')
-    .select('file_name, folder_name, document_type')
-    .eq('company_id', companyId)
-    .eq('is_draft', false)
-    .is('deleted_at', null)
-
-  if (error || !data) return { totalDocuments: 0, folders: [] }
-
-  const rows = data as any[]
   const folderMap = new Map<string, string[]>()
-  for (const doc of rows) {
+  for (const doc of docs) {
     const folder = doc.folder_name || doc.document_type || 'Uncategorized'
     const name = doc.file_name || 'Unnamed file'
     if (!folderMap.has(folder)) folderMap.set(folder, [])
@@ -191,7 +214,7 @@ async function fetchDocumentInventory(companyId: string): Promise<DocumentInvent
     files,
   }))
 
-  return { totalDocuments: rows.length, folders }
+  return { totalDocuments: docs.length, folders }
 }
 
 function defaultComplianceSummary(): ComplianceSummary {
