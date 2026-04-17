@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { parseCIN } from '@/utils/cin-parser'
+import { listGstRegistrations } from '../actions-gst'
 
 interface Director {
   id: string
@@ -73,6 +74,27 @@ export default function OverviewTab({
   formatDateForDisplay,
 }: OverviewTabProps) {
   const router = useRouter()
+
+  // GST registrations for this company. Only fetched for IN companies —
+  // other regions don't have the concept in this data model.
+  const [gstRegs, setGstRegs] = useState<Array<{ id: string; gstin: string; state: string }>>([])
+  const [gstHomeState, setGstHomeState] = useState<string | null>(null)
+  useEffect(() => {
+    if (!currentCompany?.id || currentCompany.country_code !== 'IN') {
+      setGstRegs([])
+      setGstHomeState(null)
+      return
+    }
+    let cancelled = false
+    listGstRegistrations(currentCompany.id).then((res) => {
+      if (cancelled) return
+      if (res.success) {
+        setGstRegs(res.registrations || [])
+        setGstHomeState(res.homeState || null)
+      }
+    }).catch(() => { /* best-effort; overview doesn't hard-depend on this */ })
+    return () => { cancelled = true }
+  }, [currentCompany?.id, currentCompany?.country_code])
 
   // Parse CIN to derive NIC classification (works for Indian companies)
   const parsedCIN = useMemo(() => {
@@ -285,6 +307,76 @@ export default function OverviewTab({
                     </>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* GST Registrations — IN-only, one card per GSTIN */}
+            {currentCompany?.country_code === 'IN' && gstRegs.length > 0 && (
+              <div className="mt-2 p-3 sm:p-4 bg-gray-900/60 border border-white/10 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <svg width="14" height="14" className="sm:w-4 sm:h-4 text-blue-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="4" width="18" height="16" rx="2" />
+                      <path d="M3 10h18" />
+                    </svg>
+                    <span className="text-xs sm:text-sm font-medium text-blue-400">GST Registrations</span>
+                    <span className="text-[10px] sm:text-xs text-gray-500">
+                      {gstRegs.length} registration{gstRegs.length === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => router.push(`/manage-company?company_id=${currentCompany?.id}`)}
+                    className="text-[11px] sm:text-xs text-blue-400 hover:text-blue-300"
+                    title="Add / edit GSTINs"
+                  >
+                    Manage
+                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  {gstRegs.map((g) => {
+                    const isHome = gstHomeState && g.state && g.state.toLowerCase() === gstHomeState.toLowerCase()
+                    return (
+                      <div key={g.id} className="flex items-center justify-between gap-3 px-3 py-2 bg-black/40 border border-white/5 rounded-md">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-mono text-xs sm:text-sm text-white tracking-wider">{g.gstin}</span>
+                          {isHome && (
+                            <span className="text-[9px] uppercase tracking-wider text-emerald-400 border border-emerald-500/30 px-1 rounded flex-shrink-0">
+                              Home state
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] sm:text-xs text-gray-400 truncate">
+                          {g.state || '—'}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {gstHomeState && !gstRegs.some((g) => g.state?.toLowerCase() === gstHomeState.toLowerCase()) && (
+                  <p className="text-[10px] text-amber-400/80 mt-2">
+                    No GSTIN for the company's home state ({gstHomeState}). Add one to evaluate home-state compliances.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {currentCompany?.country_code === 'IN' && gstRegs.length === 0 && (
+              <div className="mt-2 p-3 sm:p-4 bg-gray-900/40 border border-dashed border-white/10 rounded-lg flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-400">
+                  <svg width="14" height="14" className="sm:w-4 sm:h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="16" rx="2" />
+                    <path d="M3 10h18" />
+                  </svg>
+                  <span>No GST registrations on file.</span>
+                </div>
+                <button
+                  onClick={() => router.push(`/manage-company?company_id=${currentCompany?.id}`)}
+                  className="text-[11px] sm:text-xs text-blue-400 hover:text-blue-300"
+                >
+                  Add GSTIN
+                </button>
               </div>
             )}
 

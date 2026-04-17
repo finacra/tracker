@@ -302,8 +302,12 @@ export async function completeOnboarding(
     }
   }
 
-  // 4. Ensure company has either trial or subscription
-  // If user doesn't have a subscription, automatically create a trial for this company
+  // 4. Ensure company has either trial or subscription.
+  // If user doesn't have a subscription, automatically create a trial
+  // for this company. We track whether the resulting state gives the
+  // user active access so the client can skip the /subscribe gate
+  // and land them directly on /data-room.
+  let companyHasActiveAccess = false
   try {
     const [companySubData, userSubData] = await Promise.all([
       subscriptionRepository.getCompanySubscriptionState(company.id),
@@ -322,11 +326,18 @@ export async function completeOnboarding(
     if (!companyHasSubscription && !isEnterprise) {
       try {
         await subscriptionRepository.createCompanyTrial(user.id, company.id, user.canonicalId)
+        companyHasActiveAccess = true  // trial just created → access granted
       } catch (error: unknown) {
         console.error('[completeOnboarding] Error creating trial:', error)
         // Don't throw - company is created, trial creation can be retried
         // User can manually start trial via subscribe page
       }
+    }
+
+    // Already-granted access (pre-existing company sub or enterprise
+    // user sub covering all companies) should also skip the gate.
+    if (companyHasSubscription || (isEnterprise && userHasSubscription)) {
+      companyHasActiveAccess = true
     }
   } catch (trialErr) {
     console.error('[completeOnboarding] Error checking/creating trial:', trialErr)
@@ -405,7 +416,7 @@ export async function completeOnboarding(
     })
   }
 
-  return { success: true, companyId: company.id }
+  return { success: true, companyId: company.id, hasActiveAccess: companyHasActiveAccess }
 }
 
 export async function updateCompany(

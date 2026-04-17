@@ -941,15 +941,22 @@ export default function OnboardingPage() {
       }, directors)
 
       if (result.success && result.companyId) {
-        // Hybrid subscription model:
-        // - Enterprise (user-first): If user has active subscription and hasn't reached limit, go to data-room
-        // - Starter/Professional (company-first): Always redirect to subscribe (each company needs its own subscription)
-        if (hasSubscription && tier === 'enterprise' && canCreateCompany) {
-          // Enterprise user with active subscription and room for more companies
+        // Hybrid subscription model. The server tells us whether the
+        // new company already has active access — from an enterprise
+        // user sub, a pre-existing company sub, or the trial it just
+        // auto-created for Starter/Professional users. If so, skip the
+        // /subscribe gate and land on /data-room directly.
+        //
+        // Previously this only checked (tier === 'enterprise'), which
+        // dumped trial-eligible users into the subscribe page even
+        // after the server had already granted them a trial on the
+        // new company.
+        const newCompanyHasAccess = (result as any).hasActiveAccess === true
+        const enterpriseCoversIt = hasSubscription && tier === 'enterprise' && canCreateCompany
+        if (newCompanyHasAccess || enterpriseCoversIt) {
           router.push(`/data-room?company_id=${result.companyId}`)
         } else {
-          // Starter/Professional: always need to subscribe for new company
-          // Enterprise: no subscription or limit reached
+          // No access path succeeded → user needs to pick a plan
           router.push(`/subscribe?company_id=${result.companyId}`)
         }
       }
