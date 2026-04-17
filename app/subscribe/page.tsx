@@ -276,8 +276,32 @@ function SubscribePageInner() {
       trackSubscriptionEvent('trial_start', 'starter', undefined, undefined)
       trackConversion('trial_start')
 
-      // Invalidate subscription cache so /onboarding sees hasSubscription: true immediately
-      await queryClient.invalidateQueries({ queryKey: queryKeys.userSubscription() })
+      // ROOT CAUSE FIX: the data-room access check reads from three
+      // react-query caches (userSubscription, companyAccess,
+      // accessibleCompanies), all with a 5-minute staleTime. We were
+      // only invalidating userSubscription here — so the moment the
+      // user was router.push'd to /data-room?company_id=X, the
+      // companyAccess query served a pre-trial snapshot showing
+      // {ownerSubscriptionExpired: true} and redirected to the
+      // owner-subscription-expired page. Now we invalidate every
+      // cache the next page will read AND await the companyAccess
+      // refetch so the next page mount already has fresh data.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.userSubscription() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.accessibleCompanies() }),
+        // Invalidate every company-access entry. Cheaper to nuke the
+        // whole prefix than track which companyId maps to this trial.
+        queryClient.invalidateQueries({ queryKey: ['company-access'] }),
+      ])
+
+      // Pull the target company id out of the redirect URL (if any)
+      // and pre-warm its access snapshot before routing, so the next
+      // page doesn't even briefly see an empty cache.
+      const urlMatch = result.redirectTo?.match(/company_id=([^&]+)/)
+      const targetId = urlMatch?.[1] || null
+      if (targetId) {
+        await queryClient.refetchQueries({ queryKey: queryKeys.companyAccess(targetId) })
+      }
 
       if (result.redirectTo) {
         router.push(result.redirectTo)
