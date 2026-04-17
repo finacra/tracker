@@ -1,12 +1,13 @@
 import { NextRequest } from 'next/server'
 import { getSession } from '@/lib/auth/passport-session'
-import { createAdminClient } from '@/utils/supabase/admin'
+import { prisma } from '@/lib/prisma'
 import { streamChatCompletion, type ChatMessage } from '@/lib/api/openai'
-import { handleAPIError } from '@/lib/errors/handle-error'
 
 /**
- * Streaming AI Overview for the document vault.
- * Generates a brief text summary of all uploaded documents + compliance status.
+ * Streaming AI Overview for the document vault. Reads through Prisma
+ * (Supabase admin client returns empty in this env — same root-cause as
+ * the context builder). Generates a brief markdown summary streamed to
+ * the client as plain text.
  */
 export async function POST(req: NextRequest) {
   const session = await getSession()
@@ -22,30 +23,32 @@ export async function POST(req: NextRequest) {
 
   if (!companyId) return new Response('Missing companyId', { status: 400 })
 
-  const supabase = createAdminClient()
-
-  // Fetch document inventory + compliance summary in parallel
-  const [docsResult, reqsResult, companyResult] = await Promise.all([
-    supabase
-      .from('company_documents_internal')
-      .select('file_name, folder_name, document_type')
-      .eq('company_id', companyId),
-    supabase
-      .from('regulatory_requirements')
-      .select('category, requirement, status, due_date, penalty')
-      .eq('company_id', companyId),
-    supabase
-      .from('companies')
-      .select('name, company_type')
-      .eq('id', companyId)
-      .single(),
+  const [docs, reqs, company] = await Promise.all([
+    prisma.companyDocument.findMany({
+      where: { company_id: companyId, deleted_at: null, is_draft: false },
+      select: { file_name: true, folder_name: true, document_type: true },
+    }).catch(err => {
+      console.error('[CIA Overview] docs query threw', err instanceof Error ? err.message : String(err))
+      return [] as Array<{ file_name: string | null; folder_name: string | null; document_type: string | null }>
+    }),
+    prisma.$queryRawUnsafe<Array<{ category: string; requirement: string; status: string; due_date: Date | null; penalty: string | null }>>(
+      `SELECT category, requirement, status, due_date, penalty
+       FROM regulatory_requirements
+       WHERE company_id = $1::uuid`,
+      companyId,
+    ).catch(err => {
+      console.error('[CIA Overview] reqs query threw', err instanceof Error ? err.message : String(err))
+      return [] as any[]
+    }),
+    prisma.company.findUnique({
+      where: { id: companyId },
+      select: { name: true, type: true },
+    }).catch(err => {
+      console.error('[CIA Overview] company query threw', err instanceof Error ? err.message : String(err))
+      return null
+    }),
   ])
 
-  const docs = (docsResult.data || []) as any[]
-  const reqs = (reqsResult.data || []) as any[]
-  const company = companyResult.data as any
-
-  // Build document summary by folder
   const folderMap = new Map<string, string[]>()
   for (const doc of docs) {
     const folder = doc.folder_name || doc.document_type || 'Other'
@@ -58,13 +61,12 @@ export async function POST(req: NextRequest) {
     docSummary += `- ${folder}: ${files.length} files (${files.slice(0, 3).join(', ')}${files.length > 3 ? ` +${files.length - 3} more` : ''})\n`
   }
 
-  // Compliance summary
   const total = reqs.length
-  const completed = reqs.filter((r: any) => r.status === 'completed').length
-  const overdue = reqs.filter((r: any) => r.status === 'overdue').length
-  const pending = reqs.filter((r: any) => r.status === 'pending').length
+  const completed = reqs.filter(r => r.status === 'completed').length
+  const overdue = reqs.filter(r => r.status === 'overdue').length
+  const pending = reqs.filter(r => r.status === 'pending').length
 
-  const contextBlock = `Company: ${company?.name || 'Unknown'} (${company?.company_type || 'N/A'})
+  const contextBlock = `Company: ${company?.name || 'Unknown'} (${company?.type || 'N/A'})
 
 UPLOADED DOCUMENTS:
 ${docSummary}
@@ -78,12 +80,17 @@ COMPLIANCE STATUS:
   const messages: ChatMessage[] = [
     {
       role: 'system',
-      content: `You are a compliance intelligence agent. Generate a brief AI Overview (3-5 short paragraphs) of this company's document vault and compliance status. Be specific — mention exact document counts, folder names, what types of documents are uploaded, and highlight key compliance gaps or risks. Use markdown: **bold** key numbers and terms. Keep it concise and scannable. Do NOT use headings or headers. Write in flowing paragraph style with bullet points only where needed. Address the user directly ("You have...", "Your company...").`,
+      content: `You are a compliance intelligence agent for Indian private limited companies. Generate a brief AI Overview (3-5 short paragraphs) of this company's document vault and compliance status.
+
+Rules:
+- Reference only the vault taxonomy used by this product: Constitutional Documents, Licences, Statutory Compliances, Financials, MCA Filings (and their sub-folders like MOA, AOA, COI, PAN, TAN, Advance Tax, TDS, ITR, Tax Audit, GST). NEVER mention generic Western categories like "Policies, Legal, HR, Security, Finance" — those do not exist here.
+- Be specific: mention exact document counts, the actual folder names above, what's uploaded, what's missing, and highlight any overdue / pending compliance items.
+- Use markdown: **bold** key numbers and folder names.
+- No headings/headers. Flowing paragraphs. Bullet points only where they help.
+- Address the user directly ("You have…", "Your vault…").
+- If the vault is empty, say so honestly and suggest the first 2-3 documents to upload (start with MOA, AOA, COI under Constitutional).`,
     },
-    {
-      role: 'user',
-      content: contextBlock,
-    },
+    { role: 'user', content: contextBlock },
   ]
 
   const encoder = new TextEncoder()
@@ -97,12 +104,13 @@ COMPLIANCE STATUS:
           controller.close()
           return
         }
-
         for await (const token of tokenStream) {
           controller.enqueue(encoder.encode(token))
         }
       } catch (error) {
-        console.error('[CIA Overview] Error:', error)
+        console.error('[CIA Overview] stream threw',
+          error instanceof Error ? error.message : String(error),
+          error instanceof Error ? error.stack : '')
         controller.enqueue(encoder.encode('Failed to generate overview.'))
       } finally {
         controller.close()

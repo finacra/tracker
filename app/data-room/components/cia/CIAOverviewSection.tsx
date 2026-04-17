@@ -119,7 +119,10 @@ export default function CIAOverviewSection({ companyId, documentCount, onDeepDiv
 
   const generateOverview = useCallback(async () => {
     if (!companyId) return
-    const cacheKey = `cia-overview-${companyId}`
+    // Bump the cache version whenever the overview prompt or folder
+    // taxonomy changes so stale summaries (with wrong category names)
+    // don't persist for 5 minutes after a deploy.
+    const cacheKey = `cia-overview-v2-${companyId}`
     try {
       const cached = localStorage.getItem(cacheKey)
       if (cached) {

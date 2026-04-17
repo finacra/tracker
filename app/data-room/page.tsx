@@ -1362,22 +1362,48 @@ function DataRoomPageInner() {
     countryCode: string,
   ): Record<string, string[]> => {
     const config = countryConfig;
-    if (!config) {
+    // PRD v1.1 default documents per top-level folder. Must stay in sync
+    // with the sub-folder slugs in lib/vault/taxonomy.ts so the agent's
+    // suggestions route documents to the right card.
+    if (countryCode === "IN" || !config) {
       return {
         "Constitutional Documents": [
           "Certificate of Incorporation",
           "MOA (Memorandum of Association)",
           "AOA (Articles of Association)",
-          "Rental Deed",
+          "PAN",
+          "TAN",
+          "Share Certificates",
           "DIN Certificate",
         ],
-        "Financials": ["PAN", "TAN"],
-        "Statutory Compliances": ["GST Returns", "Income Tax Returns"],
-        "MCA Filings": ["Annual Returns", "Board Minutes"],
+        "Licences": [
+          "Trade License",
+          "Shop & Establishment Registration",
+          "Professional Tax Registration",
+        ],
+        "Statutory Compliances": [
+          "Advance Tax Challans",
+          "TDS Returns (Form 24Q/26Q)",
+          "TDS Certificates (Form 16/16A)",
+          "ITR Acknowledgement",
+          "Tax Audit Report (Form 3CA/3CB/3CD)",
+          "GST Returns (GSTR-1/3B/9)",
+        ],
+        "Financials": [
+          "Audited Financial Statements",
+          "Balance Sheet",
+          "Profit & Loss Statement",
+        ],
+        "MCA Filings": [
+          "AOC-4 (Annual Financial Statement)",
+          "MGT-7 / MGT-7A (Annual Return)",
+          "Board Minutes",
+          "ROC Filings",
+        ],
       };
     }
 
-    // Use country config's document types and compliance categories
+    // Non-IN countries keep the legacy dynamic mapping for backward compat
     const constitutionalDocs = config.onboarding.documentTypes.filter(
       (doc) =>
         doc.includes("Certificate") ||
@@ -1396,18 +1422,7 @@ function DataRoomPageInner() {
 
     const complianceDocs: Record<string, string[]> = {};
 
-    if (countryCode === "IN") {
-      // India-specific documents
-      complianceDocs["Statutory Compliances"] = [
-        "GST Returns",
-        "Income Tax Returns",
-      ];
-      complianceDocs["MCA Filings"] = [
-        "Annual Returns",
-        "Board Minutes",
-        "ROC Filings",
-      ];
-    } else if (["AE", "SA", "OM", "QA", "BH"].includes(countryCode)) {
+    if (["AE", "SA", "OM", "QA", "BH"].includes(countryCode)) {
       // GCC countries
       complianceDocs["VAT & Tax Compliance"] = [
         "VAT Returns",
@@ -1508,66 +1523,53 @@ function DataRoomPageInner() {
   // Merge database templates with defaults, filtering out hidden templates
   const predefinedDocuments = useMemo(() => {
     if (documentTemplates.length > 0) {
-      // Start with defaults (ensures PAN and TAN are in Financials)
       const merged = { ...DEFAULT_DOCUMENTS };
 
-      // Add/override with database templates, but move PAN and TAN to correct folder
+      // Per PRD v1.1 for IN: PAN and TAN live in Constitutional Documents
+      // alongside COI / MOA / AOA / Share Certificates / DIN. For non-IN
+      // countries, the legacy behaviour (tax IDs under Financials) stays.
+      const panTanHome = countryCode === "IN" ? "Constitutional Documents" : "Financials";
+
       documentTemplates.forEach((template) => {
         const docName = template.document_name;
         const folderName = template.folder_name;
 
-        // Skip if this template is hidden for this company
         const templateKey = `${folderName}:${docName}`;
-        if (hiddenTemplates.has(templateKey)) {
-          return;
-        }
+        if (hiddenTemplates.has(templateKey)) return;
 
-        // Country-specific tax ID documents should be in "Financials"
         const taxIdLabel = countryConfig?.labels.taxId || "PAN";
-        if (
+        const isTaxId =
           docName === taxIdLabel ||
           docName === "PAN" ||
           docName === "TAN" ||
           (countryCode !== "IN" &&
             (docName.includes("Tax") ||
               docName.includes("VAT") ||
-              docName.includes("Registration")))
-        ) {
-          // Remove from any other folder
+              docName.includes("Registration")));
+
+        if (isTaxId) {
+          // Remove from every folder other than the intended home
           Object.keys(merged).forEach((folder) => {
-            if (folder !== "Financials") {
-              merged[folder] = merged[folder].filter(
-                (d: string) => d !== docName,
-              );
+            if (folder !== panTanHome) {
+              merged[folder] = merged[folder].filter((d: string) => d !== docName);
             }
           });
-          // Add to Financials
-          if (!merged["Financials"]) {
-            merged["Financials"] = [];
-          }
-          if (!merged["Financials"].includes(docName)) {
-            merged["Financials"].push(docName);
-          }
+          if (!merged[panTanHome]) merged[panTanHome] = [];
+          if (!merged[panTanHome].includes(docName)) merged[panTanHome].push(docName);
         } else {
-          // For other documents, add to their specified folder
-          if (!merged[folderName]) {
-            merged[folderName] = [];
-          }
-          if (!merged[folderName].includes(docName)) {
-            merged[folderName].push(docName);
-          }
+          if (!merged[folderName]) merged[folderName] = [];
+          if (!merged[folderName].includes(docName)) merged[folderName].push(docName);
         }
       });
 
-      // Ensure tax ID documents are removed from Constitutional Documents
-      const taxIdLabel = countryConfig?.labels.taxId || "PAN";
-      if (merged["Constitutional Documents"]) {
-        merged["Constitutional Documents"] = merged[
-          "Constitutional Documents"
-        ].filter((d: string) => d !== taxIdLabel && d !== "PAN" && d !== "TAN");
+      // Non-IN only: scrub PAN/TAN out of Constitutional so they don't
+      // appear in two cards at once. IN keeps them in Constitutional.
+      if (countryCode !== "IN" && merged["Constitutional Documents"]) {
+        merged["Constitutional Documents"] = merged["Constitutional Documents"].filter(
+          (d: string) => d !== "PAN" && d !== "TAN",
+        );
       }
 
-      // Also filter out hidden templates from default documents
       Object.keys(merged).forEach((folder) => {
         merged[folder] = merged[folder].filter((docName: string) => {
           const templateKey = `${folder}:${docName}`;
