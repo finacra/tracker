@@ -15,6 +15,7 @@ import TrackerEmptyState from './TrackerEmptyState'
 import TrackerCalendarView from './TrackerCalendarView'
 import ComplianceIntelligencePanel from './ComplianceIntelligencePanel'
 import CategoryDashboard from './CategoryDashboard'
+import ComplianceFilingView from './ComplianceFilingView'
 
 export default function TrackerTab() {
   const {
@@ -307,6 +308,25 @@ export default function TrackerTab() {
           </div>
         )}
       </div>
+
+      {/* Filing register — inline in list view. Shows per-period Payable/Paid,
+          auto-calc interest, document upload, and inline questions for
+          uncertain rules. Deliberately NOT a separate tab. */}
+      {trackerView === 'list' && currentCompany && selectedTrackerFY && (
+        <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden p-4 sm:p-6">
+          <div className="mb-4">
+            <h3 className="text-lg font-light text-white">Filing details</h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Enter the amount payable and paid for each period. We compute delay, short deduction, and interest automatically. Upload the challan or filing acknowledgement to mark it done.
+            </p>
+          </div>
+          <ComplianceFilingView
+            companyId={currentCompany.id}
+            financialYear={selectedTrackerFY}
+            categoryFilter={selectedCategory !== 'all' ? selectedCategory : undefined}
+          />
+        </div>
+      )}
 
       {/* Create/Edit Compliance Modal */}
       <RequirementFormModal
