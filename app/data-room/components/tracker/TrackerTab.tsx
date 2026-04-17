@@ -15,7 +15,6 @@ import TrackerEmptyState from './TrackerEmptyState'
 import TrackerCalendarView from './TrackerCalendarView'
 import ComplianceIntelligencePanel from './ComplianceIntelligencePanel'
 import CategoryDashboard from './CategoryDashboard'
-import ComplianceFilingView from './ComplianceFilingView'
 
 export default function TrackerTab() {
   const {
@@ -235,13 +234,7 @@ export default function TrackerTab() {
           />
         ) : (
           <div className="sm:overflow-x-auto scrollbar-hide">
-            {trackerView === 'filings' ? (
-              <ComplianceFilingView
-                companyId={currentCompany?.id || ''}
-                financialYear={selectedTrackerFY || ''}
-                categoryFilter={selectedCategory !== 'all' ? selectedCategory : undefined}
-              />
-            ) : trackerView === 'calendar' ? (
+            {trackerView === 'calendar' ? (
               <TrackerCalendarView
                 calendarMonth={calendarMonth}
                 calendarYear={calendarYear}

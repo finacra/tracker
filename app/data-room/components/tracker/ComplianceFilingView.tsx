@@ -265,78 +265,79 @@ export default function ComplianceFilingView({ companyId, financialYear, categor
                 <span className="text-[10px] text-gray-500">{rule.dueDescription}</span>
               </div>
 
-              {/* Filing rows table */}
+              {/* Simplified filing table — user only edits Payable, Paid, and uploads doc.
+                  Everything else (due date, delay, interest, short) is auto-computed. */}
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="text-gray-500 text-[10px] uppercase tracking-wider">
-                      <th className="px-3 py-2 text-left w-20">Period</th>
-                      <th className="px-3 py-2 text-left w-24">Due Date</th>
-                      <th className="px-3 py-2 text-left w-20">Status</th>
-                      <th className="px-3 py-2 text-right w-24">Payable</th>
-                      <th className="px-3 py-2 text-right w-24">Paid</th>
-                      <th className="px-3 py-2 text-right w-20">Short</th>
-                      <th className="px-3 py-2 text-left w-24">Date Filed</th>
-                      <th className="px-3 py-2 text-right w-16">Delay</th>
-                      <th className="px-3 py-2 text-right w-20">Interest</th>
-                      <th className="px-3 py-2 text-left w-28">Challan</th>
-                      <th className="px-3 py-2 text-left w-28">Ack/SRN</th>
-                      <th className="px-3 py-2 text-left w-24">Working</th>
-                      <th className="px-3 py-2 text-center w-16">Doc</th>
+                      <th className="px-3 py-2 text-left w-24">Period</th>
+                      <th className="px-3 py-2 text-left w-24">Due</th>
+                      <th className="px-3 py-2 text-left w-24">Status</th>
+                      <th className="px-3 py-2 text-right w-28">Payable (₹)</th>
+                      <th className="px-3 py-2 text-right w-28">Paid (₹)</th>
+                      <th className="px-3 py-2 text-right w-28">Auto-calc</th>
+                      <th className="px-3 py-2 text-center w-24">Document</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {ruleFilings.map(f => (
-                      <tr key={f.id} className="border-t border-gray-800/30 hover:bg-gray-900/20">
-                        <td className="px-3 py-2 text-gray-300 font-mono">{f.periodKey}</td>
-                        <td className="px-3 py-2 text-gray-400">{f.dueDate || '—'}</td>
-                        <td className="px-3 py-2">
-                          <select
-                            value={f.status}
-                            onChange={e => handleStatusChange(f.id, e.target.value)}
-                            disabled={savingId === f.id}
-                            className={`text-[10px] px-1.5 py-0.5 rounded border-0 cursor-pointer ${statusColor(f.status)}`}
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="filed">Filed</option>
-                            <option value="overdue">Overdue</option>
-                            <option value="partially_filed">Partial</option>
-                            <option value="not_due">Not Due</option>
-                          </select>
-                        </td>
-                        <EditableCell filing={f} field="amountPayable" type="number" editing={editing} setEditing={setEditing} onSave={handleSaveCell} savingId={savingId} />
-                        <EditableCell filing={f} field="amountPaid" type="number" editing={editing} setEditing={setEditing} onSave={handleSaveCell} savingId={savingId} />
-                        <td className="px-3 py-2 text-right text-gray-400">
-                          {f.shortDeduction != null ? `₹${f.shortDeduction.toLocaleString('en-IN')}` : '—'}
-                        </td>
-                        <EditableCell filing={f} field="dateOfFiling" type="date" editing={editing} setEditing={setEditing} onSave={handleSaveCell} savingId={savingId} />
-                        <td className="px-3 py-2 text-right">
-                          {f.daysDelay != null ? (
-                            <span className={f.daysDelay > 0 ? 'text-red-300' : 'text-emerald-300'}>
-                              {f.daysDelay > 0 ? `${f.daysDelay}d` : 'On time'}
-                            </span>
-                          ) : '—'}
-                        </td>
-                        <EditableCell filing={f} field="interestOnLate" type="number" editing={editing} setEditing={setEditing} onSave={handleSaveCell} savingId={savingId} />
-                        <EditableCell filing={f} field="challanNumber" type="text" editing={editing} setEditing={setEditing} onSave={handleSaveCell} savingId={savingId} />
-                        <EditableCell filing={f} field="acknowledgement" type="text" editing={editing} setEditing={setEditing} onSave={handleSaveCell} savingId={savingId} />
-                        <EditableCell filing={f} field="workingNotes" type="text" editing={editing} setEditing={setEditing} onSave={handleSaveCell} savingId={savingId} />
-                        <td className="px-3 py-2 text-center">
-                          {f.documentId ? (
-                            <span className="text-emerald-300 text-[10px]" title="Document linked">✓</span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setUploadForFiling(f)}
-                              className="text-[10px] text-gray-400 hover:text-white px-1.5 py-0.5 border border-gray-700 rounded hover:border-gray-500 transition-colors"
-                              title="Upload document for this filing"
+                    {ruleFilings.map(f => {
+                      // Auto-compute interest + short + delay
+                      const short = f.amountPayable && f.amountPaid ? Math.max(0, f.amountPayable - f.amountPaid) : null
+                      const delay = f.daysDelay ?? 0
+                      // Standard IT Act rates: 1.5% p.m. on late deposit, 1% p.m. on short
+                      const monthsLate = Math.ceil(delay / 30)
+                      const interestLate = delay > 0 && f.amountPaid ? Math.round(f.amountPaid * 0.015 * monthsLate) : 0
+                      const interestShort = short && short > 0 ? Math.round(short * 0.01 * Math.max(1, monthsLate)) : 0
+                      const totalAutoCalc = (interestLate + interestShort) || null
+
+                      return (
+                        <tr key={f.id} className="border-t border-gray-800/30 hover:bg-gray-900/20">
+                          <td className="px-3 py-2 text-gray-300 font-mono">{f.periodKey}</td>
+                          <td className="px-3 py-2 text-gray-400">{f.dueDate || '—'}</td>
+                          <td className="px-3 py-2">
+                            <select
+                              value={f.status}
+                              onChange={e => handleStatusChange(f.id, e.target.value)}
+                              disabled={savingId === f.id}
+                              className={`text-[10px] px-1.5 py-0.5 rounded border-0 cursor-pointer ${statusColor(f.status)}`}
                             >
-                              ↑
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                              <option value="pending">Pending</option>
+                              <option value="filed">Filed</option>
+                              <option value="overdue">Overdue</option>
+                              <option value="not_due">Not Due</option>
+                            </select>
+                          </td>
+                          <EditableCell filing={f} field="amountPayable" type="number" editing={editing} setEditing={setEditing} onSave={handleSaveCell} savingId={savingId} />
+                          <EditableCell filing={f} field="amountPaid" type="number" editing={editing} setEditing={setEditing} onSave={handleSaveCell} savingId={savingId} />
+                          <td className="px-3 py-2 text-right text-gray-400">
+                            {totalAutoCalc != null ? (
+                              <div className="text-[10px]">
+                                {short && short > 0 && <div className="text-amber-400">Short: ₹{short.toLocaleString('en-IN')}</div>}
+                                {delay > 0 && <div className="text-red-300">Delay: {delay}d</div>}
+                                {totalAutoCalc > 0 && <div className="text-gray-300">+₹{totalAutoCalc.toLocaleString('en-IN')} interest</div>}
+                              </div>
+                            ) : '—'}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            {f.documentId ? (
+                              <span className="text-emerald-300 text-[10px] inline-flex items-center gap-1" title="Document linked">
+                                <span>✓</span> <span>Linked</span>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setUploadForFiling(f)}
+                                className="text-[10px] text-gray-400 hover:text-white px-2 py-1 border border-gray-700 rounded hover:border-gray-500 transition-colors inline-flex items-center gap-1"
+                                title="Upload — agent extracts challan, ACK, amounts from the doc"
+                              >
+                                ↑ Upload
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -403,6 +404,59 @@ const TRIGGER_QUESTIONS: Record<string, { question: string; factKind: string; un
   employee_count_above: { question: 'How many employees do you have?', factKind: 'headcount.total', unit: 'count', placeholder: 'e.g. 15' },
   net_worth_above: { question: 'What is your company\'s net worth (in ₹)?', factKind: 'net_worth.total', unit: 'rupees', placeholder: 'e.g. 50000000' },
   salary_above: { question: 'Total annual salary bill?', factKind: 'salary.annual_bill', unit: 'rupees_per_year', placeholder: 'e.g. 1200000' },
+}
+
+/**
+ * Infer the right question from the rule name/category when trigger_kind
+ * doesn't give us a direct answer. Covers the "always" rules so every
+ * uncertain item asks something useful.
+ */
+function inferQuestionFromRuleName(ruleName: string, category: string): typeof TRIGGER_QUESTIONS[string] | null {
+  const n = ruleName.toLowerCase()
+  // TDS rules
+  if (n.includes('rent') && n.includes('tds')) return TRIGGER_QUESTIONS.rent_payment_above
+  if (n.includes('contractor') && n.includes('tds')) return TRIGGER_QUESTIONS.contractor_payment_above
+  if ((n.includes('professional') || n.includes('194j')) && n.includes('tds')) return TRIGGER_QUESTIONS.professional_fee_above
+  // TDS return/payment — these apply if the company deducts ANY TDS
+  if (n.includes('tds') && (n.includes('return') || n.includes('payment'))) {
+    return { question: 'Do you deduct any TDS this FY? (If yes, enter the total TDS amount)', factKind: 'tds.annual_total', unit: 'rupees_per_year', placeholder: 'e.g. 50000 (or 0 if none)' }
+  }
+  // Advance tax — depends on estimated tax liability
+  if (n.includes('advance tax')) {
+    return { question: 'Your estimated annual tax liability this FY (advance tax applies if > ₹10,000)', factKind: 'tax.estimated_liability', unit: 'rupees_per_year', placeholder: 'e.g. 200000' }
+  }
+  // ITR filing always applies to companies, but ITR type varies
+  if (n.includes('itr')) {
+    return { question: 'What is your annual turnover? (determines ITR form type)', factKind: 'turnover.annual', unit: 'rupees_per_year', placeholder: 'e.g. 10000000' }
+  }
+  // Tax audit
+  if (n.includes('tax audit')) {
+    return { question: 'Annual turnover? (Tax audit applies > ₹1Cr for business, > ₹50L for profession)', factKind: 'turnover.annual', unit: 'rupees_per_year', placeholder: 'e.g. 10000000' }
+  }
+  // GST returns — depend on whether company is GST registered
+  if (n.includes('gstr') || n.includes('gst')) {
+    return { question: 'Your monthly aggregate turnover (₹)', factKind: 'turnover.monthly', unit: 'rupees_per_month', placeholder: 'e.g. 500000' }
+  }
+  // PF/ESI
+  if (category === 'Payroll' || n.includes('pf') || n.includes('provident')) {
+    return TRIGGER_QUESTIONS.employee_count_above
+  }
+  if (n.includes('esi')) {
+    return { question: 'How many employees earn ≤ ₹21,000/month?', factKind: 'esi.eligible_employees', unit: 'count', placeholder: 'e.g. 5 (or 0)' }
+  }
+  // Professional tax
+  if (n.includes('professional tax') || n.includes('pt ')) {
+    return { question: 'Number of employees in this state', factKind: 'headcount.state', unit: 'count', placeholder: 'e.g. 10' }
+  }
+  // MCA filings
+  if (category === 'RoC' && (n.includes('aoc') || n.includes('mgt'))) {
+    return null // These always apply to companies — no question needed, just yes/no confirm
+  }
+  // CSR
+  if (n.includes('csr')) {
+    return { question: 'Net profit for last 3 years average (₹ crores). CSR applies if ≥ ₹5 Cr profit or ₹500 Cr turnover.', factKind: 'net_profit.3yr_average', unit: 'rupees_per_year', placeholder: 'e.g. 50000000' }
+  }
+  return null
 }
 
 function ReviewItem({ companyId, financialYear, ruleId, ruleName, confidence, periodCount, onResolved }: {

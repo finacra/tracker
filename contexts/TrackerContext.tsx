@@ -64,8 +64,8 @@ export interface TrackerExternalData {
 
 interface TrackerContextValue extends TrackerExternalData {
   // Filter state
-  trackerView: 'list' | 'calendar' | 'filings'
-  setTrackerView: (v: 'list' | 'calendar' | 'filings') => void
+  trackerView: 'list' | 'calendar'
+  setTrackerView: (v: 'list' | 'calendar') => void
   sortMode: 'chronological' | 'category'
   setSortMode: (v: 'chronological' | 'category') => void
   selectedTrackerFY: string
@@ -154,7 +154,7 @@ export function TrackerContextProvider({
   } = external
 
   // ── Filter state ────────────────────────────────────────────────────────────
-  const [trackerView, setTrackerView] = useState<'list' | 'calendar' | 'filings'>('list')
+  const [trackerView, setTrackerView] = useState<'list' | 'calendar'>('list')
   const [sortMode, setSortMode] = useState<'chronological' | 'category'>('chronological')
   const [selectedTrackerFY, setSelectedTrackerFY] = useState('')
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null)

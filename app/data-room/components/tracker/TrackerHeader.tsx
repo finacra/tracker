@@ -3,8 +3,8 @@
 import React from 'react'
 
 interface TrackerHeaderProps {
-  trackerView: 'list' | 'calendar' | 'filings'
-  setTrackerView: (view: 'list' | 'calendar' | 'filings') => void
+  trackerView: 'list' | 'calendar'
+  setTrackerView: (view: 'list' | 'calendar') => void
   isLoadingRequirements: boolean
   refreshRequirements: () => void
   canEdit: boolean
@@ -68,20 +68,6 @@ export default function TrackerHeader({
             </svg>
             <span className="hidden sm:inline">Calendar</span>
             <span className="sm:hidden">Calendar</span>
-          </button>
-          <button
-            onClick={() => setTrackerView('filings')}
-            className={`px-2 sm:px-4 py-1.5 sm:py-2 rounded-md transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${trackerView === 'filings'
-                ? 'bg-white text-black'
-                : 'text-gray-400 hover:text-white'
-              }`}
-            title="Filing Register"
-          >
-            <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <path d="M3 9h18M3 15h18M9 3v18M15 3v18" />
-            </svg>
-            <span className="hidden sm:inline">Register</span>
           </button>
         </div>
         <button
