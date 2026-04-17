@@ -44,41 +44,43 @@ export class PrismaUserRepository implements UserRepository {
 
   async findByEmail(email: string): Promise<AppUser | null> {
     const normalizedEmail = email.trim()
-    if (!normalizedEmail) {
-      return null
-    }
+    if (!normalizedEmail) return null
 
-    const identity = await prisma.authIdentity.findFirst({
+    // Look up the canonical app_users row by email directly, regardless
+    // of which auth provider owns it. Earlier this was scoped to
+    // provider='supabase' only, which hid Passport/Google users from
+    // flows like team-invite acceptance — the invite route then tried
+    // to create a duplicate row and blew up on the primary_email unique
+    // constraint (500). We now always return the matching user and
+    // attach whichever identity we can find (passport first, supabase
+    // second) so the caller gets consistent legacy-auth metadata.
+    const appUser = await prisma.appUser.findFirst({
       where: {
-        provider: 'supabase',
-        appUser: {
-          primary_email: {
-            equals: normalizedEmail,
-            mode: 'insensitive',
-          },
-        },
+        primary_email: { equals: normalizedEmail, mode: 'insensitive' },
       },
       select: {
-        legacy_auth_id: true,
-        provider: true,
-        appUser: {
-          select: {
-            id: true,
-            primary_email: true,
-            full_name: true,
-          },
+        id: true,
+        primary_email: true,
+        full_name: true,
+        authIdentities: {
+          select: { provider: true, legacy_auth_id: true, is_primary: true },
+          orderBy: [{ is_primary: 'desc' }, { provider: 'asc' }],
         },
       },
     })
 
-    if (!identity || !identity.appUser) {
-      return null
-    }
+    if (!appUser) return null
+
+    const preferred =
+      appUser.authIdentities.find(i => i.provider === 'passport') ||
+      appUser.authIdentities.find(i => i.provider === 'supabase') ||
+      appUser.authIdentities[0] ||
+      null
 
     return this.mapCanonicalUser(
-      identity.appUser,
-      identity.provider as AppUser['legacyAuthProvider'],
-      identity.legacy_auth_id
+      { id: appUser.id, primary_email: appUser.primary_email, full_name: appUser.full_name ?? null },
+      (preferred?.provider as AppUser['legacyAuthProvider']) ?? null,
+      preferred?.legacy_auth_id ?? null,
     )
   }
 
