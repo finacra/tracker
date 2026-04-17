@@ -88,6 +88,9 @@ model Company {
   company_status          String?
   date_of_last_agm        DateTime? @db.Date
   balance_sheet_date      DateTime? @db.Date
+  // Country-specific metadata pulled from MCA / CIN lookups; kept as
+  // free-form JSON so the shape can evolve without migrations.
+  jurisdiction_metadata   Json?
   created_at              DateTime  @default(now()) @db.Timestamptz
   updated_at              DateTime  @default(now()) @db.Timestamptz
 
@@ -438,6 +441,11 @@ model RegulatoryRequirement {
   due_date            DateTime? @db.Date
   penalty             String?
   is_critical         Boolean?  @default(false)
+  // Indian financial-year label ("2026-27"). Present in prod DB but
+  // was missing from this model for a long time, which forced callers
+  // to use raw SQL for any FY filter. Added here so Prisma stops
+  // trying to drop it and so queries can use the Prisma API.
+  financial_year      String?
   created_at          DateTime? @default(now()) @db.Timestamptz
   updated_at          DateTime? @default(now()) @db.Timestamptz
   created_by          String?   @db.Uuid
@@ -530,6 +538,9 @@ model Payment {
   refunded_at         DateTime? @db.Timestamptz
   refund_amount       Decimal?  @db.Decimal(15, 2)
   payment_type        String?
+  // Raw provider response (Razorpay webhook payload etc.) — kept as
+  // JSON so we can reconcile against the provider after the fact.
+  provider_metadata   Json?
   created_at          DateTime? @default(now()) @db.Timestamptz
   updated_at          DateTime? @default(now()) @db.Timestamptz
 
@@ -558,6 +569,8 @@ model Subscription {
   is_trial              Boolean?  @default(false)
   trial_started_at      DateTime? @db.Timestamptz
   trial_ends_at         DateTime? @db.Timestamptz
+  // Raw provider webhook payload for the subscription lifecycle.
+  provider_metadata     Json?
   created_at            DateTime? @default(now()) @db.Timestamptz
   updated_at            DateTime? @default(now()) @db.Timestamptz
 
@@ -822,34 +835,48 @@ model EmailVerificationToken {
   @@map("email_verification_tokens")
 }
 
+// Matches supabase/migrations/create_kpi_metrics_table.sql which is
+// the source of truth for the live table. Earlier Prisma definition
+// guessed at a simpler event_type/metadata shape and diverged — that
+// broke prisma db push on the production DB because the real table
+// already had 1114 rows.
 model KpiMetric {
-  id         String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
-  user_id    String?   @db.Uuid
-  event_type String
-  metadata   Json?
-  created_at DateTime? @default(now()) @db.Timestamptz
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kpi_name     String
+  category     String
+  user_id      String?  @db.Uuid
+  company_id   String?  @db.Uuid
+  metric_value Decimal  @db.Decimal
+  metric_data  Json?    @default("{}")
+  recorded_at  DateTime @default(now()) @db.Timestamptz
+  created_at   DateTime @default(now()) @db.Timestamptz
 
-  @@index([event_type])
+  @@index([kpi_name])
+  @@index([category])
   @@index([user_id])
+  @@index([company_id])
+  @@index([recorded_at])
+  @@index([category, kpi_name])
   @@map("kpi_metrics")
 }
 
+// Matches supabase/schemas/schema-email-batch-queue.sql which created
+// the live table. Same divergence story as KpiMetric — earlier
+// Prisma model invented a subject/html_content/recipient shape that
+// never existed in prod.
 model EmailBatchQueue {
-  id             String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
-  user_id        String    @db.Uuid
-  email_type     String
-  subject        String
-  html_content   String
-  recipient      String
-  status         String    @default("pending")
-  scheduled_for  DateTime? @db.Timestamptz
-  sent_at        DateTime? @db.Timestamptz
-  error          String?
-  retry_count    Int       @default(0)
-  created_at     DateTime? @default(now()) @db.Timestamptz
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String    @db.Uuid
+  user_email   String
+  company_id   String    @db.Uuid
+  company_name String
+  email_type   String    @default("status_change")
+  payload      Json
+  created_at   DateTime  @default(now()) @db.Timestamptz
+  processed_at DateTime? @db.Timestamptz
 
-  @@index([status])
   @@index([user_id])
+  @@index([processed_at])
   @@map("email_batch_queue")
 }
 
