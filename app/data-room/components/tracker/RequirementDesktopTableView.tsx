@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { IRegulatoryService } from '../../services/RegulatoryService'
 import { showToast } from '@/components/ui/Toast'
 import { updateRequirement } from '@/app/data-room/actions'
@@ -84,9 +84,6 @@ export default function RequirementDesktopTableView({
   const [baseAmountInputs, setBaseAmountInputs] = useState<Record<string, string>>({})
   const [savingBaseAmount, setSavingBaseAmount] = useState<Record<string, boolean>>({})
   const [openDocChecklist, setOpenDocChecklist] = useState<string | null>(null)
-  const [editingCell, setEditingCell] = useState<{ reqId: string; field: 'amount_payable' | 'amount_paid' } | null>(null)
-  const [cellDraft, setCellDraft] = useState<string>('')
-  const [savingCell, setSavingCell] = useState<Record<string, boolean>>({})
 
   const uploadedDocSet = new Set(
     vaultDocuments
@@ -118,8 +115,6 @@ export default function RequirementDesktopTableView({
     // Previously this waited ~200-500ms on Vercel which felt broken.
     const prevValue = (req as any)[field] ?? null
     setRegulatoryRequirements(prev => prev.map(r => r.id === req.id ? { ...r, [field]: parsed } : r))
-    setEditingCell(null)
-    setCellDraft('')
     const result = await updateRequirement(req.id, currentCompany?.id || null, { [field]: parsed } as any)
     if (!result.success) {
       // Roll back on failure and surface the error
@@ -415,54 +410,22 @@ export default function RequirementDesktopTableView({
                     })()}
                   </td>
                   {/* PAYABLE (₹) — inline editable */}
-                  <td
-                    className="px-4 py-4 text-right cursor-pointer hover:bg-gray-900/40"
-                    onClick={() => canEdit && setEditingCell({ reqId: req.id, field: 'amount_payable' })}
-                    title={canEdit ? 'Click to edit' : ''}
-                  >
-                    {editingCell?.reqId === req.id && editingCell.field === 'amount_payable' ? (
-                      <input
-                        type="number"
-                        autoFocus
-                        defaultValue={req.amount_payable ?? ''}
-                        disabled={!!savingCell[`${req.id}:amount_payable`]}
-                        className="w-24 px-2 py-1 text-sm bg-gray-800 border border-gray-600 rounded text-right text-white focus:outline-none focus:border-white/40"
-                        onBlur={e => saveAmount(req, 'amount_payable', e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') saveAmount(req, 'amount_payable', (e.target as HTMLInputElement).value)
-                          if (e.key === 'Escape') { setEditingCell(null); setCellDraft('') }
-                        }}
-                      />
-                    ) : (
-                      <span className={req.amount_payable != null ? 'text-white text-sm' : 'text-gray-600 text-sm'}>
-                        {req.amount_payable != null ? `₹${Number(req.amount_payable).toLocaleString('en-IN')}` : '—'}
-                      </span>
-                    )}
+                  <td className="px-4 py-4 text-right align-middle">
+                    <AmountInputCell
+                      value={req.amount_payable ?? null}
+                      canEdit={canEdit}
+                      placeholder="₹ 0"
+                      onSave={(raw) => saveAmount(req, 'amount_payable', raw)}
+                    />
                   </td>
-                  {/* PAID (₹) — inline editable */}
-                  <td
-                    className="px-4 py-4 text-right cursor-pointer hover:bg-gray-900/40"
-                    onClick={() => canEdit && setEditingCell({ reqId: req.id, field: 'amount_paid' })}
-                    title={canEdit ? 'Click to edit' : ''}
-                  >
-                    {editingCell?.reqId === req.id && editingCell.field === 'amount_paid' ? (
-                      <input
-                        type="number"
-                        autoFocus
-                        defaultValue={req.amount_paid ?? ''}
-                        disabled={!!savingCell[`${req.id}:amount_paid`]}
-                        className="w-24 px-2 py-1 text-sm bg-gray-800 border border-gray-600 rounded text-right text-white focus:outline-none focus:border-white/40"
-                        onBlur={e => saveAmount(req, 'amount_paid', e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') saveAmount(req, 'amount_paid', (e.target as HTMLInputElement).value)
-                          if (e.key === 'Escape') { setEditingCell(null); setCellDraft('') }
-                        }}
-                      />
-                    ) : (
-                      <span className={req.amount_paid != null ? 'text-white text-sm' : 'text-gray-600 text-sm'}>
-                        {req.amount_paid != null ? `₹${Number(req.amount_paid).toLocaleString('en-IN')}` : '—'}
-                      </span>
-                    )}
+                  {/* PAID (₹) — always-on inline input */}
+                  <td className="px-4 py-4 text-right align-middle">
+                    <AmountInputCell
+                      value={req.amount_paid ?? null}
+                      canEdit={canEdit}
+                      placeholder="₹ 0"
+                      onSave={(raw) => saveAmount(req, 'amount_paid', raw)}
+                    />
                   </td>
                   {/* AUTO-CALC: delay, short, interest */}
                   <td className="px-4 py-4 text-right text-xs hidden md:table-cell">
@@ -843,5 +806,82 @@ export default function RequirementDesktopTableView({
         ))}
       </tbody>
     </table>
+  )
+}
+
+// ── Always-on inline amount cell ───────────────────────────────────────
+// Previously this was click-to-edit with an em-dash + native-tooltip
+// "Click to edit" — felt unlabelled and the browser tooltip was ugly.
+// Now it's a persistent input that matches the table row height, shows
+// ₹ prefix, saves on blur / Enter, and rolls back on Escape.
+
+function AmountInputCell({
+  value,
+  canEdit,
+  placeholder,
+  onSave,
+}: {
+  value: number | null
+  canEdit: boolean
+  placeholder: string
+  onSave: (raw: string) => void | Promise<void>
+}) {
+  // `display` holds the formatted value shown when the cell is idle
+  // (₹1,23,456). `focused` swaps it for the raw number so the user can
+  // edit without commas getting in the way. Blur or Enter commits and
+  // re-formats; Escape reverts.
+  const [focused, setFocused] = useState(false)
+  const [draft, setDraft] = useState<string>(value != null ? String(value) : '')
+
+  useEffect(() => {
+    if (!focused) setDraft(value != null ? String(value) : '')
+  }, [value, focused])
+
+  if (!canEdit) {
+    return (
+      <span className={value != null ? 'text-white text-sm' : 'text-gray-600 text-sm'}>
+        {value != null ? `₹${Number(value).toLocaleString('en-IN')}` : '—'}
+      </span>
+    )
+  }
+
+  const formatted = value != null ? `₹${Number(value).toLocaleString('en-IN')}` : ''
+  const shown = focused ? draft : formatted
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={shown}
+      placeholder={placeholder}
+      onFocus={() => { setDraft(value != null ? String(value) : ''); setFocused(true) }}
+      onChange={e => {
+        const raw = e.target.value
+        // Accept digits, one dot, optional leading minus (we reject negatives on save)
+        if (raw === '' || /^-?\d*\.?\d*$/.test(raw)) setDraft(raw)
+      }}
+      onBlur={e => {
+        setFocused(false)
+        const stripped = e.target.value.trim()
+        const cleaned = stripped === '' ? '' : String(Number(stripped))
+        const prev = value != null ? String(value) : ''
+        if (cleaned !== prev) onSave(cleaned)
+      }}
+      onKeyDown={e => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+        if (e.key === 'Escape') {
+          setDraft(value != null ? String(value) : '')
+          setFocused(false)
+          ;(e.target as HTMLInputElement).blur()
+        }
+      }}
+      className={`w-28 px-2.5 py-1.5 text-sm rounded-md text-right bg-transparent border transition-colors focus:outline-none ${
+        focused
+          ? 'border-blue-400/60 bg-gray-900/80 text-white'
+          : value != null
+            ? 'border-white/10 text-white hover:border-white/25'
+            : 'border-dashed border-white/10 text-gray-500 hover:border-white/25 hover:text-gray-300'
+      }`}
+    />
   )
 }
