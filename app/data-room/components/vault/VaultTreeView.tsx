@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { showToast } from '@/components/ui/Toast'
 import {
   listVaultTree,
@@ -61,14 +61,21 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
+  // Prevent the previous company's response from overwriting the new one
+  // when the user switches companies mid-flight. Stamp every load with
+  // the companyId it's for; drop stale results.
+  const activeCompanyRef = useRef<string>(companyId)
+
   const load = useCallback(async () => {
+    activeCompanyRef.current = companyId
     setLoading(true)
     try {
       const res = await listVaultTree(companyId)
+      // Discard if company changed while this request was in flight
+      if (activeCompanyRef.current !== companyId) return
       if (res.success) {
         setFolders(res.folders || [])
         setDocuments(res.documents || [])
-        // Expand top-level by default on first load so the user sees content
         setExpanded(prev => {
           if (prev.size > 0) return prev
           const next = new Set<string>()
@@ -79,11 +86,19 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
         showToast(res.error || 'Failed to load vault', 'error')
       }
     } finally {
-      setLoading(false)
+      if (activeCompanyRef.current === companyId) setLoading(false)
     }
   }, [companyId])
 
-  useEffect(() => { load() }, [load])
+  // Company switch: reset everything + reload. Avoids showing stale data
+  // between the old company's response and the new one.
+  useEffect(() => {
+    setFolders([])
+    setDocuments([])
+    setSelected(new Set())
+    setExpanded(new Set())
+    load()
+  }, [companyId, load])
 
   // Refresh when an external upload or Claris mutation happens
   useEffect(() => {
@@ -141,30 +156,50 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
 
   const clearSelection = () => setSelected(new Set())
 
+  // ── Optimistic mutations ───────────────────────────────────────────────
+  // Every mutation updates local state immediately, then fires the server
+  // action in the background. On failure we reconcile with a full load()
+  // so the user sees the real state. No full refetch on success → UI
+  // stays snappy even with a slow network.
+
   const handleBulkDelete = async () => {
     if (selected.size === 0) return
     if (!confirm(`Delete ${selected.size} document${selected.size === 1 ? '' : 's'}? This can be restored from the audit log.`)) return
     const ids = Array.from(selected)
+    const idSet = new Set(ids)
+    setDocuments(prev => prev.filter(d => !idSet.has(d.id)))
+    clearSelection()
+    showToast(`Deleted ${ids.length} document${ids.length === 1 ? '' : 's'}`, 'success')
     const res = await bulkDeleteDocuments(companyId, ids)
-    if (res.success) {
-      showToast(`Deleted ${res.deleted} document${res.deleted === 1 ? '' : 's'}`, 'success')
-      clearSelection()
+    if (!res.success) {
+      showToast(res.error || 'Delete failed — reloading', 'error')
       load()
-    } else {
-      showToast(res.error || 'Delete failed', 'error')
     }
   }
 
   const handleCreateFolder = async (parentId: string | null) => {
     const name = prompt('Folder name')
     if (!name || !name.trim()) return
-    const res = await createVaultFolder(companyId, parentId, name.trim())
-    if (res.success) {
-      showToast('Folder created', 'success')
-      if (parentId) setExpanded(prev => new Set(prev).add(parentId))
+    const trimmed = name.trim()
+    showToast('Folder created', 'success')
+    if (parentId) setExpanded(prev => new Set(prev).add(parentId))
+    const res = await createVaultFolder(companyId, parentId, trimmed)
+    if (res.success && res.folderId) {
+      // Insert the new folder into local state without refetching.
+      setFolders(prev => [
+        ...prev,
+        {
+          id: res.folderId!,
+          parentId,
+          slug: trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 64),
+          name: trimmed,
+          kind: 'user',
+          sortOrder: 0,
+        },
+      ])
+    } else if (!res.success) {
+      showToast(res.error || 'Failed to create folder — reloading', 'error')
       load()
-    } else {
-      showToast(res.error || 'Failed to create folder', 'error')
     }
   }
 
@@ -175,11 +210,11 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
     }
     const name = prompt('Rename folder', folder.name)
     if (!name || !name.trim() || name.trim() === folder.name) return
-    const res = await renameVaultFolder(companyId, folder.id, name.trim())
-    if (res.success) {
-      showToast('Folder renamed', 'success')
-      load()
-    } else {
+    const newName = name.trim()
+    setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, name: newName } : f))
+    const res = await renameVaultFolder(companyId, folder.id, newName)
+    if (!res.success) {
+      setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, name: folder.name } : f))
       showToast(res.error || 'Rename failed', 'error')
     }
   }
@@ -190,40 +225,46 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
       return
     }
     if (!confirm(`Delete folder "${folder.name}"? Any contents will move to the parent folder.`)) return
+    // Optimistic: re-parent children + docs to this folder's parent, then
+    // drop this folder. Matches deleteUserFolder's server-side behaviour.
+    setFolders(prev =>
+      prev
+        .filter(f => f.id !== folder.id)
+        .map(f => (f.parentId === folder.id ? { ...f, parentId: folder.parentId } : f)),
+    )
+    setDocuments(prev => prev.map(d => (d.folderId === folder.id ? { ...d, folderId: folder.parentId } : d)))
+    showToast('Folder deleted', 'success')
     const res = await deleteVaultFolder(companyId, folder.id)
-    if (res.success) {
-      showToast('Folder deleted', 'success')
+    if (!res.success) {
+      showToast(res.error || 'Delete failed — reloading', 'error')
       load()
-    } else {
-      showToast(res.error || 'Delete failed', 'error')
     }
   }
 
   const handleRenameDoc = async (doc: Doc) => {
     const name = prompt('Rename document', doc.fileName || '')
     if (!name || !name.trim() || name.trim() === doc.fileName) return
-    const res = await renameDocument(companyId, doc.id, name.trim())
-    if (res.success) {
-      showToast('Document renamed', 'success')
-      load()
-    } else {
+    const newName = name.trim()
+    setDocuments(prev => prev.map(d => d.id === doc.id ? { ...d, fileName: newName } : d))
+    const res = await renameDocument(companyId, doc.id, newName)
+    if (!res.success) {
+      setDocuments(prev => prev.map(d => d.id === doc.id ? { ...d, fileName: doc.fileName } : d))
       showToast(res.error || 'Rename failed', 'error')
     }
   }
 
   const handleDeleteDoc = async (doc: Doc) => {
     if (!confirm(`Delete "${doc.fileName || 'document'}"?`)) return
+    setDocuments(prev => prev.filter(d => d.id !== doc.id))
+    showToast('Document deleted', 'success')
     const res = await deleteDocument(companyId, doc.id)
-    if (res.success) {
-      showToast('Document deleted', 'success')
+    if (!res.success) {
+      showToast(res.error || 'Delete failed — reloading', 'error')
       load()
-    } else {
-      showToast(res.error || 'Delete failed', 'error')
     }
   }
 
   const handleMoveDoc = async (doc: Doc) => {
-    // Build a flat list of folders for the move dialog
     const flat: Array<{ id: string; label: string }> = []
     const walk = (parentId: string | null, depth: number) => {
       const kids = childrenOf.get(parentId) || []
@@ -233,7 +274,6 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
       }
     }
     walk(null, 0)
-    const current = flat.find(f => f.id === doc.folderId)
     const options = flat.map((f, i) => `${i + 1}. ${f.label}${f.id === doc.folderId ? '  (current)' : ''}`).join('\n')
     const raw = prompt(`Move "${doc.fileName || 'document'}" to which folder?\n\n${options}\n\nEnter number:`)
     if (!raw) return
@@ -244,11 +284,11 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
     }
     const target = flat[idx]
     if (target.id === doc.folderId) return
+    setDocuments(prev => prev.map(d => d.id === doc.id ? { ...d, folderId: target.id } : d))
+    showToast(`Moved to ${target.label.trim()}`, 'success')
     const res = await moveDocument(companyId, doc.id, target.id)
-    if (res.success) {
-      showToast(`Moved to ${current?.label.trim() || target.label.trim()}`, 'success')
-      load()
-    } else {
+    if (!res.success) {
+      setDocuments(prev => prev.map(d => d.id === doc.id ? { ...d, folderId: doc.folderId } : d))
       showToast(res.error || 'Move failed', 'error')
     }
   }

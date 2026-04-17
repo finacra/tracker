@@ -7,26 +7,35 @@ import { SYSTEM_TAXONOMY, LEGACY_FOLDER_MAP, type SystemFolderDef } from './taxo
  * missing rows are inserted, existing rows are left alone. Safe to call
  * from onboarding, first-visit to the vault, or a one-shot admin run.
  */
+// Count expected system folders in the taxonomy once (roots + descendants).
+// Used to early-return from ensureSystemFolders when the DB is already
+// fully seeded — saves 17 sequential round trips per vault load.
+const EXPECTED_SYSTEM_FOLDER_COUNT = (() => {
+  const count = (nodes: SystemFolderDef[]): number =>
+    nodes.reduce((n, node) => n + 1 + (node.children ? count(node.children) : 0), 0)
+  return count(SYSTEM_TAXONOMY)
+})()
+
 export async function ensureSystemFolders(companyId: string): Promise<void> {
+  // Single query: pull id + slug + parent_id for every existing system row.
   const existing = await prisma.vaultFolder.findMany({
     where: { company_id: companyId, kind: 'system' },
-    select: { slug: true, parent_id: true },
+    select: { id: true, slug: true, parent_id: true },
   })
-  const existingKey = (slug: string, parentId: string | null) => `${parentId ?? 'root'}:${slug}`
-  const seen = new Set(existing.map((r) => existingKey(r.slug, r.parent_id)))
+
+  // Fast path: already fully seeded → no writes, no N+1 lookups.
+  if (existing.length >= EXPECTED_SYSTEM_FOLDER_COUNT) return
+
+  const keyFor = (slug: string, parentId: string | null) => `${parentId ?? 'root'}:${slug}`
+  const idByKey = new Map<string, string>()
+  for (const r of existing) idByKey.set(keyFor(r.slug, r.parent_id), r.id)
 
   let sort = 0
   const insertTree = async (nodes: SystemFolderDef[], parentId: string | null) => {
     for (const node of nodes) {
-      const key = existingKey(node.slug, parentId)
-      let folderId: string
-      if (seen.has(key)) {
-        const row = await prisma.vaultFolder.findFirst({
-          where: { company_id: companyId, parent_id: parentId, slug: node.slug, kind: 'system' },
-          select: { id: true },
-        })
-        folderId = row!.id
-      } else {
+      const key = keyFor(node.slug, parentId)
+      let folderId = idByKey.get(key)
+      if (!folderId) {
         const row = await prisma.vaultFolder.create({
           data: {
             company_id: companyId,
@@ -39,6 +48,7 @@ export async function ensureSystemFolders(companyId: string): Promise<void> {
           select: { id: true },
         })
         folderId = row.id
+        idByKey.set(key, folderId)
       }
       if (node.children?.length) {
         await insertTree(node.children, folderId)
