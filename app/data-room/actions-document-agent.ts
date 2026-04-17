@@ -151,16 +151,36 @@ export async function finalizeDocument(
     })
     if (!folder) return { success: false, error: 'Target folder not found' }
 
-    // Validate optional requirement id — if the agent hallucinated an ID
-    // that doesn't exist, silently clear it rather than blocking the save.
+    // Validate optional requirement id. Two separate ID spaces converge
+    // here and only the second one is writable:
+    //   - ComplianceRule.id is a stable slug like "dir3-kyc-annual" (plain
+    //     string). The agent returns THIS.
+    //   - CompanyDocument.requirement_id is typed @db.Uuid — it's meant
+    //     to point at a RegulatoryRequirement.id (UUID).
+    // Writing a slug into a UUID column blows up Prisma with
+    // "Error creating UUID, invalid character: found 'p' at 1".
+    //
+    // For now: accept only UUIDs. If the agent returns a rule slug, log
+    // it and null it out — the doc still saves, just without a formal
+    // link. (Proper fix will be a separate rule_id String? column on
+    // CompanyDocument that holds the slug natively.)
+    const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
     if (confirmed.requirementId) {
-      const ruleExists = await prisma.complianceRule.findUnique({
-        where: { id: confirmed.requirementId },
-        select: { id: true },
-      })
-      if (!ruleExists) {
-        console.warn('[finalizeDocument] agent-suggested requirementId not in catalogue, clearing:', confirmed.requirementId)
+      if (!UUID_RE.test(confirmed.requirementId)) {
+        console.warn('[finalizeDocument] requirementId is not a UUID, clearing before save:', confirmed.requirementId)
         confirmed.requirementId = undefined
+      } else {
+        // Confirm the UUID actually resolves to a RegulatoryRequirement
+        // row for this company; otherwise null it (stale / cross-company
+        // id shouldn't be saved either).
+        const req = await prisma.regulatoryRequirement.findFirst({
+          where: { id: confirmed.requirementId, company_id: companyId },
+          select: { id: true },
+        }).catch(() => null)
+        if (!req) {
+          console.warn('[finalizeDocument] requirementId UUID does not belong to this company, clearing:', confirmed.requirementId)
+          confirmed.requirementId = undefined
+        }
       }
     }
 
