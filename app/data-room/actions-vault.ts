@@ -209,6 +209,100 @@ export async function deleteDocument(
 }
 
 /**
+ * Soft-delete many documents in one round trip. Returns counts so the
+ * UI can toast "Deleted N documents" without needing to reconcile.
+ */
+export async function bulkDeleteDocuments(
+  companyId: string,
+  documentIds: string[],
+): Promise<{ success: boolean; deleted?: number; error?: string }> {
+  try {
+    const { role } = await assertCompanyAccess(companyId)
+    assertEditor(role)
+    if (!Array.isArray(documentIds) || documentIds.length === 0) {
+      return { success: false, error: 'No documents selected' }
+    }
+    const res = await prisma.companyDocument.updateMany({
+      where: {
+        id: { in: documentIds },
+        company_id: companyId,
+        deleted_at: null,
+      },
+      data: { deleted_at: new Date(), is_latest: false },
+    })
+    return { success: true, deleted: res.count }
+  } catch (error) {
+    return handleActionError(error)
+  }
+}
+
+/**
+ * Tree view of the company's vault: all folders + the non-deleted
+ * documents inside them. Consumed by the VaultTreeView UI component.
+ */
+export async function listVaultTree(companyId: string): Promise<{
+  success: boolean
+  folders?: Array<{ id: string; parentId: string | null; slug: string; name: string; kind: string; sortOrder: number }>
+  documents?: Array<{
+    id: string
+    folderId: string | null
+    folderName: string | null
+    fileName: string | null
+    documentType: string | null
+    fileSize: number | null
+    createdAt: string | null
+    updatedAt: string | null
+    requirementId: string | null
+    isLatest: boolean
+    versionNumber: number
+  }>
+  error?: string
+}> {
+  try {
+    await assertCompanyAccess(companyId)
+    await ensureSystemFolders(companyId)
+
+    const [folders, docs] = await Promise.all([
+      prisma.vaultFolder.findMany({
+        where: { company_id: companyId },
+        orderBy: [{ kind: 'asc' }, { sort_order: 'asc' }, { name: 'asc' }],
+      }),
+      prisma.companyDocument.findMany({
+        where: { company_id: companyId, deleted_at: null, is_draft: false },
+        orderBy: { updated_at: 'desc' },
+      }),
+    ])
+
+    return {
+      success: true,
+      folders: folders.map((f) => ({
+        id: f.id,
+        parentId: f.parent_id,
+        slug: f.slug,
+        name: f.name,
+        kind: f.kind,
+        sortOrder: f.sort_order,
+      })),
+      documents: docs.map((d) => ({
+        id: d.id,
+        folderId: d.folder_id,
+        folderName: d.folder_name,
+        fileName: d.file_name,
+        documentType: d.document_type,
+        fileSize: null,
+        createdAt: d.created_at ? d.created_at.toISOString() : null,
+        updatedAt: d.updated_at ? d.updated_at.toISOString() : null,
+        requirementId: d.requirement_id,
+        isLatest: d.is_latest,
+        versionNumber: d.version_number,
+      })),
+    }
+  } catch (error) {
+    return handleActionError(error)
+  }
+}
+
+/**
  * Link a new document as the next version of an existing one. The old
  * document keeps its row (audit) but is_latest flips to false; the new
  * document inherits the old one's folder + requirement unless overridden.
