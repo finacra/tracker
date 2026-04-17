@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { initializeAndListFilings, updateFiling } from '../../actions-filings'
+import { runApplicabilityEvaluation } from '../../actions-evaluator'
 import { showToast } from '@/components/ui/Toast'
 import AgentAssistedUploadModal from '../AgentAssistedUploadModal'
 
@@ -40,6 +41,8 @@ export default function ComplianceFilingView({ companyId, financialYear, categor
   const [savingId, setSavingId] = useState<string | null>(null)
   const [uploadForFiling, setUploadForFiling] = useState<Filing | null>(null)
 
+  const [evaluatorRan, setEvaluatorRan] = useState(false)
+
   const fetchFilings = useCallback(async () => {
     setLoading(true)
     const res = await initializeAndListFilings(companyId, financialYear, categoryFilter || undefined)
@@ -50,9 +53,29 @@ export default function ComplianceFilingView({ companyId, financialYear, categor
       }
     }
     setLoading(false)
+    return res.filings?.length || 0
   }, [companyId, financialYear, categoryFilter])
 
-  useEffect(() => { fetchFilings() }, [fetchFilings])
+  useEffect(() => {
+    (async () => {
+      const count = await fetchFilings()
+      // If no filings exist and we haven't run the evaluator yet,
+      // auto-trigger it so the user doesn't have to hunt for a button.
+      if (count === 0 && !evaluatorRan) {
+        setEvaluatorRan(true)
+        setLoading(true)
+        showToast('Running compliance evaluator...', 'info')
+        const evalRes = await runApplicabilityEvaluation(companyId, financialYear, { skipLlmFallback: true })
+        if (evalRes.success) {
+          showToast(`Evaluated: ${evalRes.applicable} applicable, ${evalRes.notApplicable} not applicable`, 'success')
+          await fetchFilings()
+        } else {
+          showToast(evalRes.error || 'Evaluator failed', 'error')
+          setLoading(false)
+        }
+      }
+    })()
+  }, [fetchFilings, companyId, financialYear, evaluatorRan])
 
   // Group filings by category → rule name
   const grouped = filings.reduce((acc, f) => {
@@ -113,11 +136,27 @@ export default function ComplianceFilingView({ companyId, financialYear, categor
     )
   }
 
-  if (filings.length === 0) {
+  const handleReEvaluate = async () => {
+    setLoading(true)
+    showToast('Re-evaluating compliance applicability...', 'info')
+    const evalRes = await runApplicabilityEvaluation(companyId, financialYear, { skipLlmFallback: true })
+    if (evalRes.success) {
+      showToast(`${evalRes.applicable} applicable, ${evalRes.notApplicable} not applicable`, 'success')
+    }
+    await fetchFilings()
+  }
+
+  if (filings.length === 0 && !loading) {
     return (
       <div className="p-8 text-center text-gray-400">
         <p>No applicable filings for {financialYear}.</p>
-        <p className="text-xs mt-2">Run the applicability evaluator first to determine which compliances apply to this company.</p>
+        <p className="text-xs mt-2 mb-4">The evaluator didn't find applicable rules, or it hasn't run yet.</p>
+        <button
+          onClick={handleReEvaluate}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors"
+        >
+          Run Evaluator
+        </button>
       </div>
     )
   }
