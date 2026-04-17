@@ -111,7 +111,7 @@ export default function TrackerEvaluationPanel({ companyId, financialYear }: Pro
   const handleEvaluate = async (opts?: { silent?: boolean }) => {
     setRunning(true)
     try {
-      if (!opts?.silent) showToast('Re-evaluating compliance applicability...', 'info')
+      if (!opts?.silent) showToast('Re-evaluating — this may take up to a minute', 'info')
       const res = await runApplicabilityEvaluation(companyId, financialYear, { skipLlmFallback: true })
       if (res.success) {
         if (!opts?.silent) {
@@ -270,60 +270,65 @@ function ReviewRow({
   }, [item.rule.name, item.rule.category])
 
   const [value, setValue] = useState('')
-  const [saving, setSaving] = useState(false)
 
   const confidencePct = Math.round(item.confidence * 100)
 
-  const handleSaveAmount = async () => {
+  const handleSaveAmount = () => {
     if (!question) return
     const parsed = value.trim() === '' ? null : Number(value)
     if (parsed === null || isNaN(parsed)) {
       showToast('Enter a number', 'error')
       return
     }
-    setSaving(true)
-    try {
-      const saveRes = await recordUserFact(companyId, {
-        kind: question.factKind,
-        financialYear,
-        amount: parsed,
-        unit: question.unit,
-      })
-      if (!saveRes.success) {
-        showToast(saveRes.error || 'Save failed', 'error')
-        return
+    // Optimistic: hide the row immediately, fire fact-save + evaluator in
+    // the background. Previously we awaited both and users waited 60-120s.
+    showToast('Saved — re-evaluating in background', 'success')
+    onResolved()
+    ;(async () => {
+      try {
+        const saveRes = await recordUserFact(companyId, {
+          kind: question.factKind,
+          financialYear,
+          amount: parsed,
+          unit: question.unit,
+        })
+        if (!saveRes.success) {
+          showToast(saveRes.error || 'Save failed — try again', 'error')
+          return
+        }
+        const ev = await runApplicabilityEvaluation(companyId, financialYear, { skipLlmFallback: true })
+        if (ev.success) {
+          window.dispatchEvent(new CustomEvent('cia:data-changed'))
+        } else if (ev.error) {
+          console.error('[ReviewRow] evaluator failed', ev.error)
+        }
+      } catch (err) {
+        console.error('[ReviewRow] background save/evaluate threw', err)
       }
-      const res = await runApplicabilityEvaluation(companyId, financialYear, { skipLlmFallback: true })
-      if (res.success) showToast('Updated — re-evaluated', 'success')
-      window.dispatchEvent(new CustomEvent('cia:data-changed'))
-      onResolved()
-    } catch (err) {
-      console.error('[ReviewRow] save failed', err)
-      showToast('Save failed', 'error')
-    } finally {
-      setSaving(false)
-    }
+    })()
   }
 
-  const handleOverride = async (applicable: boolean) => {
-    setSaving(true)
-    try {
-      const res = await overrideAssessment(
-        companyId,
-        item.id,
-        applicable,
-        applicable ? 'Confirmed by user' : 'Not applicable',
-      )
-      if (res.success) {
-        showToast(`${item.rule.name} — ${applicable ? 'applicable' : 'not applicable'}`, 'success')
-        window.dispatchEvent(new CustomEvent('cia:data-changed'))
-        onResolved()
-      } else {
-        showToast(res.error || 'Failed to save', 'error')
+  const handleOverride = (applicable: boolean) => {
+    // Optimistic — overrideAssessment is fast but we want consistent UX
+    showToast(`${item.rule.name} — ${applicable ? 'applicable' : 'not applicable'}`, 'success')
+    onResolved()
+    ;(async () => {
+      try {
+        const res = await overrideAssessment(
+          companyId,
+          item.id,
+          applicable,
+          applicable ? 'Confirmed by user' : 'Not applicable',
+        )
+        if (res.success) {
+          window.dispatchEvent(new CustomEvent('cia:data-changed'))
+        } else {
+          showToast(res.error || 'Override failed — try again', 'error')
+        }
+      } catch (err) {
+        console.error('[ReviewRow] override threw', err)
       }
-    } finally {
-      setSaving(false)
-    }
+    })()
   }
 
   return (
@@ -347,20 +352,18 @@ function ReviewRow({
                   value={value}
                   onChange={e => setValue(e.target.value)}
                   placeholder={question.placeholder}
-                  disabled={saving}
                   className="w-40 px-2.5 py-1 bg-black border border-white/10 rounded text-white text-sm focus:outline-none focus:border-amber-400"
                   onKeyDown={e => { if (e.key === 'Enter') handleSaveAmount() }}
                 />
                 <button
                   onClick={handleSaveAmount}
-                  disabled={saving || !value.trim()}
+                  disabled={!value.trim()}
                   className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black rounded text-[11px] font-medium disabled:opacity-50"
                 >
-                  {saving ? 'Saving...' : 'Save'}
+                  Save
                 </button>
                 <button
                   onClick={() => handleOverride(false)}
-                  disabled={saving}
                   className="text-[11px] text-gray-400 hover:text-red-300 ml-1"
                 >
                   Not applicable
@@ -372,14 +375,12 @@ function ReviewRow({
               <span className="text-xs text-gray-400">Does this apply to your company?</span>
               <button
                 onClick={() => handleOverride(true)}
-                disabled={saving}
                 className="px-2.5 py-1 text-[11px] border border-emerald-500/40 text-emerald-300 rounded hover:bg-emerald-500/10"
               >
                 Yes
               </button>
               <button
                 onClick={() => handleOverride(false)}
-                disabled={saving}
                 className="px-2.5 py-1 text-[11px] border border-red-500/40 text-red-300 rounded hover:bg-red-500/10"
               >
                 No
