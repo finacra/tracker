@@ -472,6 +472,11 @@ model RegulatoryRequirement {
   ai_batch_id         String?
   period_key          String?
   period_label        String?
+  // Filing fields — user provides payable/paid/document inline in list view.
+  // Everything else (delay, interest, short) is auto-computed for display.
+  amount_payable      Decimal?  @db.Decimal(15, 2)
+  amount_paid         Decimal?  @db.Decimal(15, 2)
+  filing_document_id  String?   @db.Uuid
 
   company              Company @relation(fields: [company_id], references: [id])
   companyNotifications CompanyNotification[]

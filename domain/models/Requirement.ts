@@ -26,4 +26,7 @@ export interface Requirement {
   app_created_by?: string | null
   app_updated_by?: string | null
   app_filed_by?: string | null
+  amount_payable?: number | null
+  amount_paid?: number | null
+  filing_document_id?: string | null
 }

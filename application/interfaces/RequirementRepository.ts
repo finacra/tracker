@@ -40,6 +40,9 @@ export interface UpdateRequirementInput {
   complianceType?: string | null
   yearType?: string | null
   requiredDocuments?: string[]
+  amountPayable?: number | null
+  amountPaid?: number | null
+  filingDocumentId?: string | null
 }
 
 export interface RequirementRepository {

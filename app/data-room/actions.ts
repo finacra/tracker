@@ -505,6 +505,9 @@ export async function updateRequirement(
     status?: 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed'
     compliance_type?: 'one-time' | 'monthly' | 'quarterly' | 'annual'
     year?: string
+    amount_payable?: number | null
+    amount_paid?: number | null
+    filing_document_id?: string | null
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -619,6 +622,9 @@ export async function updateRequirement(
       complianceType: requirement.compliance_type,
       yearType: (requirement as any).year_type,
       requiredDocuments: requirement.required_documents,
+      amountPayable: requirement.amount_payable,
+      amountPaid: requirement.amount_paid,
+      filingDocumentId: requirement.filing_document_id,
     }
 
     // Pass additional fields if needed, or handle in repository

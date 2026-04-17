@@ -225,6 +225,9 @@ export function TrackerContextProvider({
         filed_on: req.filed_on,
         filed_by: req.filed_by,
         status_reason: req.status_reason,
+        amount_payable: req.amount_payable,
+        amount_paid: req.amount_paid,
+        filing_document_id: req.filing_document_id,
       }))
 
     const duration = performance.now() - startTime

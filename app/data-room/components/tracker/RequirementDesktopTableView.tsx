@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { IRegulatoryService } from '../../services/RegulatoryService'
 import { showToast } from '@/components/ui/Toast'
 import { updateRequirement } from '@/app/data-room/actions'
@@ -21,6 +21,9 @@ interface Requirement {
   filed_by_name?: string | null
   status_reason?: string | null
   possible_legal_action?: string | null
+  amount_payable?: number | null
+  amount_paid?: number | null
+  filing_document_id?: string | null
   [key: string]: any
 }
 
@@ -81,6 +84,9 @@ export default function RequirementDesktopTableView({
   const [baseAmountInputs, setBaseAmountInputs] = useState<Record<string, string>>({})
   const [savingBaseAmount, setSavingBaseAmount] = useState<Record<string, boolean>>({})
   const [openDocChecklist, setOpenDocChecklist] = useState<string | null>(null)
+  const [editingCell, setEditingCell] = useState<{ reqId: string; field: 'amount_payable' | 'amount_paid' } | null>(null)
+  const [cellDraft, setCellDraft] = useState<string>('')
+  const [savingCell, setSavingCell] = useState<Record<string, boolean>>({})
 
   const uploadedDocSet = new Set(
     vaultDocuments
@@ -89,6 +95,53 @@ export default function RequirementDesktopTableView({
   )
   const isDocUploaded = (reqId: string, docName: string) =>
     uploadedDocSet.has(`${reqId}::${docName.toLowerCase().trim()}`)
+
+  const docsByRequirement = useMemo(() => {
+    const map = new Map<string, any[]>()
+    for (const d of vaultDocuments) {
+      const rid = d.requirement_id || d.requirementId
+      if (!rid) continue
+      if (!map.has(rid)) map.set(rid, [])
+      map.get(rid)!.push(d)
+    }
+    return map
+  }, [vaultDocuments])
+
+  const saveAmount = async (req: Requirement, field: 'amount_payable' | 'amount_paid', raw: string) => {
+    const parsed = raw.trim() === '' ? null : Number(raw)
+    if (parsed !== null && (isNaN(parsed) || parsed < 0)) {
+      showToast('Enter a valid amount', 'error')
+      return
+    }
+    const key = `${req.id}:${field}`
+    setSavingCell(prev => ({ ...prev, [key]: true }))
+    try {
+      const result = await updateRequirement(req.id, currentCompany?.id || null, { [field]: parsed } as any)
+      if (result.success) {
+        setRegulatoryRequirements(prev => prev.map(r => r.id === req.id ? { ...r, [field]: parsed } : r))
+      } else {
+        showToast(result.error || 'Failed to save', 'error')
+      }
+    } catch {
+      showToast('Failed to save', 'error')
+    } finally {
+      setSavingCell(prev => ({ ...prev, [key]: false }))
+      setEditingCell(null)
+      setCellDraft('')
+    }
+  }
+
+  const computeAutoCalc = (req: Requirement) => {
+    const payable = typeof req.amount_payable === 'number' ? req.amount_payable : null
+    const paid = typeof req.amount_paid === 'number' ? req.amount_paid : null
+    const short = payable != null && paid != null ? Math.max(0, payable - paid) : null
+    const delay = calculateDelay(req.dueDate, req.status) ?? 0
+    const monthsLate = Math.max(1, Math.ceil(delay / 30))
+    // IT Act rates used by filing register: 1.5% p.m. interest on late deposit, 1% p.m. on short
+    const interestLate = delay > 0 && paid ? Math.round(paid * 0.015 * monthsLate) : 0
+    const interestShort = short && short > 0 ? Math.round(short * 0.01 * monthsLate) : 0
+    return { short, delay, interestLate, interestShort, total: interestLate + interestShort }
+  }
 
   return (
     <table className="hidden sm:table w-full">
@@ -125,8 +178,20 @@ export default function RequirementDesktopTableView({
           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
             DUE DATE
           </th>
+          <th className="px-4 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+            PAYABLE (₹)
+          </th>
+          <th className="px-4 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+            PAID (₹)
+          </th>
+          <th className="px-4 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
+            AUTO-CALC
+          </th>
+          <th className="px-4 py-4 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
+            FILING DOC
+          </th>
           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
-            DOCUMENTS
+            DOCS
           </th>
           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
             PENALTY
@@ -159,7 +224,7 @@ export default function RequirementDesktopTableView({
             {/* Visual Separator between categories */}
             {groupIndex > 0 && (
               <tr>
-                <td colSpan={canEdit ? 13 : 12} className="px-0 py-0">
+                <td colSpan={canEdit ? 17 : 16} className="px-0 py-0">
                   <div className="h-0.5 bg-gradient-to-r from-transparent via-white/30 to-transparent my-2"></div>
                 </td>
               </tr>
@@ -352,6 +417,113 @@ export default function RequirementDesktopTableView({
                             </div>
                           )}
                         </div>
+                      )
+                    })()}
+                  </td>
+                  {/* PAYABLE (₹) — inline editable */}
+                  <td
+                    className="px-4 py-4 text-right cursor-pointer hover:bg-gray-900/40"
+                    onClick={() => canEdit && setEditingCell({ reqId: req.id, field: 'amount_payable' })}
+                    title={canEdit ? 'Click to edit' : ''}
+                  >
+                    {editingCell?.reqId === req.id && editingCell.field === 'amount_payable' ? (
+                      <input
+                        type="number"
+                        autoFocus
+                        defaultValue={req.amount_payable ?? ''}
+                        disabled={!!savingCell[`${req.id}:amount_payable`]}
+                        className="w-24 px-2 py-1 text-sm bg-gray-800 border border-gray-600 rounded text-right text-white focus:outline-none focus:border-white/40"
+                        onBlur={e => saveAmount(req, 'amount_payable', e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') saveAmount(req, 'amount_payable', (e.target as HTMLInputElement).value)
+                          if (e.key === 'Escape') { setEditingCell(null); setCellDraft('') }
+                        }}
+                      />
+                    ) : (
+                      <span className={req.amount_payable != null ? 'text-white text-sm' : 'text-gray-600 text-sm'}>
+                        {req.amount_payable != null ? `₹${Number(req.amount_payable).toLocaleString('en-IN')}` : '—'}
+                      </span>
+                    )}
+                  </td>
+                  {/* PAID (₹) — inline editable */}
+                  <td
+                    className="px-4 py-4 text-right cursor-pointer hover:bg-gray-900/40"
+                    onClick={() => canEdit && setEditingCell({ reqId: req.id, field: 'amount_paid' })}
+                    title={canEdit ? 'Click to edit' : ''}
+                  >
+                    {editingCell?.reqId === req.id && editingCell.field === 'amount_paid' ? (
+                      <input
+                        type="number"
+                        autoFocus
+                        defaultValue={req.amount_paid ?? ''}
+                        disabled={!!savingCell[`${req.id}:amount_paid`]}
+                        className="w-24 px-2 py-1 text-sm bg-gray-800 border border-gray-600 rounded text-right text-white focus:outline-none focus:border-white/40"
+                        onBlur={e => saveAmount(req, 'amount_paid', e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') saveAmount(req, 'amount_paid', (e.target as HTMLInputElement).value)
+                          if (e.key === 'Escape') { setEditingCell(null); setCellDraft('') }
+                        }}
+                      />
+                    ) : (
+                      <span className={req.amount_paid != null ? 'text-white text-sm' : 'text-gray-600 text-sm'}>
+                        {req.amount_paid != null ? `₹${Number(req.amount_paid).toLocaleString('en-IN')}` : '—'}
+                      </span>
+                    )}
+                  </td>
+                  {/* AUTO-CALC: delay, short, interest */}
+                  <td className="px-4 py-4 text-right text-xs hidden md:table-cell">
+                    {(() => {
+                      const calc = computeAutoCalc(req)
+                      const nothing = calc.short === null && calc.delay === 0 && calc.total === 0
+                      if (nothing) return <span className="text-gray-600">—</span>
+                      return (
+                        <div className="space-y-0.5 text-[11px]">
+                          {calc.short != null && calc.short > 0 && (
+                            <div className="text-amber-400">Short: ₹{calc.short.toLocaleString('en-IN')}</div>
+                          )}
+                          {calc.delay > 0 && (
+                            <div className="text-red-300">Delay: {calc.delay}d</div>
+                          )}
+                          {calc.total > 0 && (
+                            <div className="text-gray-300">Interest: ₹{calc.total.toLocaleString('en-IN')}</div>
+                          )}
+                        </div>
+                      )
+                    })()}
+                  </td>
+                  {/* FILING DOC: Upload / Linked */}
+                  <td className="px-4 py-4 text-center">
+                    {(() => {
+                      const linkedDocs = docsByRequirement.get(req.id) || []
+                      const hasLinked = linkedDocs.length > 0 || !!req.filing_document_id
+                      if (hasLinked) {
+                        return (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400" title={`${linkedDocs.length} document(s) linked`}>
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                            Linked
+                          </span>
+                        )
+                      }
+                      if (!canEdit) return <span className="text-gray-600 text-xs">—</span>
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => setDocumentUploadModal({
+                            isOpen: true,
+                            requirementId: req.id,
+                            requirement: req.requirement,
+                            category: req.category,
+                            documentName: 'Filing proof (challan / acknowledgement)',
+                            complianceType: req.compliance_type || 'one-time',
+                            dueDate: req.dueDate,
+                            financialYear: (req as any).financial_year || null,
+                            allRequiredDocs: (req as any).required_documents || [],
+                          })}
+                          className="text-[11px] px-2 py-1 border border-gray-700 rounded text-gray-300 hover:border-gray-500 hover:text-white inline-flex items-center gap-1"
+                          title="Upload challan / acknowledgement — agent extracts amounts & dates"
+                        >
+                          ↑ Upload
+                        </button>
                       )
                     })()}
                   </td>
