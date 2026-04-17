@@ -18,6 +18,7 @@ import React from "react";
 // Lazy load tracker tab for better performance
 const TrackerTab = lazy(() => import("./components/tracker/TrackerTab"));
 const DocumentsTab = lazy(() => import("./components/DocumentsTab"));
+const CIAWidget = lazy(() => import("./components/cia/CIAWidget"));
 const ReportsTab = lazy(() => import("./components/ReportsTab"));
 const OverviewTab = lazy(() => import("./components/OverviewTab"));
 const NoticesTab = lazy(() => import("./components/NoticesTab"));
@@ -4941,6 +4942,14 @@ function DataRoomPageInner() {
 
       <ToastContainer />
 
+      {/* Floating Claris (CIA) widget — available on every tab (tracker,
+          documents, reports, ...). Only mounted when a company is
+          selected so the agent has context to work with. */}
+      {currentCompany?.id && (
+        <Suspense fallback={null}>
+          <CIAWidget companyId={currentCompany.id} />
+        </Suspense>
+      )}
     </div>
   );
 }
