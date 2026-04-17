@@ -5,6 +5,7 @@ import { handleActionError } from '@/lib/errors/handle-error'
 import { validateCompanyId } from '@/lib/utils/input-validation'
 import { generateFilingsFromAssessments, getFilingsForCompany, upsertFiling } from '@/lib/compliance/filings'
 import { currentIndianFY } from '@/lib/compliance/facts'
+import { CONFIDENCE_THRESHOLDS } from '@/lib/compliance/evaluator'
 
 async function assertCompanyAccess(companyId: string) {
   if (!validateCompanyId(companyId)) throw new Error('Invalid company ID')
@@ -76,7 +77,7 @@ export async function initializeAndListFilings(
       createdBy: user.id,
     })
 
-    // Fetch all filings with rule metadata
+    // Fetch all filings with rule metadata + assessment confidence
     const { filings, rules } = await getFilingsForCompany({
       companyId,
       financialYear: fy,
@@ -84,6 +85,14 @@ export async function initializeAndListFilings(
     })
 
     const ruleById = new Map(rules.map(r => [r.id, r]))
+
+    // Load assessment confidence for each filing's rule so the UI can
+    // classify into auto-show vs needs-review tiers.
+    const assessments = await prisma.complianceAssessment.findMany({
+      where: { company_id: companyId, financial_year: fy },
+      select: { rule_id: true, confidence: true, user_overridden: true, applicable: true },
+    })
+    const assessmentByRule = new Map(assessments.map(a => [a.rule_id, a]))
 
     return {
       success: true,
@@ -110,6 +119,16 @@ export async function initializeAndListFilings(
           formReference: f.form_reference,
           workingNotes: f.working_notes,
           documentId: f.document_id,
+          // Confidence tier from assessment — drives auto-show vs review queue
+          assessmentConfidence: assessmentByRule.get(f.rule_id)?.confidence ?? 0.5,
+          userOverridden: assessmentByRule.get(f.rule_id)?.user_overridden ?? false,
+          confidenceTier: (() => {
+            const a = assessmentByRule.get(f.rule_id)
+            if (a?.user_overridden) return 'approved' as const
+            if ((a?.confidence ?? 0) >= CONFIDENCE_THRESHOLDS.AUTO_SHOW) return 'auto' as const
+            if ((a?.confidence ?? 0) >= CONFIDENCE_THRESHOLDS.NEEDS_REVIEW) return 'review' as const
+            return 'hidden' as const
+          })(),
           rule: {
             name: rule?.name || f.rule_id,
             category: rule?.category || 'Others',

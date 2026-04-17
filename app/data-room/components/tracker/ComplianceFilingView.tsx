@@ -161,10 +161,43 @@ export default function ComplianceFilingView({ companyId, financialYear, categor
     )
   }
 
-  const categories = Object.keys(grouped).sort()
+  // Split filings into auto-show (high confidence) vs needs-review
+  const autoShowFilings = filings.filter(f =>
+    (f as any).confidenceTier === 'auto' || (f as any).confidenceTier === 'approved'
+  )
+  const reviewFilings = filings.filter(f =>
+    (f as any).confidenceTier === 'review'
+  )
+
+  const groupFilings = (items: Filing[]) => {
+    return items.reduce((acc, f) => {
+      const cat = f.rule.category
+      if (!acc[cat]) acc[cat] = {}
+      const ruleName = f.rule.name
+      if (!acc[cat][ruleName]) acc[cat][ruleName] = { rule: f.rule, ruleId: f.ruleId, filings: [] }
+      acc[cat][ruleName].filings.push(f)
+      return acc
+    }, {} as Record<string, Record<string, { rule: Filing['rule']; ruleId: string; filings: Filing[] }>>)
+  }
+
+  const autoGrouped = groupFilings(autoShowFilings)
+  const reviewGrouped = groupFilings(reviewFilings)
+
+  const categories = Object.keys(autoGrouped).sort()
+  const reviewCategories = Object.keys(reviewGrouped).sort()
 
   return (
     <div className="space-y-6">
+      {/* Confidence tier info */}
+      <div className="flex items-center gap-4 text-xs text-gray-400 px-1">
+        <span>Auto-shown: <span className="text-emerald-300 font-medium">{autoShowFilings.length}</span></span>
+        {reviewFilings.length > 0 && (
+          <span>Needs CA review: <span className="text-amber-300 font-medium">{reviewFilings.length}</span></span>
+        )}
+        <span className="text-gray-600">|</span>
+        <span className="text-gray-500">Only high-confidence items shown. Low-confidence items need CA approval before appearing.</span>
+      </div>
+
       {categories.map(category => (
         <div key={category} className="border border-gray-800 rounded-xl overflow-hidden">
           {/* Category header */}
@@ -268,6 +301,37 @@ export default function ComplianceFilingView({ companyId, financialYear, categor
         </div>
       ))}
 
+      {/* Review Queue — collect missing data inline to resolve uncertainty */}
+      {reviewCategories.length > 0 && (
+        <div className="border border-amber-500/30 rounded-xl overflow-hidden">
+          <div className="bg-amber-900/20 px-4 py-3 border-b border-amber-500/20">
+            <h3 className="text-sm font-medium text-amber-300">Help us get it right</h3>
+            <p className="text-[10px] text-amber-400/70 mt-0.5">
+              We need a few details to determine if these apply. Fill in the value — we'll re-evaluate automatically.
+            </p>
+          </div>
+          {reviewCategories.map(category => (
+            <div key={`review-${category}`} className="border-b border-amber-800/30 last:border-b-0">
+              <div className="px-4 py-2 bg-amber-900/10">
+                <span className="text-xs text-amber-200">{category}</span>
+              </div>
+              {Object.entries(reviewGrouped[category]).map(([ruleName, { ruleId, filings: ruleFilings }]) => (
+                <ReviewItem
+                  key={ruleId}
+                  companyId={companyId}
+                  financialYear={financialYear}
+                  ruleId={ruleId}
+                  ruleName={ruleName}
+                  confidence={(ruleFilings[0] as any)?.assessmentConfidence || 0}
+                  periodCount={ruleFilings.length}
+                  onResolved={fetchFilings}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Step 5.2: Upload modal pre-locked to the selected filing's rule */}
       {uploadForFiling && (
         <AgentAssistedUploadModal
@@ -281,6 +345,157 @@ export default function ComplianceFilingView({ companyId, financialYear, categor
           }}
         />
       )}
+    </div>
+  )
+}
+
+// ── Review item — inline data collection for uncertain compliances ─────
+
+const TRIGGER_QUESTIONS: Record<string, { question: string; factKind: string; unit: string; placeholder: string }> = {
+  rent_payment_above: { question: 'What is the highest monthly rent you pay to any single landlord?', factKind: 'rent.monthly_payment', unit: 'rupees_per_month', placeholder: 'e.g. 22000' },
+  contractor_payment_above: { question: 'What is the largest single payment to any contractor this FY?', factKind: 'contractor.annual_spend', unit: 'rupees_per_year', placeholder: 'e.g. 50000' },
+  professional_fee_above: { question: 'Total professional/technical fees paid to any single payee this FY?', factKind: 'contractor.annual_spend', unit: 'rupees_per_year', placeholder: 'e.g. 30000' },
+  turnover_above: { question: 'What is your annual turnover?', factKind: 'turnover.annual', unit: 'rupees_per_year', placeholder: 'e.g. 10000000' },
+  employee_count_above: { question: 'How many employees do you have?', factKind: 'headcount.total', unit: 'count', placeholder: 'e.g. 15' },
+  net_worth_above: { question: 'What is your company\'s net worth (in ₹)?', factKind: 'net_worth.total', unit: 'rupees', placeholder: 'e.g. 50000000' },
+  salary_above: { question: 'Total annual salary bill?', factKind: 'salary.annual_bill', unit: 'rupees_per_year', placeholder: 'e.g. 1200000' },
+}
+
+function ReviewItem({ companyId, financialYear, ruleId, ruleName, confidence, periodCount, onResolved }: {
+  companyId: string
+  financialYear: string
+  ruleId: string
+  ruleName: string
+  confidence: number
+  periodCount: number
+  onResolved: () => void
+}) {
+  const [value, setValue] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  // Load the rule to find its trigger_kind
+  const [triggerKind, setTriggerKind] = useState<string | null>(null)
+  useEffect(() => {
+    import('@/lib/prisma').then(({ prisma }) =>
+      prisma.complianceRule.findUnique({ where: { id: ruleId }, select: { trigger_kind: true } })
+    ).then(rule => setTriggerKind(rule?.trigger_kind || 'always'))
+    .catch(() => setTriggerKind('always'))
+  }, [ruleId])
+
+  const questionInfo = triggerKind ? TRIGGER_QUESTIONS[triggerKind] : null
+
+  const handleSubmit = async () => {
+    if (!value.trim() || !questionInfo) return
+    setSaving(true)
+
+    try {
+      // Save the fact
+      const { recordFact } = await import('@/lib/compliance/facts')
+      const { fyWindow } = await import('@/lib/compliance/facts')
+      const { periodStart, periodEnd } = fyWindow(financialYear)
+
+      await recordFact({
+        companyId,
+        kind: questionInfo.factKind,
+        periodStart,
+        periodEnd,
+        amount: parseFloat(value) || null,
+        unit: questionInfo.unit,
+        sourceKind: 'user_declared',
+        confidence: 1.0,
+      })
+
+      // Re-run the evaluator for just this company + FY
+      const { runApplicabilityEvaluation } = await import('../../actions-evaluator')
+      await runApplicabilityEvaluation(companyId, financialYear, { skipLlmFallback: true })
+
+      showToast('Updated — re-evaluating compliance applicability...', 'success')
+      onResolved()
+    } catch (err) {
+      console.error('[ReviewItem] failed', err)
+      showToast('Failed to save', 'error')
+    }
+    setSaving(false)
+  }
+
+  // For "always" trigger or unknown — just show approve/reject
+  if (!questionInfo) {
+    return (
+      <div className="px-4 py-3 border-b border-amber-800/20 last:border-b-0 flex items-center justify-between">
+        <div>
+          <span className="text-sm text-white">{ruleName}</span>
+          <span className="text-[10px] text-amber-400 ml-2">{Math.round(confidence * 100)}%</span>
+          <p className="text-[10px] text-gray-400">{periodCount} period{periodCount > 1 ? 's' : ''}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={async () => {
+              const { overrideAssessment } = await import('../../actions-evaluator')
+              const { prisma } = await import('@/lib/prisma')
+              const a = await prisma.complianceAssessment.findFirst({
+                where: { company_id: companyId, rule_id: ruleId, financial_year: financialYear },
+                select: { id: true },
+              })
+              if (a?.id) {
+                await overrideAssessment(companyId, a.id, false, 'Not applicable')
+                showToast(`${ruleName} — not applicable`, 'info')
+                onResolved()
+              }
+            }}
+            className="px-3 py-1 text-xs text-red-300 border border-red-500/30 rounded hover:bg-red-900/20"
+          >
+            Not applicable
+          </button>
+          <button
+            onClick={async () => {
+              const { overrideAssessment } = await import('../../actions-evaluator')
+              const { prisma } = await import('@/lib/prisma')
+              const a = await prisma.complianceAssessment.findFirst({
+                where: { company_id: companyId, rule_id: ruleId, financial_year: financialYear },
+                select: { id: true },
+              })
+              if (a?.id) {
+                await overrideAssessment(companyId, a.id, true, 'Approved')
+                showToast(`${ruleName} — approved`, 'success')
+                onResolved()
+              }
+            }}
+            className="px-3 py-1 text-xs text-emerald-300 border border-emerald-500/30 rounded hover:bg-emerald-900/20"
+          >
+            Yes, applies
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="px-4 py-3 border-b border-amber-800/20 last:border-b-0">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <span className="text-sm text-white">{ruleName}</span>
+          <span className="text-[10px] text-amber-400 ml-2">{Math.round(confidence * 100)}% confident</span>
+          <p className="text-xs text-gray-300 mt-1">{questionInfo.question}</p>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-gray-500 text-sm">₹</span>
+            <input
+              type="number"
+              value={value}
+              onChange={e => setValue(e.target.value)}
+              placeholder={questionInfo.placeholder}
+              className="w-40 px-3 py-1.5 bg-gray-900 border border-amber-500/40 rounded text-white text-sm focus:outline-none focus:border-amber-400"
+              onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }}
+            />
+            <button
+              onClick={handleSubmit}
+              disabled={saving || !value.trim()}
+              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded text-xs font-medium disabled:opacity-50"
+            >
+              {saving ? 'Saving...' : 'Save & re-evaluate'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

@@ -38,7 +38,8 @@ export async function runApplicabilityEvaluation(
   financialYear?: string
   applicable?: number
   notApplicable?: number
-  lowConfidence?: number
+  needsReview?: number
+  autoShow?: number
   llmUpgraded?: number
   skipped?: number
   error?: string
@@ -72,7 +73,7 @@ export async function runApplicabilityEvaluation(
     // Upgrade low-confidence decisions with the LLM fallback unless
     // the caller opted out (e.g., cost-sensitive bulk evaluation).
     let llmUpgraded = 0
-    if (!options?.skipLlmFallback && result.lowConfidenceCount > 0) {
+    if (!options?.skipLlmFallback && result.needsReviewCount > 0) {
       const upgrade = await upgradeLowConfidenceAssessments({
         companyId,
         financialYear: fy,
@@ -86,7 +87,8 @@ export async function runApplicabilityEvaluation(
       financialYear: fy,
       applicable: result.applicableCount,
       notApplicable: result.notApplicableCount,
-      lowConfidence: result.lowConfidenceCount,
+      needsReview: result.needsReviewCount,
+      autoShow: result.autoShowCount,
       llmUpgraded,
       skipped: result.skippedRuleIds.length,
     }

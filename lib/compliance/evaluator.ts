@@ -37,11 +37,21 @@ export interface EvaluationInput {
   evaluatorVersion?: string       // stamped into assessed_by
 }
 
+// Confidence thresholds — the core of the "humble by default" philosophy.
+// Wrong compliances on the tracker are worse than missing ones, because
+// CAs lose trust. So we only auto-show what we're confident about.
+export const CONFIDENCE_THRESHOLDS = {
+  AUTO_SHOW: 0.85,     // ≥ this → appears on tracker automatically
+  NEEDS_REVIEW: 0.50,  // ≥ this but < AUTO_SHOW → review queue for CA
+  HIDDEN: 0.50,        // < this → not applicable, hidden
+}
+
 export interface EvaluationOutput {
   assessmentIds: string[]
   applicableCount: number
   notApplicableCount: number
-  lowConfidenceCount: number
+  needsReviewCount: number        // between NEEDS_REVIEW and AUTO_SHOW
+  autoShowCount: number           // ≥ AUTO_SHOW
   skippedRuleIds: string[]        // rules blocked by a user override
 }
 
@@ -290,7 +300,8 @@ export async function evaluateCompliance(input: EvaluationInput): Promise<Evalua
     assessmentIds: [],
     applicableCount: 0,
     notApplicableCount: 0,
-    lowConfidenceCount: 0,
+    needsReviewCount: 0,
+    autoShowCount: 0,
     skippedRuleIds: [],
   }
 
@@ -324,18 +335,25 @@ export async function evaluateCompliance(input: EvaluationInput): Promise<Evalua
         reasoning = trigger.reason
         confidence = trigger.confidence
       } else {
-        // Inconclusive — leave applicable = true so the CA doesn't miss it,
-        // but mark low confidence so the LLM layer / UI can flag for
-        // manual confirmation.
+        // Inconclusive — mark as "needs review" rather than auto-showing.
+        // The CA must approve before this appears on the tracker.
+        // This is the core of the "humble by default" philosophy:
+        // wrong compliances on the tracker are worse than missing ones.
         applicable = true
-        reasoning = trigger.reason
+        reasoning = trigger.reason + ' [NEEDS CA REVIEW — not auto-shown on tracker until approved]'
         confidence = trigger.confidence
-        output.lowConfidenceCount++
       }
       factsCited = trigger.factsCited
       if (scopeResult.missingData.length) {
         reasoning += ` Notes: ${scopeResult.missingData.join('; ')}`
       }
+    }
+
+    // Classify into confidence tiers
+    if (applicable && confidence >= CONFIDENCE_THRESHOLDS.AUTO_SHOW) {
+      output.autoShowCount++
+    } else if (applicable && confidence >= CONFIDENCE_THRESHOLDS.NEEDS_REVIEW) {
+      output.needsReviewCount++
     }
 
     const row = await prisma.complianceAssessment.upsert({
