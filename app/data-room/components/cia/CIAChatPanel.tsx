@@ -7,6 +7,7 @@ import CIAInput from './CIAInput'
 import { useCIAHistory, type CIAMessage } from './useCIAHistory'
 import { useCIAChat, type Source } from './useCIAChat'
 import { useAuth } from '@/hooks/useAuth'
+import AgentAssistedUploadModal from '../AgentAssistedUploadModal'
 
 interface Props {
   companyId: string
@@ -20,11 +21,27 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
   const history = useCIAHistory(companyId, user?.id)
   const [streamingContent, setStreamingContent] = useState('')
   const [pendingSources, setPendingSources] = useState<Source[]>([])
+  const [uploadOpen, setUploadOpen] = useState(false)
   const contentAccumulator = useRef('')
 
+  // Refs mirror the active conversation + its assistant message ID so the
+  // stream callbacks don't read stale React state. Without these, the
+  // first message's response vanishes on done because activeConversationId
+  // is still null in the closure at the moment createConversation returned.
+  const activeConvIdRef = useRef<string | null>(null)
+  const assistantMsgIdRef = useRef<string | null>(null)
+  const historyRef = useRef(history)
+  historyRef.current = history
+
   const ensureConversation = useCallback(async (): Promise<string> => {
-    if (history.activeConversationId) return history.activeConversationId
-    return history.createConversation()
+    if (activeConvIdRef.current) return activeConvIdRef.current
+    if (history.activeConversationId) {
+      activeConvIdRef.current = history.activeConversationId
+      return history.activeConversationId
+    }
+    const id = await history.createConversation()
+    activeConvIdRef.current = id
+    return id
   }, [history])
 
   const chat = useCIAChat({
@@ -36,55 +53,72 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
     onSources: useCallback((sources: Source[]) => {
       setPendingSources(sources)
     }, []),
+    onToolResult: useCallback((_id: string, ok: boolean) => {
+      if (ok && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('cia:data-changed'))
+      }
+    }, []),
     onDone: useCallback(() => {
-      const convId = history.activeConversationId
-      if (convId && contentAccumulator.current) {
-        history.updateLastAssistantMessage(convId, contentAccumulator.current, pendingSources)
+      const convId = activeConvIdRef.current
+      const msgId = assistantMsgIdRef.current
+      const finalText = contentAccumulator.current
+      if (convId && finalText) {
+        historyRef.current.updateLastAssistantMessage(convId, finalText, pendingSources, msgId)
       }
       contentAccumulator.current = ''
+      assistantMsgIdRef.current = null
       setStreamingContent('')
       setPendingSources([])
-    }, [history, pendingSources]),
+    }, [pendingSources]),
     onTitle: useCallback((title: string) => {
-      if (history.activeConversationId) {
-        history.renameConversation(history.activeConversationId, title)
-      }
-    }, [history]),
+      const convId = activeConvIdRef.current
+      if (convId) historyRef.current.renameConversation(convId, title)
+    }, []),
     onError: useCallback((message: string) => {
-      const convId = history.activeConversationId
-      if (convId) {
-        history.updateLastAssistantMessage(convId, `⚠ ${message}`)
-      }
+      const convId = activeConvIdRef.current
+      const msgId = assistantMsgIdRef.current
+      if (convId) historyRef.current.updateLastAssistantMessage(convId, `⚠ ${message}`, undefined, msgId)
       contentAccumulator.current = ''
+      assistantMsgIdRef.current = null
       setStreamingContent('')
-    }, [history]),
+    }, []),
   })
 
   const handleSend = useCallback(
     async (text: string) => {
       const convId = await ensureConversation()
 
-      // Add messages (fire and forget — optimistic UI)
-      history.addMessage(convId, { role: 'user', content: text })
-      history.addMessage(convId, { role: 'assistant', content: '' })
-
-      // Build messages array for the API
-      const conv = history.conversations.find(c => c.id === convId)
+      // Build API messages from pre-existing state BEFORE we mutate it
+      const conv = historyRef.current.conversations.find(c => c.id === convId)
       const apiMessages = [
         ...(conv?.messages || []).filter(m => m.content).map(m => ({ role: m.role, content: m.content })),
         { role: 'user' as const, content: text },
       ]
+
+      // Persist the user turn AND the empty assistant placeholder before
+      // streaming starts so we have DB IDs for the final update.
+      historyRef.current.addMessage(convId, { role: 'user', content: text })
+      const assistantDbId = await historyRef.current.addMessage(convId, { role: 'assistant', content: '' })
+      assistantMsgIdRef.current = assistantDbId
 
       contentAccumulator.current = ''
       setStreamingContent('')
       setPendingSources([])
       chat.sendMessage(apiMessages)
     },
-    [ensureConversation, history, chat]
+    [ensureConversation, chat]
   )
 
-  const handleNewChat = useCallback(() => {
-    history.createConversation()
+  const handleNewChat = useCallback(async () => {
+    const id = await history.createConversation()
+    activeConvIdRef.current = id
+    assistantMsgIdRef.current = null
+  }, [history])
+
+  const handleSelectConversation = useCallback((id: string) => {
+    history.setActiveConversationId(id)
+    activeConvIdRef.current = id
+    assistantMsgIdRef.current = null
   }, [history])
 
   const currentMessages = history.activeConversation?.messages.filter(m => m.content) || []
@@ -139,7 +173,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
             <CIASidebar
               conversations={history.conversations}
               activeId={history.activeConversationId}
-              onSelect={history.setActiveConversationId}
+              onSelect={handleSelectConversation}
               onNew={handleNewChat}
               onDelete={history.deleteConversation}
             />
@@ -169,6 +203,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
                   messages={currentMessages}
                   streamingContent={streamingContent}
                   steps={chat.steps}
+                  toolActivities={chat.toolActivities}
                   isStreaming={chat.isStreaming}
                 />
               )}
@@ -178,6 +213,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
                 <CIAInput
                   onSend={handleSend}
                   onStop={chat.abort}
+                  onAttach={() => setUploadOpen(true)}
                   isStreaming={chat.isStreaming}
                   suggestedQuestions={suggestedQuestions}
                   showSuggestions={isEmpty && !chat.isStreaming}
@@ -187,6 +223,20 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
           </div>
         </div>
       </div>
+
+      {uploadOpen && (
+        <AgentAssistedUploadModal
+          isOpen={uploadOpen}
+          companyId={companyId}
+          onClose={() => setUploadOpen(false)}
+          onFinalized={() => {
+            setUploadOpen(false)
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('cia:data-changed'))
+            }
+          }}
+        />
+      )}
     </>
   )
 }

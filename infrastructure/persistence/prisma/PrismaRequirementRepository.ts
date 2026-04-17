@@ -245,6 +245,25 @@ export class PrismaRequirementRepository implements RequirementRepository {
       setClauses.push(`required_documents = $${paramIndex++}::text[]`)
     }
 
+    if (input.amountPayable !== undefined) {
+      params.push(input.amountPayable)
+      setClauses.push(`amount_payable = $${paramIndex++}::numeric`)
+    }
+
+    if (input.amountPaid !== undefined) {
+      params.push(input.amountPaid)
+      setClauses.push(`amount_paid = $${paramIndex++}::numeric`)
+    }
+
+    if (input.filingDocumentId !== undefined) {
+      if (input.filingDocumentId === null) {
+        setClauses.push('filing_document_id = NULL')
+      } else {
+        params.push(input.filingDocumentId)
+        setClauses.push(`filing_document_id = $${paramIndex++}::uuid`)
+      }
+    }
+
     // Add requirementId as last parameter
     params.push(requirementId)
 
@@ -282,6 +301,9 @@ export class PrismaRequirementRepository implements RequirementRepository {
           ? [String(row.required_documents)]
           : [],
       possible_legal_action: row.possible_legal_action ?? null,
+      amount_payable: row.amount_payable != null ? Number(row.amount_payable) : null,
+      amount_paid: row.amount_paid != null ? Number(row.amount_paid) : null,
+      filing_document_id: row.filing_document_id ?? null,
       created_at: row.created_at ? (row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at)) : new Date().toISOString(),
       updated_at: row.updated_at ? (row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at)) : new Date().toISOString(),
       created_by: row.created_by ?? null,

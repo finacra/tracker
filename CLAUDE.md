@@ -1,5 +1,21 @@
 # Project Rules
 
+## Proactive Engineering — Non-Negotiable
+
+0. **Trace the FULL impact of every change before writing code.** Before modifying any function, data model, query, or state: (a) identify every caller and consumer, (b) check what reads the same data/state, (c) verify field name consistency (snake_case vs camelCase), (d) check both client-side and server-side effects. A change to a DB query affects every UI component that reads from it. A change to a Prisma model affects every repository method, server action, and client state that touches that table. Never change one layer without verifying all layers above and below it.
+
+   **Examples of what "trace the full impact" means:**
+   - Adding a filter to a DB query → check every component that reads from the query result → verify they still get the data they need
+   - Adding a column to Prisma schema → update the repository create/read/update methods → update the server action → update the client form → run `prisma db push`
+   - Changing auth flow → trace from cookie → middleware → session endpoint → client adapter → providers.tsx → every hook that reads auth state → every page that checks auth
+   - Adding a new field to a form → add to formData state → add to server action params → add to repository input → add to Prisma schema → add to DB → add to any display components
+
+   **Anti-patterns to avoid:**
+   - Fixing a symptom without tracing the root cause (e.g., adding a loading state instead of fixing why data arrives late)
+   - Changing a DB query without checking what components read from it
+   - Adding server-side logging to debug a client-side bug (trace client first per Rule 11)
+   - Making the same type of fix multiple times (FK constraints, field name mismatches) without doing a sweep for all instances
+
 ## Performance — Non-Negotiable
 
 1. **Never allow redundant server calls for a single user interaction.** Before writing or modifying any client-side code that calls server actions, trace the FULL call graph: how many server actions fire, how many `createServerContainer()` calls result, how many auth checks happen. If more than one server action fires for a single user interaction (page load, button click, company switch, tab change), consolidate into a single batched server action.
@@ -19,6 +35,24 @@
 7. **Proactively flag architectural issues.** Don't treat existing patterns as correct just because they're repeated. If you see the same anti-pattern 32 times, that's 32 bugs, not a convention. Raise it immediately.
 
 8. **Trace the full request lifecycle** before making changes. Client interaction → state change → which effects fire → which server actions → which DB queries. Map this out, especially for critical paths (login, page load, company switch).
+
+## Debugging — Non-Negotiable
+
+9. **`console.log` is always reliable — use it aggressively. Don't loop on "try again while I tail Vercel logs".** Vercel CLI `logs` streams from "now" only (5-min session), the preview-log UI lags, and browser Network tabs hide server-action payloads. `console.log` in the function body shows up in Vercel runtime logs the moment the code runs, and in the browser DevTools Console for client-side, every time. It is the lowest-friction, highest-reliability diagnostic we have. Prefer it over any other approach.
+
+   **Log aggressively — err on the side of too many `console.log`s, not too few. The cost of a few extra log lines is tiny compared to an extra deploy round-trip.**
+
+   Every time you need more visibility than raw stack traces give you, add logs in the SAME commit as the fix:
+
+   - **Every server-action boundary** (happy AND error paths) gets a `console.log` / `console.error` with a stable prefix — e.g. `[uploadAndAnalyze] ok …` / `[uploadAndAnalyze] threw …`. On the error path include `error.message + error.stack`. `handleActionError` redacts by design, so the raw message must be logged BEFORE it runs, never after.
+   - **Every client-side catch** (in `onClick` / `onChange` / mutation handlers / effects / fetchers) logs the full error + any response body: `console.error('[ActionName]', err, err?.stack, err?.response?.data)`. A bare "unexpected response" or 400 gives you nothing; this gives you the line.
+   - **Server actions that might return non-JSON-serialisable values** (Prisma Decimal / Date / BigInt / class instance) get `console.log('[name] returning', JSON.stringify(returnValue))` right before `return`. A serialisation failure surfaces the specific key.
+   - **LLM calls** log the raw response (first ~2k chars) BEFORE `JSON.parse`, plus the prompt size and `max_completion_tokens`. Truncation and token-ceiling bugs become obvious.
+   - **Database calls that can race or partial-fail** log the input values and the returned row count. A silent `updateMany` affecting 0 rows is a common invisible bug.
+   - **Ship diagnostics in the same commit as the fix.** If the fix doesn't fully work, the next repro must already have the answer in the logs. Never "fix now, add logs later".
+   - **Remove `console.log`s only after the flow is user-verified stable** — green build + green E2E or explicit user confirmation. Leaving them long-term is noise; removing them too early restarts the loop.
+
+   If the user is frustrated about repeated log-tailing attempts, that is signal you under-logged. Add more logs, not better tailing.
 
 ## Critical Paths (must be fast)
 
@@ -55,4 +89,6 @@
 - Don't treat client-side workarounds (refs, guards, debouncing) as solutions for server-side problems
 - Don't add `user_id` foreign keys referencing `auth.users` — Passport users exist in `app_users`, not `auth.users`
 - Don't use `prisma.$transaction(async (tx) => ...)` — use sequential queries (PgBouncer incompatible)
+- Don't run raw SQL migrations manually — use `npx prisma db push` to sync schema changes from `prisma/schema.prisma` to the DB. This avoids schema/DB mismatches (NOT NULL constraints, missing columns, stale Prisma Client)
+- **NEVER define a table only in raw SQL (supabase/migrations/*.sql) without also adding it to `prisma/schema.prisma`.** Prisma is the single source of truth for ALL table definitions. Raw SQL is only for: seed data, RPC functions (match_document_chunks), pgvector indexes (HNSW), and one-shot data migrations. If code references a table via `$queryRaw`, `supabase.from()`, or Prisma client, that table MUST have a `model` in schema.prisma. Violation of this rule caused three separate "relation does not exist" crashes in one session.
 - Don't add concurrent callers to `syncAppUser` in `providers.tsx` without guarding against the requestId race

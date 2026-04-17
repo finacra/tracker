@@ -23,14 +23,19 @@ export function useCompanyAccessQuery({
   return useQuery({
     queryKey: queryKeys.companyAccess(companyId),
     queryFn: async () => {
-      if (!companyId) {
-        throw new Error('Company ID is required')
+      try {
+        if (!companyId) {
+          throw new Error('Company ID is required')
+        }
+        const result = await getCompanyAccessState(companyId)
+        if (!result.success || !result.access) {
+          throw new Error(result.error || 'Failed to fetch company access')
+        }
+        return result.access
+      } catch (err) {
+        console.error('[useCompanyAccessQuery] queryFn threw', err, (err as any)?.stack)
+        throw err
       }
-      const result = await getCompanyAccessState(companyId)
-      if (!result.success || !result.access) {
-        throw new Error(result.error || 'Failed to fetch company access')
-      }
-      return result.access
     },
     enabled: enabled && !!companyId && isAuthReady,
     initialData,

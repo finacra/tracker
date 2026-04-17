@@ -501,7 +501,7 @@ export async function generateComplianceIntelligence(
       citations: response.citations,
       usage: response.usage,
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('[ComplianceIntel] Generation failed:', error)
     return {
       success: false,
@@ -512,7 +512,7 @@ export async function generateComplianceIntelligence(
       needsReview: 0,
       skippedAsDuplicate: 0,
       citations: [],
-      error: error.message || 'Failed to generate compliance intelligence',
+      error: error instanceof Error ? error.message : 'Failed to generate compliance intelligence',
     }
   }
 }
@@ -553,9 +553,9 @@ If no changes found, return an empty array.`
 
     const changes = await queryRegulatoryChanges(prompt)
     return { changes }
-  } catch (error: any) {
+  } catch (error) {
     console.error('[ComplianceIntel] Change detection failed:', error)
-    return { changes: [], error: error.message }
+    return { changes: [], error: error instanceof Error ? error.message : 'Change detection failed' }
   }
 }
 
@@ -712,8 +712,8 @@ Be precise and cite sources. For validation: if borderline, mark "applicable" (c
       flaggedCount,
       discoveredCompliances,
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('[ComplianceIntel] Validation failed:', error)
-    return { success: false, validations: [], flaggedCount: 0, discoveredCompliances: [], error: error.message }
+    return { success: false, validations: [], flaggedCount: 0, discoveredCompliances: [], error: error instanceof Error ? error.message : 'Validation failed' }
   }
 }

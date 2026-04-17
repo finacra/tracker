@@ -1,6 +1,7 @@
 'use server'
 
 import { createServerContainer } from '@/lib/composition/server-container'
+import { handleActionError } from '@/lib/errors/handle-error'
 
 export async function getOwnerExpiredInfo(companyId: string) {
   try {
@@ -15,8 +16,7 @@ export async function getOwnerExpiredInfo(companyId: string) {
       success: true,
       companyName: company.name,
     }
-  } catch (error: any) {
-    console.error('Error fetching owner expired info:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }

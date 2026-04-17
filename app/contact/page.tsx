@@ -70,10 +70,10 @@ function ContactPageContent() {
         setSubmitStatus('error')
         setErrorMessage(result.error || 'Failed to submit your message. Please try again.')
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error submitting form:', error)
       setSubmitStatus('error')
-      setErrorMessage(error.message || 'An unexpected error occurred. Please try again later.')
+      setErrorMessage(error instanceof Error ? error.message : 'An unexpected error occurred. Please try again later.')
     } finally {
       setIsSubmitting(false)
     }

@@ -1,6 +1,10 @@
 import type { Metadata } from 'next'
 import { Poppins } from 'next/font/google'
 import './globals.css'
+import { validateEnv } from '@/lib/config/validate-env'
+
+// Validate all required env vars at startup — crash early with clear message
+validateEnv()
 import { Providers } from './providers'
 import { QueryProvider } from '@/lib/react-query/QueryProvider'
 import Analytics from '@/components/features/Analytics'

@@ -1,7 +1,9 @@
 'use server'
 
 import { createServerContainer } from '@/lib/composition/server-container'
+import { handleActionError } from '@/lib/errors/handle-error'
 import { validateCompanyId } from '@/lib/utils/input-validation'
+import { prisma } from '@/lib/prisma'
 
 type DirectorDto = {
   id: string
@@ -45,6 +47,7 @@ type ManageCompanyData = {
     annualTurnover: string
     isGstRegistered: boolean
     gstNumber: string
+    gstRegistrations: Array<{ gstin: string; state: string }>
     netWorth: string
     isMsme: string          // 'yes' | 'no' | ''
     msmeCategory: string
@@ -83,8 +86,8 @@ export async function getManageCompanyData(companyIdParam: string | null): Promi
         companyRepository.getDetailsById(companyId),
         companyMembershipRepository.findRole(user.id, companyId),
       ])
-    } catch (detailsError: any) {
-      return { success: false, error: 'Failed to load company: ' + detailsError.message }
+    } catch (error) {
+      return handleActionError(error)
     }
 
     if (!company) {
@@ -96,7 +99,15 @@ export async function getManageCompanyData(companyIdParam: string | null): Promi
       return { success: false, redirectTo: '/data-room' }
     }
 
-    const directors = await directorRepository.getByCompanyId(companyId)
+    const [directors, gstRows] = await Promise.all([
+      directorRepository.getByCompanyId(companyId),
+      prisma.gstRegistration.findMany({
+        where: { company_id: companyId },
+        orderBy: { created_at: 'asc' },
+        select: { gstin: true, state: true },
+      }),
+    ])
+    const gstRegistrations = gstRows.map((r) => ({ gstin: r.gstin, state: r.state || '' }))
 
     return {
       success: true,
@@ -127,6 +138,7 @@ export async function getManageCompanyData(companyIdParam: string | null): Promi
           annualTurnover: company.annualTurnover != null ? String(company.annualTurnover) : '',
           isGstRegistered: company.isGstRegistered ?? false,
           gstNumber: company.gstNumber || '',
+          gstRegistrations,
           netWorth: company.netWorth != null ? String(company.netWorth) : '',
           isMsme: company.isMsme === true ? 'yes' : company.isMsme === false ? 'no' : '',
           msmeCategory: company.msmeCategory || '',
@@ -150,10 +162,7 @@ export async function getManageCompanyData(companyIdParam: string | null): Promi
         })),
       },
     }
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || 'Failed to load company data',
-    }
+  } catch (error) {
+    return handleActionError(error)
   }
 }

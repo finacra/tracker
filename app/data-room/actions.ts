@@ -7,6 +7,7 @@ import { validateCompanyId, validateUserId, isValidUUID, sanitizeStringInput } f
 import { enrichComplianceItems as enrichComplianceItemsService, type EnrichedComplianceData } from '@/lib/services/compliance-enrichment'
 import { sendEmail, getSiteUrl } from '@/lib/email/resend'
 import { renderTeamInviteEmail } from '@/lib/email/templates/teamInvite'
+import { handleActionError } from '@/lib/errors/handle-error'
 import { createServerContainer } from '@/lib/composition/server-container'
 import { createServerNotificationContainer } from '@/lib/composition/server-notification-container'
 import { createServerUserContainer } from '@/lib/composition/server-user-container'
@@ -181,9 +182,8 @@ export async function getUserRole(
     const role = await useCase.execute(user.id, companyId, providedIsSuperadmin)
 
     return { success: true, role }
-  } catch (error: any) {
-    console.error('Error in getUserRole:', error)
-    return { success: false, role: null, error: error.message }
+  } catch (error) {
+    return { ...handleActionError(error), role: null }
   }
 }
 
@@ -218,8 +218,10 @@ export async function getCompanyAccessState(companyId: string | null): Promise<{
   access?: import('@/domain/types/CompanyAccess').CompanyAccessSnapshot
   error?: string
 }> {
+  console.log('[SA:getCompanyAccessState] enter', { companyId })
   try {
     if (companyId === null || !validateCompanyId(companyId)) {
+      console.warn('[SA:getCompanyAccessState] invalid companyId', companyId)
       return { success: false, error: 'Invalid company ID format' }
     }
 
@@ -228,10 +230,17 @@ export async function getCompanyAccessState(companyId: string | null): Promise<{
     const useCase = new GetCompanyAccessSnapshot(accessService)
     const access = await useCase.execute(user.id, companyId)
 
+    console.log('[SA:getCompanyAccessState] ok', {
+      companyId,
+      hasAccess: access.hasAccess,
+      trialDaysRemaining: access.trialDaysRemaining,
+    })
     return { success: true, access }
-  } catch (error: any) {
-    console.error('Error in getCompanyAccessState:', error)
-    return { success: false, error: error.message || 'Failed to check company access' }
+  } catch (error) {
+    console.error('[SA:getCompanyAccessState] threw',
+      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : '')
+    return handleActionError(error)
   }
 }
 
@@ -240,19 +249,20 @@ export async function getAccessibleCompanyState(): Promise<{
   accessibleCompanyIds?: string[]
   error?: string
 }> {
+  console.log('[SA:getAccessibleCompanyState] enter')
   try {
     const { authService, accessService } = createServerContainer()
     const user = await authService.requireCurrentUser()
     const useCase = new GetAccessibleCompanyIds(accessService)
     const accessibleCompanyIds = await useCase.execute(user.id)
 
+    console.log('[SA:getAccessibleCompanyState] ok', { count: accessibleCompanyIds.length })
     return { success: true, accessibleCompanyIds }
-  } catch (error: any) {
-    console.error('Error in getAccessibleCompanyState:', error)
-    return {
-      success: false,
-      error: error.message || 'Failed to check accessible companies',
-    }
+  } catch (error) {
+    console.error('[SA:getAccessibleCompanyState] threw',
+      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : '')
+    return handleActionError(error)
   }
 }
 
@@ -311,9 +321,8 @@ export async function getUserSubscriptionSummary(): Promise<{
         canCreateCompany: hasActiveSubscription && companies.length < companyLimit,
       },
     }
-  } catch (error: any) {
-    console.error('Error in getUserSubscriptionSummary:', error)
-    return { success: false, error: error.message || 'Failed to load subscription summary' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -340,9 +349,8 @@ export async function getCompanyAccessStatuses(companyIds: string[]): Promise<{
     )
 
     return { success: true, statuses }
-  } catch (error: any) {
-    console.error('Error in getCompanyAccessStatuses:', error)
-    return { success: false, error: error.message || 'Failed to load company statuses' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -398,9 +406,8 @@ export async function getOwnedCompanySubscriptionOverview(requestedCompanyId: st
       expiredCompanies,
       selectedExpiredCompanyId,
     }
-  } catch (error: any) {
-    console.error('Error in getOwnedCompanySubscriptionOverview:', error)
-    return { success: false, error: error.message || 'Failed to load company subscription overview' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -419,10 +426,12 @@ export async function getRegulatoryRequirements(
 }> {
   const startTime = Date.now()
   const isDev = process.env.NODE_ENV === 'development'
-  
+  console.log('[SA:getRegulatoryRequirements] enter', { companyId, hasProvidedUser: !!providedUser, providedIsSuperadmin })
+
   try {
     // SECURITY: Validate companyId if provided
     if (companyId !== null && !validateCompanyId(companyId)) {
+      console.warn('[SA:getRegulatoryRequirements] invalid companyId', companyId)
       return { success: false, error: 'Invalid company ID format' }
     }
 
@@ -435,6 +444,7 @@ export async function getRegulatoryRequirements(
       const useCase = new GetCompanyRequirements(accessService, requirementRepository)
       const requirements = await useCase.execute(user.id, companyId, providedIsSuperadmin)
 
+      console.log('[SA:getRegulatoryRequirements] ok company', { companyId, count: requirements.length })
       return { success: true, requirements: requirements as RegulatoryRequirement[] }
     }
 
@@ -463,10 +473,13 @@ export async function getRegulatoryRequirements(
         : (req.required_documents ? [req.required_documents] : [])
     }))
 
+    console.log('[SA:getRegulatoryRequirements] ok superadmin', { count: normalizedData.length })
     return { success: true, requirements: normalizedData as RegulatoryRequirement[] }
-  } catch (error: any) {
-    console.error('Error in getRegulatoryRequirements:', error)
-    return { success: false, error: error.message || 'Failed to fetch regulatory requirements' }
+  } catch (error) {
+    console.error('[SA:getRegulatoryRequirements] threw',
+      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : '')
+    return handleActionError(error)
   }
 }
 
@@ -492,6 +505,9 @@ export async function updateRequirement(
     status?: 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed'
     compliance_type?: 'one-time' | 'monthly' | 'quarterly' | 'annual'
     year?: string
+    amount_payable?: number | null
+    amount_paid?: number | null
+    filing_document_id?: string | null
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -606,6 +622,9 @@ export async function updateRequirement(
       complianceType: requirement.compliance_type,
       yearType: (requirement as any).year_type,
       requiredDocuments: requirement.required_documents,
+      amountPayable: requirement.amount_payable,
+      amountPaid: requirement.amount_paid,
+      filingDocumentId: requirement.filing_document_id,
     }
 
     // Pass additional fields if needed, or handle in repository
@@ -616,9 +635,8 @@ export async function updateRequirement(
     await requirementRepository.update(requirementId, updateInput)
 
     return { success: true }
-  } catch (error: any) {
-    console.error('Error in updateRequirement:', error)
-    return { success: false, error: error.message || 'An unexpected error occurred while updating the requirement.' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -787,6 +805,8 @@ export async function updateRequirementStatus(
           .from('company_documents_internal')
           .select('document_type, period_key')
           .eq('company_id', reqCompanyId)
+          .eq('is_draft', false)
+          .is('deleted_at', null)
 
         if (docsError) {
           console.error('Error checking documents:', docsError)
@@ -971,9 +991,8 @@ export async function updateRequirementStatus(
       actualStatus,
       missingDocs: missingDocs.length > 0 ? missingDocs : undefined
     }
-  } catch (error: any) {
-    console.error('Error in updateRequirementStatus:', error)
-    return { success: false, error: error.message || 'Failed to update requirement status. Please try again.' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -1208,9 +1227,8 @@ export async function createRequirement(
     })
 
     return { success: true, id: created.id }
-  } catch (error: any) {
-    console.error('Error in createRequirement:', error)
-    return { success: false, error: error.message || 'An unexpected error occurred while creating the requirement.' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -1253,9 +1271,8 @@ export async function deleteRequirement(
     await requirementRepository.delete(requirementId, isSuperadmin ? null : companyId)
 
     return { success: true }
-  } catch (error: any) {
-    console.error('Error in deleteRequirement:', error)
-    return { success: false, error: error.message || 'An unexpected error occurred while deleting the requirement.' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -1367,9 +1384,8 @@ export async function getCompanyUserRoles(companyId: string | null = null): Prom
     )
 
     return { success: true, roles: rolesWithUserInfo }
-  } catch (error: any) {
-    console.error('Error in getCompanyUserRoles:', error)
-    return { success: false, error: error.message || 'Failed to fetch user roles. Please try again.' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -1426,13 +1442,13 @@ export async function addTeamMember(
     try {
       await companyMembershipRepository.addRole(userId, companyId, role, appUserId)
       console.log('[addTeamMember] Insert result - Success')
-    } catch (insertError: any) {
+    } catch (insertError) {
       console.error('[addTeamMember] FAILED - Insert error:', {
-        code: insertError.code,
-        message: insertError.message,
+        code: (insertError as any).code,
+        message: insertError instanceof Error ? insertError.message : insertError,
       })
 
-      if (insertError.code === '23505') { // Unique constraint violation
+      if ((insertError as any).code === '23505') { // Unique constraint violation
         // Check if the entry actually exists and is accessible
         console.log('[addTeamMember] Unique constraint violation - checking if entry exists...')
         const existingRole = await companyMembershipRepository.findRole(userId, companyId)
@@ -1448,7 +1464,7 @@ export async function addTeamMember(
           return { success: false, error: 'This user is already a member of this company' }
         }
       } else {
-        return { success: false, error: `Insert failed: ${insertError.message} (Code: ${insertError.code})` }
+        return { success: false, error: `Insert failed: ${insertError instanceof Error ? insertError.message : insertError} (Code: ${(insertError as any).code})` }
       }
     }
 
@@ -1464,10 +1480,8 @@ export async function addTeamMember(
 
     console.log('[addTeamMember] SUCCESS - User role created and verified:', verifyData.id)
     return { success: true }
-  } catch (error: any) {
-    console.error('[addTeamMember] EXCEPTION - Unexpected error:', error)
-    console.error('[addTeamMember] Stack:', error.stack)
-    return { success: false, error: error.message || 'Unexpected error occurred' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -1541,8 +1555,8 @@ export async function createTeamInvitation(
       console.log('[createTeamInvitation] Sending email to:', normalizedEmail)
       const emailResult = await sendEmail({ to: normalizedEmail, subject, html })
       console.log('[createTeamInvitation] Email result:', JSON.stringify(emailResult))
-    } catch (emailError: any) {
-      console.error('[createTeamInvitation] Email send failed:', emailError?.message || emailError)
+    } catch (emailError) {
+      console.error('[createTeamInvitation] Email send failed:', emailError instanceof Error ? emailError.message : emailError)
       // Don't fail the invitation if email fails - the invite is still in DB
     }
 
@@ -1557,9 +1571,8 @@ export async function createTeamInvitation(
     )
 
     return { success: true }
-  } catch (error: any) {
-    console.error('Error in createTeamInvitation:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -1610,9 +1623,8 @@ export async function acceptTeamInvitation(
     )
 
     return { success: true, companyId: invite.companyId }
-  } catch (error: any) {
-    console.error('Error in acceptTeamInvitation:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -1652,9 +1664,8 @@ export async function removeTeamMember(
     await companyMembershipRepository.removeRole(roleId, companyId)
 
     return { success: true }
-  } catch (error: any) {
-    console.error('Error in removeTeamMember:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -1683,9 +1694,8 @@ export async function updateTeamMemberRole(
     await companyMembershipRepository.updateRole(roleId, companyId, newRole)
 
     return { success: true }
-  } catch (error: any) {
-    console.error('Error in updateTeamMemberRole:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -1759,9 +1769,8 @@ export async function generateRecurringCompliances(
     } else {
       return { success: false, error: 'Company ID required for non-superadmin users' }
     }
-  } catch (error: any) {
-    console.error('Error in generateRecurringCompliances:', error)
-    return { success: false, error: error.message || 'An unexpected error occurred' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -1823,7 +1832,7 @@ export async function getComplianceTemplates(): Promise<{ success: boolean; temp
               ...template,
               matching_companies_count: matchingCompanies?.length || 0
             }
-          } catch (error: any) {
+          } catch (error) {
             console.error(`[getComplianceTemplates] Error processing template ${template.id}:`, error)
             return {
               ...template,
@@ -1836,9 +1845,8 @@ export async function getComplianceTemplates(): Promise<{ success: boolean; temp
     }
 
     return { success: true, templates: templatesWithCounts }
-  } catch (error: any) {
-    console.error('Error in getComplianceTemplates:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -2002,9 +2010,8 @@ export async function createComplianceTemplate(
 
     console.log('[createComplianceTemplate] Template applied to', appliedCount || 0, 'companies')
     return { success: true, id: newTemplate.id, applied_count: appliedCount || 0 }
-  } catch (error: any) {
-    console.error('Error in createComplianceTemplate:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -2172,9 +2179,8 @@ export async function updateComplianceTemplate(
     console.log('[updateComplianceTemplate] Template applied successfully. Created/updated', appliedCount || 0, 'requirements')
 
     return { success: true, applied_count: appliedCount || 0 }
-  } catch (error: any) {
-    console.error('Error in updateComplianceTemplate:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -2232,9 +2238,8 @@ export async function deleteComplianceTemplate(
     }
 
     return { success: true }
-  } catch (error: any) {
-    console.error('Error in deleteComplianceTemplate:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -2298,9 +2303,8 @@ export async function getTemplateDetails(templateId: string): Promise<{ success:
       template: template as ComplianceTemplate,
       matching_companies: matchingCompanies
     }
-  } catch (error: any) {
-    console.error('Error in getTemplateDetails:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -2376,9 +2380,8 @@ export async function applyAllTemplates(): Promise<{ success: boolean; applied_c
       template_count: successCount,
       error: errorCount > 0 ? `${errorCount} templates failed to apply` : undefined
     }
-  } catch (error: any) {
-    console.error('Error in applyAllTemplates:', error)
-    return { success: false, applied_count: 0, template_count: 0, error: error.message }
+  } catch (error) {
+    return { ...handleActionError(error), applied_count: 0, template_count: 0 }
   }
 }
 
@@ -2433,9 +2436,8 @@ export async function getCompanyFinancials(
     }
 
     return { success: true, financials: data || [] }
-  } catch (error: any) {
-    console.error('Error in getCompanyFinancials:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -2486,9 +2488,8 @@ export async function upsertCompanyFinancials(
     }
 
     return { success: true }
-  } catch (error: any) {
-    console.error('Error in upsertCompanyFinancials:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -2544,9 +2545,8 @@ export async function updateRequirementBaseAmount(
     }
 
     return { success: true }
-  } catch (error: any) {
-    console.error('Error in updateRequirementBaseAmount:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -2712,7 +2712,7 @@ export async function bulkCreateComplianceTemplates(
             await adminSupabase.rpc('apply_template_to_companies', {
               p_template_id: template.id
             })
-          } catch (applyError: any) {
+          } catch (applyError) {
             console.error('Error applying template:', applyError)
             // Continue - template was created, just not applied
           }
@@ -2727,9 +2727,8 @@ export async function bulkCreateComplianceTemplates(
       created: createdCount,
       errors
     }
-  } catch (error: any) {
-    console.error('Error in bulkCreateComplianceTemplates:', error)
-    return { success: false, created: 0, errors: [error.message] }
+  } catch (error) {
+    return { ...handleActionError(error), created: 0, errors: [error instanceof Error ? error.message : 'Unknown error'] }
   }
 }
 
@@ -2801,9 +2800,8 @@ export async function getCompanyDetails(companyId: string): Promise<{
         country_code: companyDetails.countryCode,
       },
     }
-  } catch (err) {
-    console.error('Error in getCompanyDetails:', err)
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -2844,9 +2842,8 @@ export async function getDirectors(companyId: string): Promise<{
     const { directorRepository } = createServerContainer()
     const directors = await directorRepository.getByCompanyId(companyId)
     return { success: true, directors }
-  } catch (err) {
-    console.error('Error in getDirectors:', err)
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -2871,6 +2868,8 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
       .from('company_documents_internal')
       .select('*')
       .eq('company_id', params.companyId)
+      .eq('is_draft', false)
+      .is('deleted_at', null)
       .in('id', params.documentIds)
 
     if (docsError || !documents || documents.length === 0) {
@@ -2960,9 +2959,8 @@ export async function sendDocumentsEmail(params: SendDocumentsEmailParams) {
         ? `Sent to ${succeeded} recipients. ${failed} failed.`
         : `Documents sent to ${succeeded} recipient${succeeded !== 1 ? 's' : ''}.`
     }
-  } catch (error: unknown) {
-    console.error('[sendDocumentsEmail] Error:', error)
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error occurred' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -3034,9 +3032,8 @@ export async function hideDocumentTemplateForCompany(
     }
 
     return { success: true }
-  } catch (err) {
-    console.error('Error in hideDocumentTemplateForCompany:', err)
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -3080,9 +3077,8 @@ export async function getHiddenDocumentTemplates(
     }
 
     return { success: true, hiddenTemplates: exclusions || [] }
-  } catch (err) {
-    console.error('Error in getHiddenDocumentTemplates:', err)
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -3135,9 +3131,8 @@ export async function hideComplianceForCompany(
     }
 
     return { success: true }
-  } catch (err) {
-    console.error('Error in hideComplianceForCompany:', err)
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -3180,9 +3175,8 @@ export async function showComplianceForCompany(
     }
 
     return { success: true }
-  } catch (err) {
-    console.error('Error in showComplianceForCompany:', err)
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -3229,9 +3223,8 @@ export async function getHiddenCompliances(
     const hiddenIds = (exclusions || []).map((ex: { requirement_id: string }) => ex.requirement_id)
 
     return { success: true, hiddenComplianceIds: hiddenIds }
-  } catch (err) {
-    console.error('Error in getHiddenCompliances:', err)
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 /**
@@ -3389,9 +3382,8 @@ export async function getCompanySwitchData(companyId: string): Promise<{
         userRole: userRoleResult,
       },
     }
-  } catch (err) {
-    console.error('[getCompanySwitchData] Error:', err)
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -3558,6 +3550,8 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         (SELECT json_agg(ds2.*) FROM (
           SELECT * FROM company_documents_internal
           WHERE company_id = (SELECT id FROM target_company_id)
+            AND is_draft = false
+            AND deleted_at IS NULL
           ORDER BY created_at DESC
         ) ds2) as documents,
         (SELECT role FROM user_roles 
@@ -3733,8 +3727,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         }
       }
     }
-  } catch (error: any) {
-    console.error('Error in getDataRoomInitState:', error)
-    return { success: false, error: error.message || 'Failed to initialize Data Room' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }

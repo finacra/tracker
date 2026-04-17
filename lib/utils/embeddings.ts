@@ -26,8 +26,9 @@ function getClient() {
 
 export async function generateEmbedding(text: string): Promise<number[]> {
   const azureClient = getClient();
-  
+
   if (!azureClient) {
+    console.error('[generateEmbedding] Azure OpenAI client not initialized — AZURE_OPENAI_ENDPOINT or AZURE_OPENAI_API_KEY missing from env');
     return [];
   }
 
@@ -38,12 +39,18 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     });
 
     if (!response.data || !response.data[0]?.embedding) {
-      throw new Error('Failed to generate embedding from Azure');
+      console.error('[generateEmbedding] Azure returned empty embedding data');
+      return [];
     }
 
     return response.data[0].embedding;
-  } catch (error) {
-    console.error('Azure Embedding generation error:', error);
+  } catch (error: any) {
+    console.error('[generateEmbedding] FAILED:',
+      error?.message || String(error),
+      '| status:', error?.status,
+      '| code:', error?.code,
+      '| deployment:', process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT,
+    );
     return [];
   }
 }

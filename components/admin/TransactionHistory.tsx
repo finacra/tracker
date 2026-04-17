@@ -47,7 +47,7 @@ export default function TransactionHistory() {
         sortOrder,
       })
 
-      if (!result.success) throw new Error(result.error || 'Failed to load transactions')
+      if (!result.success) throw new Error('error' in result ? result.error : 'Failed to load transactions')
       setPayments(result.payments as Payment[])
     } catch (error) {
       console.error('Error loading payments:', error)

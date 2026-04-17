@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { IRegulatoryService } from '../../services/RegulatoryService'
 import { showToast } from '@/components/ui/Toast'
 import { updateRequirement } from '@/app/data-room/actions'
@@ -21,6 +21,9 @@ interface Requirement {
   filed_by_name?: string | null
   status_reason?: string | null
   possible_legal_action?: string | null
+  amount_payable?: number | null
+  amount_paid?: number | null
+  filing_document_id?: string | null
   [key: string]: any
 }
 
@@ -90,6 +93,48 @@ export default function RequirementDesktopTableView({
   const isDocUploaded = (reqId: string, docName: string) =>
     uploadedDocSet.has(`${reqId}::${docName.toLowerCase().trim()}`)
 
+  const docsByRequirement = useMemo(() => {
+    const map = new Map<string, any[]>()
+    for (const d of vaultDocuments) {
+      const rid = d.requirement_id || d.requirementId
+      if (!rid) continue
+      if (!map.has(rid)) map.set(rid, [])
+      map.get(rid)!.push(d)
+    }
+    return map
+  }, [vaultDocuments])
+
+  const saveAmount = async (req: Requirement, field: 'amount_payable' | 'amount_paid', raw: string) => {
+    const parsed = raw.trim() === '' ? null : Number(raw)
+    if (parsed !== null && (isNaN(parsed) || parsed < 0)) {
+      showToast('Enter a valid amount', 'error')
+      return
+    }
+    // Optimistic: update the row immediately so Payable/Paid/Auto-calc
+    // all reflect the new number before the DB round trip completes.
+    // Previously this waited ~200-500ms on Vercel which felt broken.
+    const prevValue = (req as any)[field] ?? null
+    setRegulatoryRequirements(prev => prev.map(r => r.id === req.id ? { ...r, [field]: parsed } : r))
+    const result = await updateRequirement(req.id, currentCompany?.id || null, { [field]: parsed } as any)
+    if (!result.success) {
+      // Roll back on failure and surface the error
+      setRegulatoryRequirements(prev => prev.map(r => r.id === req.id ? { ...r, [field]: prevValue } : r))
+      showToast(result.error || 'Failed to save', 'error')
+    }
+  }
+
+  const computeAutoCalc = (req: Requirement) => {
+    const payable = typeof req.amount_payable === 'number' ? req.amount_payable : null
+    const paid = typeof req.amount_paid === 'number' ? req.amount_paid : null
+    const short = payable != null && paid != null ? Math.max(0, payable - paid) : null
+    const delay = calculateDelay(req.dueDate, req.status) ?? 0
+    const monthsLate = Math.max(1, Math.ceil(delay / 30))
+    // IT Act rates used by filing register: 1.5% p.m. interest on late deposit, 1% p.m. on short
+    const interestLate = delay > 0 && paid ? Math.round(paid * 0.015 * monthsLate) : 0
+    const interestShort = short && short > 0 ? Math.round(short * 0.01 * monthsLate) : 0
+    return { short, delay, interestLate, interestShort, total: interestLate + interestShort }
+  }
+
   return (
     <table className="hidden sm:table w-full">
       <thead className="bg-black border-b border-white/10">
@@ -125,8 +170,17 @@ export default function RequirementDesktopTableView({
           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
             DUE DATE
           </th>
+          <th className="px-4 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+            PAYABLE (₹)
+          </th>
+          <th className="px-4 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+            PAID (₹)
+          </th>
+          <th className="px-4 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
+            AUTO-CALC
+          </th>
           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
-            DOCUMENTS
+            DOCS
           </th>
           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
             PENALTY
@@ -159,7 +213,7 @@ export default function RequirementDesktopTableView({
             {/* Visual Separator between categories */}
             {groupIndex > 0 && (
               <tr>
-                <td colSpan={canEdit ? 13 : 12} className="px-0 py-0">
+                <td colSpan={canEdit ? 16 : 15} className="px-0 py-0">
                   <div className="h-0.5 bg-gradient-to-r from-transparent via-white/30 to-transparent my-2"></div>
                 </td>
               </tr>
@@ -355,6 +409,45 @@ export default function RequirementDesktopTableView({
                       )
                     })()}
                   </td>
+                  {/* PAYABLE (₹) — inline editable */}
+                  <td className="px-4 py-4 text-right align-middle">
+                    <AmountInputCell
+                      value={req.amount_payable ?? null}
+                      canEdit={canEdit}
+                      placeholder="₹ 0"
+                      onSave={(raw) => saveAmount(req, 'amount_payable', raw)}
+                    />
+                  </td>
+                  {/* PAID (₹) — always-on inline input */}
+                  <td className="px-4 py-4 text-right align-middle">
+                    <AmountInputCell
+                      value={req.amount_paid ?? null}
+                      canEdit={canEdit}
+                      placeholder="₹ 0"
+                      onSave={(raw) => saveAmount(req, 'amount_paid', raw)}
+                    />
+                  </td>
+                  {/* AUTO-CALC: delay, short, interest */}
+                  <td className="px-4 py-4 text-right text-xs hidden md:table-cell">
+                    {(() => {
+                      const calc = computeAutoCalc(req)
+                      const nothing = calc.short === null && calc.delay === 0 && calc.total === 0
+                      if (nothing) return <span className="text-gray-600">—</span>
+                      return (
+                        <div className="space-y-0.5 text-[11px]">
+                          {calc.short != null && calc.short > 0 && (
+                            <div className="text-amber-400">Short: ₹{calc.short.toLocaleString('en-IN')}</div>
+                          )}
+                          {calc.delay > 0 && (
+                            <div className="text-red-300">Delay: {calc.delay}d</div>
+                          )}
+                          {calc.total > 0 && (
+                            <div className="text-gray-300">Interest: ₹{calc.total.toLocaleString('en-IN')}</div>
+                          )}
+                        </div>
+                      )
+                    })()}
+                  </td>
                   <td className="px-6 py-4 hidden md:table-cell">
                     {/* Documents Required Column — clickable checklist */}
                     {(() => {
@@ -369,20 +462,29 @@ export default function RequirementDesktopTableView({
                         <div className="relative">
                           <button
                             onClick={() => setOpenDocChecklist(isOpen ? null : req.id)}
-                            className={`px-2.5 py-1 text-xs rounded-lg border flex items-center gap-1.5 transition-colors ${
+                            className={`px-2.5 py-1.5 text-xs rounded-lg border flex items-center gap-1.5 transition-colors ${
                               allDone
                                 ? 'bg-green-500/15 text-green-400 border-green-500/30'
                                 : uploadedCount > 0
                                   ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30'
-                                  : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500'
+                                  : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500 hover:text-white'
                             }`}
+                            title={allDone ? 'All required documents uploaded' : 'Click to upload required documents'}
                           >
                             {allDone ? (
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                              </svg>
                             ) : (
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                              // Cloud-upload icon — reads clearly as "upload here"
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 15a4 4 0 004 4h10a5 5 0 001-9.9A6 6 0 007 10a4 4 0 00-4 5z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 12v6m0-6l-2.5 2.5M12 12l2.5 2.5" />
+                              </svg>
                             )}
-                            <span>{uploadedCount}/{requiredDocs.length}</span>
+                            <span className="font-medium">
+                              {allDone ? 'All uploaded' : `${uploadedCount}/${requiredDocs.length} · Upload`}
+                            </span>
                           </button>
                           {/* Click popup checklist */}
                           {isOpen && (
@@ -651,7 +753,7 @@ export default function RequirementDesktopTableView({
                               } else {
                                 showToast(result.error || 'Failed to remove compliance', 'error')
                               }
-                            } catch (error: any) {
+                            } catch (error) {
                               console.error('Error hiding compliance:', error)
                               showToast('Failed to remove compliance', 'error')
                             }
@@ -680,9 +782,9 @@ export default function RequirementDesktopTableView({
                                 } else {
                                   showToast(result.error || 'Failed to delete', 'error')
                                 }
-                              } catch (error: any) {
+                              } catch (error) {
                                 console.error('Error deleting requirement:', error)
-                                showToast(error.message || 'Error deleting requirement', 'error')
+                                showToast(error instanceof Error ? error.message : 'Error deleting requirement', 'error')
                               }
                             }}
                             className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
@@ -704,5 +806,82 @@ export default function RequirementDesktopTableView({
         ))}
       </tbody>
     </table>
+  )
+}
+
+// ── Always-on inline amount cell ───────────────────────────────────────
+// Previously this was click-to-edit with an em-dash + native-tooltip
+// "Click to edit" — felt unlabelled and the browser tooltip was ugly.
+// Now it's a persistent input that matches the table row height, shows
+// ₹ prefix, saves on blur / Enter, and rolls back on Escape.
+
+function AmountInputCell({
+  value,
+  canEdit,
+  placeholder,
+  onSave,
+}: {
+  value: number | null
+  canEdit: boolean
+  placeholder: string
+  onSave: (raw: string) => void | Promise<void>
+}) {
+  // `display` holds the formatted value shown when the cell is idle
+  // (₹1,23,456). `focused` swaps it for the raw number so the user can
+  // edit without commas getting in the way. Blur or Enter commits and
+  // re-formats; Escape reverts.
+  const [focused, setFocused] = useState(false)
+  const [draft, setDraft] = useState<string>(value != null ? String(value) : '')
+
+  useEffect(() => {
+    if (!focused) setDraft(value != null ? String(value) : '')
+  }, [value, focused])
+
+  if (!canEdit) {
+    return (
+      <span className={value != null ? 'text-white text-sm' : 'text-gray-600 text-sm'}>
+        {value != null ? `₹${Number(value).toLocaleString('en-IN')}` : '—'}
+      </span>
+    )
+  }
+
+  const formatted = value != null ? `₹${Number(value).toLocaleString('en-IN')}` : ''
+  const shown = focused ? draft : formatted
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={shown}
+      placeholder={placeholder}
+      onFocus={() => { setDraft(value != null ? String(value) : ''); setFocused(true) }}
+      onChange={e => {
+        const raw = e.target.value
+        // Accept digits, one dot, optional leading minus (we reject negatives on save)
+        if (raw === '' || /^-?\d*\.?\d*$/.test(raw)) setDraft(raw)
+      }}
+      onBlur={e => {
+        setFocused(false)
+        const stripped = e.target.value.trim()
+        const cleaned = stripped === '' ? '' : String(Number(stripped))
+        const prev = value != null ? String(value) : ''
+        if (cleaned !== prev) onSave(cleaned)
+      }}
+      onKeyDown={e => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+        if (e.key === 'Escape') {
+          setDraft(value != null ? String(value) : '')
+          setFocused(false)
+          ;(e.target as HTMLInputElement).blur()
+        }
+      }}
+      className={`w-28 px-2.5 py-1.5 text-sm rounded-md text-right bg-transparent border transition-colors focus:outline-none ${
+        focused
+          ? 'border-blue-400/60 bg-gray-900/80 text-white'
+          : value != null
+            ? 'border-white/10 text-white hover:border-white/25'
+            : 'border-dashed border-white/10 text-gray-500 hover:border-white/25 hover:text-gray-300'
+      }`}
+    />
   )
 }

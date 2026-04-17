@@ -5,6 +5,7 @@ import type {
   SaveEmailPreferenceInput,
 } from '@/application/interfaces/EmailPreferenceRepository'
 import { createServerContainer } from '@/lib/composition/server-container'
+import { handleActionError } from '@/lib/errors/handle-error'
 
 export type EmailPreferencesDto = {
   unsubscribe_status_changes: boolean
@@ -46,8 +47,8 @@ export async function getEmailPreferences(): Promise<{
         digest_frequency: preferences.digestFrequency,
       },
     }
-  } catch (error: any) {
-    return { success: false, error: error.message || 'Failed to load preferences' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -66,7 +67,7 @@ export async function saveEmailPreferences(input: EmailPreferencesDto): Promise<
 
     await emailPreferenceRepository.saveForUser(user.id, payload)
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message || 'Failed to save preferences' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }

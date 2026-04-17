@@ -118,7 +118,7 @@ export async function generateBatchBusinessImpact(
     }
 
     return out
-  } catch (error: any) {
+  } catch (error) {
     console.error('Azure OpenAI API error (batch):', error)
     return null
   }
@@ -132,8 +132,109 @@ export async function generateBatchBusinessImpact(
  * @returns Structured business impact analysis
  */
 export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant'
-  content: string
+  role: 'system' | 'user' | 'assistant' | 'tool'
+  content: string | null
+  tool_call_id?: string
+  tool_calls?: Array<{
+    id: string
+    type: 'function'
+    function: { name: string; arguments: string }
+  }>
+  name?: string
+}
+
+export interface ToolSchema {
+  type: 'function'
+  function: {
+    name: string
+    description: string
+    parameters: Record<string, unknown>
+  }
+}
+
+export type ToolChatEvent =
+  | { type: 'token'; content: string }
+  | { type: 'tool_call'; id: string; name: string; args: Record<string, unknown> }
+  | { type: 'assistant_message'; content: string; tool_calls?: ChatMessage['tool_calls'] }
+  | { type: 'done' }
+  | { type: 'error'; message: string }
+
+/**
+ * Stream a chat completion that can call tools. Yields token deltas
+ * while accumulating tool_call fragments, then emits a single
+ * tool_call event per call when the stream finishes.
+ */
+export async function* streamToolChatCompletion(
+  messages: ChatMessage[],
+  tools?: ToolSchema[],
+): AsyncIterable<ToolChatEvent> {
+  const client = getAzureOpenAIClient()
+  if (!client) {
+    yield { type: 'error', message: 'Azure OpenAI client not initialized' }
+    return
+  }
+
+  const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.2-chat'
+
+  const params: any = {
+    messages,
+    model: deployment,
+    stream: true,
+    max_completion_tokens: 4096,
+  }
+  if (tools && tools.length > 0) {
+    params.tools = tools
+    params.tool_choice = 'auto'
+  }
+
+  const stream = await client.chat.completions.create(params)
+
+  let content = ''
+  const toolCallAcc: Record<number, { id?: string; name?: string; args: string }> = {}
+
+  for await (const chunk of stream as any) {
+    const choice = chunk.choices?.[0]
+    if (!choice) continue
+    const delta = choice.delta
+
+    if (delta?.content) {
+      content += delta.content
+      yield { type: 'token', content: delta.content }
+    }
+
+    if (delta?.tool_calls) {
+      for (const tc of delta.tool_calls) {
+        const idx = tc.index ?? 0
+        if (!toolCallAcc[idx]) toolCallAcc[idx] = { args: '' }
+        if (tc.id) toolCallAcc[idx].id = tc.id
+        if (tc.function?.name) toolCallAcc[idx].name = tc.function.name
+        if (tc.function?.arguments) toolCallAcc[idx].args += tc.function.arguments
+      }
+    }
+  }
+
+  const toolCalls = Object.values(toolCallAcc).filter(tc => tc.id && tc.name)
+
+  if (toolCalls.length > 0) {
+    yield {
+      type: 'assistant_message',
+      content,
+      tool_calls: toolCalls.map(tc => ({
+        id: tc.id!,
+        type: 'function' as const,
+        function: { name: tc.name!, arguments: tc.args },
+      })),
+    }
+    for (const tc of toolCalls) {
+      let parsed: Record<string, unknown> = {}
+      try { parsed = JSON.parse(tc.args || '{}') } catch { /* malformed — empty args */ }
+      yield { type: 'tool_call', id: tc.id!, name: tc.name!, args: parsed }
+    }
+  } else {
+    yield { type: 'assistant_message', content }
+  }
+
+  yield { type: 'done' }
 }
 
 /**
@@ -152,7 +253,7 @@ export async function streamChatCompletion(
   const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.2-chat'
 
   const stream = await client.chat.completions.create({
-    messages,
+    messages: messages as any,
     model: deployment,
     stream: true,
     max_completion_tokens: 4096,
@@ -170,9 +271,16 @@ export async function streamChatCompletion(
 
 /**
  * Non-streaming chat completion. Returns the full response text.
+ *
+ * The original caller was title generation (3–6 words) so the default
+ * token ceiling is deliberately low. Callers that ask the model for
+ * structured JSON or longer prose should pass `{ maxTokens }` — a 200
+ * ceiling will silently truncate the response and break defensive
+ * JSON parsing downstream.
  */
 export async function chatCompletion(
-  messages: ChatMessage[]
+  messages: ChatMessage[],
+  options?: { maxTokens?: number }
 ): Promise<string | null> {
   const client = getAzureOpenAIClient()
   if (!client) return null
@@ -180,9 +288,9 @@ export async function chatCompletion(
   const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-5.2-chat'
 
   const response = await client.chat.completions.create({
-    messages,
+    messages: messages as any,
     model: deployment,
-    max_completion_tokens: 200,
+    max_completion_tokens: options?.maxTokens ?? 200,
   })
 
   return response.choices[0]?.message?.content || null
@@ -268,7 +376,7 @@ Format your response as three short paragraphs (one for each area), each 2-3 sen
       reputation: reputation || 'Reputation impact analysis unavailable.',
       operations: operations || 'Operational impact analysis unavailable.'
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Azure OpenAI API error:', error)
     return null
   }

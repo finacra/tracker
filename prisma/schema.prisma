@@ -72,6 +72,7 @@ model Company {
   annual_turnover         Decimal?  @db.Decimal(15, 2)
   is_gst_registered       Boolean?  @default(false)
   gst_number              String?   @db.VarChar(15)
+  qrmp_eligible           Boolean?  @default(false)
   net_worth               Decimal?  @db.Decimal(15, 2)
   is_msme                 Boolean?
   msme_category           String?   @db.VarChar(10)
@@ -87,13 +88,302 @@ model Company {
   company_status          String?
   date_of_last_agm        DateTime? @db.Date
   balance_sheet_date      DateTime? @db.Date
+  // Country-specific metadata pulled from MCA / CIN lookups; kept as
+  // free-form JSON so the shape can evolve without migrations.
+  jurisdiction_metadata   Json?
   created_at              DateTime  @default(now()) @db.Timestamptz
   updated_at              DateTime  @default(now()) @db.Timestamptz
 
-  requirements  RegulatoryRequirement[]
-  notifications CompanyNotification[]
+  requirements       RegulatoryRequirement[]
+  notifications      CompanyNotification[]
+  gst_registrations  GstRegistration[]
 
   @@map("companies")
+}
+
+model GstRegistration {
+  id         String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id String   @db.Uuid
+  gstin      String   @db.VarChar(15)
+  state      String?
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @db.Timestamptz
+
+  company    Company  @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@unique([company_id, gstin])
+  @@index([company_id])
+  @@map("gst_registrations")
+}
+
+// These two "exclusions" tables were previously defined only in raw SQL
+// migrations under supabase/migrations. Adding them here keeps
+// prisma db push from drifting and ensures any future schema change
+// goes through the same single source of truth.
+model CompanyDocumentTemplateExclusion {
+  id            String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id    String   @db.Uuid
+  document_name String
+  folder_name   String
+  created_at    DateTime? @default(now()) @db.Timestamptz
+  created_by    String?   @db.Uuid
+
+  @@unique([company_id, document_name, folder_name])
+  @@index([company_id])
+  @@index([document_name])
+  @@map("company_document_template_exclusions")
+}
+
+model CompanyComplianceExclusion {
+  id             String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id     String   @db.Uuid
+  requirement_id String   @db.Uuid
+  created_at     DateTime? @default(now()) @db.Timestamptz
+  created_by     String?   @db.Uuid
+
+  @@unique([company_id, requirement_id])
+  @@index([company_id])
+  @@index([requirement_id])
+  @@map("company_compliance_exclusions")
+}
+
+// ── Compliance Rule Catalogue ─────────────────────────────────────────────
+// Versioned source of truth for every compliance obligation the tracker
+// can raise. Replaces the hard-coded TS rule sets in
+// lib/compliance/rules/sets/*. Each row is "rule X as in force from
+// effectiveFrom to effectiveTo"; when an Act changes (e.g., IT Act 1961 →
+// 2025 on 2026-04-01) we insert new rows rather than mutating old ones,
+// so historical tracker renders stay correct.
+//
+// The companion CompanyFact + ComplianceAssessment tables (added in
+// later phases) turn these rules into per-company applicability
+// decisions driven by real facts, not just attribute guesses.
+model ComplianceRule {
+  // Stable logical id, e.g., "tds.return.q1@itact2025". Kept readable
+  // because CAs will sometimes write SQL against this table.
+  id                 String    @id
+
+  category           String                              // RoC / GST / Income Tax / Payroll / ...
+  name               String
+  description        String?
+  act                String                              // "Income Tax Act, 2025"
+  section_ref        String                              // "Section 393"
+  legacy_section_ref String?                             // "Section 200(3)" (when the rule supersedes an older section)
+  authority          String                              // "Income Tax Department (TRACES)"
+  frequency          String                              // monthly / quarterly / half-yearly / annual / one-time / event-based
+  due_date_formula   String?
+  due_description    String?
+  penalty            String?
+  is_critical        Boolean   @default(false)
+  documents_required String[]  @default([])
+  form_refs          Json?                               // { primary: "Form 140", legacy: ["24Q","26Q"] }
+  source_url         String?
+
+  // Temporal — the rule is in force during [effective_from, effective_to]
+  effective_from     DateTime  @db.Date
+  effective_to       DateTime? @db.Date
+
+  // Act-transition chain so we can trace "this rule replaced that rule"
+  supersedes_rule_id     String?
+  superseded_by_rule_id  String?
+
+  // Machine-readable applicability — lets the deterministic evaluator
+  // decide yes/no/maybe from facts without needing an LLM for every rule.
+  // triggerKind values:
+  //   "always"             — always applies while entity matches entity_scope
+  //   "payment_above"      — triggered when a qualifying payment exceeds threshold_amount on threshold_basis
+  //   "turnover_above"     — annual turnover above threshold_amount
+  //   "event_based"        — fires on a specific event (hiring, listing, etc.)
+  trigger_kind       String    @default("always")
+  threshold_amount   Decimal?  @db.Decimal(15, 2)
+  threshold_basis    String?                             // "per_month_per_payee" | "annual_aggregate" | "single_txn" | "annual_turnover"
+
+  // Structured scope that maps 1:1 to the existing RuleConditions type.
+  // Keeping it JSON so adding a new condition (e.g., "isSection8") never
+  // needs a migration.
+  entity_scope       Json      @default("{}")
+
+  // Provenance
+  applicability_reason String?
+  notes                String?
+  last_verified        DateTime? @db.Date
+  verified_by          String?
+
+  created_at         DateTime  @default(now()) @db.Timestamptz
+  updated_at         DateTime  @default(now()) @updatedAt @db.Timestamptz
+
+  @@index([category])
+  @@index([effective_from])
+  @@index([effective_to])
+  @@index([act])
+  @@index([supersedes_rule_id])
+  @@map("compliance_rules")
+}
+
+// ── Company Facts ─────────────────────────────────────────────────────────
+// The ground truth about what a company actually did in a given period.
+// One row per atomic fact — e.g., "paid ₹22,000/month rent to M/s Patel
+// Estates from 2025-04-01 to 2026-03-31". The applicability evaluator
+// reads these rows to decide whether threshold-gated rules apply.
+//
+// Facts come from three sources: user declarations (onboarding/manage-
+// company forms), document extraction (rent agreements, payroll slips,
+// contractor invoices), and API pulls (GST portal, MCA filings). The
+// `source_kind` + `confidence` fields let the evaluator weight them
+// accordingly and ask the user to confirm low-confidence facts.
+model CompanyFact {
+  id             String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id     String   @db.Uuid
+
+  // Dotted namespace so rules can match fact families without a rigid
+  // enum: "rent.monthly_payment", "contractor.annual_spend",
+  // "salary.employee_count", "gst.registered_state", "turnover.annual"
+  kind           String
+
+  // Period the fact covers. Facts are snapshots for a window — a rent
+  // amount for FY25, an employee count as of a certain date, etc.
+  period_start   DateTime @db.Date
+  period_end     DateTime @db.Date
+
+  // Monetary or numeric value (rupees unless the kind implies otherwise).
+  // Null for categorical facts like "gst.registered_state".
+  amount         Decimal? @db.Decimal(15, 2)
+
+  // Optional unit override so the evaluator doesn't have to hardcode per-kind.
+  unit           String?  // "rupees_per_month" | "rupees_per_year" | "count" | "string"
+
+  // Categorical payload (state name, counterparty, etc.). JSON so a fact
+  // can carry richer structure (invoice number, vendor GSTIN) without
+  // schema churn.
+  payload        Json?
+
+  // Human-friendly identifier of the other party (landlord, contractor)
+  // so the evaluator can group by payee when thresholds are per-payee.
+  counterparty   String?
+
+  // Where this fact came from.
+  source_kind    String   // "user_declared" | "document_extracted" | "api_pull" | "system_derived"
+  source_doc_id  String?  @db.Uuid  // link to company_documents row when extracted
+  source_ref     String?             // URL/identifier for api_pull / system_derived
+  confidence     Float    @default(1.0)  // 0..1 — 1 = explicit user input, lower = inferred
+
+  // Corrections: when a fact is wrong, we insert a new fact and point
+  // superseded_by_id at it rather than editing in place. Keeps an
+  // audit trail for historical recomputation.
+  superseded_by_id String? @db.Uuid
+
+  created_at     DateTime @default(now()) @db.Timestamptz
+  created_by     String?  @db.Uuid       // app_user_id of declarer (null for extracted)
+  updated_at     DateTime @default(now()) @updatedAt @db.Timestamptz
+
+  @@index([company_id, kind])
+  @@index([company_id, period_start, period_end])
+  @@index([kind, period_start])
+  @@index([source_doc_id])
+  @@map("company_facts")
+}
+
+// ── Compliance Assessments ────────────────────────────────────────────────
+// The evaluator's output: per-company × per-rule × per-financial-year
+// decision of whether the rule actually applies, with the reasoning the
+// user can read. Tracker UI reads this table (not ComplianceRule directly)
+// so thresholds, facts, and user overrides all feed into one surface.
+//
+// One row per (company, rule_id, financial_year). Re-evaluation updates
+// in place and bumps assessed_at; the row keeps a trail of factsCited so
+// CAs can audit what the agent saw.
+model ComplianceAssessment {
+  id                String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id        String   @db.Uuid
+  rule_id           String                      // references compliance_rules.id (string key)
+  financial_year    String                      // "2026-27" etc.
+
+  applicable        Boolean                     // tracker shows the item iff this is true
+  reasoning         String                      // 1-3 sentences, cites fact ids
+  confidence        Float    @default(1.0)      // 0..1 — lower for LLM-assisted decisions
+  evaluator_kind    String                      // "deterministic" | "llm_assisted" | "user_override"
+
+  facts_cited       String[] @default([])       // CompanyFact ids the decision used
+
+  // User override — takes precedence over any re-evaluation until cleared.
+  user_overridden   Boolean  @default(false)
+  user_override_note String?
+  overridden_by     String?  @db.Uuid           // app_user_id of the overrider
+  overridden_at     DateTime? @db.Timestamptz
+
+  assessed_at       DateTime @default(now()) @db.Timestamptz
+  assessed_by       String   @default("agent:v1")  // "agent:<version>" | "user:<id>"
+
+  @@unique([company_id, rule_id, financial_year])
+  @@index([company_id, financial_year])
+  @@index([rule_id])
+  @@map("compliance_assessments")
+}
+
+// ── Compliance Filing Register ────────────────────────────────────────────
+// The operational layer: what actually happened with each compliance item
+// for each period. ComplianceAssessment says "does this apply?";
+// ComplianceFiling says "was it filed, when, how much, with what docs?"
+//
+// One row per (company, rule, period). period_key is the granularity key:
+//   monthly  → "2026-04"
+//   quarterly → "2026-Q1"
+//   annual    → "2026-27"
+//   half-yearly → "2026-H1"
+//   one-time  → "once"
+//
+// The tracker UI reads from this table. The evaluator seeds rows for
+// every applicable assessment. Users + the vault agent update them as
+// filings happen.
+model ComplianceFiling {
+  id                String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id        String    @db.Uuid
+  rule_id           String                       // references compliance_rules.id
+  assessment_id     String?   @db.Uuid           // references compliance_assessments.id
+  financial_year    String
+  period_key        String                       // "2026-04" | "2026-Q1" | "2026-27" | "once"
+
+  // Due date — computed from the rule's due_date_formula
+  due_date          DateTime? @db.Date
+
+  // Status
+  status            String    @default("pending") // pending | filed | overdue | partially_filed | not_due
+
+  // Financial columns from the CA's compliance tracker spreadsheet
+  amount_payable    Decimal?  @db.Decimal(15, 2)
+  amount_paid       Decimal?  @db.Decimal(15, 2)
+  short_deduction   Decimal?  @db.Decimal(15, 2)
+
+  // Dates
+  date_of_payment   DateTime? @db.Date
+  date_of_filing    DateTime? @db.Date
+  days_delay        Int?                         // auto: date_of_filing - due_date (positive = late)
+
+  // Interest / penalty (auto-computed or manual override)
+  interest_on_short Decimal?  @db.Decimal(15, 2)
+  interest_on_late  Decimal?  @db.Decimal(15, 2)
+
+  // References
+  challan_number    String?
+  acknowledgement   String?                      // ACK number, SRN, filing ref
+  form_reference    String?                      // Form 16, Form 131, Form 168, etc.
+  working_notes     String?                      // free-text computation / working
+
+  // Document linkage — filled when user uploads from tracker or agent maps a vault doc
+  document_id       String?   @db.Uuid           // references company_documents_internal.id
+
+  // Audit
+  created_at        DateTime  @default(now()) @db.Timestamptz
+  updated_at        DateTime  @default(now()) @updatedAt @db.Timestamptz
+  created_by        String?   @db.Uuid
+  updated_by        String?   @db.Uuid
+
+  @@unique([company_id, rule_id, period_key])
+  @@index([company_id, financial_year])
+  @@index([company_id, status])
+  @@index([rule_id])
+  @@index([document_id])
+  @@map("compliance_filings")
 }
 
 model CiaConversation {
@@ -151,6 +441,11 @@ model RegulatoryRequirement {
   due_date            DateTime? @db.Date
   penalty             String?
   is_critical         Boolean?  @default(false)
+  // Indian financial-year label ("2026-27"). Present in prod DB but
+  // was missing from this model for a long time, which forced callers
+  // to use raw SQL for any FY filter. Added here so Prisma stops
+  // trying to drop it and so queries can use the Prisma API.
+  financial_year      String?
   created_at          DateTime? @default(now()) @db.Timestamptz
   updated_at          DateTime? @default(now()) @db.Timestamptz
   created_by          String?   @db.Uuid
@@ -185,6 +480,11 @@ model RegulatoryRequirement {
   ai_batch_id         String?
   period_key          String?
   period_label        String?
+  // Filing fields — user provides payable/paid/document inline in list view.
+  // Everything else (delay, interest, short) is auto-computed for display.
+  amount_payable      Decimal?  @db.Decimal(15, 2)
+  amount_paid         Decimal?  @db.Decimal(15, 2)
+  filing_document_id  String?   @db.Uuid
 
   company              Company @relation(fields: [company_id], references: [id])
   companyNotifications CompanyNotification[]
@@ -238,6 +538,9 @@ model Payment {
   refunded_at         DateTime? @db.Timestamptz
   refund_amount       Decimal?  @db.Decimal(15, 2)
   payment_type        String?
+  // Raw provider response (Razorpay webhook payload etc.) — kept as
+  // JSON so we can reconcile against the provider after the fact.
+  provider_metadata   Json?
   created_at          DateTime? @default(now()) @db.Timestamptz
   updated_at          DateTime? @default(now()) @db.Timestamptz
 
@@ -266,6 +569,8 @@ model Subscription {
   is_trial              Boolean?  @default(false)
   trial_started_at      DateTime? @db.Timestamptz
   trial_ends_at         DateTime? @db.Timestamptz
+  // Raw provider webhook payload for the subscription lifecycle.
+  provider_metadata     Json?
   created_at            DateTime? @default(now()) @db.Timestamptz
   updated_at            DateTime? @default(now()) @db.Timestamptz
 
@@ -318,7 +623,8 @@ model CompanyDocument {
   id                    String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   company_id            String    @db.Uuid
   document_type         String?
-  folder_name           String?
+  folder_name           String?                            // legacy — kept for back-compat until fully migrated
+  folder_id             String?   @db.Uuid                 // new: FK to vault_folders
   file_path             String
   file_name             String?
   registration_date     DateTime? @db.Date
@@ -334,9 +640,67 @@ model CompanyDocument {
   period_start          DateTime? @db.Date
   period_end            DateTime? @db.Date
   requirement_id        String?   @db.Uuid
-  created_at            DateTime? @default(now()) @db.Timestamptz
 
+  // Version chain — replaces the old "group by created_at" heuristic.
+  // When the user uploads a replacement, we insert a new row and point
+  // its parent_document_id at the old one, then mark the old row
+  // is_latest = false. Keeps full history; UI can walk the chain.
+  parent_document_id    String?   @db.Uuid
+  version_number        Int       @default(1)
+  is_latest             Boolean   @default(true)
+
+  // Soft delete so references from assessments/filings survive but the
+  // document drops out of tracker + vault views.
+  deleted_at            DateTime? @db.Timestamptz
+
+  // Draft state — the Document Intelligence Agent creates a row as soon
+  // as the file is uploaded, runs analysis, and returns suggestions. The
+  // row stays `is_draft = true` until the user confirms (or edits) the
+  // suggestions; the vault + tracker views ignore drafts. Existing rows
+  // keep the default `false` so the migration is a no-op for them.
+  is_draft              Boolean   @default(false)
+
+  // Agent suggestions waiting for user confirmation on a draft. JSON so
+  // the shape can evolve without a migration; emptied on finalize.
+  agent_suggestions     Json?
+
+  created_at            DateTime? @default(now()) @db.Timestamptz
+  created_by            String?   @db.Uuid
+  updated_at            DateTime? @default(now()) @db.Timestamptz
+
+  @@index([company_id, folder_id])
+  @@index([parent_document_id])
+  @@index([company_id, is_latest, deleted_at])
+  @@index([company_id, is_draft])
   @@map("company_documents_internal")
+}
+
+// ── Vault Folder Tree ─────────────────────────────────────────────────────
+// A per-company folder hierarchy. Seeded system folders (kind = "system")
+// implement the PRD v1.1 §2.2 / §3.1 taxonomy:
+//   Top-level (5): Constitutional Docs, Licences, Statutory Compliances,
+//                  Financials, MCA Filings
+//   Constitutional Docs nested (7): MOA, AOA, COI, PAN, TAN,
+//                  Share Certificates, DIN Certificates
+//   Statutory Compliances nested (5): Advance Tax, TDS, ITR Computation
+//                  & Acknowledgement, Tax Audit, GST
+// User-created folders (kind = "user") can be added anywhere — at the
+// top level or nested under any existing folder. The document-intelligence
+// agent picks the best match at upload time; users can override.
+model VaultFolder {
+  id           String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id   String   @db.Uuid
+  parent_id    String?  @db.Uuid                 // null = top-level
+  slug         String                             // "constitutional", "moa", "tds" — stable machine id
+  name         String                             // display name
+  kind         String   @default("user")          // "system" | "user"
+  sort_order   Int      @default(0)
+  created_at   DateTime @default(now()) @db.Timestamptz
+  updated_at   DateTime @default(now()) @updatedAt @db.Timestamptz
+
+  @@unique([company_id, parent_id, slug])
+  @@index([company_id, parent_id])
+  @@map("vault_folders")
 }
 
 model DocumentTemplate {
@@ -369,4 +733,264 @@ model ContactSubmission {
   updated_at DateTime? @default(now()) @db.Timestamptz
 
   @@map("contact_submissions")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Tables below were previously defined only in supabase/migrations/*.sql
+// and supabase/schemas/*.sql — NOT in Prisma. This caused "relation does
+// not exist" crashes on staging whenever code referenced them. Adding them
+// here makes prisma db push the single source of truth for ALL tables.
+// No more raw-SQL-only table definitions.
+// ═══════════════════════════════════════════════════════════════════════════
+
+model DocumentChunk {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  document_id String   @db.Uuid
+  company_id  String   @db.Uuid
+  content     String
+  embedding   Unsupported("vector(1536)")?
+  metadata    Json?    @default("{}")
+  created_at  DateTime? @default(now()) @db.Timestamptz
+
+  @@index([company_id])
+  @@index([document_id])
+  @@map("document_chunks_internal")
+}
+
+model ComplianceTemplate {
+  id                  String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  category            String
+  requirement         String
+  description         String?
+  compliance_type     String
+  entity_types        String[]  @default([])
+  industries          String[]  @default([])
+  industry_categories String[]  @default([])
+  penalty             String?
+  is_critical         Boolean?  @default(false)
+  financial_year      String?
+  due_date_offset     Int?
+  due_month           Int?
+  due_day             Int?
+  due_date            DateTime? @db.Date
+  is_active           Boolean?  @default(true)
+  created_at          DateTime? @default(now()) @db.Timestamptz
+  updated_at          DateTime? @default(now()) @db.Timestamptz
+  created_by          String?   @db.Uuid
+  updated_by          String?   @db.Uuid
+
+  @@index([category])
+  @@map("compliance_templates")
+}
+
+model CompanyFinancial {
+  id              String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id      String    @db.Uuid
+  financial_year  String
+  turnover        Decimal?  @db.Decimal
+  tax_due         Decimal?  @db.Decimal
+  pf_contribution Decimal?  @db.Decimal
+  esi_contribution Decimal? @db.Decimal
+  created_at      DateTime? @default(now()) @db.Timestamptz
+  updated_at      DateTime? @default(now()) @db.Timestamptz
+  created_by      String?   @db.Uuid
+  updated_by      String?   @db.Uuid
+
+  @@unique([company_id, financial_year])
+  @@map("company_financials")
+}
+
+model RequirementStatusHistory {
+  id             String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  requirement_id String    @db.Uuid
+  old_status     String?
+  new_status     String
+  changed_by     String?   @db.Uuid
+  changed_at     DateTime? @default(now()) @db.Timestamptz
+  notes          String?
+
+  @@index([requirement_id])
+  @@map("requirement_status_history")
+}
+
+model PasswordResetToken {
+  id         String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id    String    @db.Uuid
+  email      String
+  token      String    @unique
+  expires_at DateTime  @db.Timestamptz
+  created_at DateTime? @default(now()) @db.Timestamptz
+
+  @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id         String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id    String    @db.Uuid
+  email      String
+  token      String    @unique
+  expires_at DateTime  @db.Timestamptz
+  created_at DateTime? @default(now()) @db.Timestamptz
+
+  @@map("email_verification_tokens")
+}
+
+// Matches supabase/migrations/create_kpi_metrics_table.sql which is
+// the source of truth for the live table. Earlier Prisma definition
+// guessed at a simpler event_type/metadata shape and diverged — that
+// broke prisma db push on the production DB because the real table
+// already had 1114 rows.
+model KpiMetric {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kpi_name     String
+  category     String
+  user_id      String?  @db.Uuid
+  company_id   String?  @db.Uuid
+  metric_value Decimal  @db.Decimal
+  metric_data  Json?    @default("{}")
+  recorded_at  DateTime @default(now()) @db.Timestamptz
+  created_at   DateTime @default(now()) @db.Timestamptz
+
+  @@index([kpi_name])
+  @@index([category])
+  @@index([user_id])
+  @@index([company_id])
+  @@index([recorded_at])
+  @@index([category, kpi_name])
+  @@map("kpi_metrics")
+}
+
+// Matches supabase/schemas/schema-email-batch-queue.sql which created
+// the live table. Same divergence story as KpiMetric — earlier
+// Prisma model invented a subject/html_content/recipient shape that
+// never existed in prod.
+model EmailBatchQueue {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String    @db.Uuid
+  user_email   String
+  company_id   String    @db.Uuid
+  company_name String
+  email_type   String    @default("status_change")
+  payload      Json
+  created_at   DateTime  @default(now()) @db.Timestamptz
+  processed_at DateTime? @db.Timestamptz
+
+  @@index([user_id])
+  @@index([processed_at])
+  @@map("email_batch_queue")
+}
+
+model NotificationEmailLog {
+  id                String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  user_id           String    @db.Uuid
+  notification_type String
+  email             String
+  subject           String
+  status            String    @default("sent")
+  error             String?
+  created_at        DateTime? @default(now()) @db.Timestamptz
+
+  @@index([user_id])
+  @@map("notification_email_log")
+}
+
+model LegalResearchCache {
+  id          String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  query_hash  String    @unique
+  query_text  String
+  result      Json
+  source      String?
+  expires_at  DateTime? @db.Timestamptz
+  created_at  DateTime? @default(now()) @db.Timestamptz
+
+  @@map("legal_research_cache")
+}
+
+// ── Country configuration tables ──────────────────────────────────────────
+
+model Country {
+  code                     String  @id @db.VarChar(2)
+  name                     String  @db.VarChar(100)
+  region                   String  @db.VarChar(50)
+  currency_code            String  @db.VarChar(3)
+  currency_symbol          String  @db.VarChar(10)
+  financial_year_start_month Int
+  financial_year_type      String  @db.VarChar(10)
+  date_format              String? @default("DD/MM/YYYY") @db.VarChar(20)
+  timezone                 String? @default("UTC") @db.VarChar(50)
+  tax_id_label             String  @db.VarChar(50)
+  registration_id_label    String  @db.VarChar(50)
+  created_at               DateTime? @default(now()) @db.Timestamptz
+
+  document_types           CountryDocumentType[]
+  entity_types             CountryEntityType[]
+  compliance_categories    CountryComplianceCategory[]
+  validation_rules         CountryValidationRule[]
+
+  @@map("countries")
+}
+
+model CountryDocumentType {
+  id            String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  country_code  String    @db.VarChar(2)
+  document_type String    @db.VarChar(100)
+  is_required   Boolean?  @default(false)
+  display_order Int?      @default(0)
+  created_at    DateTime? @default(now()) @db.Timestamptz
+
+  country       Country   @relation(fields: [country_code], references: [code], onDelete: Cascade)
+
+  @@unique([country_code, document_type])
+  @@map("country_document_types")
+}
+
+model CountryEntityType {
+  id                  String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  country_code        String    @db.VarChar(2)
+  entity_type         String    @db.VarChar(100)
+  display_name        String    @db.VarChar(100)
+  requires_directors  Boolean?  @default(true)
+  requires_shareholders Boolean? @default(false)
+  display_order       Int?      @default(0)
+  created_at          DateTime? @default(now()) @db.Timestamptz
+
+  country             Country   @relation(fields: [country_code], references: [code], onDelete: Cascade)
+
+  @@unique([country_code, entity_type])
+  @@map("country_entity_types")
+}
+
+model CountryComplianceCategory {
+  id            String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  country_code  String    @db.VarChar(2)
+  category_name String    @db.VarChar(100)
+  display_order Int?      @default(0)
+  created_at    DateTime? @default(now()) @db.Timestamptz
+
+  country       Country   @relation(fields: [country_code], references: [code], onDelete: Cascade)
+
+  @@unique([country_code, category_name])
+  @@map("country_compliance_categories")
+}
+
+model CountryValidationRule {
+  id                       String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  country_code             String    @db.VarChar(2)
+  field_type               String    @db.VarChar(50)
+  pattern                  String?   @db.VarChar(255)
+  min_length               Int?
+  max_length               Int?
+  required                 Boolean?  @default(true)
+  validation_function      String?
+  error_message            String?
+  verification_portal_url  String?
+  verification_instructions String?
+  metadata                 Json?     @default("{}")
+  created_at               DateTime? @default(now()) @db.Timestamptz
+  updated_at               DateTime? @default(now()) @db.Timestamptz
+
+  country                  Country   @relation(fields: [country_code], references: [code], onDelete: Cascade)
+
+  @@unique([country_code, field_type])
+  @@map("country_validation_rules")
 }

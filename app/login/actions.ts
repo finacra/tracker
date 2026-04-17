@@ -2,6 +2,7 @@
 
 import { GetRootDestination } from '@/application/use-cases/navigation/GetRootDestination'
 import { createServerContainer } from '@/lib/composition/server-container'
+import { handleActionError } from '@/lib/errors/handle-error'
 
 export async function getPostAuthDestination(userId?: string): Promise<{
   success: boolean
@@ -25,12 +26,8 @@ export async function getPostAuthDestination(userId?: string): Promise<{
       success: true,
       destination: await useCase.executeForUser(effectiveUserId),
     }
-  } catch (error: any) {
-    console.error('Error in getPostAuthDestination:', error)
-    return {
-      success: false,
-      error: error.message || 'Failed to resolve post-auth destination',
-    }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -45,11 +42,7 @@ export async function getOAuthLoginUrl(
     const { authGateway } = createServerContainer()
     const url = await authGateway.getOAuthLoginUrl(provider, redirectTo)
     return { success: true, url }
-  } catch (error: any) {
-    console.error('Error getting OAuth login URL:', error)
-    return {
-      success: false,
-      error: error.message || 'Failed to get OAuth login URL',
-    }
+  } catch (error) {
+    return handleActionError(error)
   }
 }

@@ -5,13 +5,14 @@ import { useState, useRef, useEffect } from 'react'
 interface Props {
   onSend: (message: string) => void
   onStop: () => void
+  onAttach?: () => void
   isStreaming: boolean
   disabled?: boolean
   suggestedQuestions?: string[]
   showSuggestions?: boolean
 }
 
-export default function CIAInput({ onSend, onStop, isStreaming, disabled, suggestedQuestions, showSuggestions }: Props) {
+export default function CIAInput({ onSend, onStop, onAttach, isStreaming, disabled, suggestedQuestions, showSuggestions }: Props) {
   const [value, setValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -58,12 +59,24 @@ export default function CIAInput({ onSend, onStop, isStreaming, disabled, sugges
 
       {/* Input area */}
       <div className="relative flex items-end gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2 focus-within:border-blue-500/40 transition-colors">
+        {onAttach && (
+          <button
+            onClick={onAttach}
+            disabled={isStreaming || disabled}
+            className="flex-shrink-0 w-8 h-8 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white flex items-center justify-center transition-colors disabled:opacity-30 mb-0.5"
+            title="Upload a document"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+            </svg>
+          </button>
+        )}
         <textarea
           ref={textareaRef}
           value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask about your compliance..."
+          placeholder="Ask about your compliance, upload documents, or give instructions..."
           disabled={isStreaming || disabled}
           rows={1}
           className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 resize-none outline-none max-h-[120px] leading-relaxed disabled:opacity-50"

@@ -175,6 +175,17 @@ function evaluateRule(rule: ComplianceRule, p: CompanyRuleProfile): EvalResult {
     }
   }
 
+  // ── Max Turnover ──
+  if (c.maxTurnoverLakhs !== undefined) {
+    if (p.annualTurnoverLakhs === null) {
+      missingData.push(`turnover unknown — rule requires <= ₹${c.maxTurnoverLakhs}L, included as precaution`)
+    } else if (p.annualTurnoverLakhs > c.maxTurnoverLakhs) {
+      return { matches: false, reasons: [], missingData: [], skipReason: `Turnover ₹${p.annualTurnoverLakhs}L > max ₹${c.maxTurnoverLakhs}L` }
+    } else {
+      reasons.push(`Turnover: ₹${p.annualTurnoverLakhs}L (<= ₹${c.maxTurnoverLakhs}L)`)
+    }
+  }
+
   // ── Net Worth ──
   if (c.minNetWorthCrores !== undefined) {
     if (p.netWorthCrores === null) {

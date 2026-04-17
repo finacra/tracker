@@ -75,7 +75,7 @@ async function resolveSuperadminStatus(userId: string): Promise<boolean> {
     try {
       const result = await checkSuperadminStatus()
       if (!result.success) {
-        console.error(`[AdminPage] Error checking superadmin:`, result.error)
+        console.error(`[AdminPage] Error checking superadmin:`, 'error' in result ? result.error : 'unknown')
         return false
       }
 
@@ -2396,9 +2396,9 @@ function AdminPageInner() {
                         } else {
                           showToast(`Failed: ${result.error}`, 'error')
                         }
-                      } catch (error: any) {
+                      } catch (error) {
                         console.error('Error saving template:', error)
-                        showToast(`Error: ${error.message}`, 'error')
+                        showToast(`Error: ${error instanceof Error ? error.message : 'Something went wrong'}`, 'error')
                       }
                     }}
                     className="flex-1 bg-primary-orange text-white px-6 py-3 rounded-lg hover:bg-primary-orange/90 transition-colors font-medium"
@@ -3121,9 +3121,9 @@ function TrackingSystemTab() {
       } else {
         setChatHistory([...newHistory, { role: 'assistant', content: `Error: ${result.error || 'Failed to generate answer'}` }])
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error in chat:', error)
-      setChatHistory([...newHistory, { role: 'assistant', content: `Error: ${error.message || 'Failed to generate answer'}` }])
+      setChatHistory([...newHistory, { role: 'assistant', content: `Error: ${error instanceof Error ? error.message : 'Failed to generate answer'}` }])
     } finally {
       setIsGeneratingChat(false)
     }
@@ -3294,9 +3294,9 @@ function TrackingSystemTab() {
                     } else {
                       setExplanationError(result.error || 'Failed to generate explanation')
                     }
-                  } catch (error: any) {
+                  } catch (error) {
                     console.error('Error generating explanation:', error)
-                    setExplanationError(error.message || 'Failed to generate explanation')
+                    setExplanationError(error instanceof Error ? error.message : 'Failed to generate explanation')
                   } finally {
                     setIsGeneratingExplanation(false)
                   }

@@ -15,6 +15,7 @@ export async function uploadDocument(
   companyId: string,
   data: {
     folderName: string
+    folderId?: string | null
     documentName: string
     registrationDate?: string
     expiryDate?: string
@@ -62,6 +63,7 @@ export async function uploadDocument(
     companyId,
     documentType: sanitizedDocumentName,
     folderName: sanitizedFolderName,
+    folderId: data.folderId ?? null,
     registrationDate: data.registrationDate || null,
     expiryDate: data.expiryDate || null,
     isPortalRequired: data.isPortalRequired,
@@ -138,9 +140,9 @@ export async function uploadFileToStorage(filePath: string, fileData: ArrayBuffe
       upsert: false, // Don't overwrite existing files
     })
     return { success: true }
-  } catch (err: any) {
+  } catch (err) {
     console.error('Error uploading file to storage:', err)
-    return { success: false, error: err.message }
+    return { success: false, error: err instanceof Error ? err.message : 'Something went wrong' }
   }
 }
 
@@ -154,9 +156,9 @@ export async function getDownloadUrl(filePath: string) {
     const signedUrl = await storage.createSignedUrl('company-documents', filePath, 3600) // 1 hour expiry for preview
     
     return { success: true, url: signedUrl }
-  } catch (err: any) {
+  } catch (err) {
     console.error('Error creating signed URL:', err)
-    return { success: false, error: err.message }
+    return { success: false, error: err instanceof Error ? err.message : 'Something went wrong' }
   }
 }
 
@@ -181,7 +183,7 @@ export async function deleteDocument(documentId: string, filePath: string) {
     const storage = createStorageAdapter()
     try {
       await storage.deleteFile('company-documents', [sanitizedFilePath])
-    } catch (storageError: any) {
+    } catch (storageError) {
       console.error('Storage deletion error:', storageError)
       // Continue anyway to try and clean up metadata
     }
@@ -190,9 +192,9 @@ export async function deleteDocument(documentId: string, filePath: string) {
     await documentRepository.deleteCompanyDocument(documentId)
 
     return { success: true }
-  } catch (err: any) {
+  } catch (err) {
     console.error('Error deleting document:', err)
-    return { success: false, error: err.message }
+    return { success: false, error: err instanceof Error ? err.message : 'Something went wrong' }
   }
 }
 
@@ -208,9 +210,9 @@ export async function getDocumentTemplates() {
         default_frequency: template.defaultFrequency,
       })),
     }
-  } catch (err: any) {
+  } catch (err) {
     console.error('Error fetching templates:', err)
-    if (err?.code === 'PGRST106' || err?.message?.includes('does not exist')) {
+    if ((err as any)?.code === 'PGRST106' || (err instanceof Error && err.message?.includes('does not exist'))) {
       return { success: true, templates: [] }
     }
     return { success: false, templates: [] }
@@ -260,11 +262,11 @@ export async function getCompanyDocuments(companyId: string) {
         requirement_id: document.requirementId || null,
       })),
     }
-  } catch (err: any) {
+  } catch (err) {
     console.error('[getCompanyDocuments] Error:', err)
-    if (err?.code === 'PGRST106' || err?.message?.includes('does not exist')) {
+    if ((err as any)?.code === 'PGRST106' || (err instanceof Error && err.message?.includes('does not exist'))) {
       return { success: true, documents: [], warning: 'Storage table not found' }
     }
-    return { success: false, error: err.message, documents: [] }
+    return { success: false, error: err instanceof Error ? err.message : 'Something went wrong', documents: [] }
   }
 }

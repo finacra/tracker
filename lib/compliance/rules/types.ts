@@ -89,6 +89,7 @@ export interface RuleConditions {
   // Threshold conditions
   minEmployees?: number              // company must have >= this many employees
   minTurnoverLakhs?: number          // annual turnover >= X lakhs
+  maxTurnoverLakhs?: number          // annual turnover <= X lakhs (e.g., QRMP scheme eligibility)
   minNetWorthCrores?: number         // net worth >= X crores
   minProfitCrores?: number           // (future) net profit >= X crores
 

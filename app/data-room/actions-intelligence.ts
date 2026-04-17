@@ -15,6 +15,7 @@ import { evaluateRules, buildProfileKey } from '@/lib/compliance/rules'
 import type { EvaluatedCompliance, ComplianceRule } from '@/lib/compliance/rules'
 import { buildRuleProfile, type CompanyForRuleEvaluation } from '@/lib/compliance/rules/profile-builder'
 import { computeDeadlines, computeNextDeadline, buildIndianFYProfile, frequencyToComplianceType } from '@/lib/services/deadline-engine'
+import { handleActionError } from '@/lib/errors/handle-error'
 import { canUserEdit } from './actions'
 import type { AppUser } from '@/domain/models/AppUser'
 
@@ -149,9 +150,9 @@ export async function generateComplianceForCompany(
           aiCount = aiResult.requirements.length
           needsReview = aiResult.needsReview
         }
-      } catch (aiError: any) {
+      } catch (aiError) {
         // AI failure is non-fatal — rules engine results are already saved
-        console.warn('[generateComplianceForCompany] AI validation failed (non-fatal):', aiError.message)
+        console.warn('[generateComplianceForCompany] AI validation failed (non-fatal):', aiError instanceof Error ? aiError.message : aiError)
       }
     }
 
@@ -232,8 +233,8 @@ export async function generateComplianceForCompany(
           }
         }
       }
-    } catch (valError: any) {
-      console.warn('[generateComplianceForCompany] Validation failed (non-fatal):', valError.message)
+    } catch (valError) {
+      console.warn('[generateComplianceForCompany] Validation failed (non-fatal):', valError instanceof Error ? valError.message : valError)
     }
 
     return {
@@ -251,9 +252,8 @@ export async function generateComplianceForCompany(
       removedByValidation,
       validationResults,
     }
-  } catch (error: any) {
-    console.error('[generateComplianceForCompany] Error:', error)
-    return { success: false, error: error.message || 'Failed to generate compliance intelligence' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -311,14 +311,31 @@ async function bulkInsertRulesEngineResults(
     const isRecurring = ['monthly', 'quarterly', 'half-yearly', 'annual'].includes(rule.frequency)
 
     if (isRecurring && rule.dueDateFormula) {
-      const deadlines = computeDeadlines(rule.dueDateFormula, fyProfile, 12)
+      // Pass FY start as startFrom so all periods from FY start are generated (not just future ones)
+      const deadlines = computeDeadlines(rule.dueDateFormula, fyProfile, 24, undefined, fyProfile.financialYearStart)
 
       if (deadlines.length > 0) {
         for (const dl of deadlines) {
           const dueDate = dl.date.toISOString().split('T')[0]
           const periodKey = dl.period || null
           const periodLabel = dl.label || null
-          const status = dl.date < now ? 'overdue' : 'not_started'
+          // Compare dates only (ignore time) — due today = not_started, before today = overdue
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+          const dueDay = new Date(dl.date.getFullYear(), dl.date.getMonth(), dl.date.getDate())
+          const status = dueDay < today ? 'overdue' : 'not_started'
+
+          // Build requirement name with period context (e.g., "TDS Payment — For Apr 2026")
+          const reqName = periodLabel ? `${rule.name} — ${periodLabel}` : rule.name
+
+          // Check if this exact requirement+period already exists (avoids ON CONFLICT constraint dependency)
+          const existing = await prisma.$queryRaw<any[]>(
+            Prisma.sql`SELECT 1 FROM regulatory_requirements
+              WHERE company_id = ${companyId}::uuid
+                AND requirement = ${reqName}::text
+                AND period_key = ${periodKey}::text
+              LIMIT 1`
+          )
+          if (existing && existing.length > 0) continue
 
           await prisma.$queryRaw(
             Prisma.sql`INSERT INTO regulatory_requirements (
@@ -331,7 +348,7 @@ async function bulkInsertRulesEngineResults(
               period_key, period_label,
               app_created_by, app_updated_by, created_at, updated_at
             ) VALUES (
-              ${companyId}::uuid, ${rule.category}::text, ${rule.name}::text,
+              ${companyId}::uuid, ${rule.category}::text, ${reqName}::text,
               ${description}::text, ${status}::text, ${dueDate}::date,
               ${rule.penalty}::text, ${rule.isCritical}::boolean,
               ${complianceType || null}::text, 'FY'::text, 'IN'::text,
@@ -342,8 +359,7 @@ async function bulkInsertRulesEngineResults(
               ${matchReasons}::text, ${batchId}::text,
               ${periodKey}::text, ${periodLabel}::text,
               ${userId}::uuid, ${userId}::uuid, NOW(), NOW()
-            ) ON CONFLICT (company_id, requirement, period_key)
-              WHERE period_key IS NOT NULL DO NOTHING`
+            )`
           )
           totalInserted++
         }
@@ -553,9 +569,8 @@ export async function getAIRequirementsPendingReview(
     }))
 
     return { success: true, requirements }
-  } catch (error: any) {
-    console.error('[getAIRequirementsPendingReview] Error:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -584,8 +599,8 @@ export async function approveAIRequirement(
     console.log('[approveAIRequirement] Rows affected:', rowsAffected)
 
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -624,8 +639,8 @@ export async function approveAllAIRequirements(
     }
 
     return { success: true, approved: result }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -649,8 +664,8 @@ export async function rejectAIRequirement(
     )
 
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -692,8 +707,8 @@ export async function updateAIRequirementBeforeApproval(
     )
 
     return { success: true }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -826,9 +841,8 @@ export async function generateHistoricalCompliances(
       yearsBack: actualYearsBack,
       cappedAtIncorporation,
     }
-  } catch (error: any) {
-    console.error('[generateHistoricalCompliances] Error:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -1029,9 +1043,8 @@ export async function validateComplianceForCompany(
       results: flaggedResults,
       discovered: discoveredSummary,
     }
-  } catch (error: any) {
-    console.error('[validateComplianceForCompany] Error:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -1075,7 +1088,7 @@ export async function checkRegulatoryChanges(
     }
 
     return { success: true, changes: result.changes }
-  } catch (error: any) {
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }

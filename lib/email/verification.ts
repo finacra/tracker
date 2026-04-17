@@ -49,9 +49,9 @@ export async function sendVerificationEmail(
     })
 
     return { success: true }
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Email Verification] Error sending verification email:', error)
-    return { success: false, error: error.message || 'Failed to send verification email' }
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to send verification email' }
   }
 }
 
@@ -116,9 +116,9 @@ export async function verifyEmailToken(token: string): Promise<{
       userId: tokenRecord.user_id,
       email: tokenRecord.email,
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Email Verification] Error verifying token:', error)
-    return { success: false, error: error.message || 'Failed to verify email' }
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to verify email' }
   }
 }
 
@@ -145,8 +145,8 @@ export async function resendVerificationEmail(
 
     // Send verification email
     return await sendVerificationEmail(user.id, user.primary_email, user.full_name)
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Email Verification] Error resending verification email:', error)
-    return { success: false, error: error.message || 'Failed to resend verification email' }
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to resend verification email' }
   }
 }

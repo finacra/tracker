@@ -108,7 +108,7 @@ export async function verifyPayment(
   razorpay_order_id: string,
   razorpay_payment_id: string,
   razorpay_signature: string
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; message: string; redirectTo?: string }> {
   const response = await fetch('/api/payments/verify', {
     method: 'POST',
     headers: {

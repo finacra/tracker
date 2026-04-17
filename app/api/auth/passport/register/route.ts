@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs'
 import { setSessionInResponse } from '@/lib/auth/passport-session'
 import type { PassportSessionUser } from '@/lib/auth/passport-config'
 import { sendVerificationEmail } from '@/lib/email/verification'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 export async function POST(req: NextRequest) {
   try {
@@ -109,8 +110,7 @@ export async function POST(req: NextRequest) {
     await setSessionInResponse(sessionUser, response)
 
     return response
-  } catch (error: any) {
-    console.error('[Passport Register API] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  } catch (error) {
+    return handleAPIError(error)
   }
 }

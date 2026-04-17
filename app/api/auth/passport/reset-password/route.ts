@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { resetPasswordWithToken, verifyPasswordResetToken } from '@/lib/email/password-reset'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 /**
  * Reset password with token
@@ -37,12 +38,8 @@ export async function POST(req: NextRequest) {
       success: true,
       message: 'Password reset successfully',
     })
-  } catch (error: any) {
-    console.error('[Reset Password API] Error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    )
+  } catch (error) {
+    return handleAPIError(error)
   }
 }
 
@@ -75,11 +72,7 @@ export async function GET(req: NextRequest) {
       success: true,
       email: result.email,
     })
-  } catch (error: any) {
-    console.error('[Verify Reset Token API] Error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    )
+  } catch (error) {
+    return handleAPIError(error)
   }
 }

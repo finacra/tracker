@@ -46,7 +46,7 @@ export function buildRuleProfile(company: CompanyForRuleEvaluation): CompanyRule
   const netWorthCrores = toNumberOrNull(company.net_worth)
 
   return {
-    type: company.type,
+    type: normalizeCompanyType(company.type),
     state: company.state,
     nicCode: company.nic_code,
     nicDivision: nicData?.divisionCode || '',
@@ -63,6 +63,32 @@ export function buildRuleProfile(company: CompanyForRuleEvaluation): CompanyRule
     incorporationDate: company.incorporation_date,
     countryCode: company.country_code || 'IN',
   }
+}
+
+/**
+ * Normalize form dropdown values (lowercase-hyphenated) to rule engine values.
+ * DB stores: "private-limited", "section-8", "llp", etc.
+ * Rules expect: "PTC", "PLC", "LLP", "OPC", "Section8"
+ */
+function normalizeCompanyType(type: string | null): string | null {
+  if (!type) return null
+  const mapping: Record<string, string> = {
+    'private-limited': 'PTC',
+    'public-limited': 'PLC',
+    'llp': 'LLP',
+    'one-person-company': 'OPC',
+    'section-8': 'Section8',
+    'ngo-/-section-8': 'Section8',
+    'partnership': 'Partnership',
+    'sole-proprietorship': 'Proprietorship',
+    // Also handle if already in correct format
+    'PTC': 'PTC',
+    'PLC': 'PLC',
+    'LLP': 'LLP',
+    'OPC': 'OPC',
+    'Section8': 'Section8',
+  }
+  return mapping[type] || type
 }
 
 function toNumberOrNull(val: { toNumber(): number } | number | null): number | null {

@@ -4,6 +4,7 @@ import { createServerContainer } from '@/lib/composition/server-container'
 import { getRazorpayInstance } from '@/lib/razorpay/client'
 import { calculatePricing, getTierById, type BillingCycle, type PricingTier } from '@/lib/pricing/tiers'
 import { checkRateLimit, getClientIp } from '@/lib/utils/rate-limiter'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 export async function POST(request: NextRequest) {
   // Rate limit: 10 order creation attempts per IP per 15 minutes
@@ -107,11 +108,8 @@ export async function POST(request: NextRequest) {
         receipt: order.receipt ?? null,
         notes: (order.notes as Record<string, string> | undefined) ?? null,
       })
-    } catch (paymentError: any) {
+    } catch (paymentError) {
       console.error('Error storing payment:', paymentError)
-      console.error('Payment error details:', {
-        message: paymentError?.message,
-      })
       // Continue anyway - order is created in Razorpay
       // But log the error for debugging
     }
@@ -122,20 +120,7 @@ export async function POST(request: NextRequest) {
       currency: order.currency,
       keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
     })
-  } catch (error: any) {
-    console.error('Error creating Razorpay order:', error)
-    console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ? 'Set' : 'Missing',
-      keySecret: process.env.RAZORPAY_KEY_SECRET ? 'Set' : 'Missing',
-    })
-    return NextResponse.json(
-      {
-        error: error.message || 'Failed to create order',
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      },
-      { status: 500 }
-    )
+  } catch (error) {
+    return handleAPIError(error)
   }
 }

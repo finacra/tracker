@@ -15,18 +15,29 @@ export interface Source {
   similarity: number
 }
 
+export interface ToolActivity {
+  id: string
+  name: string
+  args?: Record<string, unknown>
+  status: 'running' | 'done' | 'failed'
+  summary?: string
+}
+
 interface UseCIAChatOptions {
   companyId: string
   onToken: (content: string) => void
   onSources: (sources: Source[]) => void
+  onToolCall?: (activity: ToolActivity) => void
+  onToolResult?: (id: string, ok: boolean, summary: string) => void
   onDone: () => void
   onTitle: (title: string) => void
   onError: (message: string) => void
 }
 
-export function useCIAChat({ companyId, onToken, onSources, onDone, onTitle, onError }: UseCIAChatOptions) {
+export function useCIAChat({ companyId, onToken, onSources, onToolCall, onToolResult, onDone, onTitle, onError }: UseCIAChatOptions) {
   const [isStreaming, setIsStreaming] = useState(false)
   const [steps, setSteps] = useState<ThinkingStep[]>([])
+  const [toolActivities, setToolActivities] = useState<ToolActivity[]>([])
   const abortRef = useRef<AbortController | null>(null)
 
   const initialSteps: ThinkingStep[] = [
@@ -56,6 +67,7 @@ export function useCIAChat({ companyId, onToken, onSources, onDone, onTitle, onE
       abortRef.current = new AbortController()
       setIsStreaming(true)
       setSteps(initialSteps)
+      setToolActivities([])
 
       try {
         const response = await fetch('/api/cia/chat', {
@@ -113,6 +125,28 @@ export function useCIAChat({ companyId, onToken, onSources, onDone, onTitle, onE
                   setSteps(prev => prev.map(s => ({ ...s, status: 'done' as const })))
                   onToken(event.content)
                   break
+                case 'tool_call': {
+                  const activity: ToolActivity = {
+                    id: event.id,
+                    name: event.name,
+                    args: event.args,
+                    status: 'running',
+                  }
+                  setToolActivities(prev => [...prev, activity])
+                  onToolCall?.(activity)
+                  break
+                }
+                case 'tool_result': {
+                  setToolActivities(prev =>
+                    prev.map(a =>
+                      a.id === event.id
+                        ? { ...a, status: event.ok ? 'done' : 'failed', summary: event.summary }
+                        : a,
+                    ),
+                  )
+                  onToolResult?.(event.id, !!event.ok, event.summary || '')
+                  break
+                }
                 case 'done':
                   onDone()
                   break
@@ -128,8 +162,8 @@ export function useCIAChat({ companyId, onToken, onSources, onDone, onTitle, onE
             }
           }
         }
-      } catch (error: any) {
-        if (error.name !== 'AbortError') {
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === 'AbortError')) {
           onError('Connection lost. Please try again.')
         }
       } finally {
@@ -138,12 +172,12 @@ export function useCIAChat({ companyId, onToken, onSources, onDone, onTitle, onE
         abortRef.current = null
       }
     },
-    [companyId, isStreaming, onToken, onSources, onDone, onTitle, onError, updateStep]
+    [companyId, isStreaming, onToken, onSources, onToolCall, onToolResult, onDone, onTitle, onError, updateStep]
   )
 
   const abort = useCallback(() => {
     abortRef.current?.abort()
   }, [])
 
-  return { isStreaming, steps, sendMessage, abort }
+  return { isStreaming, steps, toolActivities, sendMessage, abort }
 }

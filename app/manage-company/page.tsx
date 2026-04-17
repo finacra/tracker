@@ -11,6 +11,7 @@ import { verifyDIN } from '@/lib/api/cin-din'
 import { trackCompanyEdit } from '@/lib/tracking/kpi-tracker'
 import { useCompanyCountry } from '@/hooks/useCompanyCountry'
 import { parseCIN } from '@/utils/cin-parser'
+import { parseGSTN, extractPANFromGSTN } from '@/lib/utils/gstn'
 
 const INDUSTRY_CATEGORIES = [
   'Startups & MSMEs',
@@ -78,6 +79,7 @@ function ManageCompanyPageInner() {
     annualTurnover: '',
     isGstRegistered: false,
     gstNumber: '',
+    gstRegistrations: [] as Array<{ gstin: string; state: string }>,
     netWorth: '',
     isMsme: '',
     msmeCategory: '',
@@ -321,9 +323,9 @@ function ManageCompanyPageInner() {
         }
         router.push('/data-room')
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error updating company:', error)
-      alert('Failed to update company: ' + error.message)
+      alert('Failed to update company: ' + (error instanceof Error ? error.message : 'Something went wrong'))
     } finally {
       setIsSubmitting(false)
     }
@@ -440,17 +442,33 @@ function ManageCompanyPageInner() {
               </div>
             </div>
 
+            {!formData.panNumber.trim() && countryCode === 'IN' && (
+              <div className="mb-5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+                <p className="text-sm text-amber-200 font-light">
+                  <span className="font-medium">Add your PAN.</span>{' '}
+                  PAN is required for compliance tracking (ITR, TDS, advance tax).
+                  Fill it below before saving to keep the tracker accurate.
+                </p>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">
                   {countryConfig.labels.taxId}
+                  {countryCode === 'IN' && <span className="text-red-400 ml-1">*</span>}
                 </label>
                 <input
                   type="text"
                   name="panNumber"
                   value={formData.panNumber}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                  required={countryCode === 'IN'}
+                  className={`w-full px-4 py-3 bg-gray-900 border rounded-lg text-white font-light focus:outline-none focus:ring-1 transition-colors ${
+                    !formData.panNumber.trim() && countryCode === 'IN'
+                      ? 'border-amber-500/60 focus:border-amber-400 focus:ring-amber-400'
+                      : 'border-gray-700 focus:border-gray-600 focus:ring-gray-600'
+                  }`}
                 />
               </div>
               <div>
@@ -589,29 +607,97 @@ function ManageCompanyPageInner() {
                     <p className="text-gray-600 text-[10px] mt-1">Determines CSR (500Cr+), CARO thresholds</p>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">GSTIN</label>
-                    <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
+                    <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">GSTINs</label>
+
+                    <div className="flex items-center gap-3 mb-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={formData.isGstRegistered}
-                          onChange={(e) => setFormData(prev => ({ ...prev, isGstRegistered: e.target.checked, gstNumber: e.target.checked ? prev.gstNumber : '' }))}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            isGstRegistered: e.target.checked,
+                            gstRegistrations: e.target.checked
+                              ? (prev.gstRegistrations.length > 0 ? prev.gstRegistrations : [{ gstin: '', state: '' }])
+                              : [],
+                            gstNumber: e.target.checked ? prev.gstNumber : '',
+                          }))}
                           className="w-4 h-4 text-blue-500 bg-gray-800 border-gray-600 rounded focus:ring-gray-500"
                         />
                         <span className="text-gray-400 text-xs">GST Registered</span>
                       </label>
-                      {formData.isGstRegistered && (
-                        <input
-                          type="text"
-                          name="gstNumber"
-                          value={formData.gstNumber}
-                          onChange={handleInputChange}
-                          placeholder="22AAAAA0000A1Z5"
-                          maxLength={15}
-                          className="flex-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
-                        />
-                      )}
                     </div>
+
+                    {formData.isGstRegistered && (
+                      <div className="space-y-2">
+                        {formData.gstRegistrations.map((reg, idx) => {
+                          const homeState = formData.state?.trim()
+                          const isWithin = homeState && reg.state && reg.state.toLowerCase() === homeState.toLowerCase()
+                          return (
+                            <div key={idx} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={reg.gstin}
+                                onChange={(e) => {
+                                  const gstin = e.target.value.toUpperCase().trim().slice(0, 15)
+                                  const parsed = parseGSTN(gstin)
+                                  setFormData(prev => {
+                                    const next = [...prev.gstRegistrations]
+                                    next[idx] = { gstin, state: parsed?.stateName || next[idx].state }
+                                    const panUpdate = (!prev.panNumber && gstin.length === 15)
+                                      ? { panNumber: extractPANFromGSTN(gstin) || '' }
+                                      : {}
+                                    return {
+                                      ...prev,
+                                      gstRegistrations: next,
+                                      gstNumber: idx === 0 ? gstin : prev.gstNumber,
+                                      ...panUpdate,
+                                    }
+                                  })
+                                }}
+                                placeholder="22AAAAA0000A1Z5"
+                                maxLength={15}
+                                className="flex-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors uppercase"
+                              />
+                              <div className="w-40 px-3 py-2 bg-gray-900/50 border border-gray-800 rounded-lg text-gray-400 text-xs flex items-center justify-between">
+                                <span className="truncate">{reg.state || '—'}</span>
+                                {reg.state && (
+                                  <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${isWithin ? 'bg-emerald-900/40 text-emerald-300' : 'bg-amber-900/40 text-amber-300'}`}>
+                                    {isWithin ? 'Within' : 'Outside'}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setFormData(prev => {
+                                  const next = prev.gstRegistrations.filter((_, i) => i !== idx)
+                                  return {
+                                    ...prev,
+                                    gstRegistrations: next,
+                                    gstNumber: next[0]?.gstin || '',
+                                  }
+                                })}
+                                className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                                title="Remove"
+                                aria-label={`Remove GSTIN row ${idx + 1}`}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          )
+                        })}
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({
+                            ...prev,
+                            gstRegistrations: [...prev.gstRegistrations, { gstin: '', state: '' }],
+                          }))}
+                          className="text-xs text-gray-400 hover:text-white transition-colors"
+                        >
+                          + Add another GSTIN
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerContainer } from '@/lib/composition/server-container'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 export async function GET(req: NextRequest) {
   try {
@@ -42,8 +43,7 @@ export async function GET(req: NextRequest) {
       },
       userExists: !!existingUser,
     })
-  } catch (error: any) {
-    console.error('[Get Invite API] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  } catch (error) {
+    return handleAPIError(error)
   }
 }

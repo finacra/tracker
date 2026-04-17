@@ -113,8 +113,8 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
       await extendSubscriptionTrialAction(subscriptionId, days)
       alert(`Trial extended by ${days} days.\n\nThis affects the owner and all team members of their companies.`)
       await loadUsers()
-    } catch (err: any) {
-      alert(`Failed to extend trial: ${err.message}`)
+    } catch (err) {
+      alert(`Failed to extend trial: ${err instanceof Error ? err.message : 'Something went wrong'}`)
     } finally {
       setIsExtending(prev => ({ ...prev, [userId]: false }))
     }
@@ -133,8 +133,8 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
       await revokeSubscriptionAction(subscriptionId)
       alert('Trial revoked successfully. The owner and all team members have lost access.')
       await loadUsers()
-    } catch (err: any) {
-      alert(`Failed to revoke trial: ${err.message}`)
+    } catch (err) {
+      alert(`Failed to revoke trial: ${err instanceof Error ? err.message : 'Something went wrong'}`)
     } finally {
       setIsRevoking(prev => ({ ...prev, [userId]: false }))
     }
@@ -158,8 +158,8 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
       await revokeSubscriptionAction(subscriptionId)
       alert(`Subscription revoked successfully for "${companyName}". The company owner and all team members have lost access to this company.`)
       await loadUsers()
-    } catch (err: any) {
-      alert(`Failed to revoke company subscription: ${err.message}`)
+    } catch (err) {
+      alert(`Failed to revoke company subscription: ${err instanceof Error ? err.message : 'Something went wrong'}`)
     } finally {
       setIsRevokingCompany(prev => ({ ...prev, [companyId]: false }))
     }
@@ -185,8 +185,8 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
         throw new Error('User-level trials are only available for Enterprise tier')
       }
       await loadUsers()
-    } catch (err: any) {
-      alert(`Failed to grant trial: ${err.message}`)
+    } catch (err) {
+      alert(`Failed to grant trial: ${err instanceof Error ? err.message : 'Something went wrong'}`)
     } finally {
       setIsGranting(prev => ({ ...prev, [userId]: false }))
     }
@@ -214,8 +214,8 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
       await grantCompanyTrialAction(userId, companyId, tier, days)
       alert(`${tier.charAt(0).toUpperCase() + tier.slice(1)} trial granted for "${companyName}" for ${days} days.\n\nThis gives access to the company owner and all team members of this company.`)
       await loadUsers()
-    } catch (err: any) {
-      alert(`Failed to grant company trial: ${err.message}`)
+    } catch (err) {
+      alert(`Failed to grant company trial: ${err instanceof Error ? err.message : 'Something went wrong'}`)
     } finally {
       setIsGrantingCompany(prev => ({ ...prev, [companyId]: false }))
     }
@@ -231,8 +231,8 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
       await changeSubscriptionTierAction(subscriptionId, newTier)
       alert(`Subscription tier changed to ${newTier.charAt(0).toUpperCase() + newTier.slice(1)} for "${companyName}".`)
       await loadUsers()
-    } catch (err: any) {
-      alert(`Failed to change tier: ${err.message}`)
+    } catch (err) {
+      alert(`Failed to change tier: ${err instanceof Error ? err.message : 'Something went wrong'}`)
     } finally {
       setIsChangingTier(prev => ({ ...prev, [companyId]: false }))
     }
@@ -250,8 +250,8 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
       await extendSubscriptionTrialAction(subscriptionId, days)
       alert(`Trial extended by ${days} days for "${companyName}".`)
       await loadUsers()
-    } catch (err: any) {
-      alert(`Failed to extend trial: ${err.message}`)
+    } catch (err) {
+      alert(`Failed to extend trial: ${err instanceof Error ? err.message : 'Something went wrong'}`)
     } finally {
       setIsExtendingCompany(prev => ({ ...prev, [companyId]: false }))
     }

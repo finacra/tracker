@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { PassportClientAuthAdapter } from '@/infrastructure/auth/passport/PassportClientAuthAdapter'
 import type { ClientAuthSession } from '@/application/interfaces/ClientAuthAdapter'
 import { trackLogin } from '@/lib/tracking/kpi-tracker'
@@ -8,6 +9,7 @@ import { AuthProvider, type AuthContextValue } from '@/contexts/AuthContext'
 import type { AppUser } from '@/domain/models/AppUser'
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient()
   const [appUser, setAppUser] = useState<AppUser | null>(null)
   const [loading, setLoading] = useState(true)
   
@@ -86,8 +88,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
       resolvedAppUserIdRef.current = session.userId
       setAppUser(nextAppUser)
       return nextAppUser
-    } catch (error: any) {
-      console.error('[SYNC] Profile fetch error:', error.message || error)
+    } catch (error) {
+      console.error('[SYNC] Profile fetch error:', error instanceof Error ? error.message : error)
 
       if (requestId !== appUserRequestIdRef.current) {
         return null
@@ -132,7 +134,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     trackedLoginUserIdRef.current = null
+    resolvedAppUserIdRef.current = null
     await authAdapter.signOut()
+    setAppUser(null)
+    // Drop every cached query — otherwise the next user in this browser
+    // can see the previous user's companies/subscriptions until each
+    // query's staleTime expires.
+    queryClient.clear()
   }
 
   const contextValue = useMemo(() => ({

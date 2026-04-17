@@ -11,6 +11,7 @@ import {
   INDUSTRY_CATEGORIES
 } from '@/lib/compliance/csv-template'
 import { validateAll, type ValidationResult } from '@/lib/compliance/validators'
+import { handleActionError } from '@/lib/errors/handle-error'
 
 // Get Azure OpenAI client
 function getAzureOpenAIClient(): any {
@@ -427,13 +428,7 @@ Return the JSON with fixes for ALL errors.`
       fixedData,
       fixes: appliedFixes
     }
-  } catch (error: any) {
-    console.error('AI error resolution failed:', error)
-    return {
-      success: false,
-      fixedData: data,
-      fixes: [],
-      error: error.message || 'Failed to resolve errors with AI'
-    }
+  } catch (error) {
+    return { ...handleActionError(error), fixedData: data, fixes: [] }
   }
 }

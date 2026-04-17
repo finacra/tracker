@@ -1,6 +1,7 @@
 'use server'
 
 import { createServerContainer } from '@/lib/composition/server-container'
+import { handleActionError } from '@/lib/errors/handle-error'
 import type { SubscriptionRecord } from '@/application/interfaces/SubscriptionRepository'
 
 export type AdminCompanyInput = {
@@ -231,13 +232,8 @@ export async function checkSuperadminStatus() {
       success: true,
       isSuperadmin
     }
-  } catch (error: any) {
-    console.error('[checkSuperadminStatus] Error:', error)
-    return {
-      success: false,
-      isSuperadmin: false,
-      error: error.message
-    }
+  } catch (error) {
+    return { ...handleActionError(error), isSuperadmin: false }
   }
 }
 
@@ -285,12 +281,7 @@ export async function getAllCompaniesForAdmin() {
         return a.name.localeCompare(b.name)
       })
     }
-  } catch (error: any) {
-    console.error('[getAllCompaniesForAdmin] Error:', error)
-    return {
-      success: false,
-      companies: [],
-      error: error.message
-    }
+  } catch (error) {
+    return { ...handleActionError(error), companies: [] }
   }
 }

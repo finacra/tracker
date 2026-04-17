@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server'
 import { getSession, clearSession } from '@/lib/auth/passport-session'
 import { prisma } from '@/lib/prisma'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 export async function GET() {
   try {
@@ -23,8 +24,8 @@ export async function GET() {
         select: { id: true },
       })
       userExists = !!row
-    } catch (dbErr: any) {
-      console.error('[SESSION] DB check FAILED:', dbErr.message || dbErr)
+    } catch (dbErr) {
+      console.error('[SESSION] DB check FAILED:', dbErr instanceof Error ? dbErr.message : dbErr)
       // If DB check fails, still return the session (fail-open)
       return NextResponse.json({
         session: {
@@ -49,8 +50,7 @@ export async function GET() {
         googleId: session.googleId,
       },
     })
-  } catch (error: any) {
-    console.error('[SESSION] Fatal error:', error.message || error)
-    return NextResponse.json({ session: null }, { status: 500 })
+  } catch (error) {
+    return handleAPIError(error)
   }
 }

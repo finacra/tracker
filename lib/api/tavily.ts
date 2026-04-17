@@ -54,7 +54,7 @@ export async function searchLegalInfo(
     })
 
       return response as unknown as TavilySearchResponse
-  } catch (error: any) {
+  } catch (error) {
     console.error('Tavily API error:', error)
     return null
   }

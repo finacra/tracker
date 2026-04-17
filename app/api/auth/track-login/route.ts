@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerContainer } from '@/lib/composition/server-container'
 import { trackKPI } from '@/lib/tracking/kpi-tracker'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,8 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error('[Track Login API] Error:', error)
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+  } catch (error) {
+    return handleAPIError(error)
   }
 }

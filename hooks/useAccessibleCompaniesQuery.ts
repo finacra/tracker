@@ -16,11 +16,16 @@ export function useAccessibleCompaniesQuery({
   return useQuery({
     queryKey: queryKeys.accessibleCompanies(),
     queryFn: async () => {
-      const result = await getAccessibleCompanyState()
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to fetch accessible companies')
+      try {
+        const result = await getAccessibleCompanyState()
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to fetch accessible companies')
+        }
+        return result.accessibleCompanyIds || []
+      } catch (err) {
+        console.error('[useAccessibleCompaniesQuery] queryFn threw', err, (err as any)?.stack)
+        throw err
       }
-      return result.accessibleCompanyIds || []
     },
     enabled,
     initialData,

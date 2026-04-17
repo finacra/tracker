@@ -98,8 +98,8 @@ export class PrismaSubscriptionRepository implements SubscriptionRepository {
                     end_date: trialEnd,
                 },
             })
-        } catch (err: any) {
-            console.error('[createUserTrial] FAILED:', err.message || err)
+        } catch (err) {
+            console.error('[createUserTrial] FAILED:', err instanceof Error ? err.message : err)
             throw err
         }
     }
@@ -341,13 +341,16 @@ export class PrismaSubscriptionRepository implements SubscriptionRepository {
 
         let existingId: string | null = null
 
+        // Find any existing row for this scope — trial, expired, or active — and
+        // upgrade it in place. Matching only status='active' would miss trial rows
+        // and leave duplicates behind on upgrade.
         if (subscriptionType === 'user') {
             const sub = await prisma.subscription.findFirst({
                 where: {
                     user_id: input.userId,
                     subscription_type: 'user',
-                    status: 'active',
                 },
+                orderBy: { created_at: 'desc' },
                 select: { id: true }
             })
             existingId = sub?.id ?? null
@@ -356,8 +359,8 @@ export class PrismaSubscriptionRepository implements SubscriptionRepository {
                 where: {
                     company_id: finalCompanyId,
                     subscription_type: 'company',
-                    status: 'active',
                 },
+                orderBy: { created_at: 'desc' },
                 select: { id: true }
             })
             existingId = sub?.id ?? null
@@ -369,6 +372,9 @@ export class PrismaSubscriptionRepository implements SubscriptionRepository {
             amount: new Prisma.Decimal(input.amount),
             currency: input.currency,
             status: 'active',
+            is_trial: false,
+            trial_ends_at: null,
+            payment_provider: 'razorpay',
             start_date: new Date(input.startDate),
             end_date: new Date(input.endDate),
             current_period_start: new Date(input.startDate),

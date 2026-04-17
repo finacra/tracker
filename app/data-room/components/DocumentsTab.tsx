@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import {
@@ -18,9 +18,13 @@ import {
 } from '@/app/data-room/actions'
 import { trackVaultFileExport, trackVaultFileUpload, trackDocumentUpload } from '@/lib/tracking/kpi-tracker'
 import { showToast } from '@/components/ui/Toast'
+import AgentAssistedUploadModal from './AgentAssistedUploadModal'
+import AgentAssistedBulkUploadModal from './AgentAssistedBulkUploadModal'
 
 import CIAOverviewSection from './cia/CIAOverviewSection'
 import CIAFullscreen from './cia/CIAFullscreen'
+import VaultTreeView from './vault/VaultTreeView'
+import { listVaultFolders } from '@/app/data-room/actions-vault'
 
 // Interface for version groups
 interface VersionGroup {
@@ -156,6 +160,10 @@ export default function DocumentsTab({
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const [isSendModalOpen, setIsSendModalOpen] = useState(false)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
+  const [isAgentUploadOpen, setIsAgentUploadOpen] = useState(false)
+  const [agentUploadSupersedesDocumentId, setAgentUploadSupersedesDocumentId] = useState<string | null>(null)
+  const [isAgentBulkOpen, setIsAgentBulkOpen] = useState(false)
+  const [agentUploadDefaultFolderId, setAgentUploadDefaultFolderId] = useState<string | null>(null)
   const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false)
   const [isEmailTemplateOpen, setIsEmailTemplateOpen] = useState(false)
   const [isAdvancedOptionsOpen, setIsAdvancedOptionsOpen] = useState(false)
@@ -178,9 +186,13 @@ export default function DocumentsTab({
     includeAttachments: false,
   })
   
-  // Upload states
+  // Upload states — `folder` holds the display breadcrumb (e.g.
+  // "Statutory Compliances › TDS") for the label; `folderId` is the FK
+  // into vault_folders and is what actually gets persisted so the doc
+  // lands inside the correct sub-folder.
   const [uploadFormData, setUploadFormData] = useState({
     folder: '',
+    folderId: '',
     documentName: '',
     registrationDate: '',
     expiryDate: '',
@@ -194,6 +206,7 @@ export default function DocumentsTab({
     periodKey: '',
     requirementId: '',
   })
+  const [vaultFolders, setVaultFolders] = useState<Array<{ id: string; parentId: string | null; slug: string; name: string; kind: string }>>([])
   const [isUploading, setIsUploading] = useState(false)
   
   // Bulk upload states
@@ -504,6 +517,51 @@ export default function DocumentsTab({
     }
   }
 
+  // Load vault folders for the legacy upload modal's folder picker so it
+  // can show sub-folders (MOA, AOA, TDS, GST, etc.) in addition to the
+  // top-level categories. Also refreshes on vault mutations so a
+  // user-created sub-folder shows up immediately.
+  useEffect(() => {
+    if (!currentCompany?.id) return
+    let cancelled = false
+    const load = async () => {
+      const res = await listVaultFolders(currentCompany.id)
+      if (!cancelled && res.success) setVaultFolders(res.folders || [])
+    }
+    load()
+    const handler = () => load()
+    window.addEventListener('vault:data-changed', handler)
+    window.addEventListener('cia:data-changed', handler)
+    return () => {
+      cancelled = true
+      window.removeEventListener('vault:data-changed', handler)
+      window.removeEventListener('cia:data-changed', handler)
+    }
+  }, [currentCompany?.id])
+
+  // Breadcrumb-labeled flat list of every folder in the vault (system +
+  // user, every depth). Drives the Upload Documents modal folder picker.
+  const vaultFolderOptions = useMemo(() => {
+    const byParent = new Map<string | null, typeof vaultFolders>()
+    for (const f of vaultFolders) {
+      const arr = byParent.get(f.parentId) || []
+      arr.push(f)
+      byParent.set(f.parentId, arr)
+    }
+    const out: Array<{ id: string; label: string; kind: string }> = []
+    const walk = (parentId: string | null, prefix: string) => {
+      const kids = byParent.get(parentId) || []
+      kids.sort((a, b) => a.kind === b.kind ? a.name.localeCompare(b.name) : a.kind === 'system' ? -1 : 1)
+      for (const f of kids) {
+        const label = prefix ? `${prefix} › ${f.name}` : f.name
+        out.push({ id: f.id, label, kind: f.kind })
+        walk(f.id, label)
+      }
+    }
+    walk(null, '')
+    return out
+  }, [vaultFolders])
+
   // Computed: Filter and sort documents
   const allDocuments = useMemo(() => {
     return (vaultDocuments || [])
@@ -569,9 +627,9 @@ export default function DocumentsTab({
         console.error('[handlePreview] Failed to get preview URL:', result.error)
         showToast?.(`Failed to get document preview URL: ${result.error || 'Unknown error'}`, 'error')
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('[handlePreview] Preview error:', err)
-      showToast?.(`Error loading document preview: ${err.message || 'Unknown error'}`, 'error')
+      showToast?.(`Error loading document preview: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error')
     }
   }
 
@@ -607,6 +665,7 @@ export default function DocumentsTab({
       const result = await deleteDocument(docId, filePath)
       if (result.success) {
         await fetchVaultDocuments()
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('vault:data-changed'))
         showToast?.('Document removed successfully', 'success')
       } else {
         showToast?.('Failed to remove document: ' + result.error, 'error')
@@ -640,6 +699,7 @@ export default function DocumentsTab({
       // 2. Save metadata via Server Action
       const result = await uploadDocument(currentCompany.id, {
         folderName: uploadFormData.folder,
+        folderId: uploadFormData.folderId || null,
         documentName: uploadFormData.documentName,
         registrationDate: uploadFormData.registrationDate,
         expiryDate: uploadFormData.expiryDate,
@@ -671,6 +731,7 @@ export default function DocumentsTab({
         setIsUploadModalOpen(false)
         setUploadFormData({
           folder: '',
+          folderId: '',
           documentName: '',
           registrationDate: '',
           expiryDate: '',
@@ -686,13 +747,14 @@ export default function DocumentsTab({
         })
         // Refresh documents list
         await fetchVaultDocuments()
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('vault:data-changed'))
         showToast?.('Document uploaded successfully!', 'success')
       } else {
         showToast?.('Upload failed: Unknown error', 'error')
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Upload failed:', error)
-      showToast?.('Upload failed: ' + error.message, 'error')
+      showToast?.('Upload failed: ' + (error instanceof Error ? error.message : 'Something went wrong'), 'error')
     } finally {
       setIsUploading(false)
     }
@@ -761,9 +823,9 @@ export default function DocumentsTab({
         'Other Compliance Documents': 'Other',
         'Professional Tax': 'Prof. Tax',
         'Constitutional Documents': 'Other',
-        'Financials and licenses': 'Other',
-        'Taxation & GST Compliance': 'GST',
-        'Regulatory & MCA Filings': 'RoC'
+        'Financials': 'Other',
+        'Statutory Compliances': 'GST',
+        'MCA Filings': 'RoC'
       }
       return folderMap[folderName] || null
     } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
@@ -772,7 +834,7 @@ export default function DocumentsTab({
         'VAT & Tax Compliance': 'VAT',
         'Corporate & Regulatory Filings': 'Corporate Tax',
         'Constitutional Documents': 'Other',
-        'Financials and licenses': 'Other'
+        'Financials': 'Other'
       }
       return folderMap[folderName] || null
     } else if (countryCode === 'US') {
@@ -782,7 +844,7 @@ export default function DocumentsTab({
         'State Tax Returns': 'State Tax',
         'Business License & Registration': 'Business License',
         'Constitutional Documents': 'Other',
-        'Financials and licenses': 'Other'
+        'Financials': 'Other'
       }
       return folderMap[folderName] || null
     }
@@ -835,13 +897,13 @@ export default function DocumentsTab({
     if (countryCode === 'IN') {
       // India-specific patterns
       if (docLower.includes('gstr') || docLower.includes('gst') || docLower.includes('cmp-') || docLower.includes('itc-') || docLower.includes('iff')) {
-        suggestions.push('Taxation & GST Compliance')
+        suggestions.push('Statutory Compliances')
       }
       if (docLower.includes('itr') || docLower.includes('form 24') || docLower.includes('form 26') || docLower.includes('form 27') || docLower.includes('tds') || docLower.includes('tcs')) {
-        suggestions.push('Taxation & GST Compliance')
+        suggestions.push('Statutory Compliances')
       }
       if (docLower.includes('mgt') || docLower.includes('aoc') || docLower.includes('roc') || docLower.includes('dir-') || docLower.includes('pas-') || docLower.includes('ben-') || docLower.includes('inc-') || docLower.includes('adt-') || docLower.includes('cra-') || docLower.includes('llp form')) {
-        suggestions.push('Regulatory & MCA Filings')
+        suggestions.push('MCA Filings')
       }
       if (docLower.includes('epf') || docLower.includes('esi') || docLower.includes('ecr') || docLower.includes('form 5a') || docLower.includes('form 2') || docLower.includes('form 10') || docLower.includes('form 19')) {
         suggestions.push('Labour Law Compliance')
@@ -1079,7 +1141,10 @@ export default function DocumentsTab({
             <span className="sm:hidden">Send</span>
           </button>
           <button
-            onClick={() => setIsBulkUploadModalOpen(true)}
+            onClick={() => {
+              setAgentUploadDefaultFolderId(null)
+              setIsAgentBulkOpen(true)
+            }}
             className="bg-black border border-white/20 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-white/40/50 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
           >
             <svg
@@ -1099,9 +1164,13 @@ export default function DocumentsTab({
             </svg>
             <span className="hidden sm:inline">Bulk Upload</span>
             <span className="sm:hidden">Bulk</span>
+            <span className="ml-1 px-1.5 py-0.5 rounded text-[9px] bg-emerald-900/50 text-emerald-300 uppercase tracking-wider">AI</span>
           </button>
           <button
-            onClick={() => setIsUploadModalOpen(true)}
+            onClick={() => {
+              setAgentUploadDefaultFolderId(null)
+              setIsAgentUploadOpen(true)
+            }}
             className="bg-white text-black px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
           >
             <svg
@@ -1121,6 +1190,7 @@ export default function DocumentsTab({
             </svg>
             <span className="hidden sm:inline">Upload Documents</span>
             <span className="sm:hidden">Upload</span>
+            <span className="ml-1 px-1.5 py-0.5 rounded text-[9px] bg-emerald-500/20 text-emerald-700 uppercase tracking-wider">AI</span>
           </button>
         </div>
       </div>
@@ -1252,681 +1322,21 @@ export default function DocumentsTab({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
         {/* Left Side - Document Categories */}
         <div className="lg:col-span-2 space-y-2 sm:space-y-3">
-          {documentFolders.map((folderName) => {
-            const filteredVaultDocs = (vaultDocuments || []).filter(doc => {
-              // If no FY selected, show all documents
-              if (!selectedFY) return true
-    
-              // Prefer period_financial_year if available (for tracker-uploaded docs)
-              if (doc.period_financial_year) {
-                return doc.period_financial_year === selectedFY
-              }
-    
-              // Fallback to registration_date for older documents
-              if (doc.registration_date) {
-                const docFY = getFinancialYear(doc.registration_date)
-                return docFY === selectedFY
-              }
-    
-              // If no period or registration date, don't show when FY is selected
-              return false
-            })
-    
-            // Filter uploaded docs by folder, but move PAN and TAN to Financials and licenses
-            let uploadedDocs = filteredVaultDocs.filter(d => {
-              if (folderName === 'Financials and licenses') {
-                // Include PAN and TAN from any folder
-                return d.folder_name === folderName ||
-                  (d.document_type === 'PAN' || d.document_type === 'TAN')
-              } else {
-                // Exclude PAN and TAN from other folders
-                return d.folder_name === folderName &&
-                  d.document_type !== 'PAN' &&
-                  d.document_type !== 'TAN'
-              }
-            })
-    
-            const predefinedNames = predefinedDocuments[folderName] || []
-    
-            // Use new version grouping system
-            const versionGroups = groupDocumentsByVersion(uploadedDocs)
-    
-            // Combine predefined and uploaded docs
-            const folderDocs: any[] = []
-    
-            predefinedNames.forEach((name: string) => {
-              const versionGroup = versionGroups.find(g => g.documentType === name)
-              if (!versionGroup) {
-                // No uploaded version, show as pending
-                folderDocs.push({ document_type: name, status: 'pending', id: `pending-${name}`, folder_name: folderName })
-              } else {
-                // Create version group document
-                folderDocs.push({
-                  ...versionGroup.latestVersion,
-                  status: 'uploaded',
-                  versionGroup: versionGroup,
-                  isVersionGroup: true,
-                  folder_name: folderName
-                })
-              }
-            })
-    
-            // Add any uploaded docs that aren't in the predefined list
-            versionGroups.forEach(group => {
-              if (!predefinedNames.includes(group.documentType)) {
-                folderDocs.push({
-                  ...group.latestVersion,
-                  status: 'uploaded',
-                  versionGroup: group,
-                  isVersionGroup: true,
-                  folder_name: folderName
-                })
-              }
-            })
-    
-            // Apply search filter
-            let filteredFolderDocs = folderDocs
-            if (searchQuery.trim()) {
-              filteredFolderDocs = folderDocs.filter(doc => {
-                if (doc.status === 'pending') {
-                  // For pending docs, search by document_type
-                  return (doc.document_type || '').toLowerCase().includes(searchQuery.toLowerCase())
-                }
-                // For uploaded docs, use the matchesSearch helper
-                return matchesSearch(doc, searchQuery)
-              })
-            }
-    
-            // Apply expiry filter
-            if (expiringSoonFilter !== 'all') {
-              filteredFolderDocs = filteredFolderDocs.filter(doc => {
-                if (doc.status === 'pending') return false // Pending docs don't have expiry
-                const docStatus = getDocumentStatus(doc)
-                if (expiringSoonFilter === 'expiring') {
-                  return docStatus === 'expiring' || docStatus === 'expired'
-                } else if (expiringSoonFilter === 'expired') {
-                  return docStatus === 'expired'
-                }
-                return true
-              })
-            }
-    
-            // Apply sorting
-            if (sortOption === 'name-asc' || sortOption === 'name-desc') {
-              filteredFolderDocs.sort((a, b) => {
-                const nameA = (a.document_type || '').toLowerCase()
-                const nameB = (b.document_type || '').toLowerCase()
-                return sortOption === 'name-asc'
-                  ? nameA.localeCompare(nameB)
-                  : nameB.localeCompare(nameA)
-              })
-            } else if (sortOption === 'date-newest' || sortOption === 'date-oldest') {
-              filteredFolderDocs.sort((a, b) => {
-                const dateA = a.period_key || a.created_at || ''
-                const dateB = b.period_key || b.created_at || ''
-                if (!dateA && !dateB) return 0
-                if (!dateA) return 1
-                if (!dateB) return -1
-                return sortOption === 'date-newest'
-                  ? dateB.localeCompare(dateA)
-                  : dateA.localeCompare(dateB)
-              })
-            } else if (sortOption === 'expiry') {
-              filteredFolderDocs.sort((a, b) => {
-                const expiryA = a.expiry_date || ''
-                const expiryB = b.expiry_date || ''
-                if (!expiryA && !expiryB) return 0
-                if (!expiryA) return 1
-                if (!expiryB) return -1
-                return expiryA.localeCompare(expiryB)
-              })
-            } else {
-              // Default: Sort by period_key if available (newest first)
-              filteredFolderDocs.sort((a, b) => {
-                if (a.period_key && b.period_key) {
-                  return b.period_key.localeCompare(a.period_key)
-                }
-                if (a.period_key) return -1
-                if (b.period_key) return 1
-                return 0
-              })
-            }
-    
-            const iconColor = folderName === 'Constitutional Documents' ? 'bg-gray-500' :
-              folderName === 'Financials and licenses' ? 'bg-purple-500' :
-                folderName === 'Taxation & GST Compliance' ? 'bg-green-500' : 'bg-blue-500'
-    
-            const isExpanded = expandedFolders.has(folderName)
-            const uploadedCount = filteredFolderDocs.filter((d: any) => d.status === 'uploaded').length
-            const pendingCount = filteredFolderDocs.filter((d: any) => d.status === 'pending').length
-    
-            return (
-              <div key={folderName} className="bg-black border border-white/10 rounded-xl sm:rounded-2xl overflow-hidden">
-                {/* Folder Header - Clickable to expand/collapse */}
-                <button
-                  onClick={() => {
-                    setExpandedFolders(prev => {
-                      const newSet = new Set(prev)
-                      if (newSet.has(folderName)) {
-                        newSet.delete(folderName)
-                      } else {
-                        newSet.add(folderName)
-                      }
-                      return newSet
-                    })
-                  }}
-                  className="w-full flex items-center gap-2 sm:gap-3 p-4 sm:p-6 hover:bg-gray-900/50 transition-colors text-left"
-                >
-                  <div className={`w-8 h-8 sm:w-10 sm:h-10 ${iconColor} rounded-lg flex items-center justify-center flex-shrink-0`}>
-                    <svg
-                      width="16"
-                      height="16"
-                      className="sm:w-5 sm:h-5"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="white"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                    </svg>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-base sm:text-xl font-light text-white break-words">{folderName}</h3>
-                    <p className="text-gray-400 text-xs sm:text-sm">
-                      {uploadedCount} uploaded
-                      {pendingCount > 0 && ` · ${pendingCount} pending`}
-                      {searchQuery && filteredFolderDocs.length !== folderDocs.length && (
-                        <span className="ml-2 text-gray-500">
-                          ({filteredFolderDocs.length} of {folderDocs.length} shown)
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                  <svg
-                    className={`w-5 h-5 text-gray-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-    
-                {/* Folder Content - Collapsible */}
-                {isExpanded && (
-                  <div className="px-4 sm:px-6 pb-4 sm:pb-6">
-                    <div className="space-y-1.5 sm:space-y-2">
-                      {isLoadingVaultDocuments ? (
-                        // Skeleton loaders
-                        Array.from({ length: 3 }).map((_, idx) => (
-                          <div key={`skeleton-${idx}`} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border border-gray-800 bg-gray-900 animate-pulse">
-                            <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                              <div className="w-4 h-4 sm:w-5 sm:h-5 bg-gray-700 rounded flex-shrink-0"></div>
-                              <div className="min-w-0 flex-1 space-y-2">
-                                <div className="h-4 bg-gray-700 rounded w-3/4"></div>
-                                <div className="h-3 bg-gray-800 rounded w-1/2"></div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="h-8 bg-gray-700 rounded w-16"></div>
-                              <div className="h-8 bg-gray-700 rounded w-16"></div>
-                            </div>
-                          </div>
-                        ))
-                      ) : filteredFolderDocs.length > 0 ? filteredFolderDocs.map((doc: any) => {
-                        // Handle version groups with tree structure
-                        if (doc.isVersionGroup && doc.versionGroup) {
-                          const versionGroup = doc.versionGroup as VersionGroup
-                          const docKey = `${folderName}-${doc.document_type}`
-                          const isVersionsExpanded = expandedDocumentVersions.has(docKey)
-                          const latestVersion = versionGroup.latestVersion
-                          const latestDocStatus = getDocumentStatus(latestVersion)
-    
-                          return (
-                            <div key={docKey} className="space-y-2">
-                              {/* Parent Document Card - Latest Version Preview */}
-                              <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 sm:p-4 rounded-lg border transition-colors ${latestDocStatus === 'expired'
-                                  ? 'bg-red-900/20 border-red-500/30 hover:border-red-500/50'
-                                  : latestDocStatus === 'expiring'
-                                    ? 'bg-yellow-900/20 border-yellow-500/30 hover:border-yellow-500/50'
-                                    : 'bg-gray-900 border-gray-800 hover:border-white/40/50'
-                                }`}>
-                                <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                                  <div className={`flex-shrink-0 mt-0.5 sm:mt-0 ${latestDocStatus === 'expired' ? 'text-red-400' :
-                                      latestDocStatus === 'expiring' ? 'text-yellow-400' :
-                                        latestDocStatus === 'valid' ? 'text-green-400' :
-                                          'text-gray-400'
-                                    }`}>
-                                    {getFileTypeIcon(latestVersion.file_name || latestVersion.document_type)}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="text-sm sm:text-base break-words font-medium text-white">
-                                        {latestVersion.document_type}
-                                      </span>
-                                      <span className="px-2 py-0.5 text-xs rounded-full border bg-green-500/20 text-green-400 border-green-500/30 font-medium">
-                                        Latest
-                                      </span>
-                                      <span className="px-1.5 py-0.5 text-xs rounded bg-gray-800 text-gray-400">
-                                        {versionGroup.totalVersions} version{versionGroup.totalVersions !== 1 ? 's' : ''}
-                                      </span>
-                                      {formatPeriodInfo(latestVersion) && (
-                                        <span className={`px-1.5 py-0.5 text-xs rounded border ${getPeriodBadgeColor(latestVersion.period_type)}`}>
-                                          {formatPeriodInfo(latestVersion)}
-                                        </span>
-                                      )}
-                                      {latestDocStatus && (
-                                        <span className={`px-1.5 py-0.5 text-xs rounded border font-medium ${getStatusBadgeColor(latestDocStatus)}`}>
-                                          {latestDocStatus === 'expired' ? 'Expired' :
-                                            latestDocStatus === 'expiring' ? 'Expiring' :
-                                              latestDocStatus === 'valid' ? 'Valid' : 'No Expiry'}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="text-xs mt-1 flex items-center gap-3 text-gray-500">
-                                      {latestVersion.created_at && (
-                                        <span>Uploaded {formatRelativeTime(latestVersion.created_at)}</span>
-                                      )}
-                                      {latestVersion.file_size && (
-                                        <span>{formatFileSize(latestVersion.file_size)}</span>
-                                      )}
-                                      {latestVersion.expiry_date && (
-                                        <span>Expires: {formatDateForDisplay(latestVersion.expiry_date)}</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                                  <button
-                                    onClick={() => handlePreview(latestVersion)}
-                                    className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0 flex items-center gap-1"
-                                    title="Preview document"
-                                  >
-                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                    Preview
-                                  </button>
-                                  <button
-                                    onClick={() => handleView(latestVersion.file_path)}
-                                    className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
-                                  >
-                                    View
-                                  </button>
-                                  <button
-                                    onClick={() => handleExport(latestVersion.file_path, latestVersion.file_name)}
-                                    className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
-                                  >
-                                    Export
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setExpandedDocumentVersions(prev => {
-                                        const newSet = new Set(prev)
-                                        if (newSet.has(docKey)) {
-                                          newSet.delete(docKey)
-                                        } else {
-                                          newSet.add(docKey)
-                                        }
-                                        return newSet
-                                      })
-                                    }}
-                                    className="text-gray-400 hover:text-white font-medium text-xs sm:text-sm border border-gray-700 px-2 sm:px-3 py-1 rounded-lg hover:bg-gray-800 transition-colors flex-shrink-0 flex items-center gap-1"
-                                  >
-                                    <svg className={`w-3 h-3 transition-transform ${isVersionsExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                    Versions
-                                  </button>
-                                </div>
-                              </div>
-    
-                              {/* Collapsible Yearly Versions Section */}
-                              {isVersionsExpanded && (
-                                <div className="ml-4 sm:ml-6 pl-4 sm:pl-6 border-l-2 border-gray-800 space-y-2">
-                                  {Array.from(versionGroup.yearlyVersions.entries())
-                                    .sort(([fyA], [fyB]) => {
-                                      // Sort years: newest first, "Other" last
-                                      if (fyA === 'Other') return 1
-                                      if (fyB === 'Other') return -1
-                                      return fyB.localeCompare(fyA)
-                                    })
-                                    .map(([financialYear, versions]) => {
-                                      const yearKey = `${docKey}-${financialYear}`
-                                      const isYearExpanded = expandedYearGroups[docKey]?.has(financialYear) ?? false
-                                      const latestInYear = versions[0] // Already sorted newest first
-    
-                                      return (
-                                        <div key={yearKey} className="space-y-1.5">
-                                          {/* Year Group Header */}
-                                          <button
-                                            onClick={() => {
-                                              setExpandedYearGroups(prev => {
-                                                const docGroups = prev[docKey] || new Set()
-                                                const newSet = new Set(docGroups)
-                                                if (newSet.has(financialYear)) {
-                                                  newSet.delete(financialYear)
-                                                } else {
-                                                  newSet.add(financialYear)
-                                                }
-                                                return { ...prev, [docKey]: newSet }
-                                              })
-                                            }}
-                                            className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-gray-900/50 transition-colors text-left"
-                                          >
-                                            <div className="flex items-center gap-2">
-                                              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                              </svg>
-                                              <span className="text-sm font-medium text-gray-300">{financialYear}</span>
-                                              <span className="text-xs text-gray-500">({versions.length} version{versions.length !== 1 ? 's' : ''})</span>
-                                            </div>
-                                            <svg className={`w-4 h-4 text-gray-500 transition-transform ${isYearExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                            </svg>
-                                          </button>
-    
-                                          {/* Versions in Year - Collapsible */}
-                                          {isYearExpanded && (
-                                            <div className="ml-2 space-y-1.5">
-                                              {versions.map((version: any, idx: number) => {
-                                                const versionStatus = getDocumentStatus(version)
-                                                const isLatestInYear = idx === 0
-    
-                                                return (
-                                                  <div
-                                                    key={version.id}
-                                                    className={`flex items-center justify-between gap-2 p-2 rounded-lg border transition-colors ${isLatestInYear
-                                                        ? 'bg-gray-900/50 border-gray-700'
-                                                        : 'bg-gray-900/30 border-gray-800/50'
-                                                      }`}
-                                                  >
-                                                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                                                      {/* Timeline connector */}
-                                                      <div className="flex flex-col items-center">
-                                                        <div className={`w-2 h-2 rounded-full ${isLatestInYear ? 'bg-green-400' : 'bg-gray-600'
-                                                          }`}></div>
-                                                        {idx < versions.length - 1 && (
-                                                          <div className="w-0.5 h-4 bg-gray-700 mt-0.5"></div>
-                                                        )}
-                                                      </div>
-    
-                                                      <div className="min-w-0 flex-1">
-                                                        <div className="flex items-center gap-2 flex-wrap">
-                                                          <span className="text-xs text-gray-400">v{versions.length - idx}</span>
-                                                          {isLatestInYear && (
-                                                            <span className="px-1.5 py-0.5 text-xs rounded border bg-blue-500/20 text-blue-400 border-blue-500/30">
-                                                              Latest in {financialYear}
-                                                            </span>
-                                                          )}
-                                                          {formatPeriodInfo(version) && (
-                                                            <span className={`px-1.5 py-0.5 text-xs rounded border ${getPeriodBadgeColor(version.period_type)}`}>
-                                                              {formatPeriodInfo(version)}
-                                                            </span>
-                                                          )}
-                                                          {versionStatus && (
-                                                            <span className={`px-1.5 py-0.5 text-xs rounded border font-medium ${getStatusBadgeColor(versionStatus)}`}>
-                                                              {versionStatus === 'expired' ? 'Expired' :
-                                                                versionStatus === 'expiring' ? 'Expiring' :
-                                                                  versionStatus === 'valid' ? 'Valid' : 'No Expiry'}
-                                                            </span>
-                                                          )}
-                                                        </div>
-                                                        <div className="text-xs mt-0.5 text-gray-500 flex items-center gap-2">
-                                                          {version.created_at && (
-                                                            <span>{formatRelativeTime(version.created_at)}</span>
-                                                          )}
-                                                          {version.file_size && (
-                                                            <span>· {formatFileSize(version.file_size)}</span>
-                                                          )}
-                                                        </div>
-                                                      </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-1 flex-shrink-0">
-                                                      <button
-                                                        onClick={() => handlePreview(version)}
-                                                        className="text-gray-400 hover:text-white p-1.5 rounded hover:bg-gray-800 transition-colors"
-                                                        title="Preview"
-                                                      >
-                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                        </svg>
-                                                      </button>
-                                                      <button
-                                                        onClick={() => handleView(version.file_path)}
-                                                        className="text-gray-400 hover:text-white p-1.5 rounded hover:bg-gray-800 transition-colors"
-                                                        title="View"
-                                                      >
-                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                        </svg>
-                                                      </button>
-                                                      <button
-                                                        onClick={() => handleExport(version.file_path, version.file_name)}
-                                                        className="text-gray-400 hover:text-white p-1.5 rounded hover:bg-gray-800 transition-colors"
-                                                        title="Export"
-                                                      >
-                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                        </svg>
-                                                      </button>
-                                                    </div>
-                                                  </div>
-                                                )
-                                              })}
-                                            </div>
-                                          )}
-                                        </div>
-                                      )
-                                    })}
-                                </div>
-                              )}
-                            </div>
-                          )
-                        }
-    
-                        // Handle pending documents
-                        if (doc.status === 'pending') {
-                          return (
-                            <div key={doc.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg border border-dashed bg-yellow-900/10 border-yellow-500/20">
-                              <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                                <svg
-                                  width="16"
-                                  height="16"
-                                  className="sm:w-5 sm:h-5 flex-shrink-0 mt-0.5 sm:mt-0 text-yellow-500"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                >
-                                  <circle cx="12" cy="12" r="10" />
-                                  <line x1="12" y1="8" x2="12" y2="12" />
-                                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                                </svg>
-                                <div className="min-w-0 flex-1">
-                                  <span className="text-sm sm:text-base break-words font-medium text-yellow-400 italic">
-                                    {doc.document_type} (Pending Upload)
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={async () => {
-                                    if (!currentCompany) return
-                                    
-                                    const confirmed = window.confirm(
-                                      `Are you sure you want to remove "${doc.document_type}" from this company's compliance vault? This will hide it from view but won't delete any uploaded documents.`
-                                    )
-                                    
-                                    if (confirmed) {
-                                      try {
-                                        const result = await hideDocumentTemplateForCompany(
-                                          currentCompany.id,
-                                          doc.document_type,
-                                          folderName
-                                        )
-                                        
-                                        if (result.success) {
-                                          // Update hidden templates set
-                                          setHiddenTemplates(prev => {
-                                            const newSet = new Set(prev)
-                                            newSet.add(`${folderName}:${doc.document_type}`)
-                                            return newSet
-                                          })
-                                          showToast?.(`"${doc.document_type}" removed from vault`, 'success')
-                                        } else {
-                                          showToast?.(result.error || 'Failed to remove document', 'error')
-                                        }
-                                      } catch (error) {
-                                        console.error('Error hiding template:', error)
-                                        showToast?.('Failed to remove document', 'error')
-                                      }
-                                    }
-                                  }}
-                                  className="text-red-400 hover:text-red-300 font-medium text-xs sm:text-sm border border-red-500/40 px-3 sm:px-4 py-1.5 rounded-lg hover:bg-red-500/20 transition-colors w-full sm:w-auto flex items-center gap-1.5 justify-center"
-                                  title="Remove this document type (not applicable for this company)"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                  </svg>
-                                  Remove
-                                </button>
-                              <button
-                                onClick={() => {
-                                  setUploadFormData(prev => ({
-                                    ...prev,
-                                    folder: folderName,
-                                    documentName: doc.document_type
-                                  }))
-                                  setIsUploadModalOpen(true)
-                                }}
-                                className="text-white hover:text-white font-medium text-xs sm:text-sm border border-white/40 px-3 sm:px-4 py-1.5 rounded-lg hover:bg-white/20 transition-colors w-full sm:w-auto"
-                              >
-                                Upload Now
-                              </button>
-                              </div>
-                            </div>
-                          )
-                        }
-    
-                        // Handle single version documents (no version group)
-                        const docStatus = getDocumentStatus(doc)
-                        return (
-                          <div key={doc.id} className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg border transition-colors ${docStatus === 'expired'
-                              ? 'bg-red-900/20 border-red-500/30 hover:border-red-500/50'
-                              : docStatus === 'expiring'
-                                ? 'bg-yellow-900/20 border-yellow-500/30 hover:border-yellow-500/50'
-                                : 'bg-gray-900 border-gray-800 hover:border-white/40/50'
-                            }`}>
-                            <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                              <div className={`flex-shrink-0 mt-0.5 sm:mt-0 ${docStatus === 'expired' ? 'text-red-400' :
-                                  docStatus === 'expiring' ? 'text-yellow-400' :
-                                    docStatus === 'valid' ? 'text-green-400' :
-                                      'text-gray-400'
-                                }`}>
-                                {getFileTypeIcon(doc.file_name || doc.document_type)}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className={`text-sm break-words font-medium ${docStatus === 'expired' ? 'text-red-400' :
-                                      docStatus === 'expiring' ? 'text-yellow-400' :
-                                        'text-white'
-                                    }`}>
-                                    {doc.document_type}
-                                  </span>
-                                  {formatPeriodInfo(doc) && (
-                                    <span className={`px-1.5 py-0.5 text-xs rounded border ${getPeriodBadgeColor(doc.period_type)}`}>
-                                      {formatPeriodInfo(doc)}
-                                    </span>
-                                  )}
-                                  {docStatus && (
-                                    <span className={`px-1.5 py-0.5 text-xs rounded border font-medium ${getStatusBadgeColor(docStatus)}`}>
-                                      {docStatus === 'expired' ? 'Expired' :
-                                        docStatus === 'expiring' ? 'Expiring' :
-                                          docStatus === 'valid' ? 'Valid' : 'No Expiry'}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className={`text-xs mt-0.5 break-words flex items-center gap-2 flex-wrap ${docStatus === 'expired' ? 'text-red-400/80' :
-                                    docStatus === 'expiring' ? 'text-yellow-400/80' :
-                                      'text-gray-500'
-                                  }`}>
-                                  {doc.created_at && (
-                                    <span>Uploaded {formatRelativeTime(doc.created_at)}</span>
-                                  )}
-                                  {doc.file_size && (
-                                    <span>· {formatFileSize(doc.file_size)}</span>
-                                  )}
-                                  {doc.expiry_date && (
-                                    <span>· Expires: {formatDateForDisplay(doc.expiry_date)}</span>
-                                  )}
-                                  {doc.requirement_id && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        router.push(`/data-room?tab=tracker&requirement_id=${doc.requirement_id}`)
-                                      }}
-                                      className="text-blue-400 hover:text-blue-300 underline flex items-center gap-1"
-                                    >
-                                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                      </svg>
-                                      Tracker
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                              <button
-                                onClick={() => handlePreview(doc)}
-                                className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0 flex items-center gap-1"
-                                title="Preview document"
-                              >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                                Preview
-                              </button>
-                              <button
-                                onClick={() => handleView(doc.file_path)}
-                                className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
-                              >
-                                View
-                              </button>
-                              <button
-                                onClick={() => handleExport(doc.file_path, doc.file_name)}
-                                className="text-white hover:text-white/80 font-medium text-xs sm:text-sm border border-white/40/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-white/5 transition-colors flex-shrink-0"
-                              >
-                                Export
-                              </button>
-                              <button
-                                onClick={() => handleRemove(doc.id, doc.file_path)}
-                                className="text-red-400 hover:text-red-300 font-medium text-xs sm:text-sm border border-red-500/30 px-2 sm:px-3 py-1 rounded-lg hover:bg-red-500/10 transition-colors flex-shrink-0"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      }) : (
-                        <div className="p-6 sm:p-8 text-center bg-gray-900/50 rounded-lg border border-dashed border-gray-800">
-                          <p className="text-gray-500 text-xs sm:text-sm">No documents defined for this folder.</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })}
+          <VaultTreeView
+            companyId={currentCompany?.id || ""}
+            canEdit={canEdit}
+            onUploadToFolder={(_folderId, folderName) => {
+              setUploadFormData(prev => ({ ...prev, folder: folderName }))
+              setIsUploadModalOpen(true)
+            }}
+            onUploadNewVersion={(doc) => {
+              // Route through the agent modal so the new upload gets
+              // analyzed, but lock it to supersede the clicked doc.
+              setAgentUploadSupersedesDocumentId(doc.id)
+              setAgentUploadDefaultFolderId(doc.folderId)
+              setIsAgentUploadOpen(true)
+            }}
+          />
         </div>
     
         {/* Right Sidebar */}
@@ -2057,37 +1467,43 @@ export default function DocumentsTab({
                         />
                         <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-gray-800 rounded-lg shadow-2xl z-20 max-h-64 overflow-y-auto">
                           {(() => {
+                            // Full vault tree with breadcrumbs so users can
+                            // pick any sub-folder (MOA / AOA / TDS / GST …)
+                            // directly instead of only the top-level card.
                             const suggestions = uploadFormData.documentName
                               ? suggestFoldersForDocument(uploadFormData.documentName)
                               : []
-    
-                            return documentFolders.map((folder) => {
-                              const isRecommended = suggestions.includes(folder)
-                              const { authority, formCount } = getFolderDescription(folder)
-    
+                            const options = vaultFolderOptions.length > 0
+                              ? vaultFolderOptions
+                              : documentFolders.map((name: string) => ({ id: '', label: name, kind: 'legacy' as const }))
+
+                            return options.map((o) => {
+                              // Recommendation highlights top-level card names.
+                              const topLabel = o.label.split(' › ')[0]
+                              const isRecommended = suggestions.includes(topLabel) || suggestions.includes(o.label)
+
                               return (
                                 <button
-                                  key={folder}
+                                  key={o.id || o.label}
                                   onClick={() => {
-                                    setUploadFormData((prev) => ({ ...prev, folder, documentName: prev.documentName }))
+                                    setUploadFormData((prev) => ({
+                                      ...prev,
+                                      folder: o.label,
+                                      folderId: o.id,
+                                      documentName: prev.documentName,
+                                    }))
                                     setIsFolderDropdownOpen(false)
                                   }}
-                                  className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-gray-800 transition-colors text-white text-sm sm:text-base ${isRecommended ? 'bg-blue-500/10 border-l-2 border-blue-500' : ''
-                                    }`}
+                                  className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-gray-800 transition-colors text-white text-sm sm:text-base ${isRecommended ? 'bg-blue-500/10 border-l-2 border-blue-500' : ''}`}
                                 >
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2 min-w-0 flex-1">
                                       {isRecommended && (
                                         <span className="text-[10px] sm:text-xs text-blue-400 font-medium flex-shrink-0">Recommended</span>
                                       )}
-                                      <span className="truncate">{folder}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-[10px] sm:text-xs text-gray-400 flex-shrink-0 ml-2">
-                                      {formCount > 0 && <span>{formCount} forms</span>}
-                                      {authority && (
-                                        <span className="text-gray-500 hidden sm:inline">
-                                          · {authority.split('(')[0].trim()}
-                                        </span>
+                                      <span className="truncate">{o.label}</span>
+                                      {o.kind === 'user' && (
+                                        <span className="text-[9px] uppercase tracking-wider text-gray-500 border border-gray-700 px-1 rounded flex-shrink-0">Custom</span>
                                       )}
                                     </div>
                                   </div>
@@ -3045,7 +2461,7 @@ export default function DocumentsTab({
                             } else {
                               failCount++
                             }
-                          } catch (error: any) {
+                          } catch (error) {
                             console.error(`Error uploading ${file.name}:`, error)
                             failCount++
                           }
@@ -3054,6 +2470,7 @@ export default function DocumentsTab({
                         }
     
                         await fetchVaultDocuments()
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('vault:data-changed'))
     
                         if (successCount > 0) {
                           showToast?.(`Successfully uploaded ${successCount} file(s)${failCount > 0 ? `. ${failCount} failed.` : ''}`, successCount === bulkUploadFiles.length ? 'success' : 'warning')
@@ -3067,9 +2484,9 @@ export default function DocumentsTab({
                         setBulkUploadFileOptions({})
                         setExpandedBulkFileOptions(new Set())
                         setOpenDocumentNameDropdown(null)
-                      } catch (error: any) {
+                      } catch (error) {
                         console.error('Bulk upload failed:', error)
-                        showToast?.('Bulk upload failed: ' + error.message, 'error')
+                        showToast?.('Bulk upload failed: ' + (error instanceof Error ? error.message : 'Something went wrong'), 'error')
                       } finally {
                         setIsUploading(false)
                       }
@@ -3306,9 +2723,9 @@ export default function DocumentsTab({
     
                           setIsExportModalOpen(false)
                           setSelectedDocuments(new Set())
-                        } catch (error: any) {
+                        } catch (error) {
                           console.error('Export failed:', error)
-                          showToast?.('Export failed: ' + (error.message || 'Unknown error'), 'error')
+                          showToast?.('Export failed: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error')
                         }
                       }
                     }}
@@ -3625,9 +3042,9 @@ export default function DocumentsTab({
                         } else {
                           showToast?.('Failed to send: ' + (result.error || 'Unknown error'), 'error')
                         }
-                      } catch (error: any) {
+                      } catch (error) {
                         console.error('Error sending documents:', error)
-                        showToast?.('Error sending documents: ' + error.message, 'error')
+                        showToast?.('Error sending documents: ' + (error instanceof Error ? error.message : 'Something went wrong'), 'error')
                       } finally {
                         setIsSendingEmail(false)
                       }
@@ -4095,6 +3512,36 @@ export default function DocumentsTab({
             'What penalties am I facing?',
           ]}
           initialQuestion={ciaInitialQuestion}
+        />
+      )}
+
+      {/* Agent-assisted single-file upload (PRD v1.1 §2.1 / §2.2) */}
+      {isAgentUploadOpen && currentCompany?.id && (
+        <AgentAssistedUploadModal
+          isOpen={isAgentUploadOpen}
+          companyId={currentCompany.id}
+          defaultFolderId={agentUploadDefaultFolderId}
+          defaultSupersedesDocumentId={agentUploadSupersedesDocumentId}
+          onClose={() => {
+            setIsAgentUploadOpen(false)
+            setAgentUploadDefaultFolderId(null)
+            setAgentUploadSupersedesDocumentId(null)
+          }}
+          onFinalized={() => {
+            setAgentUploadSupersedesDocumentId(null)
+            fetchVaultDocuments()
+            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('vault:data-changed'))
+          }}
+        />
+      )}
+
+      {/* Agent-assisted bulk upload */}
+      {isAgentBulkOpen && currentCompany?.id && (
+        <AgentAssistedBulkUploadModal
+          isOpen={isAgentBulkOpen}
+          companyId={currentCompany.id}
+          onClose={() => setIsAgentBulkOpen(false)}
+          onFinalized={() => fetchVaultDocuments()}
         />
       )}
     </div>

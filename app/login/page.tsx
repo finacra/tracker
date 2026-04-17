@@ -93,13 +93,14 @@ function LoginPageInner() {
       
       // Redirect to OAuth URL
       window.location.href = result.url
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error signing in:', error)
-      if (error.message?.includes('UnrecognizedActionError') || error.message?.includes('404')) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      if (message.includes('UnrecognizedActionError') || message.includes('404')) {
         window.location.reload();
         return;
       }
-      setError(error.message || 'An error occurred')
+      setError(message)
       setIsLoading(false)
     }
   }
@@ -151,13 +152,13 @@ function LoginPageInner() {
           allowOverrideForDataRoomUsers: true,
         })
         window.location.href = redirectTo
-      } catch (destErr: any) {
+      } catch (destErr) {
         console.error('Error resolving destination:', destErr)
         window.location.href = '/subscribe'
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error with email auth:', error)
-      setError(error.message || 'An error occurred')
+      setError(error instanceof Error ? error.message : 'An error occurred')
       setIsLoading(false)
     }
   }
@@ -189,8 +190,8 @@ function LoginPageInner() {
 
       setMessage('Verification email sent! Please check your inbox and click the link to verify your email, then you can set a password.')
       setIsSendingVerification(false)
-    } catch (error: any) {
-      setError(error.message || 'Failed to send verification email')
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to send verification email')
       setIsSendingVerification(false)
     }
   }

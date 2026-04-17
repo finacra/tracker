@@ -56,12 +56,12 @@ Deno.serve(async (req) => {
         status: 200,
       }
     )
-  } catch (error: any) {
+  } catch (error) {
     console.error('[auto-generate-compliances] Error:', error)
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || 'Unknown error occurred',
+        error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString()
       }),
       {

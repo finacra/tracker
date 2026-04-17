@@ -1,6 +1,7 @@
 'use server'
 
 import { prisma } from '@/lib/prisma'
+import { handleActionError } from '@/lib/errors/handle-error'
 import { Resend } from 'resend'
 
 // Initialize Resend only if API key is available
@@ -85,11 +86,7 @@ export async function submitContactForm(
     return {
       success: true,
     }
-  } catch (error: any) {
-    console.error('[Contact Form] Unexpected error:', error)
-    return {
-      success: false,
-      error: error.message || 'An unexpected error occurred. Please try again later.',
-    }
+  } catch (error) {
+    return handleActionError(error)
   }
 }

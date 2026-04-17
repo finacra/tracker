@@ -5,6 +5,11 @@ import { createServerContainer } from '@/lib/composition/server-container'
 import { generateEmbedding } from '@/lib/utils/embeddings'
 import { processDocumentContent } from '@/lib/utils/document-processor'
 import { validateCompanyId, sanitizeStringInput, isValidUUID } from '@/lib/utils/input-validation'
+import { handleActionError } from '@/lib/errors/handle-error'
+import { prisma } from '@/lib/prisma'
+import { validateGSTN, parseGSTN } from '@/lib/utils/gstn'
+import { recordOnboardingFacts } from '@/lib/compliance/facts'
+import { ensureSystemFolders } from '@/lib/vault/folders'
 
 async function requireCurrentUser() {
   const { authService } = createServerContainer()
@@ -54,6 +59,7 @@ export async function completeOnboarding(
     annualTurnover?: string
     isGstRegistered?: boolean
     gstNumber?: string
+    gstRegistrations?: Array<{ gstin: string; state: string }>
     netWorth?: string
     isMsme?: string
     msmeCategory?: string
@@ -109,6 +115,16 @@ export async function completeOnboarding(
       .filter((name: string) => name.length > 0)
     : null
 
+  // PAN is required for Indian companies — downstream tax-compliance rules
+  // (ITR, TDS returns, advance tax instalments) all key off it. The client
+  // form enforces this already; the server re-enforces to prevent API-level
+  // bypass and to surface a clear error rather than a cryptic constraint
+  // failure later.
+  const trimmedPan = (formData.panNumber || '').trim()
+  if ((formData.countryCode || 'IN') === 'IN' && !trimmedPan) {
+    throw new Error('PAN is required for Indian companies')
+  }
+
   let company
   try {
   company = await companyRepository.create({
@@ -116,7 +132,7 @@ export async function completeOnboarding(
     appUserId: user.canonicalId,
     name: formData.companyName,
     type: formData.companyType,
-    taxId: formData.panNumber || null,
+    taxId: trimmedPan || null,
     registrationId: formData.cinNumber,
     industry: firstIndustry,
     industries: formData.industries.length > 0 ? formData.industries : null,
@@ -159,9 +175,32 @@ export async function completeOnboarding(
     dateOfLastAgm: formData.dateOfLastAgm || null,
     balanceSheetDate: formData.balanceSheetDate || null,
   })
-  } catch (createErr: any) {
-    console.error('[ONBOARD] Company create FAILED:', createErr.message || createErr)
-    throw createErr
+  } catch (createErr) {
+    return handleActionError(createErr)
+  }
+
+  // 1a. Persist GSTIN registrations — one row per GSTIN, with state stamped
+  // at save time (derived from the GSTIN's first two digits when available,
+  // otherwise taken verbatim from the form). Invalid/blank entries are
+  // silently dropped so an empty repeater row doesn't block the submit.
+  const normalizedGstRegistrations = (formData.gstRegistrations || [])
+    .map((reg) => {
+      const gstin = (reg.gstin || '').toUpperCase().trim()
+      if (!gstin) return null
+      const derivedState = parseGSTN(gstin)?.stateName
+      return { gstin, state: (reg.state || derivedState || '').trim() || null }
+    })
+    .filter((r): r is { gstin: string; state: string | null } => r !== null && validateGSTN(r.gstin))
+
+  if (normalizedGstRegistrations.length > 0) {
+    await prisma.gstRegistration.createMany({
+      data: normalizedGstRegistrations.map((r) => ({
+        company_id: company.id,
+        gstin: r.gstin,
+        state: r.state,
+      })),
+      skipDuplicates: true,
+    })
   }
 
   // 1b. Assign admin role to the company creator
@@ -176,6 +215,39 @@ export async function completeOnboarding(
   } catch (roleError) {
     console.error('Role assignment error:', roleError)
     // Don't throw - the company owner can still access via user_id on companies table
+  }
+
+  // 1d. Seed the five system top-level folders + their nested sub-folders
+  // (PRD §2.2 / §3.1). Idempotent; safe to call again later if a company
+  // onboarded before this rollout.
+  try {
+    await ensureSystemFolders(company.id)
+  } catch (folderErr) {
+    console.error('[onboarding] Vault folder seed failed (non-fatal):', folderErr instanceof Error ? folderErr.message : folderErr)
+  }
+
+  // 1c. Record declared facts into the fact store so the new applicability
+  // engine can reason over them alongside document-extracted evidence.
+  // Non-blocking — a failure here must not prevent company creation.
+  try {
+    await recordOnboardingFacts({
+      companyId: company.id,
+      createdBy: user.id,
+      employeeCount: formData.employeeCount ? parseInt(formData.employeeCount, 10) : null,
+      annualTurnoverRupees: formData.annualTurnover
+        ? Math.round(parseFloat(formData.annualTurnover) * 100000) // form collects lakhs
+        : null,
+      netWorthRupees: formData.netWorth
+        ? Math.round(parseFloat(formData.netWorth) * 10000000) // form collects crores
+        : null,
+      isGstRegistered: formData.isGstRegistered ?? null,
+      isMsme: formData.isMsme === 'yes' ? true : formData.isMsme === 'no' ? false : null,
+      msmeCategory: formData.msmeCategory || null,
+      hasImportsExports: formData.hasImportsExports ?? null,
+      isStartupDpiit: formData.isStartupDpiit ?? null,
+    })
+  } catch (factErr) {
+    console.error('[onboarding] Fact ingestion failed (non-fatal):', factErr instanceof Error ? factErr.message : factErr)
   }
 
   // 2. Insert Directors
@@ -230,8 +302,12 @@ export async function completeOnboarding(
     }
   }
 
-  // 4. Ensure company has either trial or subscription
-  // If user doesn't have a subscription, automatically create a trial for this company
+  // 4. Ensure company has either trial or subscription.
+  // If user doesn't have a subscription, automatically create a trial
+  // for this company. We track whether the resulting state gives the
+  // user active access so the client can skip the /subscribe gate
+  // and land them directly on /data-room.
+  let companyHasActiveAccess = false
   try {
     const [companySubData, userSubData] = await Promise.all([
       subscriptionRepository.getCompanySubscriptionState(company.id),
@@ -250,11 +326,18 @@ export async function completeOnboarding(
     if (!companyHasSubscription && !isEnterprise) {
       try {
         await subscriptionRepository.createCompanyTrial(user.id, company.id, user.canonicalId)
+        companyHasActiveAccess = true  // trial just created → access granted
       } catch (error: unknown) {
         console.error('[completeOnboarding] Error creating trial:', error)
         // Don't throw - company is created, trial creation can be retried
         // User can manually start trial via subscribe page
       }
+    }
+
+    // Already-granted access (pre-existing company sub or enterprise
+    // user sub covering all companies) should also skip the gate.
+    if (companyHasSubscription || (isEnterprise && userHasSubscription)) {
+      companyHasActiveAccess = true
     }
   } catch (trialErr) {
     console.error('[completeOnboarding] Error checking/creating trial:', trialErr)
@@ -333,7 +416,7 @@ export async function completeOnboarding(
     })
   }
 
-  return { success: true, companyId: company.id }
+  return { success: true, companyId: company.id, hasActiveAccess: companyHasActiveAccess }
 }
 
 export async function updateCompany(
@@ -361,6 +444,7 @@ export async function updateCompany(
     annualTurnover?: string
     isGstRegistered?: boolean
     gstNumber?: string
+    gstRegistrations?: Array<{ gstin: string; state: string }>
     netWorth?: string
     isMsme?: string       // 'yes' | 'no' | ''
     msmeCategory?: string
@@ -387,6 +471,17 @@ export async function updateCompany(
     const parsed = parseCIN(formData.cinNumber)
     if (parsed.nicCode) nicCode = parsed.nicCode
     if (parsed.isListed !== null) isListed = parsed.isListed
+  }
+
+  // If the caller is explicitly updating PAN (string passed, even empty),
+  // reject a blank value for Indian companies. Undefined = "no change", so
+  // a partial update that doesn't touch PAN doesn't trigger this.
+  if (typeof formData.panNumber === 'string') {
+    const trimmed = formData.panNumber.trim()
+    const existing = await companyRepository.getDetailsById(companyId)
+    if (!trimmed && (existing?.countryCode || 'IN') === 'IN') {
+      throw new Error('PAN is required for Indian companies')
+    }
   }
 
   // Update Company in public schema
@@ -449,6 +544,66 @@ export async function updateCompany(
     throw new Error('Failed to update company')
   }
 
+  // Refresh declared facts from the edited form. Only fields the caller
+  // actually submitted are touched — `undefined` means "no change", so a
+  // partial update never wipes an existing fact.
+  try {
+    await recordOnboardingFacts({
+      companyId,
+      createdBy: user.id,
+      employeeCount: formData.employeeCount !== undefined
+        ? (formData.employeeCount ? parseInt(formData.employeeCount, 10) : null)
+        : undefined,
+      annualTurnoverRupees: formData.annualTurnover !== undefined
+        ? (formData.annualTurnover ? Math.round(parseFloat(formData.annualTurnover) * 100000) : null)
+        : undefined,
+      netWorthRupees: formData.netWorth !== undefined
+        ? (formData.netWorth ? Math.round(parseFloat(formData.netWorth) * 10000000) : null)
+        : undefined,
+      isGstRegistered: formData.isGstRegistered,
+      isMsme: formData.isMsme !== undefined
+        ? (formData.isMsme === 'yes' ? true : formData.isMsme === 'no' ? false : null)
+        : undefined,
+      msmeCategory: formData.msmeCategory,
+      hasImportsExports: formData.hasImportsExports,
+      isStartupDpiit: formData.isStartupDpiit,
+    })
+  } catch (factErr) {
+    console.error('[updateCompany] Fact refresh failed (non-fatal):', factErr instanceof Error ? factErr.message : factErr)
+  }
+
+  // Sync GST registrations if provided. Replace-all semantics: delete every
+  // row for this company, then re-insert whatever the form submitted (after
+  // validation + dedupe). Done sequentially because PgBouncer transaction
+  // mode rejects interactive prisma.$transaction (CLAUDE.md §12).
+  if (formData.gstRegistrations !== undefined) {
+    const normalized = formData.gstRegistrations
+      .map((reg) => {
+        const gstin = (reg.gstin || '').toUpperCase().trim()
+        if (!gstin) return null
+        const derivedState = parseGSTN(gstin)?.stateName
+        return { gstin, state: (reg.state || derivedState || '').trim() || null }
+      })
+      .filter((r): r is { gstin: string; state: string | null } => r !== null && validateGSTN(r.gstin))
+
+    // Dedupe by gstin (last write wins)
+    const byGstin = new Map<string, { gstin: string; state: string | null }>()
+    for (const r of normalized) byGstin.set(r.gstin, r)
+
+    await prisma.gstRegistration.deleteMany({ where: { company_id: companyId } })
+
+    if (byGstin.size > 0) {
+      await prisma.gstRegistration.createMany({
+        data: Array.from(byGstin.values()).map((r) => ({
+          company_id: companyId,
+          gstin: r.gstin,
+          state: r.state,
+        })),
+        skipDuplicates: true,
+      })
+    }
+  }
+
   // Update directors if provided
   if (formData.directors !== undefined) {
     // First, delete all existing directors for this company
@@ -506,9 +661,8 @@ export async function getCompanyDirectors(companyId: string) {
   try {
     const directors = await directorRepository.getByCompanyId(companyId)
     return { success: true, directors }
-  } catch (error: any) {
-    console.error('Error fetching directors:', error)
-    return { success: false, directors: [], error: error.message }
+  } catch (error) {
+    return { ...handleActionError(error), directors: [] }
   }
 }
 
@@ -606,9 +760,8 @@ export async function uploadFileToStorage(filePath: string, fileData: ArrayBuffe
 
     if (uploadError) throw uploadError
     return { success: true }
-  } catch (err: any) {
-    console.error('Error uploading file to storage:', err)
-    return { success: false, error: err.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -625,9 +778,8 @@ export async function getDownloadUrl(filePath: string) {
 
     if (error) throw error
     return { success: true, url: data.signedUrl }
-  } catch (err: any) {
-    console.error('Error creating signed URL:', err)
-    return { success: false, error: err.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -653,8 +805,7 @@ export async function deleteDocument(documentId: string, filePath: string) {
     
     try {
       await storage.deleteFile('company-documents', [sanitizedFilePath])
-    } catch (storageError: any) {
-      console.error('Storage deletion error:', storageError)
+    } catch (storageError) {
       // Continue anyway to try and clean up metadata
     }
 
@@ -662,9 +813,8 @@ export async function deleteDocument(documentId: string, filePath: string) {
     await documentRepository.deleteCompanyDocument(documentId)
 
     return { success: true }
-  } catch (err: any) {
-    console.error('Error deleting document:', err)
-    return { success: false, error: err.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -680,12 +830,8 @@ export async function getDocumentTemplates() {
         default_frequency: template.defaultFrequency,
       })),
     }
-  } catch (err: any) {
-    console.error('Error fetching templates:', err)
-    if (err?.code === 'PGRST106' || err?.message?.includes('does not exist')) {
-      return { success: true, templates: [] }
-    }
-    return { success: false, templates: [] }
+  } catch (error) {
+    return { ...handleActionError(error), templates: [] }
   }
 }
 
@@ -748,11 +894,7 @@ export async function getCompanyDocuments(companyId: string) {
         requirement_id: document.requirementId || null,
       })),
     }
-  } catch (err: any) {
-    console.error('[getCompanyDocuments] Error:', err)
-    if (err?.code === 'PGRST106' || err?.message?.includes('does not exist')) {
-      return { success: true, documents: [], warning: 'Storage table not found' }
-    }
-    return { success: false, error: err.message, documents: [] }
+  } catch (error) {
+    return { ...handleActionError(error), documents: [] }
   }
 }

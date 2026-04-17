@@ -55,23 +55,35 @@ function detectEntitySubType(
   companyCategory?: string,
   classOfCompany?: string
 ): string {
+  const typeLower = (companyType || '').toLowerCase()
+
   // For LLPs, return "LLP" directly
-  if (companyType === 'LLP') {
+  if (companyType === 'LLP' || typeLower.includes('llp')) {
     return 'LLP'
   }
-  
+
+  // Section 8 / NGO detection (check companyType first, then companyCategory)
+  if (typeLower.includes('section 8') || typeLower.includes('section8') || typeLower.includes('ngo')) {
+    return 'NGO / Section 8'
+  }
+
   if (companyCategory?.includes('Company limited by guarantee')) {
     return 'NGO / Section 8'
   }
-  
+
+  // OPC detection
+  if (typeLower.includes('one person') || typeLower.includes('opc')) {
+    return 'Private Limited' // OPC is a subtype of private limited
+  }
+
   if (classOfCompany === 'Private') {
     return 'Private Limited'
   }
-  
+
   if (classOfCompany === 'Public') {
     return 'Public Limited'
   }
-  
+
   return 'Other'
 }
 
@@ -379,7 +391,8 @@ export function mapEntitySubTypeToFormValue(entitySubType: string): string {
     'Private Limited': 'private-limited',
     'Public Limited': 'public-limited',
     'LLP': 'llp',
-    'NGO / Section 8': 'ngo-/-section-8',
+    'One Person Company': 'one-person-company',
+    'NGO / Section 8': 'section-8',
     'Other': '', // Return empty for Other to allow manual selection
   }
   return mapping[entitySubType] || ''

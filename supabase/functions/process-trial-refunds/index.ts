@@ -70,13 +70,13 @@ Deno.serve(async (req) => {
         headers: { 'Content-Type': 'application/json' },
       }
     )
-  } catch (error: any) {
+  } catch (error) {
     console.error('[process-trial-refunds] Unexpected error:', error)
     return new Response(
       JSON.stringify({
         success: false,
         error: 'Internal server error',
-        details: error.message,
+        details: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString()
       }),
       {

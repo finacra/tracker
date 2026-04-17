@@ -59,9 +59,9 @@ export default function InviteAcceptClient(props: { token?: string }) {
           setStatus('signup')
           setMessage(`You've been invited! Create an account to accept the invitation.`)
         }
-      } catch (err: any) {
+      } catch (err) {
         setStatus('error')
-        setMessage(err?.message || 'Failed to load invitation')
+        setMessage(err instanceof Error ? err.message : 'Failed to load invitation')
       }
     }
 
@@ -83,9 +83,9 @@ export default function InviteAcceptClient(props: { token?: string }) {
         setStatus('error')
         setMessage(result.error || 'Failed to accept invitation.')
       }
-    } catch (err: any) {
+    } catch (err) {
       setStatus('error')
-      setMessage(err?.message || 'Failed to accept invitation.')
+      setMessage(err instanceof Error ? err.message : 'Failed to accept invitation.')
     }
   }
 
@@ -133,8 +133,8 @@ export default function InviteAcceptClient(props: { token?: string }) {
       setTimeout(async () => {
         await handleAcceptInvitation()
       }, 1000)
-    } catch (err: any) {
-      setError(err?.message || 'Failed to create account')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create account')
       setIsSubmitting(false)
     }
   }

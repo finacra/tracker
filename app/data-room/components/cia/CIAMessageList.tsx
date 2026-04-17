@@ -2,16 +2,57 @@
 
 import { useEffect, useRef } from 'react'
 import { type CIAMessage } from './useCIAHistory'
-import { type ThinkingStep } from './useCIAChat'
+import { type ThinkingStep, type ToolActivity } from './useCIAChat'
 import CIAThinkingSteps from './CIAThinkingSteps'
 
 interface Props {
   messages: CIAMessage[]
   streamingContent: string
   steps: ThinkingStep[]
+  toolActivities?: ToolActivity[]
   isStreaming: boolean
   onSpeak?: (text: string, id: string) => void
   speakingMsgId?: string | null
+}
+
+const TOOL_LABELS: Record<string, string> = {
+  list_requirements: 'Looking up your requirements',
+  update_requirement_status: 'Updating compliance status',
+  set_requirement_fields: 'Updating compliance fields',
+  record_company_fact: 'Recording business fact',
+  run_evaluator: 'Re-evaluating compliance applicability',
+  override_assessment: 'Overriding applicability',
+}
+
+function ToolActivityList({ activities }: { activities: ToolActivity[] }) {
+  if (!activities || activities.length === 0) return null
+  return (
+    <div className="space-y-1.5 my-2">
+      {activities.map(a => {
+        const label = TOOL_LABELS[a.name] || a.name
+        const color =
+          a.status === 'done' ? '#4ade80' : a.status === 'failed' ? '#f87171' : '#60a5fa'
+        const icon =
+          a.status === 'done' ? '✓' : a.status === 'failed' ? '✕' : '·'
+        return (
+          <div key={a.id} className="flex items-start gap-2 text-[12px]" style={{
+            padding: '6px 10px',
+            background: 'rgba(96,165,250,0.05)',
+            border: '1px solid rgba(96,165,250,0.12)',
+            borderRadius: 6,
+          }}>
+            <span style={{ color, fontWeight: 600, width: 12, textAlign: 'center' }}>{icon}</span>
+            <div className="flex-1 min-w-0">
+              <div style={{ color: '#d0d0d0' }}>{label}</div>
+              {a.summary && (
+                <div style={{ color: '#8a8a8a', fontSize: 11, marginTop: 2 }}>{a.summary}</div>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 /* ── Inline markdown: **bold**, `code`, [links] ── */
@@ -246,7 +287,7 @@ function SourcePills({ sources }: { sources: { name: string; similarity: number 
 }
 
 /* ── Main component ── */
-export default function CIAMessageList({ messages, streamingContent, steps, isStreaming, onSpeak, speakingMsgId }: Props) {
+export default function CIAMessageList({ messages, streamingContent, steps, toolActivities, isStreaming, onSpeak, speakingMsgId }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const userScrolledUp = useRef(false)
@@ -306,6 +347,9 @@ export default function CIAMessageList({ messages, streamingContent, steps, isSt
       {isStreaming && (
         <div className="animate-fadeIn">
           {steps.some(s => s.status !== 'done') && <CIAThinkingSteps steps={steps} />}
+          {toolActivities && toolActivities.length > 0 && (
+            <ToolActivityList activities={toolActivities} />
+          )}
           {streamingContent && (
             <div style={{ fontSize: '15px', lineHeight: '1.7', color: '#c8c8c8' }}>
               {renderMarkdown(streamingContent)}

@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { AzureOpenAI } from 'openai'
+import { handleActionError } from '@/lib/errors/handle-error'
 
 export interface KPIMetric {
   id?: string
@@ -119,9 +120,8 @@ export async function recordKPIMetric(
     }
 
     return { success: true }
-  } catch (error: any) {
-    console.error('Error recording KPI metric:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -202,9 +202,8 @@ export async function getKPIAggregations(
     }))
 
     return { success: true, data: result }
-  } catch (error: any) {
-    console.error('Error fetching KPI aggregations:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -247,9 +246,8 @@ export async function getKPIMetrics(
     }
 
     return { success: true, data: data || [] }
-  } catch (error: any) {
-    console.error('Error fetching KPI metrics:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -270,9 +268,8 @@ export async function getAllCompanies(): Promise<{ success: boolean; data?: Arra
     }
 
     return { success: true, data: data || [] }
-  } catch (error: any) {
-    console.error('Error fetching companies:', error)
-    return { success: false, error: error.message }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -356,9 +353,8 @@ Use LaTeX for any formulas. Keep it simple and actionable.`
     }
 
     return { success: true, explanation }
-  } catch (error: any) {
-    console.error('Error generating AI explanation:', error)
-    return { success: false, error: error.message || 'Failed to generate AI explanation' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -458,8 +454,7 @@ Answer the question based on this data. Use LaTeX for any formulas. Keep it conc
     }
 
     return { success: true, answer }
-  } catch (error: any) {
-    console.error('Error in chat with KPI data:', error)
-    return { success: false, error: error.message || 'Failed to generate answer' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }

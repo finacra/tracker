@@ -1,6 +1,7 @@
 'use server'
 
 import { createServerContainer } from '@/lib/composition/server-container'
+import { handleActionError } from '@/lib/errors/handle-error'
 import type { Subscription } from '@/lib/subscriptions/subscription'
 
 export async function getTeamCompanySubscription(companyId: string): Promise<Subscription | null> {
@@ -104,13 +105,8 @@ export async function getUserCompanies() {
       success: true,
       companies
     }
-  } catch (error: any) {
-    console.error('[getUserCompanies] Error:', error)
-    return {
-      success: false,
-      companies: [],
-      error: error.message
-    }
+  } catch (error) {
+    return { ...handleActionError(error), companies: [] }
   }
 }
 
@@ -122,12 +118,7 @@ export async function getCompanyOwnerId(companyId: string) {
       success: true,
       ownerId
     }
-  } catch (error: any) {
-    console.error('[getCompanyOwnerId] Error:', error)
-    return {
-      success: false,
-      ownerId: null,
-      error: error.message
-    }
+  } catch (error) {
+    return { ...handleActionError(error), ownerId: null }
   }
 }

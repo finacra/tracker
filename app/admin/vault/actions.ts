@@ -15,6 +15,7 @@ import {
   normalizeFolderPath,
 } from '@/lib/vault/folder-utils'
 import { sanitizeFolderPath, escapeLikePattern } from '@/lib/utils/input-validation'
+import { handleActionError } from '@/lib/errors/handle-error'
 import type { AppUser } from '@/domain/models/AppUser'
 
 async function requireCurrentUser(): Promise<AppUser> {
@@ -66,14 +67,8 @@ export async function getFolders(): Promise<{ success: boolean; folders?: Folder
     let user: AppUser
     try {
       user = await requireCurrentUser()
-    } catch (authError: any) {
-      console.log('[VAULT ACTIONS] Auth check - SERVER SIDE:', {
-        hasUser: false,
-        userId: null,
-        authError: authError?.message || 'Not authenticated',
-      })
-      console.log('[VAULT ACTIONS] No user, returning unauthorized - SERVER SIDE')
-      return { success: false, error: 'Unauthorized' }
+    } catch (authError) {
+      return handleActionError(authError)
     }
 
     console.log('[VAULT ACTIONS] Current user resolved, creating admin client...')
@@ -98,14 +93,14 @@ export async function getFolders(): Promise<{ success: boolean; folders?: Folder
       
       const checkPromise = accessService.isSuperadmin(user.id)
       isSuperadmin = await Promise.race([checkPromise, timeoutPromise]) as boolean
-    } catch (error: any) {
+    } catch (error) {
       console.error('[VAULT ACTIONS] Superadmin check failed or timed out - SERVER SIDE:', error)
       rpcError = error
     }
     
     console.log('[VAULT ACTIONS] Superadmin check result - SERVER SIDE:', {
       isSuperadmin,
-      rpcError: rpcError?.message || rpcError,
+      rpcError: rpcError instanceof Error ? rpcError.message : rpcError,
     })
     
     if (!isSuperadmin) {
@@ -129,7 +124,7 @@ export async function getFolders(): Promise<{ success: boolean; folders?: Folder
         error: undefined,
         errorCode: undefined,
       })
-    } catch (testErr: any) {
+    } catch (testErr) {
       console.error('[VAULT ACTIONS] Test query failed - SERVER SIDE:', testErr)
       // Continue anyway, but log the error
     }
@@ -150,7 +145,7 @@ export async function getFolders(): Promise<{ success: boolean; folders?: Folder
       })
       
       folderData = await Promise.race([vaultTemplateRepository.getFolderPaths(), timeoutPromise]) as string[]
-    } catch (err: any) {
+    } catch (err) {
       console.error('[VAULT ACTIONS] Database query failed or timed out - SERVER SIDE:', err)
       error = err
     }
@@ -260,11 +255,8 @@ export async function getFolders(): Promise<{ success: boolean; folders?: Folder
     })
     console.log('[VAULT ACTIONS] ===== getFolders SUCCESS =====')
     return { success: true, folders }
-  } catch (error: any) {
-    console.error('[VAULT ACTIONS] ===== getFolders ERROR =====')
-    console.error('[VAULT ACTIONS] Error fetching folders - SERVER SIDE:', error)
-    console.error('[VAULT ACTIONS] Error stack - SERVER SIDE:', error?.stack)
-    return { success: false, error: error.message || 'Failed to fetch folders' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -327,9 +319,9 @@ export async function createFolder(
     // This ensures the folder appears in the system even if empty
     try {
       await vaultFolderRepository.createFolderPlaceholder(fullPath, description || null)
-    } catch (insertError: any) {
+    } catch (insertError) {
       // If unique constraint violation on document_name, folder might already exist via different template
-      if (insertError.code === '23505') {
+      if ((insertError as any).code === '23505') {
         return { success: false, error: 'Folder already exists' }
       }
       throw insertError
@@ -346,9 +338,8 @@ export async function createFolder(
         documentCount: 0,
       }
     }
-  } catch (error: any) {
-    console.error('Error creating folder:', error)
-    return { success: false, error: error.message || 'Failed to create folder' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -410,9 +401,8 @@ export async function updateFolder(
 
     revalidatePath('/admin')
     return { success: true, updatedCount: updatedCount || 0 }
-  } catch (error: any) {
-    console.error('Error updating folder:', error)
-    return { success: false, error: error.message || 'Failed to update folder' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -471,9 +461,8 @@ export async function deleteFolder(path: string): Promise<{ success: boolean; er
 
     revalidatePath('/admin')
     return { success: true }
-  } catch (error: any) {
-    console.error('Error deleting folder:', error)
-    return { success: false, error: error.message || 'Failed to delete folder' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -556,9 +545,8 @@ export async function getDocumentTemplates(
 
     console.log('[VAULT ACTIONS] ===== getDocumentTemplates SUCCESS =====')
     return { success: true, templates: normalizedTemplates as DocumentTemplate[] }
-  } catch (error: any) {
-    console.error('Error fetching document templates:', error)
-    return { success: false, error: error.message || 'Failed to fetch document templates' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -624,9 +612,8 @@ export async function createDocumentTemplate(
         is_mandatory: template.isMandatory,
       } as DocumentTemplate
     }
-  } catch (error: any) {
-    console.error('Error creating document template:', error)
-    return { success: false, error: error.message || 'Failed to create document template' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -740,9 +727,8 @@ export async function updateDocumentTemplate(
         is_mandatory: template.isMandatory,
       } as DocumentTemplate
     }
-  } catch (error: any) {
-    console.error('Error updating document template:', error)
-    return { success: false, error: error.message || 'Failed to update document template' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -781,8 +767,7 @@ export async function deleteDocumentTemplate(id: string): Promise<{ success: boo
 
     revalidatePath('/admin')
     return { success: true }
-  } catch (error: any) {
-    console.error('Error deleting document template:', error)
-    return { success: false, error: error.message || 'Failed to delete document template' }
+  } catch (error) {
+    return handleActionError(error)
   }
 }

@@ -2,6 +2,7 @@
 
 import { type RegulatoryRequirement } from '@/app/data-room/actions'
 import { queryReportEnrichment } from '@/lib/api/perplexity'
+import { handleActionError } from '@/lib/errors/handle-error'
 
 // Define the type locally to avoid import issues with server actions
 export interface EnrichedComplianceData {
@@ -142,8 +143,8 @@ export async function enrichComplianceRequirements(
     }
 
     return enriched
-  } catch (error: any) {
-    console.error('[enrichComplianceRequirements] Error:', error)
+  } catch (error) {
+    handleActionError(error)
     // Return fallback data on error
     return requirements.map(req => {
       const daysDelayed = calculateDaysDelayed(req.due_date, req.status)

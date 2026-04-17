@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { createServerContainer } from '@/lib/composition/server-container'
 import { getRazorpayInstance } from '@/lib/razorpay/client'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 // Trial verification amount: ₹2 (200 paise)
 const TRIAL_VERIFICATION_AMOUNT = 200
@@ -85,28 +86,10 @@ export async function POST(request: NextRequest) {
         notes: (order.notes as Record<string, string> | undefined) ?? null,
         paymentType: 'trial_verification',
       })
-    } catch (paymentError: any) {
+    } catch (paymentError) {
       console.error('[Trial Verification] Error storing payment:', paymentError)
-      console.error('[Trial Verification] Payment data:', {
-        user_id: user.id,
-        company_id: companyId || null,
-        provider_order_id: order.id,
-        amount: 2,
-        currency: currency,
-        status: 'pending',
-        tier: tier || null,
-        billing_cycle: 'monthly',
-        receipt: order.receipt,
-        payment_type: 'trial_verification',
-      })
       // Don't continue - we need the payment record for verification
-      return NextResponse.json(
-        {
-          error: `Failed to store payment record: ${paymentError.message}`,
-          details: paymentError
-        },
-        { status: 500 }
-      )
+      return handleAPIError(paymentError)
     }
 
     console.log('[Trial Verification] Payment record created for order:', order.id)
@@ -117,13 +100,7 @@ export async function POST(request: NextRequest) {
       currency: order.currency,
       keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
     })
-  } catch (error: any) {
-    console.error('Error creating trial verification order:', error)
-    return NextResponse.json(
-      {
-        error: error.message || 'Failed to create verification order',
-      },
-      { status: 500 }
-    )
+  } catch (error) {
+    return handleAPIError(error)
   }
 }

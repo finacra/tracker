@@ -39,7 +39,7 @@ function ResetPasswordPageInner() {
         if (!data.success) {
           setError(data.error || 'Invalid or expired reset link. Please request a new password reset.')
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error verifying token:', error)
         setError('Failed to verify reset link. Please try again.')
       } finally {
@@ -90,7 +90,7 @@ function ResetPasswordPageInner() {
       } else {
         setError(data.error || 'Failed to reset password')
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error resetting password:', error)
       setError('Failed to reset password. Please try again.')
     } finally {

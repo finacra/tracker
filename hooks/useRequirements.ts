@@ -51,9 +51,9 @@ export function useRequirements(
           }
         }
       })
-    } catch (err: any) {
+    } catch (err) {
       if (activeCompanyRef.current !== id) return
-      if (err?.message?.includes('UnrecognizedActionError')) {
+      if (err instanceof Error && err.message?.includes('UnrecognizedActionError')) {
         window.location.reload()
         return
       }
@@ -99,6 +99,13 @@ export function useRequirements(
     fetchedForRef.current = id
     activeCompanyRef.current = id
   }, [])
+
+  // Refresh when the CIA agent mutates requirements (tool calls)
+  useEffect(() => {
+    const handler = () => refresh()
+    window.addEventListener('cia:data-changed', handler)
+    return () => window.removeEventListener('cia:data-changed', handler)
+  }, [refresh])
 
   return { requirements, setRequirements, isLoading, refresh, markFresh }
 }

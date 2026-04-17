@@ -3,6 +3,7 @@ import { createServerContainer } from '@/lib/composition/server-container'
 import crypto from 'crypto'
 import { getTierById, type BillingCycle } from '@/lib/pricing/tiers'
 import { checkRateLimit, getClientIp } from '@/lib/utils/rate-limiter'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 export async function POST(request: NextRequest) {
   // Rate limit: 20 verification attempts per IP per 15 minutes
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { authService, paymentRepository, subscriptionRepository } = createServerContainer()
+    const { authService, paymentRepository, subscriptionRepository, companyRepository } = createServerContainer()
     const user = await authService.getCurrentUser()
 
     if (!user) {
@@ -162,15 +163,23 @@ export async function POST(request: NextRequest) {
       console.error('Error activating subscription:', subscriptionError)
     }
 
+    // Decide post-payment destination server-side (same pattern as createTrialSubscription):
+    // - Fresh user (no companies) → /onboarding so they can create one
+    // - Otherwise → /data-room scoped to the paid company or their first company
+    const ownedCompanies = await companyRepository.listOwnedByUser(user.id)
+    const destinationCompanyId = payment.companyId || ownedCompanies[0]?.id || null
+    const redirectTo = ownedCompanies.length === 0
+      ? '/onboarding'
+      : destinationCompanyId
+        ? `/data-room?company_id=${destinationCompanyId}`
+        : '/data-room'
+
     return NextResponse.json({
       success: true,
       message: 'Payment verified and subscription activated',
+      redirectTo,
     })
-  } catch (error: any) {
-    console.error('Error verifying payment:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to verify payment' },
-      { status: 500 }
-    )
+  } catch (error) {
+    return handleAPIError(error)
   }
 }

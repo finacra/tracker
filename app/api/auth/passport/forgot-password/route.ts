@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendPasswordResetEmail } from '@/lib/email/password-reset'
+import { handleAPIError } from '@/lib/errors/handle-error'
 
 /**
  * Request password reset
@@ -47,8 +48,7 @@ export async function POST(req: NextRequest) {
       success: true,
       message: 'If an account with that email exists, we\'ve sent a password reset link.',
     })
-  } catch (error: any) {
-    console.error('[Forgot Password API] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  } catch (error) {
+    return handleAPIError(error)
   }
 }

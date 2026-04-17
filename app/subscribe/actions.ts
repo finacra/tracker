@@ -1,7 +1,9 @@
 'use server'
 
 import { createServerContainer } from '@/lib/composition/server-container'
+import { handleActionError } from '@/lib/errors/handle-error'
 import { validateCompanyId } from '@/lib/utils/input-validation'
+import { prisma } from '@/lib/prisma'
 
 export async function getCompanyTrialEligibility(
   companyId: string | null,
@@ -82,12 +84,8 @@ export async function getCompanyTrialEligibility(
       eligible: !hasUsedCompanyTrial,
       reason: hasUsedCompanyTrial ? 'company_trial_used' : undefined,
     }
-  } catch (error: any) {
-    console.error('Error checking company trial eligibility:', error)
-    return {
-      success: false,
-      error: error.message || 'Failed to check company trial eligibility',
-    }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -123,11 +121,8 @@ export async function getSubscribeCompanyContext(
       userCompanies: userCompanies.map((company) => ({ id: company.id, name: company.name })),
       accessibleCompanies: accessibleCompanies.map((company) => ({ id: company.id, name: company.name })),
     }
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || 'Failed to load companies',
-    }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -141,13 +136,37 @@ export async function createTrialSubscription(targetCompanyId: string | null): P
   try {
     const { authService, companyRepository, subscriptionRepository } = createServerContainer()
     const user = await authService.requireCurrentUser()
+
+    // Block trial creation until the user's email is confirmed. Google
+    // OAuth users are trusted via their Google identity even if the
+    // legacy app_users.email_verified flag hasn't converged yet — the
+    // same logic the proxy middleware uses for page-level access.
+    const emailCheck = await prisma.$queryRaw<Array<{ email_verified: boolean | null; is_google: boolean }>>`
+      SELECT
+        au.email_verified,
+        EXISTS(
+          SELECT 1 FROM public.auth_identities ai
+          WHERE ai.app_user_id = au.id
+            AND ai.provider = 'passport'
+            AND ai.legacy_auth_id IS NOT NULL
+            AND ai.legacy_auth_id != ''
+            AND au.password_hash IS NULL
+        ) AS is_google
+      FROM public.app_users au
+      WHERE au.id = ${user.id}::uuid
+      LIMIT 1
+    `
+    const row = emailCheck[0]
+    if (!row || (row.email_verified !== true && !row.is_google)) {
+      return { success: false, error: 'Please verify your email before starting a trial.' }
+    }
+
     const ownedCompanies = await companyRepository.listOwnedByUser(user.id)
 
     if (ownedCompanies.length === 0) {
       try {
         await subscriptionRepository.createUserTrial(user.id, user.canonicalId)
-      } catch (trialErr: any) {
-        console.error('[TRIAL] createUserTrial FAILED:', trialErr.message || trialErr)
+      } catch (trialErr) {
         throw trialErr
       }
       return { success: true, redirectTo: '/onboarding' }
@@ -179,12 +198,8 @@ export async function createTrialSubscription(targetCompanyId: string | null): P
 
     await subscriptionRepository.createCompanyTrial(user.id, finalCompanyId, user.canonicalId)
     return { success: true, redirectTo: `/data-room?company_id=${finalCompanyId}` }
-  } catch (error: any) {
-    console.error('[TRIAL] Error:', error.message || error)
-    return {
-      success: false,
-      error: error.message || 'Failed to create trial',
-    }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
 
@@ -213,11 +228,7 @@ export async function getCompanySubscriptionState(
     const { subscriptionRepository } = createServerContainer()
     const subscription = await subscriptionRepository.getCompanySubscriptionState(companyId)
     return { success: true, subscription }
-  } catch (error: any) {
-    console.error('Error checking company subscription state:', error)
-    return {
-      success: false,
-      error: error.message || 'Failed to check company subscription state',
-    }
+  } catch (error) {
+    return handleActionError(error)
   }
 }
