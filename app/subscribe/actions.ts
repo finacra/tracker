@@ -197,7 +197,15 @@ export async function createTrialSubscription(targetCompanyId: string | null): P
     }
 
     await subscriptionRepository.createCompanyTrial(user.id, finalCompanyId, user.canonicalId)
-    return { success: true, redirectTo: `/data-room?company_id=${finalCompanyId}` }
+    // Route through /onboarding — the intended flow is
+    //   trial → /onboarding → (optional create company) → /data-room
+    // Sending the user straight to /data-room here means any stale
+    // access snapshot on the target company (e.g. the trial row hasn't
+    // yet propagated through react-query cache) bounces them to the
+    // subscription-expired page. /onboarding doesn't do that check —
+    // it either shows the create form or the "Go to Data Room" CTA
+    // once the limit is reached, both of which tolerate cache lag.
+    return { success: true, redirectTo: '/onboarding' }
   } catch (error) {
     return handleActionError(error)
   }

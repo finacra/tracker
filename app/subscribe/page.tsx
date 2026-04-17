@@ -162,19 +162,27 @@ function SubscribePageInner() {
     }
   }, [user, authLoading, router])
 
-  // If user already has subscription, redirect to data-room or onboarding (only once, prevent loops)
-  const hasRedirectedToDataRoomRef = useRef(false)
+  // Auto-redirect when the user already has a subscription and there's
+  // nothing for them to do on this page. We push them to /onboarding
+  // rather than /data-room — same reasoning as the trial-creation
+  // redirect: /data-room does a hard access check against a specific
+  // company and will bounce to /owner-subscription-expired whenever
+  // the target company's access snapshot is stale or the user is a
+  // team member on the first-ranked company. /onboarding is safe in
+  // every case — it shows the create form or the "Go to Data Room"
+  // CTA based on fresh subscription state and doesn't fail on
+  // per-company access edges.
+  const hasRedirectedAwayRef = useRef(false)
   useEffect(() => {
-    if (hasRedirectedToDataRoomRef.current) return
+    if (hasRedirectedAwayRef.current) return
     if (subLoading) return
     if (!user) return
 
     if (hasSubscription && (isTrial ? trialDaysRemaining > 0 : true) && !showUpgrade) {
-      hasRedirectedToDataRoomRef.current = true
-      const target = companyId ? `/data-room?company_id=${companyId}` : '/data-room'
-      router.replace(target)
+      hasRedirectedAwayRef.current = true
+      router.replace('/onboarding')
     }
-  }, [hasSubscription, isTrial, trialDaysRemaining, subLoading, companyId, router, user, showUpgrade])
+  }, [hasSubscription, isTrial, trialDaysRemaining, subLoading, router, user, showUpgrade])
 
   // Load Razorpay script on mount
   useEffect(() => {
