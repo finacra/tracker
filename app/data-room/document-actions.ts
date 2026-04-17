@@ -15,6 +15,7 @@ export async function uploadDocument(
   companyId: string,
   data: {
     folderName: string
+    folderId?: string | null
     documentName: string
     registrationDate?: string
     expiryDate?: string
@@ -62,6 +63,7 @@ export async function uploadDocument(
     companyId,
     documentType: sanitizedDocumentName,
     folderName: sanitizedFolderName,
+    folderId: data.folderId ?? null,
     registrationDate: data.registrationDate || null,
     expiryDate: data.expiryDate || null,
     isPortalRequired: data.isPortalRequired,

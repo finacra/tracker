@@ -31,6 +31,7 @@ export class PrismaDocumentRepository implements DocumentRepository {
                         company_id: doc.companyId,
                         document_type: doc.documentType,
                         folder_name: doc.folderName,
+                        folder_id: doc.folderId ?? null,
                         file_path: doc.filePath,
                         file_name: doc.fileName,
                         registration_date: doc.registrationDate ? new Date(doc.registrationDate) : null,

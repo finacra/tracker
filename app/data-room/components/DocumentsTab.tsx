@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import {
@@ -24,6 +24,7 @@ import AgentAssistedBulkUploadModal from './AgentAssistedBulkUploadModal'
 import CIAOverviewSection from './cia/CIAOverviewSection'
 import CIAFullscreen from './cia/CIAFullscreen'
 import VaultTreeView from './vault/VaultTreeView'
+import { listVaultFolders } from '@/app/data-room/actions-vault'
 
 // Interface for version groups
 interface VersionGroup {
@@ -184,9 +185,13 @@ export default function DocumentsTab({
     includeAttachments: false,
   })
   
-  // Upload states
+  // Upload states — `folder` holds the display breadcrumb (e.g.
+  // "Statutory Compliances › TDS") for the label; `folderId` is the FK
+  // into vault_folders and is what actually gets persisted so the doc
+  // lands inside the correct sub-folder.
   const [uploadFormData, setUploadFormData] = useState({
     folder: '',
+    folderId: '',
     documentName: '',
     registrationDate: '',
     expiryDate: '',
@@ -200,6 +205,7 @@ export default function DocumentsTab({
     periodKey: '',
     requirementId: '',
   })
+  const [vaultFolders, setVaultFolders] = useState<Array<{ id: string; parentId: string | null; slug: string; name: string; kind: string }>>([])
   const [isUploading, setIsUploading] = useState(false)
   
   // Bulk upload states
@@ -510,6 +516,51 @@ export default function DocumentsTab({
     }
   }
 
+  // Load vault folders for the legacy upload modal's folder picker so it
+  // can show sub-folders (MOA, AOA, TDS, GST, etc.) in addition to the
+  // top-level categories. Also refreshes on vault mutations so a
+  // user-created sub-folder shows up immediately.
+  useEffect(() => {
+    if (!currentCompany?.id) return
+    let cancelled = false
+    const load = async () => {
+      const res = await listVaultFolders(currentCompany.id)
+      if (!cancelled && res.success) setVaultFolders(res.folders || [])
+    }
+    load()
+    const handler = () => load()
+    window.addEventListener('vault:data-changed', handler)
+    window.addEventListener('cia:data-changed', handler)
+    return () => {
+      cancelled = true
+      window.removeEventListener('vault:data-changed', handler)
+      window.removeEventListener('cia:data-changed', handler)
+    }
+  }, [currentCompany?.id])
+
+  // Breadcrumb-labeled flat list of every folder in the vault (system +
+  // user, every depth). Drives the Upload Documents modal folder picker.
+  const vaultFolderOptions = useMemo(() => {
+    const byParent = new Map<string | null, typeof vaultFolders>()
+    for (const f of vaultFolders) {
+      const arr = byParent.get(f.parentId) || []
+      arr.push(f)
+      byParent.set(f.parentId, arr)
+    }
+    const out: Array<{ id: string; label: string; kind: string }> = []
+    const walk = (parentId: string | null, prefix: string) => {
+      const kids = byParent.get(parentId) || []
+      kids.sort((a, b) => a.kind === b.kind ? a.name.localeCompare(b.name) : a.kind === 'system' ? -1 : 1)
+      for (const f of kids) {
+        const label = prefix ? `${prefix} › ${f.name}` : f.name
+        out.push({ id: f.id, label, kind: f.kind })
+        walk(f.id, label)
+      }
+    }
+    walk(null, '')
+    return out
+  }, [vaultFolders])
+
   // Computed: Filter and sort documents
   const allDocuments = useMemo(() => {
     return (vaultDocuments || [])
@@ -647,6 +698,7 @@ export default function DocumentsTab({
       // 2. Save metadata via Server Action
       const result = await uploadDocument(currentCompany.id, {
         folderName: uploadFormData.folder,
+        folderId: uploadFormData.folderId || null,
         documentName: uploadFormData.documentName,
         registrationDate: uploadFormData.registrationDate,
         expiryDate: uploadFormData.expiryDate,
@@ -678,6 +730,7 @@ export default function DocumentsTab({
         setIsUploadModalOpen(false)
         setUploadFormData({
           folder: '',
+          folderId: '',
           documentName: '',
           registrationDate: '',
           expiryDate: '',
@@ -1406,37 +1459,43 @@ export default function DocumentsTab({
                         />
                         <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-gray-800 rounded-lg shadow-2xl z-20 max-h-64 overflow-y-auto">
                           {(() => {
+                            // Full vault tree with breadcrumbs so users can
+                            // pick any sub-folder (MOA / AOA / TDS / GST …)
+                            // directly instead of only the top-level card.
                             const suggestions = uploadFormData.documentName
                               ? suggestFoldersForDocument(uploadFormData.documentName)
                               : []
-    
-                            return documentFolders.map((folder) => {
-                              const isRecommended = suggestions.includes(folder)
-                              const { authority, formCount } = getFolderDescription(folder)
-    
+                            const options = vaultFolderOptions.length > 0
+                              ? vaultFolderOptions
+                              : documentFolders.map((name: string) => ({ id: '', label: name, kind: 'legacy' as const }))
+
+                            return options.map((o) => {
+                              // Recommendation highlights top-level card names.
+                              const topLabel = o.label.split(' › ')[0]
+                              const isRecommended = suggestions.includes(topLabel) || suggestions.includes(o.label)
+
                               return (
                                 <button
-                                  key={folder}
+                                  key={o.id || o.label}
                                   onClick={() => {
-                                    setUploadFormData((prev) => ({ ...prev, folder, documentName: prev.documentName }))
+                                    setUploadFormData((prev) => ({
+                                      ...prev,
+                                      folder: o.label,
+                                      folderId: o.id,
+                                      documentName: prev.documentName,
+                                    }))
                                     setIsFolderDropdownOpen(false)
                                   }}
-                                  className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-gray-800 transition-colors text-white text-sm sm:text-base ${isRecommended ? 'bg-blue-500/10 border-l-2 border-blue-500' : ''
-                                    }`}
+                                  className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-gray-800 transition-colors text-white text-sm sm:text-base ${isRecommended ? 'bg-blue-500/10 border-l-2 border-blue-500' : ''}`}
                                 >
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2 min-w-0 flex-1">
                                       {isRecommended && (
                                         <span className="text-[10px] sm:text-xs text-blue-400 font-medium flex-shrink-0">Recommended</span>
                                       )}
-                                      <span className="truncate">{folder}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-[10px] sm:text-xs text-gray-400 flex-shrink-0 ml-2">
-                                      {formCount > 0 && <span>{formCount} forms</span>}
-                                      {authority && (
-                                        <span className="text-gray-500 hidden sm:inline">
-                                          · {authority.split('(')[0].trim()}
-                                        </span>
+                                      <span className="truncate">{o.label}</span>
+                                      {o.kind === 'user' && (
+                                        <span className="text-[9px] uppercase tracking-wider text-gray-500 border border-gray-700 px-1 rounded flex-shrink-0">Custom</span>
                                       )}
                                     </div>
                                   </div>

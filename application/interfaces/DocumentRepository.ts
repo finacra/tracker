@@ -28,6 +28,7 @@ export interface NewCompanyDocumentRecord {
   filePath: string
   fileName: string
   folderName: string
+  folderId?: string | null
   registrationDate: string | null
   expiryDate?: string | null
   isPortalRequired?: boolean
