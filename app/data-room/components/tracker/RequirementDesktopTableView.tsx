@@ -113,21 +113,18 @@ export default function RequirementDesktopTableView({
       showToast('Enter a valid amount', 'error')
       return
     }
-    const key = `${req.id}:${field}`
-    setSavingCell(prev => ({ ...prev, [key]: true }))
-    try {
-      const result = await updateRequirement(req.id, currentCompany?.id || null, { [field]: parsed } as any)
-      if (result.success) {
-        setRegulatoryRequirements(prev => prev.map(r => r.id === req.id ? { ...r, [field]: parsed } : r))
-      } else {
-        showToast(result.error || 'Failed to save', 'error')
-      }
-    } catch {
-      showToast('Failed to save', 'error')
-    } finally {
-      setSavingCell(prev => ({ ...prev, [key]: false }))
-      setEditingCell(null)
-      setCellDraft('')
+    // Optimistic: update the row immediately so Payable/Paid/Auto-calc
+    // all reflect the new number before the DB round trip completes.
+    // Previously this waited ~200-500ms on Vercel which felt broken.
+    const prevValue = (req as any)[field] ?? null
+    setRegulatoryRequirements(prev => prev.map(r => r.id === req.id ? { ...r, [field]: parsed } : r))
+    setEditingCell(null)
+    setCellDraft('')
+    const result = await updateRequirement(req.id, currentCompany?.id || null, { [field]: parsed } as any)
+    if (!result.success) {
+      // Roll back on failure and surface the error
+      setRegulatoryRequirements(prev => prev.map(r => r.id === req.id ? { ...r, [field]: prevValue } : r))
+      showToast(result.error || 'Failed to save', 'error')
     }
   }
 
@@ -187,9 +184,6 @@ export default function RequirementDesktopTableView({
           <th className="px-4 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
             AUTO-CALC
           </th>
-          <th className="px-4 py-4 text-center text-xs font-medium text-gray-400 uppercase tracking-wider">
-            FILING DOC
-          </th>
           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
             DOCS
           </th>
@@ -224,7 +218,7 @@ export default function RequirementDesktopTableView({
             {/* Visual Separator between categories */}
             {groupIndex > 0 && (
               <tr>
-                <td colSpan={canEdit ? 17 : 16} className="px-0 py-0">
+                <td colSpan={canEdit ? 16 : 15} className="px-0 py-0">
                   <div className="h-0.5 bg-gradient-to-r from-transparent via-white/30 to-transparent my-2"></div>
                 </td>
               </tr>
@@ -491,42 +485,6 @@ export default function RequirementDesktopTableView({
                       )
                     })()}
                   </td>
-                  {/* FILING DOC: Upload / Linked */}
-                  <td className="px-4 py-4 text-center">
-                    {(() => {
-                      const linkedDocs = docsByRequirement.get(req.id) || []
-                      const hasLinked = linkedDocs.length > 0 || !!req.filing_document_id
-                      if (hasLinked) {
-                        return (
-                          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400" title={`${linkedDocs.length} document(s) linked`}>
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                            Linked
-                          </span>
-                        )
-                      }
-                      if (!canEdit) return <span className="text-gray-600 text-xs">—</span>
-                      return (
-                        <button
-                          type="button"
-                          onClick={() => setDocumentUploadModal({
-                            isOpen: true,
-                            requirementId: req.id,
-                            requirement: req.requirement,
-                            category: req.category,
-                            documentName: 'Filing proof (challan / acknowledgement)',
-                            complianceType: req.compliance_type || 'one-time',
-                            dueDate: req.dueDate,
-                            financialYear: (req as any).financial_year || null,
-                            allRequiredDocs: (req as any).required_documents || [],
-                          })}
-                          className="text-[11px] px-2 py-1 border border-gray-700 rounded text-gray-300 hover:border-gray-500 hover:text-white inline-flex items-center gap-1"
-                          title="Upload challan / acknowledgement — agent extracts amounts & dates"
-                        >
-                          ↑ Upload
-                        </button>
-                      )
-                    })()}
-                  </td>
                   <td className="px-6 py-4 hidden md:table-cell">
                     {/* Documents Required Column — clickable checklist */}
                     {(() => {
@@ -541,20 +499,29 @@ export default function RequirementDesktopTableView({
                         <div className="relative">
                           <button
                             onClick={() => setOpenDocChecklist(isOpen ? null : req.id)}
-                            className={`px-2.5 py-1 text-xs rounded-lg border flex items-center gap-1.5 transition-colors ${
+                            className={`px-2.5 py-1.5 text-xs rounded-lg border flex items-center gap-1.5 transition-colors ${
                               allDone
                                 ? 'bg-green-500/15 text-green-400 border-green-500/30'
                                 : uploadedCount > 0
                                   ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30'
-                                  : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500'
+                                  : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500 hover:text-white'
                             }`}
+                            title={allDone ? 'All required documents uploaded' : 'Click to upload required documents'}
                           >
                             {allDone ? (
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                              </svg>
                             ) : (
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                              // Cloud-upload icon — reads clearly as "upload here"
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 15a4 4 0 004 4h10a5 5 0 001-9.9A6 6 0 007 10a4 4 0 00-4 5z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 12v6m0-6l-2.5 2.5M12 12l2.5 2.5" />
+                              </svg>
                             )}
-                            <span>{uploadedCount}/{requiredDocs.length}</span>
+                            <span className="font-medium">
+                              {allDone ? 'All uploaded' : `${uploadedCount}/${requiredDocs.length} · Upload`}
+                            </span>
                           </button>
                           {/* Click popup checklist */}
                           {isOpen && (
