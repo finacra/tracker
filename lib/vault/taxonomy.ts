@@ -88,8 +88,16 @@ export const LEGACY_FOLDER_MAP: Record<string, string> = {
   'Financial Statements':         'financials',
   'Annual Report':                'financials',
   'Payroll':                      'financials',
+  // Legacy top-level card names from the old DocumentsTab
+  'Financials and licenses':      'financials',
+  'Financials & licenses':        'financials',
+
+  'Taxation & GST Compliance':    'statutory-compliances',
+  'Tax Compliance':               'statutory-compliances',
 
   'MCA Filings':                  'mca-filings',
   'ROC Filings':                  'mca-filings',
   'Compliance':                   'mca-filings',
+  'Regulatory & MCA Filings':     'mca-filings',
+  'Regulatory Filings':           'mca-filings',
 }

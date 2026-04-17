@@ -53,24 +53,48 @@ async function migrateDocumentFolders(companyId: string) {
   await ensureSystemFolders(companyId)
   const systemRows = await prisma.vaultFolder.findMany({
     where: { company_id: companyId, kind: 'system' },
-    select: { id: true, slug: true },
+    select: { id: true, slug: true, name: true, parent_id: true },
   })
-  const slugToId = new Map(systemRows.map(r => [r.slug, r.id]))
+  const slugToFolder = new Map(systemRows.map(r => [r.slug, r]))
 
+  // All docs for this company that still need migration (folder_id OR
+  // folder_name pointing at a legacy string). Touch both so the DocumentsTab
+  // card UI — which groups by folder_name — shows files under the new names.
   const docs = await prisma.companyDocument.findMany({
-    where: { company_id: companyId, folder_id: null, deleted_at: null },
-    select: { id: true, folder_name: true },
+    where: { company_id: companyId, deleted_at: null },
+    select: { id: true, folder_name: true, folder_id: true },
   })
 
-  const result = { migrated: 0, unmatched: 0 }
-  const defaultId = slugToId.get('financials') || systemRows[0]?.id
+  const result = { migrated: 0, renamedOnly: 0, unmatched: 0 }
+  const defaultFolder = slugToFolder.get('financials') || systemRows[0]
 
   for (const doc of docs) {
     const slug = doc.folder_name ? LEGACY_FOLDER_MAP[doc.folder_name] : undefined
-    const targetId = (slug && slugToId.get(slug)) || defaultId
-    if (!targetId) { result.unmatched++; continue }
-    await prisma.companyDocument.update({ where: { id: doc.id }, data: { folder_id: targetId } })
-    if (slug) result.migrated++
+    const target = (slug && slugToFolder.get(slug)) || defaultFolder
+    if (!target) { result.unmatched++; continue }
+
+    // Figure out the display name to write back. For a nested system
+    // folder (e.g. "moa" under "constitutional"), use the top-level
+    // parent's name since the card UI only shows top-level folders.
+    let displayName = target.name
+    if (target.parent_id) {
+      const parent = systemRows.find(r => r.id === target.parent_id)
+      if (parent) displayName = parent.name
+    }
+
+    const needsFolderId = doc.folder_id !== target.id
+    const needsRename = doc.folder_name !== displayName
+    if (!needsFolderId && !needsRename) continue
+
+    await prisma.companyDocument.update({
+      where: { id: doc.id },
+      data: {
+        ...(needsFolderId ? { folder_id: target.id } : {}),
+        ...(needsRename ? { folder_name: displayName } : {}),
+      },
+    })
+    if (slug && needsFolderId) result.migrated++
+    else if (needsRename) result.renamedOnly++
     else result.unmatched++
   }
   return result

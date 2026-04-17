@@ -766,9 +766,9 @@ export default function DocumentsTab({
         'Other Compliance Documents': 'Other',
         'Professional Tax': 'Prof. Tax',
         'Constitutional Documents': 'Other',
-        'Financials and licenses': 'Other',
-        'Taxation & GST Compliance': 'GST',
-        'Regulatory & MCA Filings': 'RoC'
+        'Financials': 'Other',
+        'Statutory Compliances': 'GST',
+        'MCA Filings': 'RoC'
       }
       return folderMap[folderName] || null
     } else if (['AE', 'SA', 'OM', 'QA', 'BH'].includes(countryCode || '')) {
@@ -777,7 +777,7 @@ export default function DocumentsTab({
         'VAT & Tax Compliance': 'VAT',
         'Corporate & Regulatory Filings': 'Corporate Tax',
         'Constitutional Documents': 'Other',
-        'Financials and licenses': 'Other'
+        'Financials': 'Other'
       }
       return folderMap[folderName] || null
     } else if (countryCode === 'US') {
@@ -787,7 +787,7 @@ export default function DocumentsTab({
         'State Tax Returns': 'State Tax',
         'Business License & Registration': 'Business License',
         'Constitutional Documents': 'Other',
-        'Financials and licenses': 'Other'
+        'Financials': 'Other'
       }
       return folderMap[folderName] || null
     }
@@ -840,13 +840,13 @@ export default function DocumentsTab({
     if (countryCode === 'IN') {
       // India-specific patterns
       if (docLower.includes('gstr') || docLower.includes('gst') || docLower.includes('cmp-') || docLower.includes('itc-') || docLower.includes('iff')) {
-        suggestions.push('Taxation & GST Compliance')
+        suggestions.push('Statutory Compliances')
       }
       if (docLower.includes('itr') || docLower.includes('form 24') || docLower.includes('form 26') || docLower.includes('form 27') || docLower.includes('tds') || docLower.includes('tcs')) {
-        suggestions.push('Taxation & GST Compliance')
+        suggestions.push('Statutory Compliances')
       }
       if (docLower.includes('mgt') || docLower.includes('aoc') || docLower.includes('roc') || docLower.includes('dir-') || docLower.includes('pas-') || docLower.includes('ben-') || docLower.includes('inc-') || docLower.includes('adt-') || docLower.includes('cra-') || docLower.includes('llp form')) {
-        suggestions.push('Regulatory & MCA Filings')
+        suggestions.push('MCA Filings')
       }
       if (docLower.includes('epf') || docLower.includes('esi') || docLower.includes('ecr') || docLower.includes('form 5a') || docLower.includes('form 2') || docLower.includes('form 10') || docLower.includes('form 19')) {
         suggestions.push('Labour Law Compliance')
@@ -1285,9 +1285,9 @@ export default function DocumentsTab({
               return false
             })
     
-            // Filter uploaded docs by folder, but move PAN and TAN to Financials and licenses
+            // Filter uploaded docs by folder, but move PAN and TAN to Financials
             let uploadedDocs = filteredVaultDocs.filter(d => {
-              if (folderName === 'Financials and licenses') {
+              if (folderName === 'Financials') {
                 // Include PAN and TAN from any folder
                 return d.folder_name === folderName ||
                   (d.document_type === 'PAN' || d.document_type === 'TAN')
@@ -1406,8 +1406,8 @@ export default function DocumentsTab({
             }
     
             const iconColor = folderName === 'Constitutional Documents' ? 'bg-gray-500' :
-              folderName === 'Financials and licenses' ? 'bg-purple-500' :
-                folderName === 'Taxation & GST Compliance' ? 'bg-green-500' : 'bg-blue-500'
+              folderName === 'Financials' ? 'bg-purple-500' :
+                folderName === 'Statutory Compliances' ? 'bg-green-500' : 'bg-blue-500'
     
             const isExpanded = expandedFolders.has(folderName)
             const uploadedCount = filteredFolderDocs.filter((d: any) => d.status === 'uploaded').length

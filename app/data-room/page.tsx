@@ -1305,45 +1305,54 @@ function DataRoomPageInner() {
 
   const [isUploading, setIsUploading] = useState(false);
 
-  // Country-aware default folders and documents
+  // Country-aware default folders and documents. For IN this matches the
+  // PRD v1.1 five-folder vault taxonomy (Constitutional / Licences /
+  // Statutory Compliances / Financials / MCA Filings). Must stay in sync
+  // with lib/vault/taxonomy.ts — that file seeds vault_folders; this
+  // function drives the DocumentsTab card UI.
   const getCountryDefaultFolders = (countryCode: string): string[] => {
     const config = countryConfig;
     if (!config)
       return [
         "Constitutional Documents",
-        "Financials and licenses",
-        "Taxation & GST Compliance",
-        "Regulatory & MCA Filings",
+        "Licences",
+        "Statutory Compliances",
+        "Financials",
+        "MCA Filings",
       ];
 
     // Base folders that apply to all countries
-    const baseFolders = ["Constitutional Documents", "Financials and licenses"];
+    const baseFolders = ["Constitutional Documents"];
 
     // Country-specific compliance folders based on compliance categories
     const complianceFolders: string[] = [];
 
     if (countryCode === "IN") {
-      // India-specific folders
+      // India-specific folders — matches lib/vault/taxonomy.ts
       complianceFolders.push(
-        "Taxation & GST Compliance",
-        "Regulatory & MCA Filings",
+        "Licences",
+        "Statutory Compliances",
+        "Financials",
+        "MCA Filings",
       );
     } else if (["AE", "SA", "OM", "QA", "BH"].includes(countryCode)) {
       // GCC countries
       complianceFolders.push(
+        "Financials",
         "VAT & Tax Compliance",
         "Corporate & Regulatory Filings",
       );
     } else if (countryCode === "US") {
       // USA
       complianceFolders.push(
+        "Financials",
         "Federal Tax Returns",
         "State Tax Returns",
         "Business License & Registration",
       );
     } else {
       // Fallback
-      complianceFolders.push("Tax Compliance", "Regulatory Filings");
+      complianceFolders.push("Financials", "Tax Compliance", "Regulatory Filings");
     }
 
     return [...baseFolders, ...complianceFolders];
@@ -1362,9 +1371,9 @@ function DataRoomPageInner() {
           "Rental Deed",
           "DIN Certificate",
         ],
-        "Financials and licenses": ["PAN", "TAN"],
-        "Taxation & GST Compliance": ["GST Returns", "Income Tax Returns"],
-        "Regulatory & MCA Filings": ["Annual Returns", "Board Minutes"],
+        "Financials": ["PAN", "TAN"],
+        "Statutory Compliances": ["GST Returns", "Income Tax Returns"],
+        "MCA Filings": ["Annual Returns", "Board Minutes"],
       };
     }
 
@@ -1389,11 +1398,11 @@ function DataRoomPageInner() {
 
     if (countryCode === "IN") {
       // India-specific documents
-      complianceDocs["Taxation & GST Compliance"] = [
+      complianceDocs["Statutory Compliances"] = [
         "GST Returns",
         "Income Tax Returns",
       ];
-      complianceDocs["Regulatory & MCA Filings"] = [
+      complianceDocs["MCA Filings"] = [
         "Annual Returns",
         "Board Minutes",
         "ROC Filings",
@@ -1435,7 +1444,7 @@ function DataRoomPageInner() {
         constitutionalDocs.length > 0
           ? constitutionalDocs
           : ["Certificate of Incorporation", "Memorandum of Association"],
-      "Financials and licenses":
+      "Financials":
         financialDocs.length > 0 ? financialDocs : [config.labels.taxId],
       ...complianceDocs,
     };
@@ -1499,7 +1508,7 @@ function DataRoomPageInner() {
   // Merge database templates with defaults, filtering out hidden templates
   const predefinedDocuments = useMemo(() => {
     if (documentTemplates.length > 0) {
-      // Start with defaults (ensures PAN and TAN are in Financials and licenses)
+      // Start with defaults (ensures PAN and TAN are in Financials)
       const merged = { ...DEFAULT_DOCUMENTS };
 
       // Add/override with database templates, but move PAN and TAN to correct folder
@@ -1513,7 +1522,7 @@ function DataRoomPageInner() {
           return;
         }
 
-        // Country-specific tax ID documents should be in "Financials and licenses"
+        // Country-specific tax ID documents should be in "Financials"
         const taxIdLabel = countryConfig?.labels.taxId || "PAN";
         if (
           docName === taxIdLabel ||
@@ -1526,18 +1535,18 @@ function DataRoomPageInner() {
         ) {
           // Remove from any other folder
           Object.keys(merged).forEach((folder) => {
-            if (folder !== "Financials and licenses") {
+            if (folder !== "Financials") {
               merged[folder] = merged[folder].filter(
                 (d: string) => d !== docName,
               );
             }
           });
-          // Add to Financials and licenses
-          if (!merged["Financials and licenses"]) {
-            merged["Financials and licenses"] = [];
+          // Add to Financials
+          if (!merged["Financials"]) {
+            merged["Financials"] = [];
           }
-          if (!merged["Financials and licenses"].includes(docName)) {
-            merged["Financials and licenses"].push(docName);
+          if (!merged["Financials"].includes(docName)) {
+            merged["Financials"].push(docName);
           }
         } else {
           // For other documents, add to their specified folder
@@ -2962,9 +2971,9 @@ function DataRoomPageInner() {
         "Other Compliance Documents": "Other",
         "Professional Tax": "Prof. Tax",
         "Constitutional Documents": "Other",
-        "Financials and licenses": "Other",
-        "Taxation & GST Compliance": "GST",
-        "Regulatory & MCA Filings": "RoC",
+        "Financials": "Other",
+        "Statutory Compliances": "GST",
+        "MCA Filings": "RoC",
       };
       return folderMap[folderName] || null;
     } else if (["AE", "SA", "OM", "QA", "BH"].includes(countryCode || "")) {
@@ -2973,7 +2982,7 @@ function DataRoomPageInner() {
         "VAT & Tax Compliance": "VAT",
         "Corporate & Regulatory Filings": "Corporate Tax",
         "Constitutional Documents": "Other",
-        "Financials and licenses": "Other",
+        "Financials": "Other",
       };
       return folderMap[folderName] || null;
     } else if (countryCode === "US") {
@@ -2983,7 +2992,7 @@ function DataRoomPageInner() {
         "State Tax Returns": "State Tax",
         "Business License & Registration": "Business License",
         "Constitutional Documents": "Other",
-        "Financials and licenses": "Other",
+        "Financials": "Other",
       };
       return folderMap[folderName] || null;
     }
@@ -3104,7 +3113,7 @@ function DataRoomPageInner() {
         docLower.includes("itc-") ||
         docLower.includes("iff")
       ) {
-        suggestions.push("Taxation & GST Compliance");
+        suggestions.push("Statutory Compliances");
       }
       if (
         docLower.includes("itr") ||
@@ -3114,7 +3123,7 @@ function DataRoomPageInner() {
         docLower.includes("tds") ||
         docLower.includes("tcs")
       ) {
-        suggestions.push("Taxation & GST Compliance");
+        suggestions.push("Statutory Compliances");
       }
       if (
         docLower.includes("mgt") ||
@@ -3128,7 +3137,7 @@ function DataRoomPageInner() {
         docLower.includes("cra-") ||
         docLower.includes("llp form")
       ) {
-        suggestions.push("Regulatory & MCA Filings");
+        suggestions.push("MCA Filings");
       }
       if (
         docLower.includes("epf") ||
