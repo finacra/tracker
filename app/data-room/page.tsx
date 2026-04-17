@@ -19,6 +19,7 @@ import React from "react";
 const TrackerTab = lazy(() => import("./components/tracker/TrackerTab"));
 const DocumentsTab = lazy(() => import("./components/DocumentsTab"));
 const CIAWidget = lazy(() => import("./components/cia/CIAWidget"));
+const AgentAssistedUploadModalLazy = lazy(() => import("./components/AgentAssistedUploadModal"));
 const ReportsTab = lazy(() => import("./components/ReportsTab"));
 const OverviewTab = lazy(() => import("./components/OverviewTab"));
 const NoticesTab = lazy(() => import("./components/NoticesTab"));
@@ -4757,198 +4758,31 @@ function DataRoomPageInner() {
       </div>
 
       {/* Document Upload Modal from Tracker - Rendered at parent level so it's always available */}
-      {documentUploadModal && documentUploadModal.isOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-800">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-light text-white">Upload Document</h3>
-                  <p className="text-sm text-gray-400 mt-1">Upload document for compliance requirement</p>
-                </div>
-                <button
-                  onClick={() => {
-                    if (!uploadingDocument) {
-                      setDocumentUploadModal(null);
-                      setUploadFile(null);
-                      setUploadProgress(0);
-                      setUploadStage("");
-                      setPreviewFileUrl(null);
-                    }
-                  }}
-                  disabled={uploadingDocument}
-                  className="text-gray-400 hover:text-white transition-colors disabled:opacity-50"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Requirement Info */}
-              <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-800">
-                <div className="space-y-2">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-1">Requirement</label>
-                    <div className="text-white font-medium">{documentUploadModal.requirement}</div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-1">Document Type</label>
-                    <div className="text-blue-400 font-medium">{documentUploadModal.documentName}</div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-1">Category</label>
-                    <div className="text-gray-300 text-sm">{documentUploadModal.category}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* File Upload Area */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Select File</label>
-                <div
-                  className={`border-2 border-dashed rounded-lg p-6 transition-colors ${uploadFile
-                      ? 'border-green-500/50 bg-green-500/10'
-                      : 'border-gray-700 bg-gray-900/50 hover:border-gray-600'
-                    }`}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const file = e.dataTransfer.files[0];
-                    if (file) {
-                      setUploadFile(file);
-                    }
-                  }}
-                >
-                  {!uploadFile ? (
-                    <div className="text-center">
-                      <svg className="w-12 h-12 mx-auto text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                      <p className="text-gray-400 text-sm mb-2">Drag and drop a file here, or click to browse</p>
-                      <p className="text-gray-500 text-xs">Supports: PDF, Images (JPG, PNG), Word (DOC, DOCX)</p>
-                      <input
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setUploadFile(file);
-                          }
-                        }}
-                        className="hidden"
-                        id="tracker-file-upload-input"
-                      />
-                      <label
-                        htmlFor="tracker-file-upload-input"
-                        className="mt-3 inline-block px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors cursor-pointer text-sm font-medium"
-                      >
-                        Browse Files
-                      </label>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <svg className="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-white font-medium truncate">{uploadFile.name}</p>
-                              <p className="text-gray-400 text-xs mt-0.5">
-                                {(uploadFile.size / 1024 / 1024).toFixed(2)} MB • {uploadFile.type || 'Unknown type'}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => setUploadFile(null)}
-                          disabled={uploadingDocument}
-                          className="text-gray-400 hover:text-red-400 transition-colors disabled:opacity-50 ml-2"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Upload Progress */}
-              {uploadingDocument && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400">{uploadStage || 'Uploading...'}</span>
-                    <span className="text-white font-medium">{uploadProgress}%</span>
-                  </div>
-                  <div className="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden">
-                    <div
-                      className="bg-white h-full rounded-full transition-all duration-300 ease-out"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="pt-4 border-t border-gray-800 flex justify-end gap-3">
-                <button
-                  onClick={() => {
-                    if (!uploadingDocument) {
-                      setDocumentUploadModal(null);
-                      setUploadFile(null);
-                      setUploadProgress(0);
-                      setUploadStage("");
-                      setPreviewFileUrl(null);
-                    }
-                  }}
-                  disabled={uploadingDocument}
-                  className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    if (handleTrackerDocumentUpload) {
-                      handleTrackerDocumentUpload().catch((err) => {
-                        console.error('Upload error:', err);
-                        showToast(`Error uploading document: ${err.message || 'Unknown error'}`, 'error');
-                      });
-                    } else {
-                      console.error('handleTrackerDocumentUpload is not available');
-                      showToast('Upload handler is not available', 'error');
-                    }
-                  }}
-                  disabled={!uploadFile || uploadingDocument || !handleTrackerDocumentUpload}
-                  className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
-                >
-                  {uploadingDocument ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                      {uploadStage || 'Uploading...'}
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                      Upload Document
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Tracker-initiated document upload — routed through the same
+          agent modal the vault uses, so we get OCR, agent routing to
+          the right sub-folder, folder_id persistence, and automatic
+          requirement linkage. The old bespoke modal is gone. */}
+      {documentUploadModal && documentUploadModal.isOpen && currentCompany?.id && (
+        <Suspense fallback={null}>
+          <AgentAssistedUploadModalLazy
+            isOpen={true}
+            companyId={currentCompany.id}
+            defaultRequirementId={documentUploadModal.requirementId}
+            onClose={() => {
+              setDocumentUploadModal(null);
+              setUploadFile(null);
+              setUploadProgress(0);
+              setUploadStage('');
+              setPreviewFileUrl(null);
+            }}
+            onFinalized={() => {
+              setDocumentUploadModal(null);
+              fetchVaultDocuments();
+              if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('vault:data-changed'));
+              if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('cia:data-changed'));
+            }}
+          />
+        </Suspense>
       )}
 
       <ToastContainer />
