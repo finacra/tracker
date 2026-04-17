@@ -100,5 +100,12 @@ export function useRequirements(
     activeCompanyRef.current = id
   }, [])
 
+  // Refresh when the CIA agent mutates requirements (tool calls)
+  useEffect(() => {
+    const handler = () => refresh()
+    window.addEventListener('cia:data-changed', handler)
+    return () => window.removeEventListener('cia:data-changed', handler)
+  }, [refresh])
+
   return { requirements, setRequirements, isLoading, refresh, markFresh }
 }

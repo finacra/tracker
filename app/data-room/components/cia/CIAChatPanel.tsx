@@ -7,6 +7,7 @@ import CIAInput from './CIAInput'
 import { useCIAHistory, type CIAMessage } from './useCIAHistory'
 import { useCIAChat, type Source } from './useCIAChat'
 import { useAuth } from '@/hooks/useAuth'
+import AgentAssistedUploadModal from '../AgentAssistedUploadModal'
 
 interface Props {
   companyId: string
@@ -20,6 +21,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
   const history = useCIAHistory(companyId, user?.id)
   const [streamingContent, setStreamingContent] = useState('')
   const [pendingSources, setPendingSources] = useState<Source[]>([])
+  const [uploadOpen, setUploadOpen] = useState(false)
   const contentAccumulator = useRef('')
 
   const ensureConversation = useCallback(async (): Promise<string> => {
@@ -35,6 +37,13 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
     }, []),
     onSources: useCallback((sources: Source[]) => {
       setPendingSources(sources)
+    }, []),
+    onToolResult: useCallback((_id: string, ok: boolean) => {
+      // Broadcast a refresh hint so the tracker re-reads requirements/filings
+      // after the agent mutates them. TrackerContext listens for this event.
+      if (ok && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('cia:data-changed'))
+      }
     }, []),
     onDone: useCallback(() => {
       const convId = history.activeConversationId
@@ -169,6 +178,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
                   messages={currentMessages}
                   streamingContent={streamingContent}
                   steps={chat.steps}
+                  toolActivities={chat.toolActivities}
                   isStreaming={chat.isStreaming}
                 />
               )}
@@ -178,6 +188,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
                 <CIAInput
                   onSend={handleSend}
                   onStop={chat.abort}
+                  onAttach={() => setUploadOpen(true)}
                   isStreaming={chat.isStreaming}
                   suggestedQuestions={suggestedQuestions}
                   showSuggestions={isEmpty && !chat.isStreaming}
@@ -187,6 +198,22 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
           </div>
         </div>
       </div>
+
+      {uploadOpen && (
+        <AgentAssistedUploadModal
+          isOpen={uploadOpen}
+          companyId={companyId}
+          onClose={() => setUploadOpen(false)}
+          onFinalized={() => {
+            setUploadOpen(false)
+            // The CIA agent will see the new doc on its next turn (RAG). Also
+            // refresh the tracker since the upload may have attached to a rule.
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('cia:data-changed'))
+            }
+          }}
+        />
+      )}
     </>
   )
 }
