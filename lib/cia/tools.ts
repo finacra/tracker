@@ -8,7 +8,7 @@
  */
 
 import { prisma } from '@/lib/prisma'
-import { updateRequirement, updateRequirementStatus } from '@/app/data-room/actions'
+import { updateRequirement } from '@/app/data-room/actions'
 import { runApplicabilityEvaluation, overrideAssessment } from '@/app/data-room/actions-evaluator'
 import { recordFact, fyWindow } from '@/lib/compliance/facts'
 
@@ -218,7 +218,11 @@ const HANDLERS: Record<string, ToolHandler> = {
     const errors: string[] = []
     for (const id of ids) {
       try {
-        const r = await updateRequirementStatus(id, ctx.companyId, args.status)
+        // Use updateRequirement (Prisma-backed) — updateRequirementStatus
+        // pre-checks via Supabase admin client which has a broken env in
+        // this deploy and returns "Requirement not found" even when the
+        // row exists.
+        const r = await updateRequirement(id, ctx.companyId, { status: args.status })
         if (r.success) ok++
         else {
           failed++
