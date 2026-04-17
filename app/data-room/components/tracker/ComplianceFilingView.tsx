@@ -5,6 +5,7 @@ import { initializeAndListFilings, updateFiling } from '../../actions-filings'
 import { runApplicabilityEvaluation } from '../../actions-evaluator'
 import { showToast } from '@/components/ui/Toast'
 import AgentAssistedUploadModal from '../AgentAssistedUploadModal'
+import ComplianceIntakeForm from './ComplianceIntakeForm'
 
 /**
  * Compliance Filing Register — the spreadsheet-style tracker view
@@ -42,6 +43,8 @@ export default function ComplianceFilingView({ companyId, financialYear, categor
   const [uploadForFiling, setUploadForFiling] = useState<Filing | null>(null)
 
   const evaluatorRanRef = useRef(false)
+  const [showIntake, setShowIntake] = useState(false)
+  const intakeCheckedRef = useRef(false)
 
   const fetchFilings = useCallback(async () => {
     setLoading(true)
@@ -59,9 +62,29 @@ export default function ComplianceFilingView({ companyId, financialYear, categor
   useEffect(() => {
     (async () => {
       const count = await fetchFilings()
-      // Only run the evaluator ONCE — on the very first visit when no
-      // filings exist. After that, just fetch what's there.
+
       if (count === 0 && !evaluatorRanRef.current) {
+        // First visit — check if we have enough facts to evaluate accurately.
+        // If not, show the intake form first so we don't show wrong compliances.
+        if (!intakeCheckedRef.current) {
+          intakeCheckedRef.current = true
+          const { getFactsForPeriod, fyWindow } = await import('@/lib/compliance/facts')
+          const { periodStart, periodEnd } = fyWindow(financialYear)
+          const facts = await getFactsForPeriod({ companyId, periodStart, periodEnd })
+
+          // Key fact kinds that determine most compliance applicability
+          const keyKinds = ['rent.monthly_payment', 'contractor.annual_spend', 'headcount.total', 'turnover.annual']
+          const hasKeyFacts = keyKinds.filter(k => facts.some(f => f.kind === k)).length
+
+          if (hasKeyFacts < 2) {
+            // Not enough facts — show intake form first
+            setShowIntake(true)
+            setLoading(false)
+            return
+          }
+        }
+
+        // Have enough facts or intake already completed — run evaluator
         evaluatorRanRef.current = true
         setLoading(true)
         showToast('Running compliance evaluator...', 'info')
@@ -75,7 +98,7 @@ export default function ComplianceFilingView({ companyId, financialYear, categor
         }
       }
     })()
-  }, [companyId, financialYear]) // stable deps only — no fetchFilings to avoid re-runs
+  }, [companyId, financialYear]) // stable deps only
 
   // Group filings by category → rule name
   const grouped = filings.reduce((acc, f) => {
@@ -125,6 +148,27 @@ export default function ComplianceFilingView({ companyId, financialYear, categor
       case 'not_due': return 'bg-gray-800 text-gray-400'
       default: return 'bg-gray-800 text-gray-300'
     }
+  }
+
+  // Show intake form if we don't have enough facts to evaluate accurately
+  if (showIntake) {
+    return (
+      <ComplianceIntakeForm
+        companyId={companyId}
+        financialYear={financialYear}
+        onComplete={async () => {
+          setShowIntake(false)
+          evaluatorRanRef.current = true
+          setLoading(true)
+          showToast('Running compliance evaluator with your data...', 'info')
+          const evalRes = await runApplicabilityEvaluation(companyId, financialYear, { skipLlmFallback: true })
+          if (evalRes.success) {
+            showToast(`Evaluated: ${evalRes.applicable} applicable, ${evalRes.notApplicable} not applicable`, 'success')
+          }
+          await fetchFilings()
+        }}
+      />
+    )
   }
 
   if (loading) {
