@@ -39,6 +39,8 @@ type DraftRow = {
   documentId: string
   fileName: string
   originalFileName: string
+  relativePath: string            // folder path captured via webkitRelativePath
+  selected: boolean               // checkbox — drives which rows actually save
   documentName: string
   folderId: string
   folderSlug: string | null
@@ -106,16 +108,28 @@ export default function AgentAssistedBulkUploadModal({
   }, [folders])
 
   // ── File picking + per-file analysis with small concurrency ──────────
+  //
+  // Additive semantics: each call to handleFilesPicked APPENDS new rows
+  // to the existing list instead of replacing it. This lets the user
+  // select files from several folders (native file pickers can only see
+  // one directory at a time) by clicking "Add more files" repeatedly,
+  // drag-and-dropping additional batches, or picking a whole directory
+  // via webkitdirectory.
 
   const handleFilesPicked = async (files: File[]) => {
     if (!files.length) return
     setStage('processing')
 
-    // Seed pending rows up front so the UI shows progress.
-    const initial: DraftRow[] = files.map((f) => ({
+    const startIndex = rows.length
+
+    const newRows: DraftRow[] = files.map((f) => ({
       documentId: '',
       fileName: f.name.replace(/\.[^.]+$/, ''),
       originalFileName: f.name,
+      // webkitRelativePath is set when the user picks a folder; plain
+      // single-file / multi-file selects leave it empty.
+      relativePath: (f as any).webkitRelativePath || '',
+      selected: true,
       documentName: '',
       folderId: '',
       folderSlug: null,
@@ -134,10 +148,12 @@ export default function AgentAssistedBulkUploadModal({
       reasoning: '',
       status: 'pending',
     }))
-    setRows(initial)
+    setRows((prev) => [...prev, ...newRows])
 
-    // Helper that owns a single-file analyze pipeline. We match rows by
-    // index because names can repeat.
+    // Helper that owns a single-file analyze pipeline. `index` is the
+    // absolute row index (startIndex + offset inside this batch) so the
+    // updates target the right row when we're appending to an existing
+    // list.
     const analyzeOne = async (file: File, index: number) => {
       setRows((prev) => prev.map((r, i) => i === index ? { ...r, status: 'analyzing' } : r))
 
@@ -204,8 +220,8 @@ export default function AgentAssistedBulkUploadModal({
     let cursor = 0
     const workers = Array.from({ length: Math.min(ANALYSIS_CONCURRENCY, files.length) }, async () => {
       while (cursor < files.length) {
-        const myIndex = cursor++
-        await analyzeOne(files[myIndex], myIndex)
+        const offset = cursor++
+        await analyzeOne(files[offset], startIndex + offset)
       }
     })
     await Promise.all(workers)
@@ -216,9 +232,9 @@ export default function AgentAssistedBulkUploadModal({
   // ── Saving all rows ──────────────────────────────────────────────────
 
   const handleSaveAll = async () => {
-    const savable = rows.filter((r) => r.status === 'ready' && r.documentName && r.folderId && r.fileName)
+    const savable = rows.filter((r) => r.status === 'ready' && r.selected && r.documentName && r.folderId && r.fileName)
     if (!savable.length) {
-      showToast('Nothing to save — make sure each row has a document name and a folder.', 'info')
+      showToast('Nothing to save — tick at least one row and make sure document name + folder are filled.', 'info')
       return
     }
     setStage('saving')
@@ -227,7 +243,7 @@ export default function AgentAssistedBulkUploadModal({
     let bad = 0
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i]
-      if (r.status !== 'ready') continue
+      if (r.status !== 'ready' || !r.selected) continue
       if (!r.documentName || !r.folderId || !r.fileName) {
         bad++
         setRows((prev) => prev.map((x, idx) => idx === i ? { ...x, status: 'error', error: 'Missing required fields' } : x))
@@ -280,8 +296,27 @@ export default function AgentAssistedBulkUploadModal({
     total: rows.length,
     analyzing: rows.filter((r) => r.status === 'analyzing' || r.status === 'pending').length,
     ready: rows.filter((r) => r.status === 'ready').length,
+    readySelected: rows.filter((r) => r.status === 'ready' && r.selected).length,
     saved: rows.filter((r) => r.status === 'saved').length,
     error: rows.filter((r) => r.status === 'error').length,
+  }
+
+  const readyRows = rows.filter((r) => r.status === 'ready')
+  const allReadySelected = readyRows.length > 0 && readyRows.every((r) => r.selected)
+
+  const toggleSelectAllReady = () =>
+    setRows((prev) => prev.map((r) =>
+      r.status === 'ready' ? { ...r, selected: !allReadySelected } : r,
+    ))
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    const files = Array.from(e.dataTransfer.files || [])
+    if (files.length) handleFilesPicked(files)
+  }
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
   }
 
   return (
@@ -300,42 +335,124 @@ export default function AgentAssistedBulkUploadModal({
 
         <div className="p-6 space-y-5">
           {stage === 'picking' && (
-            <div className="border-2 border-dashed border-gray-700 rounded-xl p-10 text-center">
-              <p className="text-gray-300 mb-4">Drop files here or click to browse</p>
-              <p className="text-xs text-gray-500 mb-6">PDF, Word, Excel, CSV, images — scanned PDFs are OCR'd automatically</p>
+            <div
+              className="border-2 border-dashed border-gray-700 rounded-xl p-10 text-center"
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+            >
+              <p className="text-gray-300 mb-2">Drop files or a folder here</p>
+              <p className="text-xs text-gray-500 mb-6">PDF, Word, Excel, CSV, images — scanned PDFs are OCR'd automatically. Pick as many batches as you like.</p>
               <input
                 type="file"
-                id="bulk-agent-upload-input"
+                id="bulk-agent-upload-files"
                 className="hidden"
                 multiple
                 onChange={(e) => {
                   const files = Array.from(e.target.files || [])
                   if (files.length) handleFilesPicked(files)
+                  e.target.value = ''
                 }}
               />
-              <label
-                htmlFor="bulk-agent-upload-input"
-                className="inline-block px-6 py-3 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-200 cursor-pointer"
-              >
-                Choose files
-              </label>
+              <input
+                type="file"
+                id="bulk-agent-upload-folder"
+                className="hidden"
+                /* @ts-expect-error — webkitdirectory is a non-standard attr (Chrome/Edge/Firefox all support it) */
+                webkitdirectory=""
+                directory=""
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || [])
+                  if (files.length) handleFilesPicked(files)
+                  e.target.value = ''
+                }}
+              />
+              <div className="flex items-center justify-center gap-3">
+                <label
+                  htmlFor="bulk-agent-upload-files"
+                  className="inline-block px-5 py-2.5 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-200 cursor-pointer"
+                >
+                  Choose files
+                </label>
+                <label
+                  htmlFor="bulk-agent-upload-folder"
+                  className="inline-block px-5 py-2.5 border border-white/20 text-white rounded-lg text-sm font-medium hover:bg-white/5 cursor-pointer"
+                  title="Pick a whole directory — we'll walk it recursively"
+                >
+                  Choose folder
+                </label>
+              </div>
             </div>
           )}
 
           {(stage === 'processing' || stage === 'review' || stage === 'saving' || stage === 'done') && (
             <>
-              <div className="flex items-center gap-4 text-xs text-gray-400">
-                <span>Total: <span className="text-white">{totals.total}</span></span>
-                {totals.analyzing > 0 && <span>Analyzing: <span className="text-white">{totals.analyzing}</span></span>}
-                <span>Ready: <span className="text-emerald-300">{totals.ready}</span></span>
-                {totals.saved > 0 && <span>Saved: <span className="text-emerald-300">{totals.saved}</span></span>}
-                {totals.error > 0 && <span>Errors: <span className="text-red-300">{totals.error}</span></span>}
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4 text-xs text-gray-400">
+                  <span>Total: <span className="text-white">{totals.total}</span></span>
+                  {totals.analyzing > 0 && <span>Analyzing: <span className="text-white">{totals.analyzing}</span></span>}
+                  <span>Ready: <span className="text-emerald-300">{totals.ready}</span></span>
+                  <span>Selected: <span className="text-blue-300">{totals.readySelected}</span></span>
+                  {totals.saved > 0 && <span>Saved: <span className="text-emerald-300">{totals.saved}</span></span>}
+                  {totals.error > 0 && <span>Errors: <span className="text-red-300">{totals.error}</span></span>}
+                </div>
+                {(stage === 'review' || stage === 'processing') && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      id="bulk-agent-add-files"
+                      className="hidden"
+                      multiple
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || [])
+                        if (files.length) handleFilesPicked(files)
+                        e.target.value = ''
+                      }}
+                    />
+                    <input
+                      type="file"
+                      id="bulk-agent-add-folder"
+                      className="hidden"
+                      /* @ts-expect-error — webkitdirectory */
+                      webkitdirectory=""
+                      directory=""
+                      multiple
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || [])
+                        if (files.length) handleFilesPicked(files)
+                        e.target.value = ''
+                      }}
+                    />
+                    <label
+                      htmlFor="bulk-agent-add-files"
+                      className="text-[11px] px-2.5 py-1 border border-white/15 text-gray-300 rounded hover:bg-white/5 cursor-pointer"
+                    >
+                      + Add files
+                    </label>
+                    <label
+                      htmlFor="bulk-agent-add-folder"
+                      className="text-[11px] px-2.5 py-1 border border-white/15 text-gray-300 rounded hover:bg-white/5 cursor-pointer"
+                    >
+                      + Add folder
+                    </label>
+                  </div>
+                )}
               </div>
 
               <div className="overflow-x-auto border border-gray-800 rounded-lg">
                 <table className="w-full text-xs">
                   <thead className="bg-gray-900/50 border-b border-gray-800">
                     <tr className="text-left text-gray-400">
+                      <th className="p-2 w-8">
+                        <input
+                          type="checkbox"
+                          checked={allReadySelected}
+                          disabled={readyRows.length === 0}
+                          onChange={toggleSelectAllReady}
+                          className="w-3.5 h-3.5 rounded border-gray-600 bg-transparent text-blue-500 focus:ring-blue-500/30 focus:ring-1 cursor-pointer disabled:opacity-40"
+                          title={allReadySelected ? 'Deselect all ready rows' : 'Select all ready rows'}
+                        />
+                      </th>
                       <th className="p-2">Status</th>
                       <th className="p-2">File</th>
                       <th className="p-2">Document name</th>
@@ -347,6 +464,15 @@ export default function AgentAssistedBulkUploadModal({
                   <tbody>
                     {rows.map((r, idx) => (
                       <tr key={idx} className={`border-b border-gray-800/50 ${r.status === 'error' ? 'bg-red-900/10' : r.status === 'saved' ? 'bg-emerald-900/10' : ''}`}>
+                        <td className="p-2">
+                          <input
+                            type="checkbox"
+                            checked={r.selected}
+                            disabled={r.status !== 'ready'}
+                            onChange={() => setRows((prev) => prev.map((x, i) => i === idx ? { ...x, selected: !x.selected } : x))}
+                            className="w-3.5 h-3.5 rounded border-gray-600 bg-transparent text-blue-500 focus:ring-blue-500/30 focus:ring-1 cursor-pointer disabled:opacity-40"
+                          />
+                        </td>
                         <td className="p-2 text-[10px]">
                           <StatusBadge status={r.status} error={r.error} />
                         </td>
@@ -358,7 +484,11 @@ export default function AgentAssistedBulkUploadModal({
                             onChange={(e) => setRows((prev) => prev.map((x, i) => i === idx ? { ...x, fileName: e.target.value } : x))}
                             className="w-full px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white"
                           />
-                          <div className="text-[10px] text-gray-500 mt-0.5 truncate">{r.originalFileName}</div>
+                          <div className="text-[10px] text-gray-500 mt-0.5 truncate" title={r.relativePath || r.originalFileName}>
+                            {r.relativePath && r.relativePath !== r.originalFileName
+                              ? r.relativePath
+                              : r.originalFileName}
+                          </div>
                         </td>
                         <td className="p-2 min-w-[160px]">
                           <input
@@ -419,9 +549,9 @@ export default function AgentAssistedBulkUploadModal({
             <button
               onClick={handleSaveAll}
               className="px-6 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-200 disabled:opacity-50"
-              disabled={totals.ready === 0}
+              disabled={totals.readySelected === 0}
             >
-              Save {totals.ready} document{totals.ready === 1 ? '' : 's'}
+              Save {totals.readySelected} document{totals.readySelected === 1 ? '' : 's'}
             </button>
           </div>
         )}
