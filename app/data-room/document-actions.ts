@@ -11,6 +11,36 @@ async function requireCurrentUser() {
   return authService.requireCurrentUser()
 }
 
+/**
+ * Role gate for any DOC-MUTATING action (upload / delete / storage
+ * write). Previously these routes only checked requireCurrentUser() or
+ * accessService.hasAccess — both of which return true for viewers.
+ * That meant a viewer could upload and delete documents from the
+ * tracker and the vault. This helper is the single source of truth for
+ * who is allowed to mutate company documents.
+ */
+async function assertCanMutateCompanyDocs(companyId: string) {
+  if (!validateCompanyId(companyId)) {
+    throw new Error('Invalid company ID format')
+  }
+  const { authService, companyRepository, companyMembershipRepository } = createServerContainer()
+  const user = await authService.requireCurrentUser()
+  const company = await companyRepository.getDetailsById(companyId)
+  if (!company) throw new Error('Company not found')
+
+  const isOwner = company.ownerUserId === user.id || company.ownerAppUserId === user.id
+  let role: string | null = isOwner ? 'owner' : null
+  if (!isOwner) {
+    const membership = await companyMembershipRepository.findRole(user.id, companyId)
+    if (!membership) throw new Error('Access denied to this company')
+    role = membership.role
+  }
+  if (role !== 'owner' && role !== 'admin' && role !== 'editor') {
+    throw new Error('Insufficient permission — only owners / admins / editors can modify documents')
+  }
+  return { user, role }
+}
+
 export async function uploadDocument(
   companyId: string,
   data: {
@@ -48,14 +78,11 @@ export async function uploadDocument(
     throw new Error('Invalid input: folder name, document name, or file name contains invalid characters')
   }
 
-  const { documentRepository, authService, accessService } = createServerContainer()
-  const user = await authService.requireCurrentUser()
-
-  // SECURITY: Verify the user has access to this company before uploading
-  const accessSnapshot = await accessService.getCompanyAccessSnapshot(user.id, companyId)
-  if (!accessSnapshot.hasAccess) {
-    throw new Error('Access denied to this company')
-  }
+  // SECURITY: editor role required. Previously this was only
+  // hasAccess, which let viewers upload.
+  const { user } = await assertCanMutateCompanyDocs(companyId)
+  void user
+  const { documentRepository } = createServerContainer()
 
   const embedding = await generateEmbedding(`${sanitizedDocumentName} ${sanitizedFileName}`)
 
@@ -124,20 +151,48 @@ export async function reprocessDocument(documentId: string) {
 
 export async function uploadFileToStorage(filePath: string, fileData: ArrayBuffer, contentType: string) {
   try {
-    await requireCurrentUser()
-
-    // SECURITY: Sanitize filePath
+    // SECURITY: derive the company the file belongs to from the path
+    // and enforce editor-role on that company. File paths in this app
+    // always start with {uuid}/... where the uuid is either userId (for
+    // onboarding) or companyId (for tracker uploads). We check against
+    // both — treat the request as mutating docs for whichever matches.
     const sanitizedFilePath = sanitizeStringInput(filePath, 1000)
-    if (!sanitizedFilePath) {
-      throw new Error('Invalid file path')
+    if (!sanitizedFilePath) throw new Error('Invalid file path')
+
+    const segments = sanitizedFilePath.split('/').filter(Boolean)
+    // Locate the companyId segment: the second (path pattern
+    // "userId/companyId/...") or the first (path pattern
+    // "companyId/compliance/...").
+    const { companyRepository, authService, companyMembershipRepository } = createServerContainer()
+    const user = await authService.requireCurrentUser()
+
+    let resolvedCompanyId: string | null = null
+    for (const seg of segments.slice(0, 2)) {
+      if (validateCompanyId(seg)) {
+        const company = await companyRepository.getDetailsById(seg)
+        if (company) { resolvedCompanyId = seg; break }
+      }
+    }
+    if (!resolvedCompanyId) throw new Error('Invalid upload path — no company in scope')
+
+    const company = await companyRepository.getDetailsById(resolvedCompanyId)
+    if (!company) throw new Error('Company not found')
+    const isOwner = company.ownerUserId === user.id || company.ownerAppUserId === user.id
+    let role: string | null = isOwner ? 'owner' : null
+    if (!isOwner) {
+      const membership = await companyMembershipRepository.findRole(user.id, resolvedCompanyId)
+      if (!membership) throw new Error('Access denied to this company')
+      role = membership.role
+    }
+    if (role !== 'owner' && role !== 'admin' && role !== 'editor') {
+      throw new Error('Insufficient permission — viewers cannot upload files')
     }
 
-    // Upload to storage using adapter
     const { createStorageAdapter } = await import('@/lib/storage/factory')
     const storage = createStorageAdapter()
     await storage.uploadFile('company-documents', sanitizedFilePath, fileData, {
       contentType: contentType,
-      upsert: false, // Don't overwrite existing files
+      upsert: false,
     })
     return { success: true }
   } catch (err) {
@@ -175,8 +230,18 @@ export async function deleteDocument(documentId: string, filePath: string) {
       throw new Error('Invalid file path')
     }
 
+    // SECURITY: resolve the owning company for this document and gate
+    // on editor role. Previously any logged-in user could delete any
+    // document by calling this action with a known documentId.
+    const { prisma } = await import('@/lib/prisma')
+    const doc = await prisma.companyDocument.findFirst({
+      where: { id: documentId },
+      select: { company_id: true },
+    })
+    if (!doc) throw new Error('Document not found')
+    await assertCanMutateCompanyDocs(doc.company_id)
+
     const { documentRepository } = createServerContainer()
-    await requireCurrentUser()
 
     // 1. Delete from Storage
     const { createStorageAdapter } = await import('@/lib/storage/factory')
