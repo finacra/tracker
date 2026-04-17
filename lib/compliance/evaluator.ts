@@ -196,11 +196,16 @@ interface TriggerResult {
  */
 function factKindsForTrigger(triggerKind: string): string[] {
   switch (triggerKind) {
-    case 'turnover_above':       return ['turnover.annual']
-    case 'employee_count_above': return ['headcount.total']
-    case 'net_worth_above':      return ['net_worth.total']
-    // Payment-based triggers will arrive in a later phase — they need the
-    // rule to declare which fact kind(s) count (rent vs contractor vs salary).
+    case 'turnover_above':            return ['turnover.annual']
+    case 'employee_count_above':      return ['headcount.total']
+    case 'net_worth_above':           return ['net_worth.total']
+    case 'rent_payment_above':        return ['rent.monthly_payment']
+    case 'contractor_payment_above':  return ['contractor.annual_spend', 'contractor.monthly_spend']
+    case 'professional_fee_above':    return ['contractor.annual_spend'] // professional fees use same fact kind
+    case 'salary_above':              return ['salary.annual_bill']
+    case 'director_remuneration_above': return ['director.remuneration']
+    case 'imports_above':             return ['imports.annual_value']
+    case 'exports_above':             return ['exports.annual_value']
     default: return []
   }
 }

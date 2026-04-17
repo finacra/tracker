@@ -198,6 +198,103 @@ function rowsFor(r: TsRule): CatalogueRow[] {
   return [legacy, modern]
 }
 
+// ── Payment-threshold TDS rules ───────────────────────────────────────────
+// These don't exist in the old TS rule sets (which had no per-payment
+// threshold modelling). They're the rules that solve the BIoreform edge
+// case: "don't show TDS if all payments are below threshold."
+const PAYMENT_THRESHOLD_RULES: CatalogueRow[] = [
+  {
+    id: 'tds-rent-194i',
+    category: 'Income Tax',
+    name: 'TDS on Rent — Sec 393(1)[Sl.2] (formerly 194I)',
+    description: null,
+    act: 'Income Tax Act, 2025',
+    section_ref: 'Sec 393(1)[Sl.2]',
+    legacy_section_ref: 'Section 194I',
+    authority: 'Income Tax Department',
+    frequency: 'monthly',
+    due_date_formula: 'offset:7',
+    due_description: '7th of the following month',
+    penalty: '1% per month interest u/s 398(1)(i) for non-deduction, 1.5% for non-deposit',
+    is_critical: true,
+    documents_required: ['Rent agreement', 'TDS challan', 'Form 140/168A'],
+    form_refs: { primary: 'Challan ITNS 281' } as Prisma.InputJsonValue,
+    source_url: 'https://www.incometax.gov.in/',
+    effective_from: new Date('2026-04-01'),
+    effective_to: null,
+    supersedes_rule_id: null,
+    superseded_by_rule_id: null,
+    trigger_kind: 'rent_payment_above',
+    threshold_amount: new Prisma.Decimal(50000),
+    threshold_basis: 'per_month_per_payee',
+    entity_scope: {} as Prisma.InputJsonValue,
+    applicability_reason: 'TDS on rent > ₹50,000/month per landlord',
+    notes: 'Threshold per payee per month. Rate: 2% plant/machinery, 10% land/building.',
+    last_verified: new Date('2026-04-17'),
+    verified_by: 'System',
+  },
+  {
+    id: 'tds-contractor-194c',
+    category: 'Income Tax',
+    name: 'TDS on Contractor — Sec 393(1)[Sl.6] (formerly 194C)',
+    description: null,
+    act: 'Income Tax Act, 2025',
+    section_ref: 'Sec 393(1)[Sl.6(i)/(ii)]',
+    legacy_section_ref: 'Section 194C',
+    authority: 'Income Tax Department',
+    frequency: 'monthly',
+    due_date_formula: 'offset:7',
+    due_description: '7th of the following month',
+    penalty: '1% interest for non-deduction, 1.5% for non-deposit. 30% expense disallowance u/s 35(b).',
+    is_critical: true,
+    documents_required: ['Contractor invoice', 'TDS challan', 'Form 140/168A'],
+    form_refs: { primary: 'Challan ITNS 281' } as Prisma.InputJsonValue,
+    source_url: 'https://www.incometax.gov.in/',
+    effective_from: new Date('2026-04-01'),
+    effective_to: null,
+    supersedes_rule_id: null,
+    superseded_by_rule_id: null,
+    trigger_kind: 'contractor_payment_above',
+    threshold_amount: new Prisma.Decimal(30000),
+    threshold_basis: 'single_transaction',
+    entity_scope: {} as Prisma.InputJsonValue,
+    applicability_reason: 'TDS on contractor > ₹30k single or ₹1L aggregate per FY',
+    notes: 'Rate: 1% for individuals/HUF, 2% for others.',
+    last_verified: new Date('2026-04-17'),
+    verified_by: 'System',
+  },
+  {
+    id: 'tds-professional-194j',
+    category: 'Income Tax',
+    name: 'TDS on Professional Fees — Sec 393(1)[Sl.6(iii)] (formerly 194J)',
+    description: null,
+    act: 'Income Tax Act, 2025',
+    section_ref: 'Sec 393(1)[Sl.6(iii)]',
+    legacy_section_ref: 'Section 194J',
+    authority: 'Income Tax Department',
+    frequency: 'monthly',
+    due_date_formula: 'offset:7',
+    due_description: '7th of the following month',
+    penalty: '1% interest for non-deduction, 1.5% for non-deposit. 30% expense disallowance.',
+    is_critical: true,
+    documents_required: ['Professional fee invoice', 'TDS challan', 'Form 140/168A'],
+    form_refs: { primary: 'Challan ITNS 281' } as Prisma.InputJsonValue,
+    source_url: 'https://www.incometax.gov.in/',
+    effective_from: new Date('2026-04-01'),
+    effective_to: null,
+    supersedes_rule_id: null,
+    superseded_by_rule_id: null,
+    trigger_kind: 'professional_fee_above',
+    threshold_amount: new Prisma.Decimal(50000),
+    threshold_basis: 'annual_aggregate',
+    entity_scope: {} as Prisma.InputJsonValue,
+    applicability_reason: 'TDS on professional/technical fees > ₹50k per FY per payee',
+    notes: 'Rate: 2% technical services, 10% professional/royalty/director fees.',
+    last_verified: new Date('2026-04-17'),
+    verified_by: 'System',
+  },
+]
+
 async function main() {
   const allTsRules: TsRule[] = [
     ...UNIVERSAL_RULES,
@@ -207,7 +304,7 @@ async function main() {
     ...STATE_RULES,
   ]
 
-  const rows = allTsRules.flatMap(rowsFor)
+  const rows = [...allTsRules.flatMap(rowsFor), ...PAYMENT_THRESHOLD_RULES]
 
   // Sanity-check ids are unique before hitting the DB.
   const seen = new Set<string>()
