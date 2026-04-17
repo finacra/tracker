@@ -6,9 +6,10 @@ import { validateCompanyId, sanitizeStringInput } from '@/lib/utils/input-valida
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 import { analyzeAndStoreSuggestion, type DocumentAgentSuggestion } from '@/lib/compliance/document-agent'
-import { recordFact } from '@/lib/compliance/facts'
+import { recordFact, currentIndianFY } from '@/lib/compliance/facts'
 import { ensureSystemFolders, getSystemFolderId } from '@/lib/vault/folders'
 import { generateEmbedding } from '@/lib/utils/embeddings'
+import { upsertFiling } from '@/lib/compliance/filings'
 
 async function assertCompanyAccess(companyId: string) {
   if (!validateCompanyId(companyId)) throw new Error('Invalid company ID')
@@ -268,6 +269,34 @@ export async function finalizeDocument(
               factErr instanceof Error ? factErr.message : factErr)
           }
         }
+      }
+    }
+
+    // Step 5.1: Vault → Tracker wiring. If the doc is linked to a
+    // compliance rule + has a period, auto-upsert the matching filing
+    // row so the tracker reflects the upload immediately.
+    if (confirmed.requirementId && (confirmed.periodKey || confirmed.periodFinancialYear)) {
+      try {
+        const fy = confirmed.periodFinancialYear || currentIndianFY()
+        const pk = confirmed.periodKey || fy
+        await upsertFiling({
+          companyId,
+          ruleId: confirmed.requirementId,
+          periodKey: pk,
+          financialYear: fy,
+          data: {
+            status: 'filed',
+            dateOfFiling: confirmed.registrationDate || new Date().toISOString().slice(0, 10),
+            documentId: draft.id,
+            acknowledgement: null,
+            dueDate: null,
+          },
+          updatedBy: user.id,
+        })
+        console.log('[finalizeDocument] filing upserted', { ruleId: confirmed.requirementId, periodKey: pk })
+      } catch (filingErr) {
+        console.error('[finalizeDocument] filing upsert failed (non-fatal):',
+          filingErr instanceof Error ? filingErr.message : filingErr)
       }
     }
 

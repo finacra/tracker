@@ -317,6 +317,72 @@ model ComplianceAssessment {
   @@map("compliance_assessments")
 }
 
+// ── Compliance Filing Register ────────────────────────────────────────────
+// The operational layer: what actually happened with each compliance item
+// for each period. ComplianceAssessment says "does this apply?";
+// ComplianceFiling says "was it filed, when, how much, with what docs?"
+//
+// One row per (company, rule, period). period_key is the granularity key:
+//   monthly  → "2026-04"
+//   quarterly → "2026-Q1"
+//   annual    → "2026-27"
+//   half-yearly → "2026-H1"
+//   one-time  → "once"
+//
+// The tracker UI reads from this table. The evaluator seeds rows for
+// every applicable assessment. Users + the vault agent update them as
+// filings happen.
+model ComplianceFiling {
+  id                String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  company_id        String    @db.Uuid
+  rule_id           String                       // references compliance_rules.id
+  assessment_id     String?   @db.Uuid           // references compliance_assessments.id
+  financial_year    String
+  period_key        String                       // "2026-04" | "2026-Q1" | "2026-27" | "once"
+
+  // Due date — computed from the rule's due_date_formula
+  due_date          DateTime? @db.Date
+
+  // Status
+  status            String    @default("pending") // pending | filed | overdue | partially_filed | not_due
+
+  // Financial columns from the CA's compliance tracker spreadsheet
+  amount_payable    Decimal?  @db.Decimal(15, 2)
+  amount_paid       Decimal?  @db.Decimal(15, 2)
+  short_deduction   Decimal?  @db.Decimal(15, 2)
+
+  // Dates
+  date_of_payment   DateTime? @db.Date
+  date_of_filing    DateTime? @db.Date
+  days_delay        Int?                         // auto: date_of_filing - due_date (positive = late)
+
+  // Interest / penalty (auto-computed or manual override)
+  interest_on_short Decimal?  @db.Decimal(15, 2)
+  interest_on_late  Decimal?  @db.Decimal(15, 2)
+
+  // References
+  challan_number    String?
+  acknowledgement   String?                      // ACK number, SRN, filing ref
+  form_reference    String?                      // Form 16, Form 131, Form 168, etc.
+  working_notes     String?                      // free-text computation / working
+
+  // Document linkage — filled when user uploads from tracker or agent maps a vault doc
+  document_id       String?   @db.Uuid           // references company_documents_internal.id
+
+  // Audit
+  created_at        DateTime  @default(now()) @db.Timestamptz
+  updated_at        DateTime  @default(now()) @updatedAt @db.Timestamptz
+  created_by        String?   @db.Uuid
+  updated_by        String?   @db.Uuid
+
+  @@unique([company_id, rule_id, period_key])
+  @@index([company_id, financial_year])
+  @@index([company_id, status])
+  @@index([rule_id])
+  @@index([document_id])
+  @@map("compliance_filings")
+}
+
 model CiaConversation {
   id         String       @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   company_id String       @db.Uuid
