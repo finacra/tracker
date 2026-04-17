@@ -12,6 +12,7 @@ import {
   deleteDocument,
   bulkDeleteDocuments,
 } from '@/app/data-room/actions-vault'
+import VersionHistoryModal from './VersionHistoryModal'
 
 /**
  * Data-driven vault UI. Reads vault_folders + company_documents_internal
@@ -52,12 +53,19 @@ interface Props {
   canEdit: boolean
   onUploadToFolder?: (folderId: string, folderName: string) => void
   onPreviewDocument?: (doc: Doc) => void
+  /**
+   * Called when the user picks "Upload new version" from a doc's menu.
+   * Parent opens the agent modal with defaultSupersedesDocumentId set
+   * so the next upload chains onto this document.
+   */
+  onUploadNewVersion?: (doc: Doc) => void
 }
 
-export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, onPreviewDocument }: Props) {
+export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, onPreviewDocument, onUploadNewVersion }: Props) {
   const [folders, setFolders] = useState<Folder[]>([])
   const [documents, setDocuments] = useState<Doc[]>([])
   const [loading, setLoading] = useState(true)
+  const [versionHistoryDoc, setVersionHistoryDoc] = useState<Doc | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
@@ -358,11 +366,28 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
             onRenameDoc={handleRenameDoc}
             onDeleteDoc={handleDeleteDoc}
             onMoveDoc={handleMoveDoc}
+            onShowVersions={setVersionHistoryDoc}
+            onUploadNewVersion={onUploadNewVersion}
             onUploadToFolder={onUploadToFolder}
             onPreviewDocument={onPreviewDocument}
           />
         ))}
       </div>
+
+      {versionHistoryDoc && (
+        <VersionHistoryModal
+          isOpen={true}
+          onClose={() => setVersionHistoryDoc(null)}
+          companyId={companyId}
+          documentId={versionHistoryDoc.id}
+          documentName={versionHistoryDoc.fileName || 'Document'}
+          onUploadNewVersion={() => {
+            const doc = versionHistoryDoc
+            setVersionHistoryDoc(null)
+            if (doc && onUploadNewVersion) onUploadNewVersion(doc)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -385,6 +410,8 @@ function FolderNode({
   onRenameDoc,
   onDeleteDoc,
   onMoveDoc,
+  onShowVersions,
+  onUploadNewVersion,
   onUploadToFolder,
   onPreviewDocument,
 }: {
@@ -403,6 +430,8 @@ function FolderNode({
   onRenameDoc: (d: Doc) => void
   onDeleteDoc: (d: Doc) => void
   onMoveDoc: (d: Doc) => void
+  onShowVersions: (d: Doc) => void
+  onUploadNewVersion?: (d: Doc) => void
   onUploadToFolder?: (folderId: string, folderName: string) => void
   onPreviewDocument?: (doc: Doc) => void
 }) {
@@ -535,6 +564,8 @@ function FolderNode({
                   onDelete={onDeleteDoc}
                   onMove={onMoveDoc}
                   onPreview={onPreviewDocument}
+                  onShowVersions={onShowVersions}
+                  onUploadNewVersion={onUploadNewVersion}
                 />
               ))}
             </div>
@@ -560,6 +591,8 @@ function FolderNode({
                   onRenameDoc={onRenameDoc}
                   onDeleteDoc={onDeleteDoc}
                   onMoveDoc={onMoveDoc}
+                  onShowVersions={onShowVersions}
+                  onUploadNewVersion={onUploadNewVersion}
                   onUploadToFolder={onUploadToFolder}
                   onPreviewDocument={onPreviewDocument}
                 />
@@ -590,6 +623,8 @@ function DocumentRow({
   onDelete,
   onMove,
   onPreview,
+  onShowVersions,
+  onUploadNewVersion,
 }: {
   doc: Doc
   depth: number
@@ -600,9 +635,12 @@ function DocumentRow({
   onDelete: (d: Doc) => void
   onMove: (d: Doc) => void
   onPreview?: (d: Doc) => void
+  onShowVersions: (d: Doc) => void
+  onUploadNewVersion?: (d: Doc) => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const formatted = doc.updatedAt ? new Date(doc.updatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
+  const hasVersionHistory = doc.versionNumber > 1
 
   return (
     <div
@@ -627,8 +665,15 @@ function DocumentRow({
         disabled={!onPreview}
       >
         <span className="text-xs text-gray-200 truncate">{doc.fileName || 'Unnamed document'}</span>
-        {doc.versionNumber > 1 && (
-          <span className="text-[9px] text-blue-300 border border-blue-500/30 px-1 rounded flex-shrink-0">v{doc.versionNumber}</span>
+        {hasVersionHistory && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onShowVersions(doc) }}
+            className="text-[9px] text-blue-300 border border-blue-500/30 px-1 rounded flex-shrink-0 hover:bg-blue-500/10"
+            title={`v${doc.versionNumber} — click for history`}
+          >
+            v{doc.versionNumber}
+          </button>
         )}
       </button>
 
@@ -646,7 +691,22 @@ function DocumentRow({
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-full mt-1 z-50 w-40 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl py-1 text-xs">
+              <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl py-1 text-xs">
+                {onUploadNewVersion && (
+                  <button
+                    onClick={() => { setMenuOpen(false); onUploadNewVersion(doc) }}
+                    className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
+                  >
+                    Upload new version
+                  </button>
+                )}
+                <button
+                  onClick={() => { setMenuOpen(false); onShowVersions(doc) }}
+                  className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
+                >
+                  Version history
+                </button>
+                <div className="h-px bg-white/5 my-1" />
                 <button
                   onClick={() => { setMenuOpen(false); onRename(doc) }}
                   className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"

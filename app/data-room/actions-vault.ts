@@ -262,16 +262,44 @@ export async function listVaultTree(companyId: string): Promise<{
     await assertCompanyAccess(companyId)
     await ensureSystemFolders(companyId)
 
-    const [folders, docs] = await Promise.all([
+    const [folders, latestDocs, allVersionCounts] = await Promise.all([
       prisma.vaultFolder.findMany({
         where: { company_id: companyId },
         orderBy: [{ kind: 'asc' }, { sort_order: 'asc' }, { name: 'asc' }],
       }),
+      // Only `is_latest = true` rows show in the tree — old versions are
+      // discovered via the "Versions" menu on each row, not as siblings.
       prisma.companyDocument.findMany({
-        where: { company_id: companyId, deleted_at: null, is_draft: false },
+        where: { company_id: companyId, deleted_at: null, is_draft: false, is_latest: true },
         orderBy: { updated_at: 'desc' },
       }),
+      // Per-chain version counts so the UI can render "v3" badges without
+      // a second round trip per document. Counted via parent_document_id
+      // walk in-memory after fetch.
+      prisma.companyDocument.findMany({
+        where: { company_id: companyId, deleted_at: null, is_draft: false },
+        select: { id: true, parent_document_id: true, version_number: true },
+      }),
     ])
+
+    // For each latest doc, walk its chain (via parent pointers) and take
+    // the max version_number — that's what we surface.
+    const chainVersion = new Map<string, number>()
+    const parentMap = new Map<string, string | null>()
+    for (const r of allVersionCounts) parentMap.set(r.id, r.parent_document_id)
+    for (const latest of latestDocs) {
+      let max = latest.version_number || 1
+      let node: string | null = latest.id
+      const seen = new Set<string>()
+      while (node && !seen.has(node)) {
+        seen.add(node)
+        const row = allVersionCounts.find(r => r.id === node)
+        if (!row) break
+        if (row.version_number > max) max = row.version_number
+        node = row.parent_document_id
+      }
+      chainVersion.set(latest.id, max)
+    }
 
     return {
       success: true,
@@ -283,7 +311,7 @@ export async function listVaultTree(companyId: string): Promise<{
         kind: f.kind,
         sortOrder: f.sort_order,
       })),
-      documents: docs.map((d) => ({
+      documents: latestDocs.map((d) => ({
         id: d.id,
         folderId: d.folder_id,
         folderName: d.folder_name,
@@ -294,7 +322,7 @@ export async function listVaultTree(companyId: string): Promise<{
         updatedAt: d.updated_at ? d.updated_at.toISOString() : null,
         requirementId: d.requirement_id,
         isLatest: d.is_latest,
-        versionNumber: d.version_number,
+        versionNumber: chainVersion.get(d.id) || d.version_number,
       })),
     }
   } catch (error) {

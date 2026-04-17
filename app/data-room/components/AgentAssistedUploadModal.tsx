@@ -34,6 +34,12 @@ interface Props {
   defaultFolderId?: string | null
   /** Optional preset: link this document as evidence for a requirement id. */
   defaultRequirementId?: string | null
+  /**
+   * Optional preset: when set, the new upload is saved as a new version
+   * of the given document. Powers the "Upload new version" flow from
+   * the vault tree's per-document ⋯ menu.
+   */
+  defaultSupersedesDocumentId?: string | null
 }
 
 type Folder = { id: string; parentId: string | null; slug: string; name: string; kind: string }
@@ -67,6 +73,7 @@ export default function AgentAssistedUploadModal({
   onFinalized,
   defaultFolderId = null,
   defaultRequirementId = null,
+  defaultSupersedesDocumentId = null,
 }: Props) {
   const { user } = useAuth()
   const [stage, setStage] = useState<Stage>('picking')
@@ -155,9 +162,11 @@ export default function AgentAssistedUploadModal({
       registrationDate: suggestion.registrationDate || '',
       expiryDate: suggestion.expiryDate || '',
       requirementId: defaultRequirementId || suggestion.requirementId || '',
-      supersedesDocumentId: suggestion.candidateSupersedesDocumentId || '',
+      // Preset overrides the agent's auto-detected duplicate so
+      // "Upload new version" always supersedes the explicit doc.
+      supersedesDocumentId: defaultSupersedesDocumentId || suggestion.candidateSupersedesDocumentId || '',
     })
-  }, [suggestion, folders, file, defaultFolderId, defaultRequirementId])
+  }, [suggestion, folders, file, defaultFolderId, defaultRequirementId, defaultSupersedesDocumentId])
 
   // Folder tree: system folders first, then user folders within their
   // parent. UI presents them as "Parent › Child" labels.

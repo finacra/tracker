@@ -161,6 +161,7 @@ export default function DocumentsTab({
   const [isSendModalOpen, setIsSendModalOpen] = useState(false)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
   const [isAgentUploadOpen, setIsAgentUploadOpen] = useState(false)
+  const [agentUploadSupersedesDocumentId, setAgentUploadSupersedesDocumentId] = useState<string | null>(null)
   const [isAgentBulkOpen, setIsAgentBulkOpen] = useState(false)
   const [agentUploadDefaultFolderId, setAgentUploadDefaultFolderId] = useState<string | null>(null)
   const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false)
@@ -1327,6 +1328,13 @@ export default function DocumentsTab({
             onUploadToFolder={(_folderId, folderName) => {
               setUploadFormData(prev => ({ ...prev, folder: folderName }))
               setIsUploadModalOpen(true)
+            }}
+            onUploadNewVersion={(doc) => {
+              // Route through the agent modal so the new upload gets
+              // analyzed, but lock it to supersede the clicked doc.
+              setAgentUploadSupersedesDocumentId(doc.id)
+              setAgentUploadDefaultFolderId(doc.folderId)
+              setIsAgentUploadOpen(true)
             }}
           />
         </div>
@@ -3513,13 +3521,16 @@ export default function DocumentsTab({
           isOpen={isAgentUploadOpen}
           companyId={currentCompany.id}
           defaultFolderId={agentUploadDefaultFolderId}
+          defaultSupersedesDocumentId={agentUploadSupersedesDocumentId}
           onClose={() => {
             setIsAgentUploadOpen(false)
             setAgentUploadDefaultFolderId(null)
+            setAgentUploadSupersedesDocumentId(null)
           }}
           onFinalized={() => {
-            // Refetch the vault so the newly-finalized document appears.
+            setAgentUploadSupersedesDocumentId(null)
             fetchVaultDocuments()
+            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('vault:data-changed'))
           }}
         />
       )}
