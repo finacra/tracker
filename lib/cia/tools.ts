@@ -162,33 +162,46 @@ export const TOOLS: ToolDef[] = [
 const HANDLERS: Record<string, ToolHandler> = {
   list_requirements: async (args, ctx) => {
     const limit = Math.min(Number(args.limit) || 50, 200)
-    // financial_year lives in DB but isn't in Prisma schema — use raw SQL.
-    const conditions: string[] = ['company_id = $1::uuid']
-    const params: any[] = [ctx.companyId]
-    let idx = 2
-    if (args.status) { conditions.push(`status = $${idx++}::text`); params.push(args.status) }
-    if (args.category) { conditions.push(`category = $${idx++}::text`); params.push(args.category) }
-    if (args.financial_year) { conditions.push(`financial_year = $${idx++}::text`); params.push(args.financial_year) }
+    // NB: regulatory_requirements has no financial_year column in this
+    // schema — it was added conceptually but never migrated. The period
+    // is encoded in period_key / period_label instead. We filter by
+    // period_label substring when the model passes a financial_year.
+    const where: any = { company_id: ctx.companyId }
+    if (args.status) where.status = args.status
+    if (args.category) where.category = args.category
     if (args.search) {
-      conditions.push(`(requirement ILIKE $${idx} OR COALESCE(description,'') ILIKE $${idx})`)
-      params.push(`%${args.search}%`)
-      idx++
+      where.OR = [
+        { requirement: { contains: args.search, mode: 'insensitive' } },
+        { description: { contains: args.search, mode: 'insensitive' } },
+      ]
     }
-    const query = `SELECT id, category, requirement, status, due_date, financial_year, amount_payable, amount_paid
-                   FROM regulatory_requirements
-                   WHERE ${conditions.join(' AND ')}
-                   ORDER BY due_date ASC NULLS LAST
-                   LIMIT ${limit}`
-    const rows = await prisma.$queryRawUnsafe<any[]>(query, ...params)
+    if (args.financial_year) {
+      where.period_label = { contains: args.financial_year }
+    }
+    const rows = await prisma.regulatoryRequirement.findMany({
+      where,
+      select: {
+        id: true,
+        category: true,
+        requirement: true,
+        status: true,
+        due_date: true,
+        period_label: true,
+        amount_payable: true,
+        amount_paid: true,
+      },
+      orderBy: { due_date: 'asc' },
+      take: limit,
+    })
     const data = rows.map(r => ({
       id: r.id,
       category: r.category,
       name: r.requirement,
       status: r.status,
-      due_date: r.due_date ? new Date(r.due_date).toISOString().slice(0, 10) : null,
-      financial_year: r.financial_year ?? null,
-      amount_payable: r.amount_payable != null ? Number(r.amount_payable) : null,
-      amount_paid: r.amount_paid != null ? Number(r.amount_paid) : null,
+      due_date: r.due_date?.toISOString().slice(0, 10) ?? null,
+      period_label: r.period_label ?? null,
+      amount_payable: r.amount_payable ? Number(r.amount_payable) : null,
+      amount_paid: r.amount_paid ? Number(r.amount_paid) : null,
     }))
     return {
       ok: true,
