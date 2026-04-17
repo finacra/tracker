@@ -30,8 +30,19 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Invitation has already been accepted' }, { status: 400 })
     }
 
-    // Check if user exists
+    // Check if user already exists — under ANY auth provider. The UI
+    // uses this to decide whether to show a "Sign in with Google"
+    // shortcut vs a full signup form.
     const existingUser = await userRepository.findByEmail(invite.email)
+    let hasGoogleAuth = false
+    if (existingUser) {
+      const { prisma } = await import('@/lib/prisma')
+      const googleIdentity = await prisma.authIdentity.findFirst({
+        where: { app_user_id: existingUser.id, provider: 'passport' },
+        select: { id: true },
+      })
+      hasGoogleAuth = !!googleIdentity
+    }
 
     return NextResponse.json({
       success: true,
@@ -42,6 +53,7 @@ export async function GET(req: NextRequest) {
         expiresAt: invite.expiresAt,
       },
       userExists: !!existingUser,
+      hasGoogleAuth,
     })
   } catch (error) {
     return handleAPIError(error)
