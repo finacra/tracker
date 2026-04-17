@@ -960,16 +960,25 @@ model CountryEntityType {
   @@map("country_entity_types")
 }
 
+// Matches supabase/migrations/migration-country-config-tables.sql
+// which is the authoritative definition. Earlier Prisma model omitted
+// category_code / is_active / metadata — prisma db push --accept-data-loss
+// dropped them in prod, which broke useComplianceCategories (it queries
+// category_code and filters on is_active, got a 400 from PostgREST).
 model CountryComplianceCategory {
   id            String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   country_code  String    @db.VarChar(2)
+  category_code String    @db.VarChar(50)   // "tax" / "corporate" / "labor" / …
   category_name String    @db.VarChar(100)
   display_order Int?      @default(0)
+  is_active     Boolean?  @default(true)
+  metadata      Json?     @default("{}")
   created_at    DateTime? @default(now()) @db.Timestamptz
 
   country       Country   @relation(fields: [country_code], references: [code], onDelete: Cascade)
 
-  @@unique([country_code, category_name])
+  @@unique([country_code, category_code])
+  @@index([is_active])
   @@map("country_compliance_categories")
 }
 
