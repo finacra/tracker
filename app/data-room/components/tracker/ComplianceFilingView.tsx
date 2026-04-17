@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { initializeAndListFilings, updateFiling } from '../../actions-filings'
 import { runApplicabilityEvaluation } from '../../actions-evaluator'
 import { showToast } from '@/components/ui/Toast'
@@ -41,7 +41,7 @@ export default function ComplianceFilingView({ companyId, financialYear, categor
   const [savingId, setSavingId] = useState<string | null>(null)
   const [uploadForFiling, setUploadForFiling] = useState<Filing | null>(null)
 
-  const [evaluatorRan, setEvaluatorRan] = useState(false)
+  const evaluatorRanRef = useRef(false)
 
   const fetchFilings = useCallback(async () => {
     setLoading(true)
@@ -59,10 +59,10 @@ export default function ComplianceFilingView({ companyId, financialYear, categor
   useEffect(() => {
     (async () => {
       const count = await fetchFilings()
-      // If no filings exist and we haven't run the evaluator yet,
-      // auto-trigger it so the user doesn't have to hunt for a button.
-      if (count === 0 && !evaluatorRan) {
-        setEvaluatorRan(true)
+      // Only run the evaluator ONCE — on the very first visit when no
+      // filings exist. After that, just fetch what's there.
+      if (count === 0 && !evaluatorRanRef.current) {
+        evaluatorRanRef.current = true
         setLoading(true)
         showToast('Running compliance evaluator...', 'info')
         const evalRes = await runApplicabilityEvaluation(companyId, financialYear, { skipLlmFallback: true })
@@ -75,7 +75,7 @@ export default function ComplianceFilingView({ companyId, financialYear, categor
         }
       }
     })()
-  }, [fetchFilings, companyId, financialYear, evaluatorRan])
+  }, [companyId, financialYear]) // stable deps only — no fetchFilings to avoid re-runs
 
   // Group filings by category → rule name
   const grouped = filings.reduce((acc, f) => {
