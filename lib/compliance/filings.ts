@@ -130,6 +130,20 @@ export async function generateFilingsFromAssessments(options: {
   })
   const ruleById = new Map(rules.map(r => [r.id, r]))
 
+  // Batch: collect all potential filing rows, then check existing in one
+  // query, then createMany the missing ones. Avoids N×M individual DB
+  // calls which timeout on Vercel with 60+ rules × 12 months.
+  const allRows: Array<{
+    company_id: string
+    rule_id: string
+    assessment_id: string
+    financial_year: string
+    period_key: string
+    due_date: Date | null
+    status: string
+    created_by: string | null
+  }> = []
+
   for (const assessment of assessments) {
     const rule = ruleById.get(assessment.rule_id)
     if (!rule) continue
@@ -137,39 +151,39 @@ export async function generateFilingsFromAssessments(options: {
     const periodKeys = generatePeriodKeys(rule.frequency, fy)
 
     for (const periodKey of periodKeys) {
-      // Check if filing already exists (don't overwrite user data)
-      const existing = await prisma.complianceFiling.findUnique({
-        where: {
-          company_id_rule_id_period_key: {
-            company_id: options.companyId,
-            rule_id: assessment.rule_id,
-            period_key: periodKey,
-          },
-        },
-        select: { id: true },
-      })
-
-      if (existing) {
-        existed++
-        continue
-      }
-
       const dueDate = computeDueDate(rule.due_date_formula, periodKey, fy)
-
-      await prisma.complianceFiling.create({
-        data: {
-          company_id: options.companyId,
-          rule_id: assessment.rule_id,
-          assessment_id: assessment.id,
-          financial_year: fy,
-          period_key: periodKey,
-          due_date: dueDate,
-          status: dueDate && dueDate < new Date() ? 'overdue' : 'pending',
-          created_by: options.createdBy,
-        },
+      allRows.push({
+        company_id: options.companyId,
+        rule_id: assessment.rule_id,
+        assessment_id: assessment.id,
+        financial_year: fy,
+        period_key: periodKey,
+        due_date: dueDate,
+        status: dueDate && dueDate < new Date() ? 'overdue' : 'pending',
+        created_by: options.createdBy || null,
       })
-      created++
     }
+  }
+
+  if (allRows.length === 0) return { created: 0, existed: 0 }
+
+  // Check which already exist in one batch query
+  const existing = await prisma.complianceFiling.findMany({
+    where: { company_id: options.companyId, financial_year: fy },
+    select: { rule_id: true, period_key: true },
+  })
+  const existingKeys = new Set(existing.map(e => `${e.rule_id}::${e.period_key}`))
+
+  const toCreate = allRows.filter(r => !existingKeys.has(`${r.rule_id}::${r.period_key}`))
+  existed = allRows.length - toCreate.length
+
+  if (toCreate.length > 0) {
+    // Batch insert — skipDuplicates handles any race conditions
+    await prisma.complianceFiling.createMany({
+      data: toCreate,
+      skipDuplicates: true,
+    })
+    created = toCreate.length
   }
 
   return { created, existed }
