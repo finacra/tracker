@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { showToast } from '@/components/ui/Toast'
+import { recordUserFact } from '../../actions-facts'
 
 /**
  * Quick intake form that collects the key operational facts BEFORE
@@ -66,84 +67,65 @@ export default function ComplianceIntakeForm({ companyId, financialYear, onCompl
   const handleSubmit = async () => {
     setSaving(true)
     try {
-      const { recordFact, fyWindow } = await import('@/lib/compliance/facts')
-      const { periodStart, periodEnd } = fyWindow(financialYear)
-
-      const facts: Array<{ kind: string; amount: number | null; unit: string }> = []
+      type FactPayload = Parameters<typeof recordUserFact>[1]
+      const facts: FactPayload[] = []
 
       // Rent
       if (data.paysRent === true && data.monthlyRentAmount) {
-        facts.push({ kind: 'rent.monthly_payment', amount: parseFloat(data.monthlyRentAmount), unit: 'rupees_per_month' })
+        facts.push({ kind: 'rent.monthly_payment', financialYear, amount: parseFloat(data.monthlyRentAmount), unit: 'rupees_per_month' })
       } else if (data.paysRent === false) {
-        facts.push({ kind: 'rent.monthly_payment', amount: 0, unit: 'rupees_per_month' })
+        facts.push({ kind: 'rent.monthly_payment', financialYear, amount: 0, unit: 'rupees_per_month' })
       }
 
       // Contractors
       if (data.hiresContractors === true && data.largestContractorPayment) {
-        facts.push({ kind: 'contractor.annual_spend', amount: parseFloat(data.largestContractorPayment), unit: 'rupees_per_year' })
+        facts.push({ kind: 'contractor.annual_spend', financialYear, amount: parseFloat(data.largestContractorPayment), unit: 'rupees_per_year' })
       } else if (data.hiresContractors === false) {
-        facts.push({ kind: 'contractor.annual_spend', amount: 0, unit: 'rupees_per_year' })
+        facts.push({ kind: 'contractor.annual_spend', financialYear, amount: 0, unit: 'rupees_per_year' })
       }
 
       // Professional fees
       if (data.paysProfessionalFees === true && data.largestProfFeePayment) {
-        facts.push({ kind: 'professional_fee.annual_spend', amount: parseFloat(data.largestProfFeePayment), unit: 'rupees_per_year' })
+        facts.push({ kind: 'professional_fee.annual_spend', financialYear, amount: parseFloat(data.largestProfFeePayment), unit: 'rupees_per_year' })
       } else if (data.paysProfessionalFees === false) {
-        facts.push({ kind: 'professional_fee.annual_spend', amount: 0, unit: 'rupees_per_year' })
+        facts.push({ kind: 'professional_fee.annual_spend', financialYear, amount: 0, unit: 'rupees_per_year' })
       }
 
       // Employees
       if (data.employeeCount) {
-        facts.push({ kind: 'headcount.total', amount: parseInt(data.employeeCount), unit: 'count' })
+        facts.push({ kind: 'headcount.total', financialYear, amount: parseInt(data.employeeCount), unit: 'count' })
       }
 
       // Turnover
       if (data.annualTurnover) {
-        facts.push({ kind: 'turnover.annual', amount: parseFloat(data.annualTurnover), unit: 'rupees_per_year' })
+        facts.push({ kind: 'turnover.annual', financialYear, amount: parseFloat(data.annualTurnover), unit: 'rupees_per_year' })
       }
 
       // Director remuneration
       if (data.paysDirectorRemuneration === true && data.directorRemunerationAmount) {
-        facts.push({ kind: 'director.remuneration', amount: parseFloat(data.directorRemunerationAmount), unit: 'rupees_per_year' })
+        facts.push({ kind: 'director.remuneration', financialYear, amount: parseFloat(data.directorRemunerationAmount), unit: 'rupees_per_year' })
       } else if (data.paysDirectorRemuneration === false) {
-        facts.push({ kind: 'director.remuneration', amount: 0, unit: 'rupees_per_year' })
+        facts.push({ kind: 'director.remuneration', financialYear, amount: 0, unit: 'rupees_per_year' })
       }
 
-      // Save all facts
-      for (const f of facts) {
-        await recordFact({
-          companyId,
-          kind: f.kind,
-          periodStart,
-          periodEnd,
-          amount: f.amount,
-          unit: f.unit,
-          sourceKind: 'user_declared',
-          confidence: 1.0,
-        })
-      }
-
-      // Save boolean facts
+      // Boolean facts
       if (data.anyEmployeeBelow21k !== null) {
-        await recordFact({
-          companyId, kind: 'employee.below_21k_exists', periodStart, periodEnd,
-          payload: { value: data.anyEmployeeBelow21k }, unit: 'boolean',
-          sourceKind: 'user_declared', confidence: 1.0,
-        })
+        facts.push({ kind: 'employee.below_21k_exists', financialYear, payload: { value: data.anyEmployeeBelow21k }, unit: 'boolean' })
       }
       if (data.isCompositionDealer !== null) {
-        await recordFact({
-          companyId, kind: 'gst.composition_dealer', periodStart, periodEnd,
-          payload: { value: data.isCompositionDealer }, unit: 'boolean',
-          sourceKind: 'user_declared', confidence: 1.0,
-        })
+        facts.push({ kind: 'gst.composition_dealer', financialYear, payload: { value: data.isCompositionDealer }, unit: 'boolean' })
       }
       if (data.hasImportsExports !== null) {
-        await recordFact({
-          companyId, kind: 'trade.imports_exports', periodStart, periodEnd,
-          payload: { value: data.hasImportsExports }, unit: 'boolean',
-          sourceKind: 'user_declared', confidence: 1.0,
-        })
+        facts.push({ kind: 'trade.imports_exports', financialYear, payload: { value: data.hasImportsExports }, unit: 'boolean' })
+      }
+
+      for (const f of facts) {
+        const res = await recordUserFact(companyId, f)
+        if (!res.success) {
+          showToast(res.error || 'Failed to save', 'error')
+          setSaving(false)
+          return
+        }
       }
 
       showToast('Business details saved — evaluating compliances...', 'success')

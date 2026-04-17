@@ -4,7 +4,7 @@ import { createServerContainer } from '@/lib/composition/server-container'
 import { handleActionError } from '@/lib/errors/handle-error'
 import { validateCompanyId } from '@/lib/utils/input-validation'
 import { extractFactsFromDocument } from '@/lib/compliance/fact-extraction'
-import { getFactsForPeriod } from '@/lib/compliance/facts'
+import { getFactsForPeriod, recordFact, fyWindow } from '@/lib/compliance/facts'
 
 async function assertCompanyAccess(companyId: string) {
   if (!validateCompanyId(companyId)) throw new Error('Invalid company ID')
@@ -58,6 +58,48 @@ export async function runFactExtraction(
  * List facts for a company + period — used by the evaluator and
  * a future "facts explorer" admin view.
  */
+/**
+ * Record a user-declared fact for an Indian FY. Thin wrapper over
+ * recordFact that re-checks company access and resolves the FY window.
+ * Used by the tracker evaluation panel and the intake form so nothing
+ * in the client bundle imports prisma directly.
+ */
+export async function recordUserFact(
+  companyId: string,
+  input: {
+    kind: string
+    financialYear: string
+    amount?: number | null
+    unit?: string | null
+    payload?: unknown
+    counterparty?: string | null
+  },
+): Promise<{ success: boolean; factId?: string; error?: string }> {
+  try {
+    const { user } = await assertCompanyAccess(companyId)
+    const { periodStart, periodEnd } = fyWindow(input.financialYear)
+    const factId = await recordFact({
+      companyId,
+      kind: input.kind,
+      periodStart,
+      periodEnd,
+      amount: typeof input.amount === 'number' ? input.amount : null,
+      unit: input.unit ?? null,
+      payload: input.payload,
+      counterparty: input.counterparty ?? null,
+      sourceKind: 'user_declared',
+      confidence: 1,
+      createdBy: user.id,
+    })
+    return { success: true, factId }
+  } catch (error) {
+    console.error('[recordUserFact] threw',
+      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : '')
+    return handleActionError(error)
+  }
+}
+
 export async function listFacts(
   companyId: string,
   periodStart: string,

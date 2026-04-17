@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { runApplicabilityEvaluation, listAssessments, overrideAssessment } from '../../actions-evaluator'
-import { listFacts } from '../../actions-facts'
+import { listFacts, recordUserFact } from '../../actions-facts'
 import { showToast } from '@/components/ui/Toast'
 import ComplianceIntakeForm from './ComplianceIntakeForm'
 import {
@@ -283,18 +283,16 @@ function ReviewRow({
     }
     setSaving(true)
     try {
-      const { recordFact, fyWindow } = await import('@/lib/compliance/facts')
-      const { periodStart, periodEnd } = fyWindow(financialYear)
-      await recordFact({
-        companyId,
+      const saveRes = await recordUserFact(companyId, {
         kind: question.factKind,
-        periodStart,
-        periodEnd,
+        financialYear,
         amount: parsed,
         unit: question.unit,
-        sourceKind: 'user_declared',
-        confidence: 1,
       })
+      if (!saveRes.success) {
+        showToast(saveRes.error || 'Save failed', 'error')
+        return
+      }
       const res = await runApplicabilityEvaluation(companyId, financialYear, { skipLlmFallback: true })
       if (res.success) showToast('Updated — re-evaluated', 'success')
       window.dispatchEvent(new CustomEvent('cia:data-changed'))
