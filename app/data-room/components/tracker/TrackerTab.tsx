@@ -15,6 +15,7 @@ import TrackerEmptyState from './TrackerEmptyState'
 import TrackerCalendarView from './TrackerCalendarView'
 import ComplianceIntelligencePanel from './ComplianceIntelligencePanel'
 import CategoryDashboard from './CategoryDashboard'
+import TrackerEvaluationPanel from './TrackerEvaluationPanel'
 
 export default function TrackerTab() {
   const {
@@ -206,6 +207,16 @@ export default function TrackerTab() {
         <CategoryDashboard
           category={selectedCategory}
           items={filteredRequirements}
+        />
+      )}
+
+      {/* Evaluation panel — intake CTA + low-confidence review queue +
+          Re-evaluate button. Collapses to a single compact strip when
+          nothing is pending. List view only. */}
+      {trackerView === 'list' && currentCompany && selectedTrackerFY && (
+        <TrackerEvaluationPanel
+          companyId={currentCompany.id}
+          financialYear={selectedTrackerFY}
         />
       )}
 
