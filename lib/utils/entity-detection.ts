@@ -56,31 +56,36 @@ function detectEntitySubType(
   classOfCompany?: string
 ): string {
   const typeLower = (companyType || '').toLowerCase()
+  const classLower = (classOfCompany || '').toLowerCase()
+  const catLower = (companyCategory || '').toLowerCase()
 
-  // For LLPs, return "LLP" directly
-  if (companyType === 'LLP' || typeLower.includes('llp')) {
+  // LLPs first — catches 'LLP', 'Limited Liability Partnership', etc.
+  if (typeLower.includes('llp') || typeLower.includes('limited liability')) {
     return 'LLP'
   }
 
-  // Section 8 / NGO detection (check companyType first, then companyCategory)
+  // Section 8 / NGO detection
   if (typeLower.includes('section 8') || typeLower.includes('section8') || typeLower.includes('ngo')) {
     return 'NGO / Section 8'
   }
-
-  if (companyCategory?.includes('Company limited by guarantee')) {
+  if (catLower.includes('company limited by guarantee') || catLower.includes('section 8') || catLower.includes('section8')) {
     return 'NGO / Section 8'
   }
 
-  // OPC detection
+  // OPC detection — OPC is a subtype of private limited in this form
   if (typeLower.includes('one person') || typeLower.includes('opc')) {
-    return 'Private Limited' // OPC is a subtype of private limited
-  }
-
-  if (classOfCompany === 'Private') {
     return 'Private Limited'
   }
 
-  if (classOfCompany === 'Public') {
+  // Previously required classOfCompany === 'Private' exactly. Perplexity
+  // returns strings like "Private", "Private Company", "Private Limited",
+  // "Pvt Ltd", etc. — none of which matched. companyType rarely matched
+  // either because its value was usually "Private Limited" not "private".
+  // Now we substring-match on BOTH fields for the common words.
+  if (classLower.includes('private') || typeLower.includes('private') || typeLower.includes('pvt')) {
+    return 'Private Limited'
+  }
+  if (classLower.includes('public') || typeLower.includes('public')) {
     return 'Public Limited'
   }
 
