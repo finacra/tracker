@@ -409,22 +409,42 @@ export default function OnboardingPage() {
 
     const phoneNumber = companyData?.mobileNumber || companyData?.phoneNumber || companyData?.contactNumber || ''
 
-    // Determine industry from NIC code (parsed CIN) or entity detection
-    const nicIndustry = detection.industryPrimary
-    const isKnownIndustry = nicIndustry && INDUSTRIES.includes(nicIndustry as any)
-    const selectedIndustries = isKnownIndustry
-      ? [nicIndustry as any]
-      : nicIndustry && nicIndustry !== 'Other'
-        ? ['Other' as any]
-        : []
-
-    const needsOtherCategoryText = formCategories.includes('Other')
+    // Determine industry from NIC code (parsed CIN) or entity detection.
+    // Principle: if the API/NIC gave us ANY signal about what this
+    // company does, fill the fields. If the signal doesn't match a
+    // predefined option, select "Other" and stash the raw description
+    // in otherIndustryCategory so nothing is left blank.
     const rawApiDescription = companyData?.principalBusinessActivity ||
                               companyData?.industrialClass ||
                               companyData?.mainDivision ||
-                              // Fallback: use NIC description from parsed CIN
                               parsed.nicDetails?.description ||
                               detection.industryPrimary || ''
+
+    const nicIndustry = detection.industryPrimary
+    const isKnownIndustry = !!nicIndustry && INDUSTRIES.includes(nicIndustry as any)
+    const haveAnyIndustrySignal = Boolean(
+      (nicIndustry && nicIndustry !== 'Other') || rawApiDescription.trim()
+    )
+    const selectedIndustries: string[] = isKnownIndustry
+      ? [nicIndustry as any]
+      : haveAnyIndustrySignal
+        ? ['Other']
+        : []
+
+    // Categories: same fallback — if the mapper returned nothing but
+    // we have a description, mark Other so the form doesn't stay empty.
+    const finalCategories: string[] = formCategories.length > 0
+      ? formCategories
+      : haveAnyIndustrySignal
+        ? ['Other']
+        : []
+
+    // otherIndustryCategory is shown whenever either list contains
+    // Other. We always write the raw description when it's available,
+    // even if the mapping managed to find a known category — so the
+    // user sees the agent's actual finding, not just a generic label.
+    const needsOtherCategoryText =
+      selectedIndustries.includes('Other') || finalCategories.includes('Other')
 
     // Use parsed CIN year as fallback for date of incorporation
     const apiDate = companyData?.dateOfIncorporation ? formatDate(companyData.dateOfIncorporation) : ''
@@ -443,8 +463,11 @@ export default function OnboardingPage() {
       phoneNumber: phoneNumber || prev.phoneNumber,
       email: companyData?.emailAddress || prev.email,
       cinNumber: companyData?.cin || formData.cinNumber,
-      industryCategories: formCategories.length > 0 ? formCategories : prev.industryCategories,
-      otherIndustryCategory: needsOtherCategoryText ? rawApiDescription : prev.otherIndustryCategory,
+      industryCategories: finalCategories.length > 0 ? finalCategories : prev.industryCategories,
+      otherIndustryCategory:
+        needsOtherCategoryText && rawApiDescription.trim()
+          ? rawApiDescription.trim()
+          : prev.otherIndustryCategory,
       // CIN API fields
       authorisedCapital: companyData?.authorisedCapital || prev.authorisedCapital,
       paidUpCapital: companyData?.paidUpCapital || prev.paidUpCapital,
