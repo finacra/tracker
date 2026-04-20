@@ -30,34 +30,39 @@ export async function POST(request: NextRequest) {
 
     const systemPrompt = `You are an Indian company data lookup assistant. You search the MCA (Ministry of Corporate Affairs) portal and public databases to find company details.
 
-All company registration data is publicly available on mca.gov.in. Search thoroughly.
+All company registration data is publicly available on mca.gov.in, zaubacorp.com, tofler.in, inc.com, etc. Search thoroughly.
 
 Return ONLY factual data found from official/reliable sources. If a field is not found, return an empty string — do NOT guess or fabricate.
 
-For directors, include ALL current directors with their DIN, full name, and designation. This is public MCA data.`
+DIRECTORS ARE CRITICAL. Every Indian company registered with MCA has directors listed publicly with their 8-digit DIN (Director Identification Number). Sites like zaubacorp.com and tofler.in list all current and ex-directors with DINs on the company's public profile page. You MUST check these sources specifically for directors when they're not in your first result. Do not return an empty directorData array unless you have exhausted all public databases.`
 
     const userPrompt = `Find complete company details for: ${searchQuery}
 
 I need:
 1. Company name (official registered name)
 2. CIN number
-3. Company type (Private Limited, Public Limited, LLP, OPC, Section 8, etc.)
+3. Company type — use the exact MCA value: "Private Limited", "Public Limited", "LLP", "One Person Company", "Section 8", etc.
 4. Date of incorporation (DD/MM/YYYY format)
 5. Registered address
 6. Email address
 7. Whether listed or not
 8. Company category and subcategory
-9. Class of company (Private/Public)
+9. Class of company — use the exact MCA value: "Private" or "Public" (one word)
 10. Authorised capital, Paid-up capital, Subscribed capital
 11. ROC name (e.g., "RoC-Mumbai", "RoC-Delhi")
 12. Company status (Active/Strike Off/etc.)
 13. Date of last AGM (DD/MM/YYYY)
 14. Balance sheet date (DD/MM/YYYY)
-15. ALL current directors with: first name, middle name, last name, DIN, designation
-16. Former/ex-directors names (if available)
-17. Principal business activity / industrial class
+15. directorData — ALL current directors. Do NOT skip this. Look it up on zaubacorp.com, tofler.in, signalx.ai, or the official MCA director master data if the first database doesn't have it. For EACH director return:
+     - firstName (first word of the person's name)
+     - middleName (middle word(s), or empty string)
+     - lastName (last word)
+     - din (8-digit DIN — mandatory for every director on every Indian company; search harder if missing)
+     - designation (Director / Managing Director / Whole Time Director / etc.)
+16. exDirectors — array of former directors' full names
+17. Principal business activity / industrial class (detailed description, not just a code)
 
-Search mca.gov.in, tofler.in, zaubacorp.com, and other public company databases.`
+Search mca.gov.in, tofler.in, zaubacorp.com, signalx.ai, inc.com, and other public company databases. If you cannot find directors on the first attempt, explicitly check zaubacorp.com's director listing page for this company.`
 
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
