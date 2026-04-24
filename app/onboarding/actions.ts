@@ -188,7 +188,14 @@ export async function completeOnboarding(
     balanceSheetDate: formData.balanceSheetDate || null,
   })
   } catch (createErr) {
-    return handleActionError(createErr)
+    // Re-throw so the outer try/catch (added at function top) returns
+    // the raw error message. handleActionError redacts to a generic
+    // "Something went wrong" in production, which made every company-
+    // creation failure look identical and un-diagnosable.
+    console.error('[completeOnboarding] company create failed',
+      createErr instanceof Error ? createErr.message : String(createErr),
+      createErr instanceof Error ? createErr.stack : '')
+    throw createErr
   }
 
   // 1a. Persist GSTIN registrations — one row per GSTIN, with state stamped
