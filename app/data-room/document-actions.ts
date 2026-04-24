@@ -151,21 +151,36 @@ export async function reprocessDocument(documentId: string) {
 
 export async function uploadFileToStorage(filePath: string, fileData: ArrayBuffer, contentType: string) {
   try {
-    // SECURITY: derive the company the file belongs to from the path
-    // and enforce editor-role on that company. File paths in this app
-    // always start with {uuid}/... where the uuid is either userId (for
-    // onboarding) or companyId (for tracker uploads). We check against
-    // both — treat the request as mutating docs for whichever matches.
+    // SECURITY: file paths in this app fall into one of two shapes:
+    //   (a) Onboarding — "{userId}/{timestamp}/{filename}". The company
+    //       doesn't exist yet; we can only check the path starts with
+    //       the current user's id and reject anything else. Without
+    //       this carve-out, company creation can never succeed because
+    //       the doc-upload step has no companyId to role-check against.
+    //   (b) Tracker / vault — "{companyId}/...". We derive the company
+    //       from the first segment and require owner / admin / editor
+    //       role on it.
     const sanitizedFilePath = sanitizeStringInput(filePath, 1000)
     if (!sanitizedFilePath) throw new Error('Invalid file path')
 
     const segments = sanitizedFilePath.split('/').filter(Boolean)
-    // Locate the companyId segment: the second (path pattern
-    // "userId/companyId/...") or the first (path pattern
-    // "companyId/compliance/...").
     const { companyRepository, authService, companyMembershipRepository } = createServerContainer()
     const user = await authService.requireCurrentUser()
 
+    // (a) Onboarding path — first segment is the caller's own userId.
+    const firstSeg = segments[0]
+    if (firstSeg && (firstSeg === user.id || firstSeg === (user as any).canonicalId)) {
+      const { createStorageAdapter } = await import('@/lib/storage/factory')
+      const storage = createStorageAdapter()
+      await storage.uploadFile('company-documents', sanitizedFilePath, fileData, {
+        contentType: contentType,
+        upsert: false,
+      })
+      return { success: true }
+    }
+
+    // (b) Company-scoped path — locate the companyId (first or second
+    // segment) and require editor role.
     let resolvedCompanyId: string | null = null
     for (const seg of segments.slice(0, 2)) {
       if (validateCompanyId(seg)) {

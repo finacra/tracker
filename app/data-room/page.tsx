@@ -590,26 +590,34 @@ function DataRoomPageInner() {
       return;
     }
 
-    // If user has no companies at all, check if they're a team member
-    // Team members should go to /owner-subscription-expired, not /subscribe
+    // If user has no companies at all, route them based on whether
+    // they have any subscription. A user with an active trial/sub but
+    // no companies yet is a FRESH user who hasn't onboarded — they go
+    // to /onboarding, not to the team-member-expired page. Previously
+    // the is-team-member check also fired true for these users
+    // because the server returns ownerSubscriptionExpired=true when
+    // there's no target company to own, which was wrong.
     if (companies.length === 0 && !isLoading) {
-      // Check if user is a team member (has roles but subscription expired)
-      const isTeamMember = initDataResults?.companyAccess 
-        ? !initDataResults.companyAccess.isOwner && initDataResults.companyAccess.ownerSubscriptionExpired
-        : false;
-      
+      if (finalHasSubscription) {
+        console.log('[DataRoom] User has subscription but no companies, routing to /onboarding')
+        router.push("/onboarding");
+        return;
+      }
+
+      // No companies AND no subscription. Could be a genuine team
+      // member (had access via an owner whose sub expired) or a
+      // totally-new user who never subscribed. The server's
+      // ownerSubscriptionExpired flag is the signal — it now
+      // requires at least one accessible company to be true, so
+      // this only fires for real team members.
+      const isTeamMember = initDataResults?.companyAccess?.ownerSubscriptionExpired === true
       if (isTeamMember) {
         console.log('[DataRoom] Team member has no accessible companies, redirecting to owner-subscription-expired');
         router.push("/owner-subscription-expired");
         return;
       }
-      
-      // Owner with no companies - redirect to onboarding or subscribe
-      if (finalHasSubscription) {
-        router.push("/onboarding");
-      } else {
-        router.push("/subscribe");
-      }
+
+      router.push("/subscribe");
       return;
     }
 
