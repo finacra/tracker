@@ -6,6 +6,29 @@ import type {
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 
+/**
+ * Parse date strings the Perplexity / MCA agent tends to return in a
+ * mix of formats: "DD/MM/YYYY", "YYYY-MM-DD", ISO 8601, or free-form
+ * garbage like "Not available". Returns a valid Date or null — never
+ * an Invalid Date object (which Prisma rejects).
+ */
+function parseFlexibleDate(value: string | null | undefined): Date | null {
+  if (!value) return null
+  const trimmed = String(value).trim()
+  if (!trimmed || /^(n\/?a|not available|none|unknown|-)$/i.test(trimmed)) return null
+
+  // Try DD/MM/YYYY or DD-MM-YYYY first — Indian form default
+  const dmy = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  if (dmy) {
+    const d = new Date(Date.UTC(parseInt(dmy[3], 10), parseInt(dmy[2], 10) - 1, parseInt(dmy[1], 10)))
+    if (!isNaN(d.getTime())) return d
+  }
+
+  // Fall back to native parsing (handles ISO, YYYY-MM-DD, etc.)
+  const native = new Date(trimmed)
+  return isNaN(native.getTime()) ? null : native
+}
+
 export class PrismaCompanyRepository implements CompanyRepository {
   async getDetailsById(companyId: string): Promise<CompanyDetailsRecord | null> {
     // Use Prisma.sql with explicit UUID cast
@@ -159,7 +182,7 @@ export class PrismaCompanyRepository implements CompanyRepository {
         industries: input.industries || [],
         industry_categories: input.industryCategories || [],
         other_industry_category: input.otherIndustryCategory || null,
-        incorporation_date: input.incorporationDate ? new Date(input.incorporationDate) : null,
+        incorporation_date: parseFlexibleDate(input.incorporationDate),
         address: input.address || null,
         city: input.city || null,
         state: input.state || null,
@@ -193,8 +216,13 @@ export class PrismaCompanyRepository implements CompanyRepository {
         class_of_company: input.classOfCompany || null,
         roc_name: input.rocName || null,
         company_status: input.companyStatus || null,
-        date_of_last_agm: input.dateOfLastAgm ? new Date(input.dateOfLastAgm) : null,
-        balance_sheet_date: input.balanceSheetDate ? new Date(input.balanceSheetDate) : null,
+        // Agent-sourced dates can arrive in "DD/MM/YYYY", ISO, or as
+        // garbage ("Not available"). new Date() happily returns an
+        // Invalid Date on bad input, which Prisma then rejects with
+        // "Provided Date object is invalid" — blocking the entire
+        // company create. Parse safely and drop to null on failure.
+        date_of_last_agm: parseFlexibleDate(input.dateOfLastAgm),
+        balance_sheet_date: parseFlexibleDate(input.balanceSheetDate),
       },
       select: { id: true, name: true, user_id: true },
     })
@@ -244,8 +272,8 @@ export class PrismaCompanyRepository implements CompanyRepository {
         class_of_company: input.classOfCompany !== undefined ? input.classOfCompany : undefined,
         roc_name: input.rocName !== undefined ? input.rocName : undefined,
         company_status: input.companyStatus !== undefined ? input.companyStatus : undefined,
-        date_of_last_agm: input.dateOfLastAgm !== undefined ? (input.dateOfLastAgm ? new Date(input.dateOfLastAgm) : null) : undefined,
-        balance_sheet_date: input.balanceSheetDate !== undefined ? (input.balanceSheetDate ? new Date(input.balanceSheetDate) : null) : undefined,
+        date_of_last_agm: input.dateOfLastAgm !== undefined ? parseFlexibleDate(input.dateOfLastAgm) : undefined,
+        balance_sheet_date: input.balanceSheetDate !== undefined ? parseFlexibleDate(input.balanceSheetDate) : undefined,
       },
     })
   }
