@@ -79,6 +79,18 @@ export async function completeOnboarding(
   },
   directors: DirectorInput[]
 ) {
+  // Top-level try/catch so every failure path returns a structured
+  // error instead of throwing. The onboarding client's submit handler
+  // previously had no else-branch for {success: false}, so any
+  // thrown error produced a silent "button stops spinning" UX.
+  // Throwing also bypasses handleActionError's logging path.
+  console.log('[completeOnboarding] enter', {
+    companyName: formData.companyName,
+    countryCode: formData.countryCode,
+    directorCount: directors?.length ?? 0,
+    docCount: (formData as any).documents?.length ?? 0,
+  })
+  try {
   const {
     companyRepository,
     companyMembershipRepository,
@@ -416,7 +428,20 @@ export async function completeOnboarding(
     })
   }
 
+  console.log('[completeOnboarding] ok', { companyId: company.id, hasActiveAccess: companyHasActiveAccess })
   return { success: true, companyId: company.id, hasActiveAccess: companyHasActiveAccess }
+  } catch (error) {
+    // Surface raw error to the client so the onboarding form can show
+    // a useful toast. In production handleActionError redacts, but the
+    // stack still lands in Vercel runtime logs with the tag below.
+    console.error('[completeOnboarding] threw',
+      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : '')
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : 'Company creation failed',
+    }
+  }
 }
 
 export async function updateCompany(
