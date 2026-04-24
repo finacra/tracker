@@ -920,30 +920,34 @@ export default function OnboardingPage() {
     }
 
     setIsSubmitting(true)
-    // No changes needed here
-    
+    console.log('[onboarding:submit] starting', {
+      companyName: formData.companyName,
+      docCount: Object.values(formData.documents).filter(f => f !== null).length,
+      directorCount: directors.length,
+    })
+
     try {
       // 1. Upload files to Storage first
       const uploadedDocuments: Array<{ type: string; path: string; name: string }> = []
-      
+
       const uploadPromises = Object.entries(formData.documents)
         .filter(([_, file]) => file !== null)
         .map(async ([docType, file]) => {
           const fileObj = file as File
           const fileExt = fileObj.name.split('.').pop()
           const fileName = `${docType.replace(/\s+/g, '_')}_${Date.now()}.${fileExt}`
-          // Temporary path, we'll update it or keep it simple. 
-          // Best practice is user_id/timestamp/filename
           const filePath = `${user?.id}/${Date.now()}/${fileName}`
 
-          // Upload via server action (works for both Supabase and Passport users)
+          console.log('[onboarding:submit] uploading', { docType, filePath, size: fileObj.size })
           const fileArrayBuffer = await fileObj.arrayBuffer()
           const uploadResult = await uploadFileToStorage(filePath, fileArrayBuffer, fileObj.type)
 
           if (!uploadResult.success) {
-            throw new Error('error' in uploadResult ? uploadResult.error : 'Upload failed')
+            const msg = 'error' in uploadResult ? uploadResult.error : 'Upload failed'
+            console.error('[onboarding:submit] upload failed', { docType, filePath, error: msg })
+            throw new Error(`Upload failed for ${docType}: ${msg}`)
           }
-          
+
           uploadedDocuments.push({
             type: docType,
             path: filePath,
@@ -952,8 +956,10 @@ export default function OnboardingPage() {
         })
 
       await Promise.all(uploadPromises)
+      console.log('[onboarding:submit] all uploads done', { count: uploadedDocuments.length })
 
       // 2. Call the Server Action with Service Role privileges
+      console.log('[onboarding:submit] calling completeOnboarding…')
       const result = await completeOnboarding({
         ...formData,
         countryCode: countryCode,
@@ -962,6 +968,7 @@ export default function OnboardingPage() {
         documents: uploadedDocuments,
         exDirectors: exDirectors.trim() || undefined
       }, directors)
+      console.log('[onboarding:submit] completeOnboarding returned', result)
 
       if (result.success && result.companyId) {
         // Hybrid subscription model. The server tells us whether the
@@ -982,10 +989,23 @@ export default function OnboardingPage() {
           // No access path succeeded → user needs to pick a plan
           router.push(`/subscribe?company_id=${result.companyId}`)
         }
+      } else {
+        // Server returned {success: false} — previously this branch
+        // was empty: button stopped spinning, no toast, no log. User
+        // had no way to know anything went wrong. Now we surface the
+        // exact server error.
+        const errMsg = (result as any)?.error || 'Company creation failed — server returned no error message'
+        console.error('[onboarding:submit] server returned failure', result)
+        showToast(errMsg, 'error')
       }
     } catch (error) {
-      console.error('Error submitting form:', error)
-      showToast('Failed to complete onboarding: ' + (error instanceof Error ? error.message : 'Something went wrong'), 'error')
+      console.error('[onboarding:submit] threw',
+        error instanceof Error ? error.message : String(error),
+        error instanceof Error ? error.stack : '')
+      const msg = error instanceof Error
+        ? `${error.message}${error.stack ? `\n${error.stack.split('\n').slice(0, 3).join('\n')}` : ''}`
+        : String(error)
+      showToast(msg, 'error')
     } finally {
       setIsSubmitting(false)
     }
