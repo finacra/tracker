@@ -3596,12 +3596,25 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     const isOwner = pulse.is_owner as boolean
     const hasCompanySub = pulse.has_company_sub as boolean
     const hasOwnerSub = pulse.has_owner_sub as boolean
-    
-    // CRITICAL: ownerSubscriptionExpired should only be true for TEAM MEMBERS (not owners)
-    // when BOTH company subscription AND owner subscription are expired
-    // Owners should never have ownerSubscriptionExpired = true (they get redirected to subscription-required instead)
-    // Superadmins should never have ownerSubscriptionExpired = true
-    const isTeamMember = !isOwner && !isSuperadminResult
+
+    // "Team member with expired owner sub" is a very specific state:
+    // the user must (a) actually have at least one company role, AND
+    // (b) none of those companies grant them access right now.
+    //
+    // Previously: isTeamMember = !isOwner && !isSuperadmin — which was
+    // also TRUE for a brand-new user who has a personal trial but no
+    // companies yet (target_company_id is NULL, is_owner is NULL ⇒
+    // false). That caused the server to set ownerSubscriptionExpired
+    // = true and the data-room client to bounce those users to
+    // /owner-subscription-expired even though their trial is valid.
+    //
+    // Now we only flag ownerSubscriptionExpired when the user has
+    // NO access to the target company AND is not the owner AND has
+    // at least one accessible company (meaning they're actually a
+    // team member somewhere). A user with no companies at all just
+    // gets routed to /onboarding by the client.
+    const hasAnyAccessibleCompany = accessibleCompanyIds.length > 0
+    const isTeamMember = !isOwner && !isSuperadminResult && hasAnyAccessibleCompany
     const ownerSubscriptionExpired = isTeamMember && !hasCompanySub && !hasOwnerSub
 
     // 1. Subscription Logic (for the current LOGGED IN user)
