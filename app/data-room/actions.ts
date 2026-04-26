@@ -1,5 +1,6 @@
 'use server'
 
+import { cache } from 'react'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { createStorageAdapter } from '@/lib/storage/factory'
 import { runWithConcurrency } from '@/lib/utils/rate-limiter'
@@ -29,10 +30,14 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth/passport-session'
 // performance is available globally in Node.js
 
-async function requireCurrentUser() {
+// Per-request memoized so multiple actions/helpers in the same render
+// don't each pay for getSession() + DB user lookup. createServerContainer
+// is already memoized via React.cache, so this only adds the auth chain
+// dedup on top.
+const requireCurrentUser = cache(async () => {
   const { authService } = createServerContainer()
   return authService.requireCurrentUser()
-}
+})
 
 export interface RegulatoryRequirement {
   id: string
@@ -87,15 +92,15 @@ function hasPlatformSuperadminRole(
   return Boolean(roles?.some((role: Pick<UserRole, 'company_id'>) => role.company_id === null))
 }
 
-async function getCurrentUserOrNull(): Promise<AppUser | null> {
+const getCurrentUserOrNull = cache(async (): Promise<AppUser | null> => {
   const { authService } = createServerContainer()
   return authService.getCurrentUser()
-}
+})
 
-async function isUserPlatformSuperadmin(userId: string): Promise<boolean> {
+const isUserPlatformSuperadmin = cache(async (userId: string): Promise<boolean> => {
   const { accessService } = createServerContainer()
   return accessService.isSuperadmin(userId)
-}
+})
 
 function getUserDisplayName(user: Pick<AppUser, 'fullName' | 'email'> | null | undefined): string {
   if (!user) {
