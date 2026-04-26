@@ -29,6 +29,9 @@ export function useAccessibleCompaniesQuery({
     },
     enabled,
     initialData,
+    // Pre-populated from getDataRoomInitState — mark fresh so React
+    // Query doesn't refetch behind it on mount.
+    initialDataUpdatedAt: initialData ? Date.now() : undefined,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000,
   })

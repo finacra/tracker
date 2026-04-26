@@ -42,6 +42,9 @@ export function useUserSubscriptionQuery({
     },
     enabled: enabled && isAuthReady,
     initialData,
+    // Pre-populated from getDataRoomInitState — mark fresh so React
+    // Query doesn't refetch behind it on mount.
+    initialDataUpdatedAt: initialData ? Date.now() : undefined,
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
     retry: 2,

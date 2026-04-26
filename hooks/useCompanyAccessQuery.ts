@@ -39,6 +39,12 @@ export function useCompanyAccessQuery({
     },
     enabled: enabled && !!companyId && isAuthReady,
     initialData,
+    // Mark pre-populated initialData as fresh so React Query doesn't
+    // immediately refetch behind it. Without this, every page mount
+    // that supplies initialData triggers a redundant background fetch
+    // (defeating the whole point of pre-population from the batched
+    // init action).
+    initialDataUpdatedAt: initialData ? Date.now() : undefined,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     retry: 2,

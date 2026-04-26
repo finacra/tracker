@@ -29,6 +29,9 @@ export function useUserRoleQuery({
     },
     enabled: enabled && !!companyId,
     initialData,
+    // Pre-populated from getDataRoomInitState — mark fresh so React
+    // Query doesn't refetch behind it on mount.
+    initialDataUpdatedAt: initialData !== undefined ? Date.now() : undefined,
     staleTime: 5 * 60 * 1000, // 5 minutes - roles don't change often
     gcTime: 10 * 60 * 1000,
   })
