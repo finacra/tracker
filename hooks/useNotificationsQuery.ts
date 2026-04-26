@@ -54,49 +54,10 @@ export function useNotificationsQuery(options: { enabled?: boolean; limit?: numb
   })
 }
 
-// ─── Query: unread count only (badge) ────────────────────────────────────────
-
-/**
- * Cheap badge-count query — fetches only unread notifications and returns the
- * count.  Runs in the background regardless of panel state.
- */
-export function useUnreadCountQuery(options: { enabled?: boolean } = {}) {
-  const { enabled = true } = options
-  const setNotificationCount = useAppStore((s) => s.setNotificationCount)
-  // Read seed from Zustand SYNCHRONOUSLY at hook init. Zustand state is
-  // module-level and persists across mounts, so we read whatever value
-  // the page (or a previous mount) wrote — no reliance on the React
-  // Query cache, which has a hook-mount-order race vs. /data-room/page.
-  // If the seed is fresh (within staleTime), React Query honors it as
-  // initialData + initialDataUpdatedAt and skips the queryFn.
-  const seededState = useAppStore.getState()
-  const seededCount = seededState.notificationCountSeededAt !== null
-    ? seededState.notificationCount
-    : undefined
-
-  return useQuery({
-    queryKey: [...queryKeys.notifications(), 'unread-count'],
-    queryFn: async () => {
-      try {
-        const result = await getNotifications({ unreadOnly: true, limit: 50 })
-        if (!result.success) throw new Error(result.error || 'Failed to fetch unread count')
-        const count = result.unreadCount ?? 0
-        setNotificationCount(count)
-        return count
-      } catch (err) {
-        console.error('[useUnreadCountQuery] queryFn threw', err, (err as any)?.stack)
-        throw err
-      }
-    },
-    enabled,
-    initialData: seededCount,
-    initialDataUpdatedAt: seededState.notificationCountSeededAt ?? undefined,
-    staleTime: 60 * 1000,        // poll every minute
-    gcTime: 5 * 60 * 1000,
-    refetchInterval: 60 * 1000,  // background poll every 60 s
-    refetchOnWindowFocus: true,
-  })
-}
+// Badge count is now owned by the unread-count poller in app/providers.tsx
+// (mounted once at app root, no Header mount-order race). Header reads
+// the count from Zustand only. Mutations below also write Zustand
+// directly via setNotificationCount on success.
 
 // ─── Mutation: mark one or more as read ──────────────────────────────────────
 
