@@ -528,7 +528,10 @@ function DataRoomPageInner() {
 
         // 5. Populate requirements + documents from init state (eliminates second fetch)
         if (selected?.id === data.currentCompanyId) {
-            if (data.initialRequirements && data.initialRequirements.length > 0) {
+            // Always mark fresh — even an empty array is a valid answer
+            // from the atomic init query. Previously the `length > 0`
+            // gate let useRequirements re-fetch when init returned [].
+            if (data.initialRequirements) {
                 setRegulatoryRequirements(data.initialRequirements);
                 markRequirementsFresh(selected.id);
             }
