@@ -57,6 +57,7 @@ function SubscribePageInner() {
   // Dropdown changes go through the lighter getSubscribeCompanyState
   // refresh below.
   const initRanForRef = useRef<string | null>(null)
+  const lastRefreshedCompanyRef = useRef<string | null>(null)
   useEffect(() => {
     if (authLoading || !user) return
     const initKey = `${user.id}:${companyId ?? ''}`
@@ -82,14 +83,28 @@ function SubscribePageInner() {
         setAccessibleCompanies(d.accessibleCompanies)
         setAccessibleCompanyIds(d.accessibleCompanyIds)
 
-        if (!companyId && d.userCompanies.length > 0) {
-          setSelectedCompanyForSubscription((current) => current || d.userCompanies[0]?.id || null)
+        // Pre-populate React Query caches so useUserSubscription (and
+        // any other hook reading these keys) serves from cache instead
+        // of firing its own server roundtrip.
+        queryClient.setQueryData(queryKeys.userSubscription(), d.userSubscription)
+        queryClient.setQueryData(queryKeys.accessibleCompanies(), d.accessibleCompanyIds)
+
+        // Auto-select the first owned company if no URL company_id was
+        // provided. The server already pre-warmed subscription +
+        // eligibility for this company in the same payload, so we
+        // mark lastRefreshedCompanyRef to suppress the dropdown-refresh
+        // effect from re-fetching the same data.
+        if (!companyId && d.userCompanies.length > 0 && d.resolvedCompanyId) {
+          setSelectedCompanyForSubscription((current) => current || d.resolvedCompanyId)
+          lastRefreshedCompanyRef.current = d.resolvedCompanyId
+        } else if (companyId) {
+          lastRefreshedCompanyRef.current = companyId
         }
 
         const hasSub = d.subscription?.hasSubscription ?? false
         setCompanyHasActiveSubscription(hasSub)
-        if (hasSub && !showUpgrade && (selectedCompanyForSubscription || companyId)) {
-          router.replace(`/data-room?company_id=${selectedCompanyForSubscription || companyId}`)
+        if (hasSub && !showUpgrade && d.resolvedCompanyId) {
+          router.replace(`/data-room?company_id=${d.resolvedCompanyId}`)
         }
 
         setCompanyTrialEligible(d.eligibility.eligible)
@@ -107,12 +122,12 @@ function SubscribePageInner() {
     return () => {
       cancelled = true
     }
-  }, [companyId, user, authLoading, showUpgrade, router, selectedCompanyForSubscription])
+  }, [companyId, user, authLoading, showUpgrade, router, queryClient])
 
   // Lightweight refresh when the dropdown changes — re-derives just
   // subscription + eligibility for the newly-selected company. Skipped
-  // on the first render (init covers it) and when nothing is selected.
-  const lastRefreshedCompanyRef = useRef<string | null>(null)
+  // on the first render (init pre-warmed lastRefreshedCompanyRef for
+  // the resolved/auto-selected company).
   useEffect(() => {
     if (!user || authLoading) return
     if (anyAccessLoading) return

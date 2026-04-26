@@ -19,6 +19,16 @@ export type SubscribeEligibility = {
   reason: string | null
 }
 
+export type SubscribeUserSubscription = {
+  hasSubscription: boolean
+  tier: string
+  isTrial: boolean
+  trialDaysRemaining: number
+  companyLimit: number
+  currentCompanyCount: number
+  canCreateCompany: boolean
+}
+
 export type SubscribeInitState = {
   companyName: string | null
   userCompanies: Array<{ id: string; name: string }>
@@ -26,6 +36,10 @@ export type SubscribeInitState = {
   accessibleCompanyIds: string[]
   subscription: SubscribeCompanySubscription
   eligibility: SubscribeEligibility
+  userSubscription: SubscribeUserSubscription
+  // The companyId we resolved (URL or first owned), so the client knows
+  // which company `subscription` and `eligibility` refer to.
+  resolvedCompanyId: string | null
 }
 
 /**
@@ -47,31 +61,36 @@ export async function getSubscribeInitState(
     const accessibleIdsUseCase = new GetAccessibleCompanyIds(accessService)
 
     // First fan-out: things that depend only on the user.
-    const [ownedCompanies, accessibleCompanyIds, enterpriseTrialUsed] = await Promise.all([
+    const [ownedCompanies, accessibleCompanyIds, enterpriseTrialUsed, userSubscriptionRaw] = await Promise.all([
       companyRepository.listOwnedByUser(user.id),
       accessibleIdsUseCase.execute(user.id),
       subscriptionRepository.hasUsedEnterpriseUserTrial(user.id),
+      subscriptionRepository.getUserSubscriptionState(user.id),
     ])
 
     const ownedIdSet = new Set(ownedCompanies.map((c) => c.id))
     const accessibleIdSet = new Set(accessibleCompanyIds)
 
-    // Second fan-out: things that depend on the company id (if any).
-    const targetCompany = validCompanyId
-    const isOwner = targetCompany ? ownedIdSet.has(targetCompany) : false
-    const hasAccess = targetCompany ? isOwner || accessibleIdSet.has(targetCompany) : false
+    // If no companyId from URL, default to the first owned company so
+    // we can pre-warm its subscription + eligibility — the page would
+    // otherwise auto-select it on mount and trigger an extra refresh.
+    const resolvedCompanyId =
+      validCompanyId ?? (ownedCompanies.length > 0 ? ownedCompanies[0].id : null)
+
+    const isOwner = resolvedCompanyId ? ownedIdSet.has(resolvedCompanyId) : false
+    const hasAccess = resolvedCompanyId ? isOwner || accessibleIdSet.has(resolvedCompanyId) : false
 
     const [accessibleCompaniesFull, companyById, companySubscription, companyTrialUsed] = await Promise.all([
       companyRepository.listByIds(accessibleCompanyIds),
-      targetCompany ? companyRepository.getById(targetCompany) : Promise.resolve(null),
-      targetCompany ? subscriptionRepository.getCompanySubscriptionState(targetCompany) : Promise.resolve(null),
-      targetCompany ? subscriptionRepository.hasUsedCompanyTrial(targetCompany) : Promise.resolve(false),
+      resolvedCompanyId ? companyRepository.getById(resolvedCompanyId) : Promise.resolve(null),
+      resolvedCompanyId ? subscriptionRepository.getCompanySubscriptionState(resolvedCompanyId) : Promise.resolve(null),
+      resolvedCompanyId ? subscriptionRepository.hasUsedCompanyTrial(resolvedCompanyId) : Promise.resolve(false),
     ])
 
     let eligibility: SubscribeEligibility = { eligible: true, reason: null }
     if (enterpriseTrialUsed) {
       eligibility = { eligible: false, reason: 'enterprise_trial_used' }
-    } else if (targetCompany) {
+    } else if (resolvedCompanyId) {
       if (!hasAccess) {
         eligibility = { eligible: false, reason: 'unauthorized' }
       } else if (!isOwner) {
@@ -81,10 +100,28 @@ export async function getSubscribeInitState(
       }
     }
 
+    // companyName only when the URL specifically referenced the company —
+    // we don't display it for the auto-selected first company, only for
+    // explicit context.
     const companyName =
-      targetCompany && companyById && (ownedIdSet.has(targetCompany) || accessibleIdSet.has(targetCompany))
+      validCompanyId && companyById && (ownedIdSet.has(validCompanyId) || accessibleIdSet.has(validCompanyId))
         ? companyById.name
         : null
+
+    const hasActiveSub = Boolean(
+      userSubscriptionRaw?.hasSubscription ||
+      (userSubscriptionRaw?.isTrial && (userSubscriptionRaw?.trialDaysRemaining ?? 0) > 0)
+    )
+    const companyLimit = userSubscriptionRaw?.companyLimit ?? 0
+    const userSubscription: SubscribeUserSubscription = {
+      hasSubscription: hasActiveSub,
+      tier: userSubscriptionRaw?.tier ?? 'none',
+      isTrial: userSubscriptionRaw?.isTrial ?? false,
+      trialDaysRemaining: userSubscriptionRaw?.trialDaysRemaining ?? 0,
+      companyLimit,
+      currentCompanyCount: ownedCompanies.length,
+      canCreateCompany: hasActiveSub && ownedCompanies.length < companyLimit,
+    }
 
     return {
       success: true,
@@ -95,6 +132,8 @@ export async function getSubscribeInitState(
         accessibleCompanyIds,
         subscription: companySubscription,
         eligibility,
+        userSubscription,
+        resolvedCompanyId,
       },
     }
   } catch (error) {

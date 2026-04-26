@@ -1,8 +1,18 @@
 'use server'
 
+import { cache } from 'react'
 import { createServerContainer } from '@/lib/composition/server-container'
 import { handleActionError } from '@/lib/errors/handle-error'
 import type { SubscriptionRecord } from '@/application/interfaces/SubscriptionRepository'
+
+// Per-request memoization so multiple callers in the same render don't each
+// pay for the auth + DB lookup chain.
+const _checkSuperadminStatusCached = cache(async () => {
+  const { accessService, authService } = createServerContainer()
+  const user = await authService.requireCurrentUser()
+  const isSuperadmin = await accessService.isSuperadmin(user.id)
+  return { success: true as const, isSuperadmin }
+})
 
 export type AdminCompanyInput = {
   id: string
@@ -225,13 +235,7 @@ export async function changeSubscriptionTierAction(subscriptionId: string, tier:
 
 export async function checkSuperadminStatus() {
   try {
-    const { accessService, authService } = createServerContainer()
-    const user = await authService.requireCurrentUser()
-    const isSuperadmin = await accessService.isSuperadmin(user.id)
-    return {
-      success: true,
-      isSuperadmin
-    }
+    return await _checkSuperadminStatusCached()
   } catch (error) {
     return { ...handleActionError(error), isSuperadmin: false }
   }

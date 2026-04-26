@@ -94,7 +94,6 @@ import { formatCurrency } from "@/lib/utils/currency";
 import { useCompanyCountry } from "@/hooks/useCompanyCountry";
 import { useComplianceCategories } from "@/hooks/useComplianceCategories";
 import { RegulatoryServiceImpl } from "./services/RegulatoryServiceImpl";
-import { DataRoomProvider } from "@/contexts/DataRoomContext";
 import { useAppStore } from "@/lib/store/appStore";
 
 const isDataRoomDebugEnabled = process.env.NODE_ENV === "development";
@@ -297,6 +296,11 @@ function DataRoomPageInner() {
   const detailsFetchedRef = useRef<string | null>(null);
   const detailsFetchingRef = useRef<string | null>(null);
   const vaultDocumentsFetchedRef = useRef<string | null>(null);
+  // Track which companies we've already populated hidden state for —
+  // init returns hiddenTemplates + hiddenCompliances inline, so the
+  // per-company useEffects below shouldn't re-fetch what we already have.
+  const hiddenTemplatesFetchedRef = useRef<string | null>(null);
+  const hiddenCompliancesFetchedRef = useRef<string | null>(null);
   const [isGeneratingEnhancedPDF, setIsGeneratingEnhancedPDF] = useState(false);
   const [pdfGenerationProgress, setPdfGenerationProgress] = useState({
     current: 0,
@@ -511,6 +515,13 @@ function DataRoomPageInner() {
         // 4. Update hidden states and role
         if (data.hiddenTemplates) setHiddenTemplates(new Set(data.hiddenTemplates));
         if (data.hiddenCompliances) setHiddenCompliances(new Set(data.hiddenCompliances));
+        // Mark hidden state as fetched for the selected company so the
+        // per-company useEffects below don't immediately re-fetch what
+        // init just returned.
+        if (selected?.id) {
+            hiddenTemplatesFetchedRef.current = selected.id;
+            hiddenCompliancesFetchedRef.current = selected.id;
+        }
         // Note: setRole is no longer used - React Query manages role state
         
         updateLoadingMessage("⚖️ Loading compliance requirements...");
@@ -1002,6 +1013,8 @@ function DataRoomPageInner() {
 
           setHiddenTemplates(new Set(data.hiddenTemplates));
           setHiddenCompliances(new Set(data.hiddenComplianceIds));
+          hiddenTemplatesFetchedRef.current = company.id;
+          hiddenCompliancesFetchedRef.current = company.id;
 
           // Set requirements directly from batched response (avoids separate useRequirements fetch)
           setRegulatoryRequirements(data.requirements);
@@ -1070,6 +1083,9 @@ function DataRoomPageInner() {
         if (!currentCompany) setHiddenTemplates(new Set());
         return;
       }
+      // Init already populated hidden templates for this company —
+      // don't re-fetch the same data we already have.
+      if (hiddenTemplatesFetchedRef.current === currentCompany.id) return;
 
       try {
         const result = await getHiddenDocumentTemplates(currentCompany.id);
@@ -1080,6 +1096,7 @@ function DataRoomPageInner() {
             ),
           );
           setHiddenTemplates(hiddenSet);
+          hiddenTemplatesFetchedRef.current = currentCompany.id;
         }
       } catch (error) {
         console.error("Error fetching hidden templates:", error);
@@ -1098,11 +1115,14 @@ function DataRoomPageInner() {
         if (!currentCompany) setHiddenCompliances(new Set());
         return;
       }
+      // Init already populated hidden compliances for this company.
+      if (hiddenCompliancesFetchedRef.current === currentCompany.id) return;
 
       try {
         const result = await getHiddenCompliances(currentCompany.id);
         if (result.success && result.hiddenComplianceIds) {
           setHiddenCompliances(new Set(result.hiddenComplianceIds));
+          hiddenCompliancesFetchedRef.current = currentCompany.id;
         } else {
           setHiddenCompliances(new Set());
         }
@@ -4816,9 +4836,7 @@ export default function DataRoomPage() {
         </div>
       }
     >
-      <DataRoomProvider>
-        <DataRoomPageInner />
-      </DataRoomProvider>
+      <DataRoomPageInner />
     </Suspense>
   );
 }

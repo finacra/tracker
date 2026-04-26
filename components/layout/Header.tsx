@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter, usePathname } from 'next/navigation'
@@ -50,12 +50,21 @@ export default function Header() {
     markAllReadMutation.mutate()
   }
 
-  // ── Superadmin check — resolved once, stored in Zustand ───────────────────
+  // ── Superadmin check — resolved once per user.id, stored in Zustand ──────
+  // Guarded against the auth-race: providers.tsx sometimes hands us a new
+  // `user` reference for the same user.id (initial getSession + the
+  // onAuthStateChange callback both fire). Without the ref check we'd
+  // re-roundtrip checkSuperadminStatus every time that happens.
+  const superadminCheckedForRef = useRef<string | null>(null)
   useEffect(() => {
     if (!user) {
       setIsSuperadmin(false)
+      superadminCheckedForRef.current = null
       return
     }
+    if (superadminCheckedForRef.current === user.id) return
+    superadminCheckedForRef.current = user.id
+
     let cancelled = false
     import('@/app/admin/actions').then(({ checkSuperadminStatus }) =>
       checkSuperadminStatus().then((result) => {
