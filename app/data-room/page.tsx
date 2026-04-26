@@ -560,24 +560,30 @@ function DataRoomPageInner() {
         // document templates, the unread notification count, and the
         // current company's access status. Each one removes a separate
         // POST /data-room from the cold path.
-        if (data.documentTemplates && countryCode) {
-            const filtered = data.documentTemplates.filter(
-                (t: any) => !t.country_code || t.country_code === countryCode,
-            );
-            setDocumentTemplates(filtered);
-            templatesFetchedRef.current.add(countryCode);
-        } else if (data.documentTemplates) {
-            // Country code may not be resolved yet — store unfiltered;
-            // the country-driven useEffect will re-filter from this set
-            // without a server call once countryCode resolves.
-            setDocumentTemplates(data.documentTemplates);
+        if (data.documentTemplates) {
+            // Mark fetched for the SELECTED company's country (the only
+            // country we'll need for this session) so the country-driven
+            // useEffect doesn't re-fetch the same registry. countryCode
+            // derived from currentCompany may not be set yet at this
+            // point in the render, so use selected.country_code directly.
+            const selectedCountry = selected?.country_code || countryCode || null;
+            if (selectedCountry) {
+                const filtered = data.documentTemplates.filter(
+                    (t: any) => !t.country_code || t.country_code === selectedCountry,
+                );
+                setDocumentTemplates(filtered);
+                templatesFetchedRef.current.add(selectedCountry);
+            } else {
+                setDocumentTemplates(data.documentTemplates);
+            }
         }
 
         if (typeof data.unreadNotificationCount === 'number') {
-            queryClient.setQueryData(
-                [...queryKeys.notifications(), 'unread-count'],
-                data.unreadNotificationCount,
-            );
+            // Write to Zustand directly — useUnreadCountQuery reads
+            // Zustand synchronously at hook init for its initialData,
+            // which avoids the queryClient-cache timing race against
+            // Header.tsx mounting before this useEffect runs.
+            useAppStore.getState().setNotificationCount(data.unreadNotificationCount);
         }
 
         if (data.currentCompanyAccessStatus && selected?.id === data.currentCompanyId) {

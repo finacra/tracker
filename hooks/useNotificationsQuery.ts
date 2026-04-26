@@ -63,11 +63,16 @@ export function useNotificationsQuery(options: { enabled?: boolean; limit?: numb
 export function useUnreadCountQuery(options: { enabled?: boolean } = {}) {
   const { enabled = true } = options
   const setNotificationCount = useAppStore((s) => s.setNotificationCount)
-  // Read any pre-populated cache value (set by /data-room init) so the
-  // initial render serves from cache without firing the queryFn. Once
-  // the staleTime elapses, the regular polling cycle takes over.
-  const queryClient = useQueryClient()
-  const seededCount = queryClient.getQueryData<number>([...queryKeys.notifications(), 'unread-count'])
+  // Read seed from Zustand SYNCHRONOUSLY at hook init. Zustand state is
+  // module-level and persists across mounts, so we read whatever value
+  // the page (or a previous mount) wrote — no reliance on the React
+  // Query cache, which has a hook-mount-order race vs. /data-room/page.
+  // If the seed is fresh (within staleTime), React Query honors it as
+  // initialData + initialDataUpdatedAt and skips the queryFn.
+  const seededState = useAppStore.getState()
+  const seededCount = seededState.notificationCountSeededAt !== null
+    ? seededState.notificationCount
+    : undefined
 
   return useQuery({
     queryKey: [...queryKeys.notifications(), 'unread-count'],
@@ -85,7 +90,7 @@ export function useUnreadCountQuery(options: { enabled?: boolean } = {}) {
     },
     enabled,
     initialData: seededCount,
-    initialDataUpdatedAt: seededCount !== undefined ? Date.now() : undefined,
+    initialDataUpdatedAt: seededState.notificationCountSeededAt ?? undefined,
     staleTime: 60 * 1000,        // poll every minute
     gcTime: 5 * 60 * 1000,
     refetchInterval: 60 * 1000,  // background poll every 60 s
