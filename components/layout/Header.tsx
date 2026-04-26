@@ -51,15 +51,18 @@ export default function Header() {
   }
 
   // ── Superadmin check — resolved once per user.id, stored in Zustand ──────
-  // Guarded against the auth-race: providers.tsx sometimes hands us a new
-  // `user` reference for the same user.id (initial getSession + the
-  // onAuthStateChange callback both fire). Without the ref check we'd
-  // re-roundtrip checkSuperadminStatus every time that happens.
+  // Guarded against the providers.tsx auth-race: `user` reference can
+  // flip valid → null → valid (same id) when the initial getSession and
+  // the onAuthStateChange callback both fire. We must NOT reset the ref
+  // on the null transition — otherwise the next valid-user effect will
+  // re-roundtrip checkSuperadminStatus. The ref only resets when a
+  // genuinely different user.id appears (sign-out + sign-in as someone
+  // else), which is the only case where the answer can change.
   const superadminCheckedForRef = useRef<string | null>(null)
   useEffect(() => {
     if (!user) {
       setIsSuperadmin(false)
-      superadminCheckedForRef.current = null
+      // Intentionally do NOT clear superadminCheckedForRef here.
       return
     }
     if (superadminCheckedForRef.current === user.id) return
