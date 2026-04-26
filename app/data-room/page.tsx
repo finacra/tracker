@@ -1243,6 +1243,12 @@ function DataRoomPageInner() {
   // Fetch document templates when country code changes (must be after countryCode is defined)
   // templatesFetchedRef is hoisted to component top so the init useEffect can pre-populate it.
   useEffect(() => {
+    // Don't fire while init is still loading — useCompanyCountry defaults
+    // countryCode to 'IN' even when currentCompany is null, so without this
+    // gate the effect would race init and fire getDocumentTemplates() before
+    // init's pre-populated payload + ref had a chance to land.
+    if (isDataRoomInitLoading) return;
+    if (!currentCompany) return;
     if (!countryCode) return;
     // Skip if already fetched for this country
     if (templatesFetchedRef.current.has(countryCode)) return;
@@ -1266,7 +1272,7 @@ function DataRoomPageInner() {
     }
 
     fetchTemplates();
-  }, [countryCode]);
+  }, [countryCode, currentCompany, isDataRoomInitLoading]);
 
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
