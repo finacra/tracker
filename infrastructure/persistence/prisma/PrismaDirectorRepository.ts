@@ -4,6 +4,7 @@ import type {
     CreateDirectorInput,
 } from '@/application/interfaces/DirectorRepository'
 import { prisma } from '@/lib/prisma'
+import { parseFlexibleDate } from '@/lib/utils/parse-date'
 
 export class PrismaDirectorRepository implements DirectorRepository {
     async getByCompanyId(companyId: string): Promise<DirectorRecord[]> {
@@ -39,7 +40,10 @@ export class PrismaDirectorRepository implements DirectorRepository {
                 middle_name: dir.middleName || null,
                 director_id: dir.din || null,
                 designation: dir.designation || null,
-                dob: dir.dob ? new Date(dir.dob) : null,
+                // Agent-sourced DOB can be "DD/MM/YYYY", "Not Available",
+                // empty, etc. parseFlexibleDate returns null for anything
+                // unparseable instead of an Invalid Date that Prisma rejects.
+                dob: parseFlexibleDate(dir.dob),
                 tax_id: dir.pan || null,
                 email: dir.email || null,
                 mobile: dir.mobile || null,

@@ -5,29 +5,7 @@ import type {
 } from '@/application/interfaces/CompanyRepository'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
-
-/**
- * Parse date strings the Perplexity / MCA agent tends to return in a
- * mix of formats: "DD/MM/YYYY", "YYYY-MM-DD", ISO 8601, or free-form
- * garbage like "Not available". Returns a valid Date or null — never
- * an Invalid Date object (which Prisma rejects).
- */
-function parseFlexibleDate(value: string | null | undefined): Date | null {
-  if (!value) return null
-  const trimmed = String(value).trim()
-  if (!trimmed || /^(n\/?a|not available|none|unknown|-)$/i.test(trimmed)) return null
-
-  // Try DD/MM/YYYY or DD-MM-YYYY first — Indian form default
-  const dmy = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
-  if (dmy) {
-    const d = new Date(Date.UTC(parseInt(dmy[3], 10), parseInt(dmy[2], 10) - 1, parseInt(dmy[1], 10)))
-    if (!isNaN(d.getTime())) return d
-  }
-
-  // Fall back to native parsing (handles ISO, YYYY-MM-DD, etc.)
-  const native = new Date(trimmed)
-  return isNaN(native.getTime()) ? null : native
-}
+import { parseFlexibleDate } from '@/lib/utils/parse-date'
 
 export class PrismaCompanyRepository implements CompanyRepository {
   async getDetailsById(companyId: string): Promise<CompanyDetailsRecord | null> {

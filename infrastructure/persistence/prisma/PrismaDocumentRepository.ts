@@ -5,6 +5,7 @@ import type {
     NewCompanyDocumentRecord,
 } from '@/application/interfaces/DocumentRepository'
 import { prisma } from '@/lib/prisma'
+import { parseFlexibleDate } from '@/lib/utils/parse-date'
 
 export class PrismaDocumentRepository implements DocumentRepository {
     async getTemplateMappings(): Promise<DocumentTemplateRecord[]> {
@@ -34,8 +35,9 @@ export class PrismaDocumentRepository implements DocumentRepository {
                         folder_id: doc.folderId ?? null,
                         file_path: doc.filePath,
                         file_name: doc.fileName,
-                        registration_date: doc.registrationDate ? new Date(doc.registrationDate) : null,
-                        expiry_date: doc.expiryDate ? new Date(doc.expiryDate) : null,
+                        // Agent-sourced dates can arrive in arbitrary formats.
+                        registration_date: parseFlexibleDate(doc.registrationDate),
+                        expiry_date: parseFlexibleDate(doc.expiryDate),
                         is_portal_required: doc.isPortalRequired,
                         portal_email: doc.portalEmail,
                         portal_password: doc.portalPassword,
@@ -43,8 +45,8 @@ export class PrismaDocumentRepository implements DocumentRepository {
                         period_type: doc.periodType,
                         period_financial_year: doc.periodFinancialYear,
                         period_key: doc.periodKey,
-                        period_start: doc.periodStart ? new Date(doc.periodStart) : null,
-                        period_end: doc.periodEnd ? new Date(doc.periodEnd) : null,
+                        period_start: parseFlexibleDate(doc.periodStart),
+                        period_end: parseFlexibleDate(doc.periodEnd),
                         requirement_id: doc.requirementId,
                     },
                 })
