@@ -126,7 +126,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       const resolvedUser = await syncAppUser(session)
       setLoading(false)
       await trackLoginOnce(session, _event, resolvedUser)
-    })
+    }, { skipInitialCheck: true })
 
     return () => unsubscribe()
     // eslint-disable-next-line react-hooks/exhaustive-deps

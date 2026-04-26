@@ -21,10 +21,13 @@ export class HybridClientAuthAdapter implements ClientAuthAdapter {
     return this.supabaseAdapter.getSession()
   }
 
-  onAuthStateChange(callback: (event: string, session: ClientAuthSession | null) => void): { unsubscribe: () => void } {
+  onAuthStateChange(
+    callback: (event: string, session: ClientAuthSession | null) => void,
+    options?: { skipInitialCheck?: boolean }
+  ): { unsubscribe: () => void } {
     // This is tricky. We need to listen to BOTH.
-    const sub1 = this.supabaseAdapter.onAuthStateChange(callback)
-    const sub2 = this.passportAdapter.onAuthStateChange(callback)
+    const sub1 = this.supabaseAdapter.onAuthStateChange(callback, options)
+    const sub2 = this.passportAdapter.onAuthStateChange(callback, options)
 
     return {
       unsubscribe: () => {

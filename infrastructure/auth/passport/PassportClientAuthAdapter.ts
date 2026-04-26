@@ -43,7 +43,8 @@ export class PassportClientAuthAdapter implements ClientAuthAdapter {
   }
 
   onAuthStateChange(
-    callback: (event: string, session: ClientAuthSession | null) => void
+    callback: (event: string, session: ClientAuthSession | null) => void,
+    options?: { skipInitialCheck?: boolean }
   ): { unsubscribe: () => void } {
     let intervalId: NodeJS.Timeout | null = null
     let lastSession: ClientAuthSession | null = null
@@ -70,8 +71,13 @@ export class PassportClientAuthAdapter implements ClientAuthAdapter {
       }
     }
 
-    // Initial check with a small delay to avoid race conditions during page load
-    const timeoutId = setTimeout(checkSession, 500)
+    // Initial check with a small delay to avoid race conditions during
+    // page load. Skipped when the caller already resolved the session
+    // via getSession() (e.g. providers.tsx) — otherwise we'd double the
+    // /api/auth/passport/session roundtrip on every cold load.
+    const timeoutId = options?.skipInitialCheck
+      ? null
+      : setTimeout(checkSession, 500)
 
     // Poll every 5 minutes (down from 5 seconds) — session is a 7-day JWT cookie,
     // no need to check frequently. Also check on tab focus for instant responsiveness.
@@ -87,7 +93,7 @@ export class PassportClientAuthAdapter implements ClientAuthAdapter {
 
     return {
       unsubscribe: () => {
-        clearTimeout(timeoutId)
+        if (timeoutId) clearTimeout(timeoutId)
         if (intervalId) {
           clearInterval(intervalId)
           intervalId = null
