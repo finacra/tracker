@@ -21,9 +21,15 @@ export interface ClientAuthAdapter {
   /**
    * Subscribe to auth state changes.
    * Returns an unsubscribe function.
+   *
+   * Pass `skipInitialCheck: true` when the caller has already resolved
+   * the initial session via getSession() — otherwise the adapter does
+   * its own redundant network roundtrip to /api/auth/passport/session
+   * shortly after subscription, doubling the auth latency on cold load.
    */
   onAuthStateChange(
-    callback: (event: string, session: ClientAuthSession | null) => void
+    callback: (event: string, session: ClientAuthSession | null) => void,
+    options?: { skipInitialCheck?: boolean }
   ): { unsubscribe: () => void }
 
   /**

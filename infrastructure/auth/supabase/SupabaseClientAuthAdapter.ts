@@ -26,8 +26,12 @@ export class SupabaseClientAuthAdapter implements ClientAuthAdapter {
   }
 
   onAuthStateChange(
-    callback: (event: string, session: ClientAuthSession | null) => void
+    callback: (event: string, session: ClientAuthSession | null) => void,
+    _options?: { skipInitialCheck?: boolean }
   ): { unsubscribe: () => void } {
+    // Supabase's own onAuthStateChange always emits an INITIAL_SESSION
+    // event, so skipInitialCheck is a no-op here. Accepted only to
+    // satisfy the interface.
     const {
       data: { subscription },
     } = this.supabase.auth.onAuthStateChange((_event, session) => {
