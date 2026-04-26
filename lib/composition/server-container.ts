@@ -1,4 +1,5 @@
 import 'server-only'
+import { cache } from 'react'
 import { PassportAuthGateway } from '@/infrastructure/auth/passport/PassportAuthGateway'
 import { PassportAuthService } from '@/infrastructure/auth/passport/PassportAuthService'
 import { PassportSessionProvider } from '@/infrastructure/auth/passport/PassportSessionProvider'
@@ -21,7 +22,17 @@ import { PrismaVaultTemplateRepository } from '@/infrastructure/persistence/pris
 import { PrismaVaultDocumentUsageRepository } from '@/infrastructure/persistence/prisma/PrismaVaultDocumentUsageRepository'
 import { PrismaVaultTemplateManagementRepository } from '@/infrastructure/persistence/prisma/PrismaVaultTemplateManagementRepository'
 
-export function createServerContainer() {
+/**
+ * Wrapped in React.cache so multiple calls within the same request
+ * (server action, RSC render, route handler) share one container
+ * instance instead of instantiating ~17 repos + services 30+ times per
+ * data-room load. The container is just a bag of stateless objects
+ * around the singleton Prisma client; sharing across calls is safe
+ * and matches what callers already assume.
+ */
+export const createServerContainer = cache(_createServerContainer)
+
+function _createServerContainer() {
   const userRepository = new PrismaUserRepository()
   const companyRepository = new PrismaCompanyRepository()
   const requirementRepository = new PrismaRequirementRepository()
