@@ -7,6 +7,7 @@ import type { ClientAuthSession } from '@/application/interfaces/ClientAuthAdapt
 import { trackLogin } from '@/lib/tracking/kpi-tracker'
 import { AuthProvider, type AuthContextValue } from '@/contexts/AuthContext'
 import type { AppUser } from '@/domain/models/AppUser'
+import { useAppStore } from '@/lib/store/appStore'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient()
@@ -21,6 +22,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const trackedLoginUserIdRef = useRef<string | null>(null)
   const appUserRequestIdRef = useRef(0)
   const resolvedAppUserIdRef = useRef<string | null>(null)
+  // Track which user.id we've already resolved superadmin status for —
+  // this lives in providers (mounted once at app root) instead of
+  // Header.tsx so that Header unmount/remount cycles (e.g. /data-room
+  // flipping between loading and final render) don't re-roundtrip
+  // checkSuperadminStatus.
+  const superadminResolvedForRef = useRef<string | null>(null)
+  const setIsSuperadmin = useAppStore((s) => s.setIsSuperadmin)
 
   const buildFallbackAppUser = (session: ClientAuthSession): AppUser => ({
     id: session.userId,
@@ -132,11 +140,34 @@ export function Providers({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authAdapter])
 
+  // Resolve superadmin status once per user.id and stash in Zustand.
+  // Lives here (not in Header) so Header unmount/remount doesn't
+  // re-trigger the network call. The ref persists across signed-out
+  // transitions so a flip user → null → user (same id) doesn't refire.
+  useEffect(() => {
+    if (!appUser) {
+      setIsSuperadmin(false)
+      return
+    }
+    if (superadminResolvedForRef.current === appUser.id) return
+    superadminResolvedForRef.current = appUser.id
+
+    let cancelled = false
+    import('@/app/admin/actions').then(({ checkSuperadminStatus }) =>
+      checkSuperadminStatus().then((result) => {
+        if (!cancelled) setIsSuperadmin(result.success ? (result.isSuperadmin ?? false) : false)
+      })
+    ).catch(() => { if (!cancelled) setIsSuperadmin(false) })
+    return () => { cancelled = true }
+  }, [appUser, setIsSuperadmin])
+
   const signOut = async () => {
     trackedLoginUserIdRef.current = null
     resolvedAppUserIdRef.current = null
+    superadminResolvedForRef.current = null
     await authAdapter.signOut()
     setAppUser(null)
+    setIsSuperadmin(false)
     // Drop every cached query — otherwise the next user in this browser
     // can see the previous user's companies/subscriptions until each
     // query's staleTime expires.

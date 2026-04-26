@@ -51,6 +51,11 @@ interface AppState {
 
   // Notification badge
   notificationCount: number
+  // Timestamp of the most recent authoritative count (from getDataRoomInitState's
+  // unreadNotificationCount, getNotifications response, or a mutation). Used by
+  // useUnreadCountQuery as the React Query `initialDataUpdatedAt` so the hook
+  // honors staleTime instead of immediately re-fetching on mount.
+  notificationCountSeededAt: number | null
   setNotificationCount: (count: number) => void
   incrementNotificationCount: () => void
   clearNotificationCount: () => void
@@ -75,10 +80,16 @@ export const useAppStore = create<AppState>()(
 
       // ── Notifications ──────────────────────────────────────────────────────
       notificationCount: 0,
-      setNotificationCount: (count) => set({ notificationCount: count }),
+      notificationCountSeededAt: null,
+      setNotificationCount: (count) =>
+        set({ notificationCount: count, notificationCountSeededAt: Date.now() }),
       incrementNotificationCount: () =>
-        set((state) => ({ notificationCount: state.notificationCount + 1 })),
-      clearNotificationCount: () => set({ notificationCount: 0 }),
+        set((state) => ({
+          notificationCount: state.notificationCount + 1,
+          notificationCountSeededAt: Date.now(),
+        })),
+      clearNotificationCount: () =>
+        set({ notificationCount: 0, notificationCountSeededAt: Date.now() }),
     }),
     {
       name: 'finacra-app-state',

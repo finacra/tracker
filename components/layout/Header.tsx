@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter, usePathname } from 'next/navigation'
@@ -27,7 +27,6 @@ export default function Header() {
   // ── Zustand ────────────────────────────────────────────────────────────────
   const unreadCount = useAppStore(selectNotificationCount)
   const isSuperadmin = useAppStore(selectIsSuperadmin)
-  const { setIsSuperadmin } = useAppStore()
 
   // ── Notifications (React Query) ────────────────────────────────────────────
   // Background badge count — polls every 60 s
@@ -50,32 +49,9 @@ export default function Header() {
     markAllReadMutation.mutate()
   }
 
-  // ── Superadmin check — resolved once per user.id, stored in Zustand ──────
-  // Guarded against the providers.tsx auth-race: `user` reference can
-  // flip valid → null → valid (same id) when the initial getSession and
-  // the onAuthStateChange callback both fire. We must NOT reset the ref
-  // on the null transition — otherwise the next valid-user effect will
-  // re-roundtrip checkSuperadminStatus. The ref only resets when a
-  // genuinely different user.id appears (sign-out + sign-in as someone
-  // else), which is the only case where the answer can change.
-  const superadminCheckedForRef = useRef<string | null>(null)
-  useEffect(() => {
-    if (!user) {
-      setIsSuperadmin(false)
-      // Intentionally do NOT clear superadminCheckedForRef here.
-      return
-    }
-    if (superadminCheckedForRef.current === user.id) return
-    superadminCheckedForRef.current = user.id
-
-    let cancelled = false
-    import('@/app/admin/actions').then(({ checkSuperadminStatus }) =>
-      checkSuperadminStatus().then((result) => {
-        if (!cancelled) setIsSuperadmin(result.success ? (result.isSuperadmin ?? false) : false)
-      })
-    ).catch(() => { if (!cancelled) setIsSuperadmin(false) })
-    return () => { cancelled = true }
-  }, [user, setIsSuperadmin])
+  // Superadmin status is resolved at the providers.tsx level (mounted
+  // once at app root) so it survives Header unmount/remount cycles
+  // when /data-room transitions between its loading/final renders.
 
   const handleSignOut = async () => {
     await signOut()
