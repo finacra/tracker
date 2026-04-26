@@ -301,6 +301,21 @@ function DataRoomPageInner() {
   // per-company useEffects below shouldn't re-fetch what we already have.
   const hiddenTemplatesFetchedRef = useRef<string | null>(null);
   const hiddenCompliancesFetchedRef = useRef<string | null>(null);
+  // Set of country codes for which document templates have been
+  // populated — hoisted to component top so the init useEffect can
+  // mark it as fetched without TDZ issues.
+  const templatesFetchedRef = useRef<Set<string>>(new Set());
+  // Snapshot of currentCompany's access status from init, handed to
+  // CompanySelector as initialCurrentCompanyStatus so it skips the
+  // first getCompanyAccessStatuses roundtrip.
+  const initialCompanyStatusRef = useRef<{
+    companyId: string
+    hasSubscription: boolean
+    isTrial: boolean
+    trialDaysRemaining?: number
+    tier?: string | null
+    status: string
+  } | null>(null);
   const [isGeneratingEnhancedPDF, setIsGeneratingEnhancedPDF] = useState(false);
   const [pdfGenerationProgress, setPdfGenerationProgress] = useState({
     current: 0,
@@ -539,6 +554,34 @@ function DataRoomPageInner() {
                 setVaultDocuments(data.initialVaultDocuments);
                 vaultDocumentsFetchedRef.current = selected.id;
             }
+        }
+
+        // 5a. Pre-populate the side fetches that init now folds in:
+        // document templates, the unread notification count, and the
+        // current company's access status. Each one removes a separate
+        // POST /data-room from the cold path.
+        if (data.documentTemplates && countryCode) {
+            const filtered = data.documentTemplates.filter(
+                (t: any) => !t.country_code || t.country_code === countryCode,
+            );
+            setDocumentTemplates(filtered);
+            templatesFetchedRef.current.add(countryCode);
+        } else if (data.documentTemplates) {
+            // Country code may not be resolved yet — store unfiltered;
+            // the country-driven useEffect will re-filter from this set
+            // without a server call once countryCode resolves.
+            setDocumentTemplates(data.documentTemplates);
+        }
+
+        if (typeof data.unreadNotificationCount === 'number') {
+            queryClient.setQueryData(
+                [...queryKeys.notifications(), 'unread-count'],
+                data.unreadNotificationCount,
+            );
+        }
+
+        if (data.currentCompanyAccessStatus && selected?.id === data.currentCompanyId) {
+            initialCompanyStatusRef.current = data.currentCompanyAccessStatus;
         }
 
         updateLoadingMessage("✨ Finalizing your workspace...");
@@ -1191,10 +1234,8 @@ function DataRoomPageInner() {
     countryCode || "IN",
   );
 
-  // Track if templates have been fetched to prevent re-fetching on tab switch
-  const templatesFetchedRef = useRef<Set<string>>(new Set());
-
   // Fetch document templates when country code changes (must be after countryCode is defined)
+  // templatesFetchedRef is hoisted to component top so the init useEffect can pre-populate it.
   useEffect(() => {
     if (!countryCode) return;
     // Skip if already fetched for this country
@@ -4056,6 +4097,7 @@ function DataRoomPageInner() {
             companies={companies}
             currentCompany={currentCompany}
             onCompanyChange={handleCompanyChange}
+            initialCurrentCompanyStatus={initialCompanyStatusRef.current}
           />
         </div>
 

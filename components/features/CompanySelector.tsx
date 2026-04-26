@@ -25,14 +25,39 @@ interface CompanySelectorProps {
   companies: Company[]
   currentCompany: Company | null
   onCompanyChange: (company: Company) => void
+  // Pre-fetched subscription status for the initially-selected company.
+  // Provided by /data-room/page.tsx from getDataRoomInitState's payload
+  // so we don't immediately roundtrip getCompanyAccessStatuses for the
+  // company the user is already looking at.
+  initialCurrentCompanyStatus?: {
+    companyId: string
+    hasSubscription: boolean
+    isTrial: boolean
+    trialDaysRemaining?: number
+    tier?: string | null
+    status?: string
+  } | null
 }
 
-export default function CompanySelector({ companies, currentCompany, onCompanyChange }: CompanySelectorProps) {
+export default function CompanySelector({ companies, currentCompany, onCompanyChange, initialCurrentCompanyStatus }: CompanySelectorProps) {
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
-  const [subscriptionStatuses, setSubscriptionStatuses] = useState<Map<string, CompanySubscriptionStatus>>(new Map())
+  const [subscriptionStatuses, setSubscriptionStatuses] = useState<Map<string, CompanySubscriptionStatus>>(() => {
+    if (!initialCurrentCompanyStatus) return new Map()
+    return new Map([
+      [initialCurrentCompanyStatus.companyId, {
+        companyId: initialCurrentCompanyStatus.companyId,
+        hasSubscription: initialCurrentCompanyStatus.hasSubscription,
+        isTrial: initialCurrentCompanyStatus.isTrial,
+        trialDaysRemaining: initialCurrentCompanyStatus.trialDaysRemaining,
+        tier: initialCurrentCompanyStatus.tier ?? undefined,
+      }],
+    ])
+  })
   const [isLoadingStatuses, setIsLoadingStatuses] = useState(false)
-  const fetchedStatusIdsRef = useRef<Set<string>>(new Set())
+  const fetchedStatusIdsRef = useRef<Set<string>>(
+    new Set(initialCurrentCompanyStatus ? [initialCurrentCompanyStatus.companyId] : [])
+  )
 
   // Fetch the selected company's status first, then fetch the rest when the dropdown is opened.
   useEffect(() => {
