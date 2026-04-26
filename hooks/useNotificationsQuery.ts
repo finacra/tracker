@@ -63,6 +63,11 @@ export function useNotificationsQuery(options: { enabled?: boolean; limit?: numb
 export function useUnreadCountQuery(options: { enabled?: boolean } = {}) {
   const { enabled = true } = options
   const setNotificationCount = useAppStore((s) => s.setNotificationCount)
+  // Read any pre-populated cache value (set by /data-room init) so the
+  // initial render serves from cache without firing the queryFn. Once
+  // the staleTime elapses, the regular polling cycle takes over.
+  const queryClient = useQueryClient()
+  const seededCount = queryClient.getQueryData<number>([...queryKeys.notifications(), 'unread-count'])
 
   return useQuery({
     queryKey: [...queryKeys.notifications(), 'unread-count'],
@@ -79,6 +84,8 @@ export function useUnreadCountQuery(options: { enabled?: boolean } = {}) {
       }
     },
     enabled,
+    initialData: seededCount,
+    initialDataUpdatedAt: seededCount !== undefined ? Date.now() : undefined,
     staleTime: 60 * 1000,        // poll every minute
     gcTime: 5 * 60 * 1000,
     refetchInterval: 60 * 1000,  // background poll every 60 s

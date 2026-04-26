@@ -3415,6 +3415,11 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     hiddenCompliances: string[]
     userRole: 'superadmin' | 'admin' | 'editor' | 'viewer'
     initialVaultDocuments: any[]
+    // Folded-in side fetches — eliminate three independent server
+    // actions that fired on every /data-room cold load.
+    documentTemplates: Array<{ document_name: string; folder_name: string | null; default_frequency: string | null }>
+    unreadNotificationCount: number
+    currentCompanyAccessStatus: ReturnType<typeof getCompanyStatusFromAccess> | null
     redirectTo?: string
     _debug?: any
   }
@@ -3677,6 +3682,7 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
               companies: [], accessibleCompanyIds: [], currentCompanyId: null, companyAccess: null,
               userSubscription: { hasSubscription: false, tier: 'none', isTrial: false, trialDaysRemaining: 0, companyLimit: 0, currentCompanyCount: 0, canCreateCompany: false },
               hiddenTemplates: [], hiddenCompliances: [], userRole: 'viewer', initialVaultDocuments: [],
+              documentTemplates: [], unreadNotificationCount: 0, currentCompanyAccessStatus: null,
               redirectTo: `/subscription-required?company_id=${preferredCompanyId}`
             }
         }
@@ -3700,8 +3706,41 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
       requirement_id: doc.requirement_id || null,
     }));
 
+    // Folded side-fetches — running these here (in parallel) instead of
+    // letting the client fire three independent server actions saves
+    // 3× the Vercel cold-start tax on /data-room cold load. Server-side
+    // cost is ~50-200ms total since they fan out concurrently and reuse
+    // the cached container from PR #16.
+    const sideFetchStart = performance.now()
+    const { documentRepository, notificationRepository, accessService } = createServerContainer()
+    const [documentTemplatesRaw, unreadNotificationCount, currentCompanyAccessStatus] = await Promise.all([
+      documentRepository.getTemplateMappings().catch((err) => {
+        console.warn('[InitAction] documentRepository.getTemplateMappings failed', err instanceof Error ? err.message : err)
+        return []
+      }),
+      notificationRepository.countUnreadForUser(userId).catch((err) => {
+        console.warn('[InitAction] notificationRepository.countUnreadForUser failed', err instanceof Error ? err.message : err)
+        return 0
+      }),
+      currentCompanyId
+        ? accessService.getCompanyAccessSnapshot(userId, currentCompanyId, isSuperadminResult)
+            .then((access) => getCompanyStatusFromAccess(currentCompanyId, access))
+            .catch((err) => {
+              console.warn('[InitAction] getCompanyAccessSnapshot failed', err instanceof Error ? err.message : err)
+              return null
+            })
+        : Promise.resolve(null),
+    ])
+    const sideFetchDuration = performance.now() - sideFetchStart
+
+    const documentTemplates = documentTemplatesRaw.map((t) => ({
+      document_name: t.documentName,
+      folder_name: t.folderName,
+      default_frequency: t.defaultFrequency,
+    }))
+
     const totalDuration = performance.now() - initStartTime
-    console.log(`[InitAction] ⚛️ ATOMIC PULSE COMPLETE: ${totalDuration.toFixed(2)}ms (DB: ${atomicDuration.toFixed(0)}ms)`)
+    console.log(`[InitAction] ⚛️ ATOMIC PULSE COMPLETE: ${totalDuration.toFixed(2)}ms (DB: ${atomicDuration.toFixed(0)}ms, side: ${sideFetchDuration.toFixed(0)}ms)`)
 
     return {
       success: true,
@@ -3738,9 +3777,12 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         hiddenCompliances: (pulse.hidden_compliances || []).map((c: any) => c.requirement_id),
         userRole: (isSuperadminResult ? 'superadmin' : pulse.explicit_role || 'viewer') as any,
         initialVaultDocuments: formattedDocs,
+        documentTemplates,
+        unreadNotificationCount,
+        currentCompanyAccessStatus,
         _debug: {
             authProvider: 'passport',
-            timings: { atomic: atomicDuration },
+            timings: { atomic: atomicDuration, side: sideFetchDuration },
             totalDuration
         }
       }
