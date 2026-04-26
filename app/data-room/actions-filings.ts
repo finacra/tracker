@@ -6,6 +6,7 @@ import { validateCompanyId } from '@/lib/utils/input-validation'
 import { generateFilingsFromAssessments, getFilingsForCompany, upsertFiling } from '@/lib/compliance/filings'
 import { currentIndianFY } from '@/lib/compliance/facts'
 import { CONFIDENCE_THRESHOLDS } from '@/lib/compliance/evaluator'
+import { parseFlexibleDate } from '@/lib/utils/parse-date'
 
 async function assertCompanyAccess(companyId: string) {
   if (!validateCompanyId(companyId)) throw new Error('Invalid company ID')
@@ -185,7 +186,9 @@ export async function updateFiling(
     }
 
     let daysDelay: number | undefined
-    const filingDate = data.dateOfFiling ? new Date(data.dateOfFiling) : undefined
+    // Form/agent input — guard against DD/MM/YYYY and unparseable strings.
+    const filingDate = parseFlexibleDate(data.dateOfFiling) ?? undefined
+    const paymentDate = parseFlexibleDate(data.dateOfPayment)
     if (filingDate && filing.due_date) {
       daysDelay = Math.ceil((filingDate.getTime() - filing.due_date.getTime()) / (1000 * 60 * 60 * 24))
       if (daysDelay < 0) daysDelay = 0
@@ -198,7 +201,7 @@ export async function updateFiling(
         ...(data.amountPayable !== undefined ? { amount_payable: data.amountPayable } : {}),
         ...(data.amountPaid !== undefined ? { amount_paid: data.amountPaid } : {}),
         ...(shortDeduction !== undefined ? { short_deduction: shortDeduction } : {}),
-        ...(data.dateOfPayment !== undefined ? { date_of_payment: data.dateOfPayment ? new Date(data.dateOfPayment) : null } : {}),
+        ...(data.dateOfPayment !== undefined ? { date_of_payment: paymentDate } : {}),
         ...(filingDate !== undefined ? { date_of_filing: filingDate } : {}),
         ...(daysDelay !== undefined ? { days_delay: daysDelay } : {}),
         ...(data.interestOnShort !== undefined ? { interest_on_short: data.interestOnShort } : {}),

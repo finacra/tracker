@@ -1,5 +1,6 @@
 import 'server-only'
 import { prisma } from '@/lib/prisma'
+import { parseFlexibleDate } from '@/lib/utils/parse-date'
 import { currentIndianFY, fyWindow } from './facts'
 
 /**
@@ -259,8 +260,11 @@ export async function upsertFiling(options: {
   }
   updatedBy?: string | null
 }) {
-  const dueDate = options.data.dueDate ? new Date(options.data.dueDate) : undefined
-  const dateOfFiling = options.data.dateOfFiling ? new Date(options.data.dateOfFiling) : undefined
+  // Agent / form input — DD/MM/YYYY, "Not Available", etc. Returns null for
+  // anything unparseable instead of an Invalid Date that Prisma rejects.
+  const dueDate = parseFlexibleDate(options.data.dueDate) ?? undefined
+  const dateOfFiling = parseFlexibleDate(options.data.dateOfFiling) ?? undefined
+  const dateOfPayment = parseFlexibleDate(options.data.dateOfPayment)
 
   // Auto-compute days delay
   let daysDelay: number | undefined
@@ -293,7 +297,7 @@ export async function upsertFiling(options: {
       amount_payable: options.data.amountPayable ?? null,
       amount_paid: options.data.amountPaid ?? null,
       short_deduction: shortDeduction ?? null,
-      date_of_payment: options.data.dateOfPayment ? new Date(options.data.dateOfPayment) : null,
+      date_of_payment: dateOfPayment,
       date_of_filing: dateOfFiling ?? null,
       days_delay: daysDelay ?? null,
       interest_on_short: options.data.interestOnShort ?? null,
@@ -310,7 +314,7 @@ export async function upsertFiling(options: {
       ...(options.data.amountPayable !== undefined ? { amount_payable: options.data.amountPayable } : {}),
       ...(options.data.amountPaid !== undefined ? { amount_paid: options.data.amountPaid } : {}),
       ...(shortDeduction !== undefined ? { short_deduction: shortDeduction } : {}),
-      ...(options.data.dateOfPayment !== undefined ? { date_of_payment: options.data.dateOfPayment ? new Date(options.data.dateOfPayment) : null } : {}),
+      ...(options.data.dateOfPayment !== undefined ? { date_of_payment: dateOfPayment } : {}),
       ...(dateOfFiling !== undefined ? { date_of_filing: dateOfFiling } : {}),
       ...(daysDelay !== undefined ? { days_delay: daysDelay } : {}),
       ...(options.data.interestOnShort !== undefined ? { interest_on_short: options.data.interestOnShort } : {}),
