@@ -4,13 +4,12 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
-import { useAnyCompanyAccess, useUserSubscription } from '@/hooks/useCompanyAccess'
+import { useUserSubscription } from '@/hooks/useCompanyAccess'
 import { queryKeys } from '@/lib/react-query/query-keys'
 import {
   createTrialSubscription,
-  getCompanySubscriptionState,
-  getCompanyTrialEligibility,
-  getSubscribeCompanyContext,
+  getSubscribeInitState,
+  getSubscribeCompanyState,
 } from '@/app/subscribe/actions'
 import { PRICING_TIERS, getTierPricing, formatPrice, type BillingCycle } from '@/lib/pricing/tiers'
 import PaymentButton from '@/components/features/PaymentButton'
@@ -25,7 +24,10 @@ function SubscribePageInner() {
   const queryClient = useQueryClient()
   const { user, loading: authLoading, signOut, displayName, displayEmail } = useAuth()
   const { hasSubscription, isTrial, trialDaysRemaining, currentCompanyCount, isLoading: subLoading } = useUserSubscription()
-  const { accessibleCompanyIds, isLoading: anyAccessLoading } = useAnyCompanyAccess()
+  // accessibleCompanyIds now comes from the batched init call below — no
+  // separate useAnyCompanyAccess hook firing its own server roundtrip.
+  const [accessibleCompanyIds, setAccessibleCompanyIds] = useState<string[]>([])
+  const [anyAccessLoading, setAnyAccessLoading] = useState(true)
   
   const handleSignOut = async () => {
     await signOut()
@@ -50,98 +52,103 @@ function SubscribePageInner() {
   const [isCheckingTrialEligibility, setIsCheckingTrialEligibility] = useState(false)
   const [trialEligibilityReason, setTrialEligibilityReason] = useState<string | null>(null)
 
-  // Check if company has ever used a trial (even expired)
-  async function checkCompanyTrialEligibility(companyId: string | null): Promise<boolean> {
-    try {
-      // Pass accessibleCompanyIds to help with authorization check
-      const result = await getCompanyTrialEligibility(companyId, accessibleCompanyIds)
-
-      if (!result.success) {
-        console.error('Error checking trial eligibility:', result.error)
-        setTrialEligibilityReason('unknown')
-        return false
-      }
-
-      setTrialEligibilityReason(result.reason || null)
-      return result.eligible === true
-    } catch (err) {
-      console.error('Error checking trial eligibility:', err)
-      setTrialEligibilityReason('unknown')
-      return false
-    }
-  }
-
-  // Check if selected company has active subscription/trial
+  // First-paint init: ONE batched server call replaces three sequential
+  // useEffects. Re-runs only when companyId (URL param) or user changes.
+  // Dropdown changes go through the lighter getSubscribeCompanyState
+  // refresh below.
+  const initRanForRef = useRef<string | null>(null)
   useEffect(() => {
-    async function checkCompanySubscription() {
-      const targetCompanyId = selectedCompanyForSubscription || companyId
-      if (!targetCompanyId || !user) {
-        setCompanyHasActiveSubscription(false)
-        return
-      }
+    if (authLoading || !user) return
+    const initKey = `${user.id}:${companyId ?? ''}`
+    if (initRanForRef.current === initKey) return
+    initRanForRef.current = initKey
 
+    let cancelled = false
+    async function loadInit() {
+      setAnyAccessLoading(true)
       setIsCheckingCompanySubscription(true)
-      try {
-        const result = await getCompanySubscriptionState(targetCompanyId)
-
-        if (result.success && result.subscription) {
-          setCompanyHasActiveSubscription(result.subscription.hasSubscription)
-          
-          // If company has active subscription and user is not explicitly upgrading, redirect to data-room
-          if (result.subscription.hasSubscription && !showUpgrade) {
-            router.replace(`/data-room?company_id=${targetCompanyId}`)
-          }
-        } else {
-          setCompanyHasActiveSubscription(false)
-        }
-      } catch (err) {
-        console.error('Error checking company subscription:', err)
-        setCompanyHasActiveSubscription(false)
-      } finally {
-        setIsCheckingCompanySubscription(false)
-      }
-    }
-
-    checkCompanySubscription()
-  }, [selectedCompanyForSubscription, companyId, user, showUpgrade, router])
-
-  // Fetch company name if provided, and fetch all user companies for selection
-  useEffect(() => {
-    async function fetchCompanies() {
-      if (!user) return
-      const result = await getSubscribeCompanyContext(companyId, accessibleCompanyIds)
-      if (!result.success) return
-
-      setCompanyName(result.companyName || '')
-      setUserCompanies(result.userCompanies || [])
-      setAccessibleCompanies(result.accessibleCompanies || [])
-
-      if (!companyId && (result.userCompanies?.length || 0) > 0) {
-        setSelectedCompanyForSubscription((current) => current || result.userCompanies?.[0]?.id || null)
-      }
-    }
-    
-    fetchCompanies()
-  }, [companyId, user, accessibleCompanyIds])
-
-  // Check trial eligibility when company changes (only if user is authenticated)
-  useEffect(() => {
-    // Don't check if auth is still loading or user is not authenticated
-    if (authLoading || !user) {
-      return
-    }
-
-    async function checkTrialEligibility() {
-      const targetCompanyId = selectedCompanyForSubscription || companyId
-
       setIsCheckingTrialEligibility(true)
-      const eligible = await checkCompanyTrialEligibility(targetCompanyId)
-      setCompanyTrialEligible(eligible)
-      setIsCheckingTrialEligibility(false)
-    }
+      try {
+        const result = await getSubscribeInitState(companyId)
+        if (cancelled) return
+        if (!result.success || !result.data) {
+          console.error('[subscribe] init failed:', result.error)
+          return
+        }
+        const d = result.data
 
-    checkTrialEligibility()
-  }, [selectedCompanyForSubscription, companyId, user, authLoading, accessibleCompanyIds])
+        setCompanyName(d.companyName || '')
+        setUserCompanies(d.userCompanies)
+        setAccessibleCompanies(d.accessibleCompanies)
+        setAccessibleCompanyIds(d.accessibleCompanyIds)
+
+        if (!companyId && d.userCompanies.length > 0) {
+          setSelectedCompanyForSubscription((current) => current || d.userCompanies[0]?.id || null)
+        }
+
+        const hasSub = d.subscription?.hasSubscription ?? false
+        setCompanyHasActiveSubscription(hasSub)
+        if (hasSub && !showUpgrade && (selectedCompanyForSubscription || companyId)) {
+          router.replace(`/data-room?company_id=${selectedCompanyForSubscription || companyId}`)
+        }
+
+        setCompanyTrialEligible(d.eligibility.eligible)
+        setTrialEligibilityReason(d.eligibility.reason)
+      } catch (err) {
+        console.error('[subscribe] init threw:', err)
+      } finally {
+        if (cancelled) return
+        setAnyAccessLoading(false)
+        setIsCheckingCompanySubscription(false)
+        setIsCheckingTrialEligibility(false)
+      }
+    }
+    loadInit()
+    return () => {
+      cancelled = true
+    }
+  }, [companyId, user, authLoading, showUpgrade, router, selectedCompanyForSubscription])
+
+  // Lightweight refresh when the dropdown changes — re-derives just
+  // subscription + eligibility for the newly-selected company. Skipped
+  // on the first render (init covers it) and when nothing is selected.
+  const lastRefreshedCompanyRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!user || authLoading) return
+    if (anyAccessLoading) return
+    const target = selectedCompanyForSubscription || companyId
+    if (!target) return
+    if (lastRefreshedCompanyRef.current === target) return
+    lastRefreshedCompanyRef.current = target
+
+    // Skip: the init call already covered the URL-provided companyId.
+    if (target === companyId && !lastRefreshedCompanyRef.current) return
+
+    let cancelled = false
+    async function refresh() {
+      setIsCheckingCompanySubscription(true)
+      setIsCheckingTrialEligibility(true)
+      try {
+        const result = await getSubscribeCompanyState(target)
+        if (cancelled || !result.success || !result.data) return
+        const hasSub = result.data.subscription?.hasSubscription ?? false
+        setCompanyHasActiveSubscription(hasSub)
+        if (hasSub && !showUpgrade) {
+          router.replace(`/data-room?company_id=${target}`)
+        }
+        setCompanyTrialEligible(result.data.eligibility.eligible)
+        setTrialEligibilityReason(result.data.eligibility.reason)
+      } finally {
+        if (cancelled) return
+        setIsCheckingCompanySubscription(false)
+        setIsCheckingTrialEligibility(false)
+      }
+    }
+    refresh()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedCompanyForSubscription, companyId, user, authLoading, anyAccessLoading, showUpgrade, router])
 
   // Redirect if not authenticated (only once, prevent loops)
   // CRITICAL: Only redirect if auth is fully loaded AND user is null

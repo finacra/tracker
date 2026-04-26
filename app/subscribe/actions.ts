@@ -4,123 +4,152 @@ import { createServerContainer } from '@/lib/composition/server-container'
 import { handleActionError } from '@/lib/errors/handle-error'
 import { validateCompanyId } from '@/lib/utils/input-validation'
 import { prisma } from '@/lib/prisma'
+import { GetAccessibleCompanyIds } from '@/application/use-cases/access/GetAccessibleCompanyIds'
 
-export async function getCompanyTrialEligibility(
-  companyId: string | null,
-  accessibleCompanyIds?: string[]
-): Promise<{ success: boolean; eligible?: boolean; reason?: string; error?: string }> {
-  if (companyId && !validateCompanyId(companyId)) {
-    return { success: false, error: 'Invalid company ID format' }
-  }
+export type SubscribeCompanySubscription = {
+  hasSubscription: boolean
+  tier: string
+  isTrial: boolean
+  trialDaysRemaining: number
+  userLimit: number
+} | null
+
+export type SubscribeEligibility = {
+  eligible: boolean
+  reason: string | null
+}
+
+export type SubscribeInitState = {
+  companyName: string | null
+  userCompanies: Array<{ id: string; name: string }>
+  accessibleCompanies: Array<{ id: string; name: string }>
+  accessibleCompanyIds: string[]
+  subscription: SubscribeCompanySubscription
+  eligibility: SubscribeEligibility
+}
+
+/**
+ * Single batched call replacing 3 sequential useEffect server roundtrips
+ * (getCompanySubscriptionState + getSubscribeCompanyContext +
+ * getCompanyTrialEligibility) on /subscribe page mount. One container,
+ * everything fanned out via Promise.all. Critical-path: previously
+ * ~450ms cold (3 × ~150ms with 3 fresh containers + 3 auth lookups).
+ */
+export async function getSubscribeInitState(
+  companyId: string | null
+): Promise<{ success: boolean; data?: SubscribeInitState; error?: string }> {
+  const validCompanyId = companyId && validateCompanyId(companyId) ? companyId : null
 
   try {
-    const { authService, companyRepository, subscriptionRepository } = createServerContainer()
-    const user = await authService.getCurrentUser()
+    const { authService, accessService, companyRepository, subscriptionRepository } = createServerContainer()
+    const user = await authService.requireCurrentUser()
 
-    if (!user) {
-      return { success: false, error: 'Not authenticated' }
-    }
+    const accessibleIdsUseCase = new GetAccessibleCompanyIds(accessService)
 
-    if (await subscriptionRepository.hasUsedEnterpriseUserTrial(user.id)) {
-      return {
-        success: true,
-        eligible: false,
-        reason: 'enterprise_trial_used',
+    // First fan-out: things that depend only on the user.
+    const [ownedCompanies, accessibleCompanyIds, enterpriseTrialUsed] = await Promise.all([
+      companyRepository.listOwnedByUser(user.id),
+      accessibleIdsUseCase.execute(user.id),
+      subscriptionRepository.hasUsedEnterpriseUserTrial(user.id),
+    ])
+
+    const ownedIdSet = new Set(ownedCompanies.map((c) => c.id))
+    const accessibleIdSet = new Set(accessibleCompanyIds)
+
+    // Second fan-out: things that depend on the company id (if any).
+    const targetCompany = validCompanyId
+    const isOwner = targetCompany ? ownedIdSet.has(targetCompany) : false
+    const hasAccess = targetCompany ? isOwner || accessibleIdSet.has(targetCompany) : false
+
+    const [accessibleCompaniesFull, companyById, companySubscription, companyTrialUsed] = await Promise.all([
+      companyRepository.listByIds(accessibleCompanyIds),
+      targetCompany ? companyRepository.getById(targetCompany) : Promise.resolve(null),
+      targetCompany ? subscriptionRepository.getCompanySubscriptionState(targetCompany) : Promise.resolve(null),
+      targetCompany ? subscriptionRepository.hasUsedCompanyTrial(targetCompany) : Promise.resolve(false),
+    ])
+
+    let eligibility: SubscribeEligibility = { eligible: true, reason: null }
+    if (enterpriseTrialUsed) {
+      eligibility = { eligible: false, reason: 'enterprise_trial_used' }
+    } else if (targetCompany) {
+      if (!hasAccess) {
+        eligibility = { eligible: false, reason: 'unauthorized' }
+      } else if (!isOwner) {
+        eligibility = { eligible: false, reason: 'requires_owner' }
+      } else if (companyTrialUsed) {
+        eligibility = { eligible: false, reason: 'company_trial_used' }
       }
     }
 
-    if (!companyId) {
-      return {
-        success: true,
-        eligible: true,
-      }
-    }
-
-    const company = await companyRepository.getById(companyId)
-    if (!company) {
-      return { success: false, error: 'Company not found' }
-    }
-
-    // Check if user has access to this company
-    // Option 1: User is the owner
-    const isOwner = company.ownerUserId === user.id || (company as any).appUserId === user.id
-    
-    // Option 2: Company is in accessibleCompanyIds (passed from client)
-    const hasAccessViaList = accessibleCompanyIds?.includes(companyId) || false
-    
-    // Option 3: Check via company memberships (fallback)
-    let hasAccessViaMembership = false
-    if (!isOwner && !hasAccessViaList) {
-      try {
-        const { companyMembershipRepository } = createServerContainer()
-        const memberships = await companyMembershipRepository.getRoles(companyId)
-        hasAccessViaMembership = memberships.some(m => m.userId === user.id || (m as any).appUserId === user.id)
-      } catch (err) {
-        // If membership check fails, continue with other checks
-        console.warn('[getCompanyTrialEligibility] Failed to check memberships:', err)
-      }
-    }
-
-    // User must have access via one of the methods above
-    if (!isOwner && !hasAccessViaList && !hasAccessViaMembership) {
-      return { success: false, error: 'Unauthorized' }
-    }
-
-    // Only owners can create company trials, but team members should be able to see eligibility
-    if (!isOwner) {
-      // Team members can see eligibility but can't create trials (only owners can)
-      // Return eligible: false with a reason that indicates they need owner to create trial
-      return {
-        success: true,
-        eligible: false,
-        reason: 'requires_owner',
-      }
-    }
-
-    const hasUsedCompanyTrial = await subscriptionRepository.hasUsedCompanyTrial(companyId)
+    const companyName =
+      targetCompany && companyById && (ownedIdSet.has(targetCompany) || accessibleIdSet.has(targetCompany))
+        ? companyById.name
+        : null
 
     return {
       success: true,
-      eligible: !hasUsedCompanyTrial,
-      reason: hasUsedCompanyTrial ? 'company_trial_used' : undefined,
+      data: {
+        companyName,
+        userCompanies: ownedCompanies.map((c) => ({ id: c.id, name: c.name })),
+        accessibleCompanies: accessibleCompaniesFull.map((c) => ({ id: c.id, name: c.name })),
+        accessibleCompanyIds,
+        subscription: companySubscription,
+        eligibility,
+      },
     }
   } catch (error) {
+    console.error('[SA:getSubscribeInitState] threw',
+      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : '')
     return handleActionError(error)
   }
 }
 
-export async function getSubscribeCompanyContext(
-  companyId: string | null,
-  accessibleCompanyIds: string[]
+/**
+ * Lightweight refresh used when the user picks a different company in
+ * the dropdown. Re-derives subscription + eligibility for the new
+ * company without re-listing all owned/accessible companies.
+ */
+export async function getSubscribeCompanyState(
+  companyId: string | null
 ): Promise<{
   success: boolean
-  companyName?: string
-  userCompanies?: Array<{ id: string; name: string }>
-  accessibleCompanies?: Array<{ id: string; name: string }>
+  data?: { subscription: SubscribeCompanySubscription; eligibility: SubscribeEligibility }
   error?: string
 }> {
-  const validCompanyId = companyId && validateCompanyId(companyId) ? companyId : null
-  const validAccessibleIds = accessibleCompanyIds.filter((id: string) => validateCompanyId(id))
+  if (!companyId) {
+    return { success: true, data: { subscription: null, eligibility: { eligible: true, reason: null } } }
+  }
+  if (!validateCompanyId(companyId)) {
+    return { success: false, error: 'Invalid company ID format' }
+  }
 
   try {
-    const { authService, companyRepository } = createServerContainer()
+    const { authService, accessService, companyRepository, subscriptionRepository } = createServerContainer()
     const user = await authService.requireCurrentUser()
-    const [userCompanies, accessibleCompanies] = await Promise.all([
+    const accessibleIdsUseCase = new GetAccessibleCompanyIds(accessService)
+
+    const [accessibleCompanyIds, ownedCompanies, enterpriseTrialUsed, subscription, companyTrialUsed, company] = await Promise.all([
+      accessibleIdsUseCase.execute(user.id),
       companyRepository.listOwnedByUser(user.id),
-      companyRepository.listByIds(validAccessibleIds),
+      subscriptionRepository.hasUsedEnterpriseUserTrial(user.id),
+      subscriptionRepository.getCompanySubscriptionState(companyId),
+      subscriptionRepository.hasUsedCompanyTrial(companyId),
+      companyRepository.getById(companyId),
     ])
 
-    const companyName =
-      validCompanyId && (userCompanies.some((company) => company.id === validCompanyId) || validAccessibleIds.includes(validCompanyId))
-        ? (await companyRepository.getById(validCompanyId))?.name
-        : undefined
+    if (!company) return { success: false, error: 'Company not found' }
 
-    return {
-      success: true,
-      companyName,
-      userCompanies: userCompanies.map((company) => ({ id: company.id, name: company.name })),
-      accessibleCompanies: accessibleCompanies.map((company) => ({ id: company.id, name: company.name })),
-    }
+    const isOwner = ownedCompanies.some((c) => c.id === companyId)
+    const hasAccess = isOwner || accessibleCompanyIds.includes(companyId)
+
+    let eligibility: SubscribeEligibility = { eligible: true, reason: null }
+    if (enterpriseTrialUsed) eligibility = { eligible: false, reason: 'enterprise_trial_used' }
+    else if (!hasAccess) eligibility = { eligible: false, reason: 'unauthorized' }
+    else if (!isOwner) eligibility = { eligible: false, reason: 'requires_owner' }
+    else if (companyTrialUsed) eligibility = { eligible: false, reason: 'company_trial_used' }
+
+    return { success: true, data: { subscription, eligibility } }
   } catch (error) {
     return handleActionError(error)
   }
@@ -211,32 +240,3 @@ export async function createTrialSubscription(targetCompanyId: string | null): P
   }
 }
 
-export async function getCompanySubscriptionState(
-  companyId: string | null
-): Promise<{
-  success: boolean
-  subscription?: {
-    hasSubscription: boolean
-    tier: string
-    isTrial: boolean
-    trialDaysRemaining: number
-    userLimit: number
-  } | null
-  error?: string
-}> {
-  if (!companyId) {
-    return { success: true, subscription: null }
-  }
-
-  if (!validateCompanyId(companyId)) {
-    return { success: false, error: 'Invalid company ID format' }
-  }
-
-  try {
-    const { subscriptionRepository } = createServerContainer()
-    const subscription = await subscriptionRepository.getCompanySubscriptionState(companyId)
-    return { success: true, subscription }
-  } catch (error) {
-    return handleActionError(error)
-  }
-}
