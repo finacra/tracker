@@ -100,6 +100,59 @@ export async function recordUserFact(
   }
 }
 
+/**
+ * Batched variant of recordUserFact. The intake form was previously
+ * calling recordUserFact in a sequential for-loop — with ~10 facts
+ * and a 3–5s Vercel cold-start per call, "Saving..." could hang for
+ * 30–50 seconds before either succeeding silently or surfacing an
+ * error. This collapses everything into one server roundtrip with
+ * Promise.all internally.
+ */
+export async function recordUserFacts(
+  companyId: string,
+  inputs: Array<{
+    kind: string
+    financialYear: string
+    amount?: number | null
+    unit?: string | null
+    payload?: unknown
+    counterparty?: string | null
+  }>,
+): Promise<{ success: boolean; factIds?: string[]; error?: string }> {
+  if (!inputs || inputs.length === 0) {
+    return { success: true, factIds: [] }
+  }
+  console.log('[recordUserFacts] enter', { companyId, factCount: inputs.length })
+  try {
+    const { user } = await assertCompanyAccess(companyId)
+    const factIds = await Promise.all(
+      inputs.map(async (input) => {
+        const { periodStart, periodEnd } = fyWindow(input.financialYear)
+        return recordFact({
+          companyId,
+          kind: input.kind,
+          periodStart,
+          periodEnd,
+          amount: typeof input.amount === 'number' ? input.amount : null,
+          unit: input.unit ?? null,
+          payload: input.payload,
+          counterparty: input.counterparty ?? null,
+          sourceKind: 'user_declared',
+          confidence: 1,
+          createdBy: user.id,
+        })
+      }),
+    )
+    console.log('[recordUserFacts] ok', { factCount: factIds.length })
+    return { success: true, factIds }
+  } catch (error) {
+    console.error('[recordUserFacts] threw',
+      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : '')
+    return handleActionError(error)
+  }
+}
+
 export async function listFacts(
   companyId: string,
   periodStart: string,
