@@ -185,18 +185,27 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Initial fire — but only if no fresh seed already exists in Zustand
-    // (e.g. from /data-room/page.tsx which puts the count there as part
-    // of getDataRoomInitState's batched payload).
-    const seededAt = useAppStore.getState().notificationCountSeededAt
-    const seedFresh = seededAt !== null && Date.now() - seededAt < 60_000
-    if (!seedFresh) fetchOnce()
+    // Defer the initial fire so /data-room/page.tsx (or any page that
+    // populates Zustand from a batched init payload) wins the race.
+    // Both this effect and the page's init useEffect fire on the same
+    // appUser change — without the delay, providers' fetch would race
+    // and almost always lose because init takes ~3s while a standalone
+    // notifications fetch returns in ~1.5s. The 4s delay is long enough
+    // for a typical cold init to complete; if no page has populated the
+    // seed by then, we fall back to fetching here.
+    const initialFireTimer = setTimeout(() => {
+      if (cancelled) return
+      const seededAt = useAppStore.getState().notificationCountSeededAt
+      const seedFresh = seededAt !== null && Date.now() - seededAt < 60_000
+      if (!seedFresh) fetchOnce()
+    }, 4000)
 
     // 60-second background poll (matches the previous useUnreadCountQuery cadence).
     intervalId = setInterval(fetchOnce, 60 * 1000)
 
     return () => {
       cancelled = true
+      clearTimeout(initialFireTimer)
       if (intervalId) clearInterval(intervalId)
     }
   }, [appUser, setNotificationCount])
