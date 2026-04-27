@@ -46,10 +46,18 @@ function SubscribePageInner() {
   const [accessibleCompanies, setAccessibleCompanies] = useState<Array<{ id: string; name: string }>>([])
   const [selectedCompanyForSubscription, setSelectedCompanyForSubscription] = useState<string | null>(companyId)
   const [companyHasActiveSubscription, setCompanyHasActiveSubscription] = useState<boolean>(false)
-  const [isCheckingCompanySubscription, setIsCheckingCompanySubscription] = useState(false)
+  // Default to "checking" so we don't flash an incorrect trial / subscription
+  // banner on first paint. Without these starting true, the page would render
+  // with default values (companyTrialEligible=true, no subscription) and show
+  // the "Not ready to commit? Start your trial" banner — then 3-5s later when
+  // init returns and reveals the real state, that banner would be replaced
+  // with "Free trial is not available" or "Company already has an active
+  // subscription". The init useEffect flips both to true again on entry; this
+  // just covers the initial render before the effect runs.
+  const [isCheckingCompanySubscription, setIsCheckingCompanySubscription] = useState(true)
   const [isRazorpayScriptLoaded, setIsRazorpayScriptLoaded] = useState(false)
   const [companyTrialEligible, setCompanyTrialEligible] = useState<boolean>(true)
-  const [isCheckingTrialEligibility, setIsCheckingTrialEligibility] = useState(false)
+  const [isCheckingTrialEligibility, setIsCheckingTrialEligibility] = useState(true)
   const [trialEligibilityReason, setTrialEligibilityReason] = useState<string | null>(null)
 
   // First-paint init: ONE batched server call replaces three sequential
@@ -748,8 +756,10 @@ function SubscribePageInner() {
           </div>
         )}
 
-        {/* Show message if company has active subscription */}
-        {companyHasActiveSubscription && (selectedCompanyForSubscription || companyId) && (
+        {/* Show message if company has active subscription. Gate on the
+            init having settled so we don't flash this banner before the
+            real state is known. */}
+        {companyHasActiveSubscription && !isCheckingCompanySubscription && (selectedCompanyForSubscription || companyId) && (
           <div className="max-w-2xl mx-auto mb-12">
             <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 text-center">
               <p className="text-red-400 font-medium">
