@@ -50,13 +50,28 @@ export default function TrackerEvaluationPanel({ companyId, financialYear }: Pro
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      // Fact check — determine if intake is still useful
+      // Fact check — determine if intake is still useful.
+      // Previously this required ≥2 facts from a narrow KEY_FACT_KINDS
+      // list (rent / contractor / headcount / turnover). The intake
+      // form actually records 9 different fact kinds — so a user who
+      // answered the OTHER 5 (professional fees, director remuneration,
+      // GST composition dealer, etc.) would be re-prompted to "fill"
+      // the intake even though their data was already saved. Now we
+      // treat ANY user_declared fact for this FY as proof the intake
+      // has been done at least once.
       const fyStart = `${financialYear.slice(0, 4)}-04-01`
       const fyEndYear = parseInt(financialYear.slice(0, 4), 10) + 1
       const fyEnd = `${fyEndYear}-03-31`
       const factsRes = await listFacts(companyId, fyStart, fyEnd)
-      const factCount = (factsRes.facts || []).filter(f => KEY_FACT_KINDS.includes(f.kind)).length
-      setNeedsIntake(factCount < 2)
+      const allFacts = factsRes.facts || []
+      const userDeclaredCount = allFacts.filter(f => f.sourceKind === 'user_declared').length
+      // Suppress for the typical FY-rollover edge case too — if the
+      // user filled intake in a prior year we shouldn't re-prompt
+      // unless they explicitly want to re-do it. But for now, scope
+      // the fix to "any fact for this FY" since the per-year intake
+      // is intended.
+      setNeedsIntake(userDeclaredCount === 0)
+      void KEY_FACT_KINDS // retained import for callers; full review queue still uses it
 
       // Assessment check — pull review queue
       const ass = await listAssessments(companyId, financialYear, { includeNotApplicable: true })
