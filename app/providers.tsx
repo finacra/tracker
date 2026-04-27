@@ -29,6 +29,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   // checkSuperadminStatus.
   const superadminResolvedForRef = useRef<string | null>(null)
   const setIsSuperadmin = useAppStore((s) => s.setIsSuperadmin)
+  const setNotificationCount = useAppStore((s) => s.setNotificationCount)
 
   const buildFallbackAppUser = (session: ClientAuthSession): AppUser => ({
     id: session.userId,
@@ -160,6 +161,45 @@ export function Providers({ children }: { children: React.ReactNode }) {
     ).catch(() => { if (!cancelled) setIsSuperadmin(false) })
     return () => { cancelled = true }
   }, [appUser, setIsSuperadmin])
+
+  // Unread notification count poller — owns the badge value in Zustand.
+  // Lives here (not in Header) because Header used to mount in a layout
+  // BEFORE /data-room/page.tsx populated the Zustand seed via init's
+  // batched payload, causing a redundant getNotifications roundtrip on
+  // every cold load. Polling here also runs only when authed, and skips
+  // the immediate fire when a fresh seed already exists in Zustand —
+  // which the page sets after init returns.
+  useEffect(() => {
+    if (!appUser) return
+    let cancelled = false
+    let intervalId: ReturnType<typeof setInterval> | null = null
+
+    const fetchOnce = async () => {
+      try {
+        const { getNotifications } = await import('@/app/actions/notifications')
+        const result = await getNotifications({ unreadOnly: true, limit: 50 })
+        if (cancelled) return
+        if (result.success) setNotificationCount(result.unreadCount ?? 0)
+      } catch (err) {
+        console.warn('[providers:notif-poll] fetchOnce threw', err instanceof Error ? err.message : err)
+      }
+    }
+
+    // Initial fire — but only if no fresh seed already exists in Zustand
+    // (e.g. from /data-room/page.tsx which puts the count there as part
+    // of getDataRoomInitState's batched payload).
+    const seededAt = useAppStore.getState().notificationCountSeededAt
+    const seedFresh = seededAt !== null && Date.now() - seededAt < 60_000
+    if (!seedFresh) fetchOnce()
+
+    // 60-second background poll (matches the previous useUnreadCountQuery cadence).
+    intervalId = setInterval(fetchOnce, 60 * 1000)
+
+    return () => {
+      cancelled = true
+      if (intervalId) clearInterval(intervalId)
+    }
+  }, [appUser, setNotificationCount])
 
   const signOut = async () => {
     trackedLoginUserIdRef.current = null

@@ -7,7 +7,6 @@ import { useRouter, usePathname } from 'next/navigation'
 import type { Notification } from '@/app/actions/notifications'
 import {
   useNotificationsQuery,
-  useUnreadCountQuery,
   useMarkReadMutation,
   useMarkAllReadMutation,
 } from '@/hooks/useNotificationsQuery'
@@ -29,8 +28,10 @@ export default function Header() {
   const isSuperadmin = useAppStore(selectIsSuperadmin)
 
   // ── Notifications (React Query) ────────────────────────────────────────────
-  // Background badge count — polls every 60 s
-  useUnreadCountQuery({ enabled: !!user })
+  // Badge count is owned by the unread-count poller in providers.tsx —
+  // Header just reads from Zustand. This avoids the mount-order race
+  // where Header (in layout) used to fire useUnreadCountQuery before
+  // /data-room/page.tsx populated Zustand from the batched init.
 
   // Full list — fetched + polled only while panel is open (desktop or mobile drawer)
   const { data: notifications = [], isLoading: isLoadingNotifications } = useNotificationsQuery({
