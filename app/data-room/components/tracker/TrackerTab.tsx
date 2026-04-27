@@ -147,7 +147,11 @@ export default function TrackerTab() {
         </div>
       )}
 
-      {/* AI Compliance Intelligence */}
+      {/* AI Compliance Intelligence — single compliance setup surface.
+          Owns intake CTA + Generate + Validate + review queue. The
+          companion TrackerEvaluationPanel below is now strictly for
+          the LOW-CONFIDENCE review questions surfaced by the
+          deterministic evaluator. */}
       {currentCompany && (
         <ComplianceIntelligencePanel
           companyId={currentCompany.id}
@@ -156,6 +160,7 @@ export default function TrackerTab() {
           canEdit={canEdit}
           hasExistingRequirements={regulatoryRequirements.length > 0}
           incorporationDate={currentCompany.incorporation_date || null}
+          financialYear={selectedTrackerFY}
           onRequirementsApproved={refreshRequirements}
         />
       )}

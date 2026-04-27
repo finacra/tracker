@@ -4,13 +4,20 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { runApplicabilityEvaluation, listAssessments, overrideAssessment } from '../../actions-evaluator'
 import { listFacts, recordUserFact } from '../../actions-facts'
 import { showToast } from '@/components/ui/Toast'
-import ComplianceIntakeForm from './ComplianceIntakeForm'
 import {
   TRIGGER_QUESTIONS,
   inferQuestionFromRuleName,
-  KEY_FACT_KINDS,
   type ReviewQuestion,
 } from './reviewQuestions'
+
+/**
+ * NOTE: the "Tell us about your business" intake CTA used to live on
+ * this panel as well. It now lives on ComplianceIntelligencePanel
+ * (the main compliance setup surface) so there's a single, clear
+ * path: intake → generate → review. This panel is now responsible
+ * only for the LOW-CONFIDENCE REVIEW QUEUE that surfaces after the
+ * evaluator runs.
+ */
 
 interface Props {
   companyId: string
@@ -42,7 +49,8 @@ export default function TrackerEvaluationPanel({ companyId, financialYear }: Pro
   const [loading, setLoading] = useState(true)
   const [running, setRunning] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
-  const [showIntake, setShowIntake] = useState(false)
+  // needsIntake is still tracked locally — used to gate the auto-
+  // evaluator below — but the visible intake CTA lives in CIP now.
   const [needsIntake, setNeedsIntake] = useState(false)
   const [reviewItems, setReviewItems] = useState<AssessmentItem[]>([])
   const autoEvaluatedRef = useRef(false)
@@ -65,13 +73,7 @@ export default function TrackerEvaluationPanel({ companyId, financialYear }: Pro
       const factsRes = await listFacts(companyId, fyStart, fyEnd)
       const allFacts = factsRes.facts || []
       const userDeclaredCount = allFacts.filter(f => f.sourceKind === 'user_declared').length
-      // Suppress for the typical FY-rollover edge case too — if the
-      // user filled intake in a prior year we shouldn't re-prompt
-      // unless they explicitly want to re-do it. But for now, scope
-      // the fix to "any fact for this FY" since the per-year intake
-      // is intended.
       setNeedsIntake(userDeclaredCount === 0)
-      void KEY_FACT_KINDS // retained import for callers; full review queue still uses it
 
       // Assessment check — pull review queue
       const ass = await listAssessments(companyId, financialYear, { includeNotApplicable: true })
@@ -142,33 +144,14 @@ export default function TrackerEvaluationPanel({ companyId, financialYear }: Pro
     }
   }
 
-  const pendingCount = reviewItems.length + (needsIntake ? 1 : 0)
+  // pendingCount no longer includes intake — that's owned by CIP. This
+  // panel only concerns itself with the low-confidence review queue.
+  const pendingCount = reviewItems.length
   const hasAnything = pendingCount > 0
 
-  // ── Intake full-screen takeover ────────────────────────────────────────
-  if (showIntake) {
-    return (
-      <div className="bg-black border border-white/10 rounded-xl overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-white/10 flex items-center justify-between">
-          <span className="text-xs text-gray-400">Business intake</span>
-          <button
-            onClick={() => setShowIntake(false)}
-            className="text-xs text-gray-500 hover:text-white"
-          >
-            Close
-          </button>
-        </div>
-        <ComplianceIntakeForm
-          companyId={companyId}
-          financialYear={financialYear}
-          onComplete={async () => {
-            setShowIntake(false)
-            await handleEvaluate()
-          }}
-        />
-      </div>
-    )
-  }
+  // If intake is required, hide this panel entirely. CIP is showing
+  // its own intake CTA; surfacing a second strip here just adds noise.
+  if (needsIntake) return null
 
   // ── Compact strip when nothing is pending ──────────────────────────────
   if (!hasAnything) {
@@ -231,20 +214,7 @@ export default function TrackerEvaluationPanel({ companyId, financialYear }: Pro
 
       {!collapsed && (
         <div className="border-t border-amber-500/15 divide-y divide-amber-500/10">
-          {needsIntake && (
-            <div className="px-4 py-3 flex items-center justify-between">
-              <div>
-                <p className="text-sm text-white">Tell us about your business</p>
-                <p className="text-[11px] text-gray-400 mt-0.5">8 short questions — determines which compliances actually apply to you. Takes ~2 min.</p>
-              </div>
-              <button
-                onClick={() => setShowIntake(true)}
-                className="text-xs px-3 py-1.5 rounded bg-white text-black hover:bg-gray-200 font-medium"
-              >
-                Start intake
-              </button>
-            </div>
-          )}
+          {/* Intake CTA removed — CIP owns it now. Review queue only. */}
 
           {reviewItems.map(item => (
             <ReviewRow
