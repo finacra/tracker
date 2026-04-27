@@ -106,49 +106,91 @@ export default function ComplianceIntelligencePanel({
     setViewState('generating')
     setError(null)
 
-    const result = await generateComplianceForCompany(companyId)
+    // Hard client-side bail-out. The server action can hit Vercel's
+    // ~60s function timeout when AI validation is slow, and the
+    // resulting promise can hang or throw a network error that the
+    // caller used to swallow — leaving the UI stuck on the generating
+    // spinner forever (until the user refreshed).
+    let timedOut = false
+    const timeoutHandle = setTimeout(() => {
+      timedOut = true
+    }, 90_000)
 
-    if (!result.success) {
-      setError(result.error || 'Generation failed')
-      setViewState('error')
-      return
-    }
+    try {
+      console.log('[CIP:handleGenerate] starting', { companyId })
+      const result = await generateComplianceForCompany(companyId)
+      clearTimeout(timeoutHandle)
+      if (timedOut) {
+        // Server may have completed but we already timed out the UI;
+        // recover by checking whether requirements actually landed.
+        const reviewResult = await getAIRequirementsPendingReview(companyId)
+        if (reviewResult.success) {
+          onRequirementsApproved()
+          setViewState('idle')
+          return
+        }
+        throw new Error('Generation timed out after 90s')
+      }
 
-    setStats({
-      total: result.totalGenerated || 0,
-      rulesEngineCount: result.rulesEngineCount || 0,
-      aiCount: result.aiCount || 0,
-      highConf: result.highConfidence || 0,
-      needsReview: result.needsReview || 0,
-      missingFields: result.missingProfileFields || [],
-    })
+      if (!result.success) {
+        console.error('[CIP:handleGenerate] server returned failure', result.error)
+        setError(result.error || 'Generation failed')
+        setViewState('error')
+        return
+      }
 
-    // Capture validation results
-    if (result.validationRan) {
-      setValidationStats({
-        validated: result.validatedCount || 0,
-        flagged: result.flaggedCount || 0,
-        removed: result.removedByValidation || 0,
-        discovered: 0, // generate flow doesn't discover — that's standalone validate
+      setStats({
+        total: result.totalGenerated || 0,
+        rulesEngineCount: result.rulesEngineCount || 0,
+        aiCount: result.aiCount || 0,
+        highConf: result.highConfidence || 0,
+        needsReview: result.needsReview || 0,
+        missingFields: result.missingProfileFields || [],
       })
-      if (result.validationResults && result.validationResults.length > 0) {
-        setValidationResults(result.validationResults)
-      }
-    }
 
-    // Fetch AI-generated items pending review (rules engine items are auto-approved)
-    const reviewResult = await getAIRequirementsPendingReview(companyId)
-    if (reviewResult.success && reviewResult.requirements && reviewResult.requirements.length > 0) {
-      setRequirements(reviewResult.requirements)
-      setViewState('reviewing')
-    } else {
-      // No AI items to review — rules engine results are already active
-      setViewState('idle')
-      if ((result.rulesEngineCount || 0) > 0) {
-        onRequirementsApproved() // refresh the tracker to show new rules engine items
+      // Capture validation results
+      if (result.validationRan) {
+        setValidationStats({
+          validated: result.validatedCount || 0,
+          flagged: result.flaggedCount || 0,
+          removed: result.removedByValidation || 0,
+          discovered: 0, // generate flow doesn't discover — that's standalone validate
+        })
+        if (result.validationResults && result.validationResults.length > 0) {
+          setValidationResults(result.validationResults)
+        }
       }
+
+      // Fetch AI-generated items pending review (rules engine items are auto-approved)
+      const reviewResult = await getAIRequirementsPendingReview(companyId)
+      if (reviewResult.success && reviewResult.requirements && reviewResult.requirements.length > 0) {
+        setRequirements(reviewResult.requirements)
+        setViewState('reviewing')
+      } else {
+        // No AI items to review — rules engine results are already active
+        setViewState('idle')
+        if ((result.rulesEngineCount || 0) > 0) {
+          onRequirementsApproved() // refresh the tracker to show new rules engine items
+        }
+      }
+    } catch (err) {
+      clearTimeout(timeoutHandle)
+      console.error('[CIP:handleGenerate] threw',
+        err instanceof Error ? err.message : String(err),
+        err instanceof Error ? err.stack : '')
+      // Even on failure, the server may have written some requirements.
+      // Refresh the tracker so the user sees what landed instead of a
+      // blank "Generation failed" page that contradicts reality.
+      try {
+        onRequirementsApproved()
+      } catch {}
+      const msg = err instanceof Error ? err.message : 'Generation failed'
+      setError(timedOut
+        ? 'Generation took longer than expected. Some compliances may have been saved — please refresh to see them, or click Re-evaluate to try again.'
+        : msg)
+      setViewState('error')
     }
-  }, [companyId])
+  }, [companyId, onRequirementsApproved])
 
   // ── Load existing pending review items ──────────────────────────────
 
