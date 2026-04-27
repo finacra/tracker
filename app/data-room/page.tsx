@@ -3947,6 +3947,44 @@ function DataRoomPageInner() {
       <div className="min-h-screen bg-primary-dark">
         <Header />
         <div className="container mx-auto px-4 py-8 space-y-6 max-w-7xl">
+          {/* Cinematic loading banner — pulsing radar dot + rotating
+              futuristic message above the skeletons. The key on the
+              text element forces a fade-in transition each time the
+              message rotates so the eye is drawn to the new line. */}
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.03] via-transparent to-blue-500/[0.04] px-5 py-6 sm:px-7 sm:py-7">
+            {/* Animated scanline accent */}
+            <div className="pointer-events-none absolute inset-0 opacity-[0.07]">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white to-transparent animate-[boot-scan_3s_linear_infinite]" />
+            </div>
+            <div className="flex items-center gap-4">
+              {/* Radar dot */}
+              <div className="relative flex h-3 w-3 flex-shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-emerald-400/80 font-medium mb-1">
+                  System • Booting Data Room
+                </div>
+                <div
+                  key={loadingMessage}
+                  className="text-sm sm:text-base font-light text-white/90 truncate animate-[boot-fade_0.5s_ease-out]"
+                >
+                  {loadingMessage}
+                </div>
+              </div>
+            </div>
+            <style jsx>{`
+              @keyframes boot-fade {
+                from { opacity: 0; transform: translateX(-6px); }
+                to { opacity: 1; transform: translateX(0); }
+              }
+              @keyframes boot-scan {
+                0% { transform: translateY(0); }
+                100% { transform: translateY(120px); }
+              }
+            `}</style>
+          </div>
           {/* Skeleton company selector strip */}
           <div className="flex gap-3 overflow-hidden">
             {Array.from({ length: 3 }).map((_, i) => (
