@@ -411,20 +411,35 @@ export default function ComplianceIntelligencePanel({
     if (!canEdit) return null
 
     // Derive the current "phase" so the panel's primary CTA aligns
-    // with what the user actually needs to do next. Without this,
-    // the user sees three competing buttons (Generate / Validate /
-    // Historical) and has to guess.
-    const phase: 'intake' | 'first-generate' | 'maintenance' =
-      needsIntake === true
-        ? 'intake'
-        : !hasExistingRequirements
-          ? 'first-generate'
-          : 'maintenance'
+    // with what the user actually needs to do next. While the
+    // intake-status query is still loading (needsIntake === null),
+    // we show a neutral 'loading' phase — without this, the panel
+    // flashes "Step 2 of 2 Generate" first and snaps to "Step 1 of
+    // 2 Tell us about your business" once the facts query returns
+    // (3-5s on cold start), which is exactly the bug the user
+    // reported.
+    const phase: 'loading' | 'intake' | 'first-generate' | 'maintenance' =
+      needsIntake === null
+        ? 'loading'
+        : needsIntake === true
+          ? 'intake'
+          : !hasExistingRequirements
+            ? 'first-generate'
+            : 'maintenance'
 
     return (
       <div className="border border-gray-700/50 rounded-xl p-4 sm:p-6 bg-gradient-to-br from-blue-500/5 to-purple-500/5">
         {/* Step indicator strip — single source of truth for "what's next" */}
         <div className="mb-3 flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-medium">
+          {phase === 'loading' && (
+            <>
+              <span className="text-gray-500 inline-flex items-center gap-2">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-500 animate-pulse" />
+                Checking
+              </span>
+              <span className="text-gray-600">— Determining what's next for your tracker…</span>
+            </>
+          )}
           {phase === 'intake' && (
             <>
               <span className="text-amber-400">● Step 1 of 2</span>
@@ -582,11 +597,19 @@ export default function ComplianceIntelligencePanel({
             )}
 
             <div className="mt-3 flex items-center gap-2 flex-wrap">
-              {/* Primary CTA changes by phase. When intake is required,
-                  the "Generate" button is replaced with "Tell us about
-                  your business" so the user can't run the noisy
-                  rules-engine path before declaring their facts. */}
-              {phase === 'intake' && financialYear ? (
+              {/* Primary CTA changes by phase. While the intake-status
+                  query is still loading, we render a placeholder
+                  button instead of guessing — otherwise the wrong CTA
+                  flashes for ~3-5s before snapping to the right one. */}
+              {phase === 'loading' ? (
+                <button
+                  disabled
+                  className="px-4 py-2 bg-gray-800 text-gray-500 rounded-lg text-sm font-medium flex items-center gap-2 cursor-wait"
+                >
+                  <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+                  Checking your business profile…
+                </button>
+              ) : phase === 'intake' && financialYear ? (
                 <button
                   onClick={() => setViewState('intake')}
                   className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
