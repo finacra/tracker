@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { showToast } from '@/components/ui/Toast'
-import { recordUserFact } from '../../actions-facts'
+import { recordUserFacts } from '../../actions-facts'
 
 /**
  * Quick intake form that collects the key operational facts BEFORE
@@ -67,7 +67,7 @@ export default function ComplianceIntakeForm({ companyId, financialYear, onCompl
   const handleSubmit = async () => {
     setSaving(true)
     try {
-      type FactPayload = Parameters<typeof recordUserFact>[1]
+      type FactPayload = Parameters<typeof recordUserFacts>[1][number]
       const facts: FactPayload[] = []
 
       // Rent
@@ -119,20 +119,26 @@ export default function ComplianceIntakeForm({ companyId, financialYear, onCompl
         facts.push({ kind: 'trade.imports_exports', financialYear, payload: { value: data.hasImportsExports }, unit: 'boolean' })
       }
 
-      for (const f of facts) {
-        const res = await recordUserFact(companyId, f)
-        if (!res.success) {
-          showToast(res.error || 'Failed to save', 'error')
-          setSaving(false)
-          return
-        }
+      console.log('[IntakeForm] submitting', { companyId, factCount: facts.length, financialYear })
+      // Single batched roundtrip — was previously a sequential for-loop
+      // that paid Vercel cold-start tax (~3-5s) per fact.
+      const res = await recordUserFacts(companyId, facts)
+      if (!res.success) {
+        console.error('[IntakeForm] save failed', res.error)
+        showToast(res.error || 'Failed to save business details', 'error')
+        setSaving(false)
+        return
       }
+      console.log('[IntakeForm] save ok', { factIds: res.factIds })
 
       showToast('Business details saved — evaluating compliances...', 'success')
       onComplete()
     } catch (err) {
-      console.error('[IntakeForm] save failed', err)
-      showToast('Failed to save', 'error')
+      console.error('[IntakeForm] threw',
+        err instanceof Error ? err.message : String(err),
+        err instanceof Error ? err.stack : '')
+      const msg = err instanceof Error ? err.message : 'Failed to save'
+      showToast(msg, 'error')
     }
     setSaving(false)
   }
