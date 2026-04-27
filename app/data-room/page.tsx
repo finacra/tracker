@@ -29,6 +29,8 @@ import Header from "@/components/layout/Header";
 import CompanySelector from "@/components/features/CompanySelector";
 import SubtleCircuitBackground from "@/components/ui/SubtleCircuitBackground";
 import { OverviewStatsSkeleton } from "@/components/ui/skeletons/OverviewStatsSkeleton";
+import { useRotatingLoadingMessage } from "@/hooks/useRotatingLoadingMessage";
+import { DATA_ROOM_LOADING_MESSAGES } from "@/lib/ui/loading-messages";
 import { RequirementTableSkeleton } from "@/components/ui/skeletons/RequirementRowSkeleton";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -229,42 +231,13 @@ function DataRoomPageInner() {
   const [isDataRoomInitLoading, setIsDataRoomInitLoading] = useState(true);
   const [isCompanySwitching, setIsCompanySwitching] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
-  const [loadingMessage, setLoadingMessage] = useState("Setting up your Data Room...");
-  
-  // Fallback: Rotate messages if initialization takes longer than expected
-  // This prevents the loading screen from feeling stuck
-  useEffect(() => {
-    if (!isDataRoomInitLoading) {
-      setLoadingMessage("Setting up your Data Room...");
-      return;
-    }
-    
-    const loadingMessages = [
-      "🔐 Verifying access permissions...",
-      "📊 Loading company information...",
-      "📁 Organizing document structure...",
-      "⚖️ Loading compliance requirements...",
-      "📋 Preparing compliance tracker...",
-      "✨ Finalizing your workspace...",
-    ];
-    
-    // Only start rotating after 3 seconds (fallback if something is slow)
-    const timeout = setTimeout(() => {
-      let messageIndex = 0;
-      const interval = setInterval(() => {
-        if (!isDataRoomInitLoading) {
-          clearInterval(interval);
-          return;
-        }
-        messageIndex = (messageIndex + 1) % loadingMessages.length;
-        setLoadingMessage(loadingMessages[messageIndex]);
-      }, 1200);
-      
-      return () => clearInterval(interval);
-    }, 3000);
-    
-    return () => clearTimeout(timeout);
-  }, [isDataRoomInitLoading]);
+  // Loading message during /data-room boot. Sourced from the shared
+  // catalog so messaging is consistent with the other major skeleton
+  // states (Create Company, Documents tab, Compliance tracker).
+  const loadingMessage = useRotatingLoadingMessage({
+    active: isDataRoomInitLoading,
+    messages: DATA_ROOM_LOADING_MESSAGES,
+  })
   
   const [entityDetails, setEntityDetails] = useState<EntityDetails | null>(
     null,
@@ -419,10 +392,12 @@ function DataRoomPageInner() {
 
       const startTime = performance.now();
       
-      // Update loading messages as initialization progresses
-      const updateLoadingMessage = (message: string) => {
+      // No-op: loading message rotation is now owned by the
+      // useRotatingLoadingMessage hook above. Kept as a stub so the
+      // existing progress markers below remain readable as inline
+      // documentation of what stage the init is at.
+      const updateLoadingMessage = (_message: string) => {
         lastMessageUpdateRef.current = Date.now();
-        setLoadingMessage(message);
       };
       
       try {
