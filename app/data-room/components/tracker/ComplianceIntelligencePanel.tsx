@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import {
   generateComplianceForCompany,
   validateComplianceForCompany,
@@ -12,6 +12,8 @@ import {
   type AIRequirementForReview,
   type ValidateComplianceResult,
 } from '../../actions-intelligence'
+import { listFacts } from '../../actions-facts'
+import ComplianceIntakeForm from './ComplianceIntakeForm'
 
 interface ComplianceIntelligencePanelProps {
   companyId: string
@@ -20,10 +22,12 @@ interface ComplianceIntelligencePanelProps {
   canEdit: boolean
   hasExistingRequirements: boolean
   incorporationDate: string | null
+  /** Selected financial year — needed for the intake form */
+  financialYear?: string
   onRequirementsApproved: () => void // refresh the tracker after approvals
 }
 
-type ViewState = 'idle' | 'generating' | 'validating' | 'reviewing' | 'error'
+type ViewState = 'idle' | 'generating' | 'validating' | 'reviewing' | 'error' | 'intake'
 
 const CONFIDENCE_COLORS: Record<string, string> = {
   high: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
@@ -57,9 +61,35 @@ export default function ComplianceIntelligencePanel({
   canEdit,
   hasExistingRequirements,
   incorporationDate,
+  financialYear,
   onRequirementsApproved,
 }: ComplianceIntelligencePanelProps) {
   const [viewState, setViewState] = useState<ViewState>('idle')
+  // Intake completion is the gate for the Generate button. Without
+  // intake facts, the rules engine has to guess (rent? employees?
+  // turnover?) and the output is noisy. Loading happens once per
+  // mount; the form's onComplete refreshes this.
+  const [needsIntake, setNeedsIntake] = useState<boolean | null>(null) // null = unknown / loading
+  const refreshIntakeStatus = useCallback(async () => {
+    if (!financialYear) {
+      setNeedsIntake(false)
+      return
+    }
+    try {
+      const fyStart = `${financialYear.slice(0, 4)}-04-01`
+      const fyEndYear = parseInt(financialYear.slice(0, 4), 10) + 1
+      const fyEnd = `${fyEndYear}-03-31`
+      const res = await listFacts(companyId, fyStart, fyEnd)
+      const userDeclared = (res.facts || []).filter(f => f.sourceKind === 'user_declared').length
+      setNeedsIntake(userDeclared === 0)
+    } catch (err) {
+      console.warn('[CIP] intake status check failed', err instanceof Error ? err.message : err)
+      setNeedsIntake(false) // fail open — don't block Generate on a status-check error
+    }
+  }, [companyId, financialYear])
+  useEffect(() => {
+    refreshIntakeStatus()
+  }, [refreshIntakeStatus])
   const [requirements, setRequirements] = useState<AIRequirementForReview[]>([])
   const [error, setError] = useState<string | null>(null)
   const [stats, setStats] = useState<{
@@ -343,13 +373,77 @@ export default function ComplianceIntelligencePanel({
     }
   }, [requirements.length, viewState, onRequirementsApproved])
 
+  // ── Intake takeover: full-bleed business intake form ────────────────
+
+  if (viewState === 'intake' && financialYear) {
+    return (
+      <div className="border border-amber-500/20 rounded-xl bg-amber-500/[0.03] overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-amber-500/15 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-[0.2em] text-amber-400/80 font-medium">Step 1 of 2</span>
+            <span className="text-xs text-gray-300">Tell us about your business</span>
+          </div>
+          <button
+            onClick={() => setViewState('idle')}
+            className="text-xs text-gray-500 hover:text-white"
+          >
+            Cancel
+          </button>
+        </div>
+        <ComplianceIntakeForm
+          companyId={companyId}
+          financialYear={financialYear}
+          onComplete={async () => {
+            await refreshIntakeStatus()
+            setViewState('idle')
+            // Trigger generate immediately so the user doesn't have
+            // to click another button after completing intake.
+            handleGenerate()
+          }}
+        />
+      </div>
+    )
+  }
+
   // ── Idle state: show generate button ────────────────────────────────
 
   if (viewState === 'idle') {
     if (!canEdit) return null
 
+    // Derive the current "phase" so the panel's primary CTA aligns
+    // with what the user actually needs to do next. Without this,
+    // the user sees three competing buttons (Generate / Validate /
+    // Historical) and has to guess.
+    const phase: 'intake' | 'first-generate' | 'maintenance' =
+      needsIntake === true
+        ? 'intake'
+        : !hasExistingRequirements
+          ? 'first-generate'
+          : 'maintenance'
+
     return (
       <div className="border border-gray-700/50 rounded-xl p-4 sm:p-6 bg-gradient-to-br from-blue-500/5 to-purple-500/5">
+        {/* Step indicator strip — single source of truth for "what's next" */}
+        <div className="mb-3 flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-medium">
+          {phase === 'intake' && (
+            <>
+              <span className="text-amber-400">● Step 1 of 2</span>
+              <span className="text-gray-600">— Business intake required before we can generate accurate rules</span>
+            </>
+          )}
+          {phase === 'first-generate' && (
+            <>
+              <span className="text-blue-400">● Step 2 of 2</span>
+              <span className="text-gray-600">— Generate your initial compliance ruleset</span>
+            </>
+          )}
+          {phase === 'maintenance' && (
+            <>
+              <span className="text-emerald-400">● Up to date</span>
+              <span className="text-gray-600">— Re-evaluate any time facts change</span>
+            </>
+          )}
+        </div>
         <div className="flex items-start gap-3 sm:gap-4">
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-blue-400 sm:w-6 sm:h-6">
@@ -488,17 +582,36 @@ export default function ComplianceIntelligencePanel({
             )}
 
             <div className="mt-3 flex items-center gap-2 flex-wrap">
-              <button
-                onClick={handleGenerate}
-                disabled={false}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M13 10V3L4 14h7v7l9-11h-7z" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                {stats ? 'Re-evaluate Compliances' : 'Generate Compliances'}
-              </button>
-              {hasExistingRequirements && (
+              {/* Primary CTA changes by phase. When intake is required,
+                  the "Generate" button is replaced with "Tell us about
+                  your business" so the user can't run the noisy
+                  rules-engine path before declaring their facts. */}
+              {phase === 'intake' && financialYear ? (
+                <button
+                  onClick={() => setViewState('intake')}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 6v6m0 0v6m0-6h6m-6 0H6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Tell us about your business
+                </button>
+              ) : (
+                <button
+                  onClick={handleGenerate}
+                  disabled={false}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M13 10V3L4 14h7v7l9-11h-7z" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  {stats ? 'Re-evaluate Compliances' : 'Generate Compliances'}
+                </button>
+              )}
+              {/* Validate is a power-user action that's auto-run inside
+                  Generate. Surface it only in maintenance mode so it
+                  doesn't compete with the primary CTA on first run. */}
+              {phase === 'maintenance' && hasExistingRequirements && (
                 <button
                   onClick={handleValidate}
                   className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
