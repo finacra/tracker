@@ -22,6 +22,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
   const [streamingContent, setStreamingContent] = useState('')
   const [pendingSources, setPendingSources] = useState<Source[]>([])
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const contentAccumulator = useRef('')
 
   // Refs mirror the active conversation + its assistant message ID so the
@@ -136,9 +137,11 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
 
       {/* Panel */}
       <div
-        className={`fixed inset-y-0 right-0 w-full sm:w-[520px] z-50 flex transform transition-transform duration-300 ease-out ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
+        className={`fixed z-50 flex transform transition-all duration-300 ease-out ${
+          isFullscreen
+            ? 'inset-0 w-full'
+            : 'inset-y-0 right-0 w-full sm:w-[520px]'
+        } ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className="flex-1 flex flex-col bg-[#0c111b] border-l border-white/10 shadow-2xl">
           {/* Header */}
@@ -158,14 +161,33 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
                 <p className="text-[10px] text-gray-500">CIA Agent</p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="w-7 h-7 rounded-md hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                <path d="M3 3l8 8M11 3l-8 8" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setIsFullscreen(v => !v)}
+                title={isFullscreen ? 'Collapse to side panel' : 'Expand to fullscreen'}
+                aria-label={isFullscreen ? 'Collapse chat' : 'Expand chat'}
+                className="w-7 h-7 rounded-md hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+              >
+                {isFullscreen ? (
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 5h-4v-4M5 9h4v4M9 5l4-4M5 9l-4 4" />
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 1h4v4M5 13H1V9M13 1L9 5M1 13l4-4" />
+                  </svg>
+                )}
+              </button>
+              <button
+                onClick={onClose}
+                aria-label="Close chat"
+                className="w-7 h-7 rounded-md hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M3 3l8 8M11 3l-8 8" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Body: sidebar + main */}

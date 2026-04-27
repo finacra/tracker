@@ -131,6 +131,15 @@ export default function ComplianceIntakeForm({ companyId, financialYear, onCompl
       }
       console.log('[IntakeForm] save ok', { factIds: res.factIds })
 
+      // Dispatch a global event so any other panel/component watching
+      // for facts (TrackerEvaluationPanel, CIP's needsIntake gate, etc.)
+      // refreshes immediately. Without this, a panel that loaded BEFORE
+      // the user completed intake would keep its stale "needsIntake=true"
+      // state until its own re-mount or its own deps changed.
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('cia:data-changed'))
+      }
+
       showToast('Business details saved — evaluating compliances...', 'success')
       onComplete()
     } catch (err) {
