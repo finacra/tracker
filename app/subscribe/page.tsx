@@ -650,7 +650,32 @@ function SubscribePageInner() {
           </p>
         </div>
 
-        {accessibleCompanies.length > 0 && !anyAccessLoading && (
+        {/* Hold init-dependent content (company dropdown, trial banners,
+            pricing tiers) on a single loader until getSubscribeInitState
+            returns. Without this, the page rendered the header + tiers
+            immediately and then 3–5s later the dropdown + warning banner
+            would pop in below — which the user perceived as "a card just
+            appeared". Now everything appears together in one paint. */}
+        {anyAccessLoading ? (
+          <div className="max-w-2xl mx-auto mb-12">
+            <div className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.03] via-transparent to-blue-500/[0.04] px-5 py-6 sm:px-7 sm:py-7 flex items-center gap-4">
+              <div className="relative flex h-3 w-3 flex-shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-emerald-400/80 font-medium mb-1">
+                  System • Resolving Access
+                </div>
+                <div className="text-sm sm:text-base font-light text-white/90">
+                  Checking your subscriptions, trial eligibility, and accessible companies…
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {!anyAccessLoading && accessibleCompanies.length > 0 && (
           <div className="max-w-2xl mx-auto mb-8">
             <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-6">
               <div className="flex items-center gap-2 mb-4">
@@ -681,7 +706,7 @@ function SubscribePageInner() {
         )}
 
         {/* Company Selector for Starter/Professional */}
-        {userCompanies.length > 0 && (
+        {!anyAccessLoading && userCompanies.length > 0 && (
           <div className="max-w-2xl mx-auto mb-6">
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Select Company (for Starter/Professional plans):
@@ -706,7 +731,7 @@ function SubscribePageInner() {
         )}
 
         {/* Pay Later / Trial Option - Show if no company subscription, company is eligible, and user has no companies or company selected */}
-        {(!companyHasActiveSubscription && companyTrialEligible && !isCheckingTrialEligibility && (selectedCompanyForSubscription || companyId || currentCompanyCount === 0)) && (
+        {!anyAccessLoading && (!companyHasActiveSubscription && companyTrialEligible && !isCheckingTrialEligibility && (selectedCompanyForSubscription || companyId || currentCompanyCount === 0)) && (
           <div className="max-w-2xl mx-auto mb-12">
             <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 text-center">
               <div className="flex items-center justify-center gap-2 mb-3">
@@ -741,7 +766,7 @@ function SubscribePageInner() {
           </div>
         )}
 
-        {(!companyHasActiveSubscription && !companyTrialEligible && !isCheckingTrialEligibility && (selectedCompanyForSubscription || companyId || currentCompanyCount === 0)) && (
+        {!anyAccessLoading && (!companyHasActiveSubscription && !companyTrialEligible && !isCheckingTrialEligibility && (selectedCompanyForSubscription || companyId || currentCompanyCount === 0)) && (
           <div className="max-w-2xl mx-auto mb-12">
             <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 text-center">
               <p className="text-red-400 font-medium">
@@ -759,7 +784,7 @@ function SubscribePageInner() {
         {/* Show message if company has active subscription. Gate on the
             init having settled so we don't flash this banner before the
             real state is known. */}
-        {companyHasActiveSubscription && !isCheckingCompanySubscription && (selectedCompanyForSubscription || companyId) && (
+        {!anyAccessLoading && companyHasActiveSubscription && !isCheckingCompanySubscription && (selectedCompanyForSubscription || companyId) && (
           <div className="max-w-2xl mx-auto mb-12">
             <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 text-center">
               <p className="text-red-400 font-medium">
@@ -774,26 +799,31 @@ function SubscribePageInner() {
           </div>
         )}
 
-        {/* Divider */}
-        <div className="flex items-center gap-4 max-w-4xl mx-auto mb-12">
-          <div className="flex-1 h-px bg-gray-800"></div>
-          <span className="text-gray-500 text-sm font-medium">OR SUBSCRIBE NOW</span>
-          <div className="flex-1 h-px bg-gray-800"></div>
-        </div>
+        {/* Pricing tiers + divider + skip-link only render once init has
+            settled. Otherwise the user sees tiers + a 5s-late banner
+            popping in above them. */}
+        {!anyAccessLoading && (
+          <>
+            <div className="flex items-center gap-4 max-w-4xl mx-auto mb-12">
+              <div className="flex-1 h-px bg-gray-800"></div>
+              <span className="text-gray-500 text-sm font-medium">OR SUBSCRIBE NOW</span>
+              <div className="flex-1 h-px bg-gray-800"></div>
+            </div>
 
-        {renderPricingContent()}
+            {renderPricingContent()}
 
-        {/* Skip for now link */}
-        {companyTrialEligible && !isCheckingTrialEligibility && (
-        <div className="text-center mt-12">
-          <button
-              onClick={handleStartTrial}
-            disabled={isStartingTrial}
-            className="text-gray-500 hover:text-gray-400 text-sm underline transition-colors disabled:opacity-50"
-          >
-            Skip for now and start free trial (₹2 verification required)
-          </button>
-        </div>
+            {companyTrialEligible && !isCheckingTrialEligibility && (
+              <div className="text-center mt-12">
+                <button
+                  onClick={handleStartTrial}
+                  disabled={isStartingTrial}
+                  className="text-gray-500 hover:text-gray-400 text-sm underline transition-colors disabled:opacity-50"
+                >
+                  Skip for now and start free trial (₹2 verification required)
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
