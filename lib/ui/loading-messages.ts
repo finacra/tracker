@@ -25,14 +25,28 @@ export const CREATE_COMPANY_LOADING_MESSAGES = [
 ] as const
 
 export const DATA_ROOM_LOADING_MESSAGES = [
-  '🔐 Verifying access permissions…',
-  '📊 Pulling your company snapshot…',
-  '📁 Mounting your encrypted vault…',
-  '⚖️ Loading regulatory requirements…',
-  '📋 Computing penalty exposure…',
-  '🧾 Reconciling filings against the FY calendar…',
-  '🤖 Waking up the CIA agent…',
-  '✨ Calibrating your compliance dashboard…',
+  '🛰️ Initiating secure handshake with compliance grid…',
+  '🔐 Negotiating AES-256 vault keystream…',
+  '🏛️ Synchronizing with the Ministry of Corporate Affairs…',
+  '⚙️ Bootstrapping your enterprise compliance node…',
+  '📡 Streaming jurisdictional ruleset for India…',
+  '🧬 Indexing regulatory records across the Companies Act…',
+  '⚖️ Calibrating risk vectors across financial year…',
+  '🤖 Spinning up the CIA neural agent…',
+  '📊 Locking in real-time compliance telemetry…',
+  '🚀 Compliance command center coming online…',
+] as const
+
+/**
+ * Shown briefly on /login after the user clicks "Continue with
+ * Google". Sets the tone before the OAuth handshake redirects them
+ * to Google's domain.
+ */
+export const SIGN_IN_LOADING_MESSAGES = [
+  '🛰️ Establishing secure tunnel to Google identity service…',
+  '🔐 Verifying your credentials with the auth fabric…',
+  '🏛️ Cross-checking your access matrix…',
+  '⚡ Provisioning your secure session…',
 ] as const
 
 export const DOCUMENTS_VAULT_LOADING_MESSAGES = [

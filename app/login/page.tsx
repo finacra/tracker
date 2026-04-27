@@ -5,9 +5,17 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { resolvePostAuthRedirect } from '@/application/use-cases/navigation/resolvePostAuthRedirect'
 import { getPostAuthDestination, getOAuthLoginUrl } from './actions'
+import { useRotatingLoadingMessage } from '@/hooks/useRotatingLoadingMessage'
+import { SIGN_IN_LOADING_MESSAGES } from '@/lib/ui/loading-messages'
 
 function LoginPageInner() {
   const [isLoading, setIsLoading] = useState(false)
+  const signInStatusMessage = useRotatingLoadingMessage({
+    active: isLoading,
+    messages: SIGN_IN_LOADING_MESSAGES,
+    initialDelayMs: 600,
+    intervalMs: 1800,
+  })
   const [showPassword, setShowPassword] = useState(false)
   const [isEmailMode, setIsEmailMode] = useState(false)
   const [isSignUp, setIsSignUp] = useState(false)
@@ -255,6 +263,22 @@ function LoginPageInner() {
             <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-10 w-full">
           {!isEmailMode ? (
             <>
+              {/* Cinematic status banner — only visible during sign-in */}
+              {isLoading && (
+                <div className="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.04] px-4 py-3 flex items-center gap-3">
+                  <div className="relative flex h-2.5 w-2.5 flex-shrink-0">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                  </div>
+                  <span
+                    key={signInStatusMessage}
+                    className="text-xs text-emerald-200/90 font-light truncate"
+                  >
+                    {signInStatusMessage}
+                  </span>
+                </div>
+              )}
+
               {/* Google Sign-in Button */}
               <button
                 onClick={handleGoogleSignIn}
