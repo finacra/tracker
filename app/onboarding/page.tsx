@@ -916,6 +916,32 @@ export default function OnboardingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validateForm()) {
+      // Surface the failure: previously we returned silently — no
+      // toast, no scroll, no spinner — so users assumed the button
+      // was broken and clicked again. Now we toast + scroll to the
+      // first errored field so the user knows what's missing.
+      const newErrors: Record<string, string> = {}
+      // Re-derive the error map (validateForm just set state; React
+      // hasn't flushed yet, so we mirror its work locally to find the
+      // first errored field deterministically).
+      if (!formData.companyName.trim()) newErrors.companyName = 'required'
+      if (!formData.companyType) newErrors.companyType = 'required'
+      if (formData.industries.length === 0) newErrors.industries = 'required'
+      if (formData.industryCategories.length === 0) newErrors.industryCategories = 'required'
+      if (formData.industryCategories.includes('Other') && !formData.otherIndustryCategory.trim()) {
+        newErrors.otherIndustryCategory = 'required'
+      }
+      const firstErrorField = Object.keys(newErrors)[0]
+      showToast('Please fill the highlighted required fields.', 'error')
+      if (firstErrorField) {
+        const el = document.querySelector(`[name="${firstErrorField}"], [data-field="${firstErrorField}"], #${firstErrorField}`)
+        if (el && 'scrollIntoView' in el) {
+          (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement) {
+            el.focus()
+          }
+        }
+      }
       return
     }
 
