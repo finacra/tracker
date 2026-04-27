@@ -30,13 +30,34 @@ export async function POST(request: NextRequest) {
 
     const systemPrompt = `You are an Indian company data lookup assistant. You search the MCA (Ministry of Corporate Affairs) portal and public databases to find company details.
 
-All company registration data is publicly available on mca.gov.in, zaubacorp.com, tofler.in, inc.com, etc. Search thoroughly.
+All company registration data is publicly available on mca.gov.in, zaubacorp.com, tofler.in, inc.com, llp.gov.in etc. Search thoroughly.
 
 Return ONLY factual data found from official/reliable sources. If a field is not found, return an empty string — do NOT guess or fabricate.
 
-DIRECTORS ARE CRITICAL. Every Indian company registered with MCA has directors listed publicly with their 8-digit DIN (Director Identification Number). Sites like zaubacorp.com and tofler.in list all current and ex-directors with DINs on the company's public profile page. You MUST check these sources specifically for directors when they're not in your first result. Do not return an empty directorData array unless you have exhausted all public databases.`
+PEOPLE DATA IS CRITICAL. Every entity on MCA has its key people listed publicly:
+- For Companies (Private Limited / Public Limited / OPC / Section 8): DIRECTORS with 8-digit DIN (Director Identification Number).
+- For LLPs (Limited Liability Partnerships, identifier prefix starts with AAA / shows "LLP" in name or in the CIN/LLPIN format): DESIGNATED PARTNERS and PARTNERS with 8-digit DPIN (Designated Partner Identification Number) or DIN. DPIN and DIN are interchangeable identifiers — populate the "din" field with whichever is listed.
+
+In both cases, populate directorData with the entity's key people. For an LLP, set "designation" to "Designated Partner" or "Partner" exactly as listed on the registry. For a Company, set it to "Director" / "Managing Director" / "Whole Time Director" / etc.
+
+Sites like zaubacorp.com, tofler.in and signalx.ai list all current and ex- directors/partners on the public profile page. You MUST check these sources specifically when the people aren't in your first result. Do not return an empty directorData array unless you have exhausted all public databases.`
+
+    // Detect LLP-shaped identifiers up-front so we can give the model
+    // an explicit hint. LLPINs typically use the format AAA-1234 / ACL-6744 /
+    // similar 3-letter-prefix-then-digits, while CINs are 21 alphanumeric
+    // chars starting with U or L. Falling back to a name match for "LLP".
+    const isLikelyLLP =
+      (cin && /^[A-Z]{2,4}-?\d+$/i.test(cin.trim())) ||
+      (companyName && /\bllp\b/i.test(companyName))
+
+    const entityHint = isLikelyLLP
+      ? 'IMPORTANT: This identifier looks like an LLP (Limited Liability Partnership). For LLPs, populate directorData with DESIGNATED PARTNERS and PARTNERS (each has an 8-digit DPIN — put it in the "din" field). LLP partner data lives on llp.gov.in, zaubacorp.com (LLP profile pages), and tofler.in. Do NOT return an empty array.'
+      : 'For a Company, populate directorData with current Directors (each has an 8-digit DIN).'
 
     const userPrompt = `Find complete company details for: ${searchQuery}
+
+${entityHint}
+
 
 I need:
 1. Company name (official registered name)
@@ -53,13 +74,16 @@ I need:
 12. Company status (Active/Strike Off/etc.)
 13. Date of last AGM (DD/MM/YYYY)
 14. Balance sheet date (DD/MM/YYYY)
-15. directorData — ALL current directors. Do NOT skip this. Look it up on zaubacorp.com, tofler.in, signalx.ai, or the official MCA director master data if the first database doesn't have it. For EACH director return:
+15. directorData — ALL current key people:
+     - For a Company: ALL current DIRECTORS.
+     - For an LLP: ALL current DESIGNATED PARTNERS and PARTNERS.
+     Do NOT skip this. Look it up on zaubacorp.com, tofler.in, signalx.ai, llp.gov.in, or the official MCA master data if the first database doesn't have it. For EACH person return:
      - firstName (first word of the person's name)
      - middleName (middle word(s), or empty string)
      - lastName (last word)
-     - din (8-digit DIN — mandatory for every director on every Indian company; search harder if missing)
-     - designation (Director / Managing Director / Whole Time Director / etc.)
-16. exDirectors — array of former directors' full names
+     - din (8-digit DIN for company directors, OR 8-digit DPIN for LLP partners — populate this field with whichever identifier is listed; both are valid)
+     - designation (for Company: Director / Managing Director / Whole Time Director / Independent Director. For LLP: Designated Partner / Partner.)
+16. exDirectors — array of former directors' (or former partners' for LLPs) full names
 17. Principal business activity / industrial class (detailed description, not just a code)
 
 Search mca.gov.in, tofler.in, zaubacorp.com, signalx.ai, inc.com, and other public company databases. If you cannot find directors on the first attempt, explicitly check zaubacorp.com's director listing page for this company.`
