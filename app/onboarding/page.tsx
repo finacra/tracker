@@ -121,6 +121,27 @@ export default function OnboardingPage() {
     return result.isValid ? result : null
   }, [formData.cinNumber, countryCode])
 
+  // Sole proprietorships and (general, non-LLP) partnerships in India
+  // are not registered with MCA and have no CIN. Sole props are
+  // identified solely by the proprietor's PAN; partnership firms by
+  // their Registrar of Firms registration which lives outside the
+  // MCA database. Don't force users to invent a fake CIN to onboard.
+  const ENTITY_TYPES_WITHOUT_CIN = ['sole-proprietorship', 'partnership']
+  const requiresCIN = !ENTITY_TYPES_WITHOUT_CIN.includes(formData.companyType)
+
+  // When the user switches to an entity type that has no CIN, blank
+  // out any previously-entered CIN. Prevents stale data being saved
+  // (e.g. user typed a CIN, then realised it's a proprietorship and
+  // changed the dropdown — the stale CIN would otherwise still hit
+  // the server).
+  useEffect(() => {
+    if (!requiresCIN && formData.cinNumber) {
+      setFormData((prev) => ({ ...prev, cinNumber: '' }))
+      // Clear any stale CIN error from a previous validation pass.
+      setErrors((prev) => ({ ...prev, cinNumber: '' }))
+    }
+  }, [requiresCIN, formData.cinNumber])
+
   // Redirect to login if not authenticated
   // Allow users to access onboarding even if they have companies (to create new companies)
   useEffect(() => {
@@ -871,8 +892,9 @@ export default function OnboardingPage() {
       }
     }
     
-    // Registration ID validation - only check if required, no format validation
-    if (!formData.cinNumber.trim()) {
+    // Registration ID validation — skipped for sole proprietorships and
+    // partnerships, neither of which has a CIN.
+    if (requiresCIN && !formData.cinNumber.trim()) {
       newErrors.cinNumber = `${countryConfig.labels.registrationId} is required`
     }
     if (formData.industries.length === 0) {
@@ -1126,10 +1148,17 @@ export default function OnboardingPage() {
                   onChange={handleCountryChange}
                 />
 
-                {/* Registration ID / CIN Number */}
+                {/* Registration ID / CIN Number — required for registered
+                    entities (Pvt Ltd, Public Ltd, LLP, OPC, Section 8).
+                    Optional for sole proprietorships and partnerships
+                    which have no MCA registration. */}
                 <div>
                   <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
-                    {countryConfig.labels.registrationId} <span className="text-red-500">*</span>
+                    {countryConfig.labels.registrationId}
+                    {requiresCIN
+                      ? <span className="text-red-500">{' '}*</span>
+                      : <span className="text-gray-500 ml-2 text-[11px]">(not applicable for {formData.companyType.replace('-', ' ')})</span>
+                    }
                   </label>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
@@ -1137,10 +1166,14 @@ export default function OnboardingPage() {
                       name="cinNumber"
                       value={formData.cinNumber}
                       onChange={handleInputChange}
-                      placeholder={`Enter ${countryConfig.labels.registrationId}`}
-                      className="flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                      placeholder={requiresCIN
+                        ? `Enter ${countryConfig.labels.registrationId}`
+                        : 'Leave blank — not registered with MCA'
+                      }
+                      disabled={!requiresCIN}
+                      className={`flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light ${!requiresCIN ? 'opacity-40 cursor-not-allowed' : ''}`}
                     />
-                    {hasAPISupport && (
+                    {hasAPISupport && requiresCIN && (
                     <button
                       type="button"
                       onClick={handleCINVerification}
