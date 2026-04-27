@@ -20,6 +20,8 @@ import { useCountryAPISupport } from '@/hooks/useCountryValidator'
 import { useCountryValidator } from '@/hooks/useCountryValidator'
 import CountrySelector from '@/components/features/CountrySelector'
 import { ManualVerificationNotice } from '@/components/features/ManualVerificationNotice'
+import { useRotatingLoadingMessage } from '@/hooks/useRotatingLoadingMessage'
+import { CREATE_COMPANY_LOADING_MESSAGES } from '@/lib/ui/loading-messages'
 
 interface Director {
   id: string
@@ -43,6 +45,10 @@ export default function OnboardingPage() {
   
   // All hooks must be called before any conditional returns
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const submitStatusMessage = useRotatingLoadingMessage({
+    active: isSubmitting,
+    messages: CREATE_COMPANY_LOADING_MESSAGES,
+  })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isVerifyingCIN, setIsVerifyingCIN] = useState(false)
   const [isVerifyingDIN, setIsVerifyingDIN] = useState<string | null>(null)
@@ -2318,12 +2324,13 @@ export default function OnboardingPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base font-light"
+                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base font-light min-w-[260px]"
+                title={isSubmitting ? submitStatusMessage : undefined}
               >
                 {isSubmitting ? (
                   <>
-                    <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Creating...
+                    <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin flex-shrink-0"></div>
+                    <span className="truncate" key={submitStatusMessage}>{submitStatusMessage}</span>
                   </>
                 ) : (
                   'Create Company'

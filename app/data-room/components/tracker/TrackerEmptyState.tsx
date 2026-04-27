@@ -1,6 +1,8 @@
 'use client'
 
 import React from 'react'
+import { useRotatingLoadingMessage } from '@/hooks/useRotatingLoadingMessage'
+import { COMPLIANCE_TRACKER_LOADING_MESSAGES } from '@/lib/ui/loading-messages'
 
 interface TrackerEmptyStateProps {
   isLoadingRequirements: boolean
@@ -44,18 +46,7 @@ export default function TrackerEmptyState({
   setIsCreateModalOpen
 }: TrackerEmptyStateProps) {
   if (isLoadingRequirements) {
-    return (
-      <div className="py-8 sm:py-12 flex flex-col items-center justify-center">
-        <div className="relative mb-6">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 border-4 border-white/30 border-t-transparent rounded-full animate-spin"></div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-6 h-6 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-full animate-pulse"></div>
-          </div>
-        </div>
-        <p className="text-gray-300 text-sm sm:text-base font-medium mb-1">Loading Compliance Tracker</p>
-        <p className="text-gray-500 text-xs sm:text-sm">Fetching regulatory requirements and status updates...</p>
-      </div>
-    )
+    return <TrackerLoadingState />
   }
 
   if (displayRequirements.length === 0) {
@@ -143,4 +134,23 @@ export default function TrackerEmptyState({
   }
 
   return null
+}
+
+function TrackerLoadingState() {
+  const message = useRotatingLoadingMessage({
+    active: true,
+    messages: COMPLIANCE_TRACKER_LOADING_MESSAGES,
+  })
+  return (
+    <div className="py-8 sm:py-12 flex flex-col items-center justify-center">
+      <div className="relative mb-6">
+        <div className="w-12 h-12 sm:w-14 sm:h-14 border-4 border-white/30 border-t-transparent rounded-full animate-spin"></div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-6 h-6 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-full animate-pulse"></div>
+        </div>
+      </div>
+      <p className="text-gray-300 text-sm sm:text-base font-medium mb-1">Loading Compliance Tracker</p>
+      <p className="text-gray-500 text-xs sm:text-sm" key={message}>{message}</p>
+    </div>
+  )
 }

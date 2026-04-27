@@ -54,6 +54,34 @@
 
    If the user is frustrated about repeated log-tailing attempts, that is signal you under-logged. Add more logs, not better tailing.
 
+## Performance Sprint Lessons — Non-Negotiable
+
+These rules came from a multi-PR perf sweep where I shipped fix-after-fix that "looked right in code" but didn't actually drop the network count or wall-clock time. The user had to repeatedly demand smoke tests after the fact, and each smoke caught 2–3 more issues that were obvious in hindsight. Every rule below is here because I violated it at least once that day.
+
+14. **Code-reading is structure; only runtime is behavior. Verify perf claims with a real browser before declaring "shipped".** A PR that claims "X → Y POSTs" or "shaved Ns" without an attached network-waterfall screenshot or console-counted measurement is a guess. Race conditions, mount-order, cold-start latency, hook timing, and React Query staleness are invisible to static reading. If you don't have a browser MCP available, ask the user to run the smoke test before merging — don't merge on faith.
+
+15. **When you fold side-fetches into a batched action, sweep every consumer before declaring done.** Adding a field to the payload helps nothing if a hook or component STILL fetches it independently. Mandatory checks before PR:
+    - `grep` for every caller of the action you replaced — nothing should be left
+    - `grep` for every hook reading the same React Query key — confirm they read seeded cache, not standalone
+    - List every component that mounts before the page that does its own fetch (Header, layout-level providers) — they need their own seed
+    - If there's a useEffect that re-fetches based on a derived value (e.g. `countryCode` defaulting to "IN" before the company is set), that effect WILL race the init useEffect — gate it on `isDataRoomInitLoading` or `currentCompany`
+
+16. **Question dead code before optimizing it.** When you find `await expensiveCall()` in a critical path, the FIRST question is "what is the result actually used for?" Trace the assignment forward — does the value get persisted? Read by anything? Returned to the client? In this sprint a 30-second `generateEmbedding()` call was running on every onboarding because no one asked: the embedding wasn't even being persisted by the repository. The right fix was `git rm`, not `Promise.all`. **Never optimize code that does nothing.**
+
+17. **GitHub squash-merge silently drops diffs when develop has interleaved merge commits.** Three PRs in this sprint (#23, #25, #27) merged "successfully" but the squash commit on main contained zero of the actual file changes. Always verify after every `gh pr merge`:
+    ```
+    git fetch origin && git show origin/main:path/to/changed/file.ts | grep -n 'unique-string-from-your-diff'
+    ```
+    If the verification fails, open a follow-up PR immediately. To avoid: rebase develop onto main before opening the PR (no merge commits between your work and main).
+
+18. **Smoke-test the user-facing flow YOU just changed before reporting done.** "Looks right in code" cost this team three rounds of follow-up PRs that day. The actual workflow is:
+    1. Make the change
+    2. Type-check
+    3. Open the browser to the affected route, drive the affected interaction
+    4. Inspect Network tab — was the POST count actually reduced? Did the action you targeted disappear?
+    5. THEN commit, PR, merge
+    Steps 3–4 are not optional. Ship-and-pray cost more total time than ship-and-verify, every single time.
+
 ## Critical Paths (must be fast)
 
 - **Sign-in → data room load**: `getDataRoomInitState()` — single batched call

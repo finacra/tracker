@@ -13,6 +13,8 @@ import {
   bulkDeleteDocuments,
 } from '@/app/data-room/actions-vault'
 import VersionHistoryModal from './VersionHistoryModal'
+import { useRotatingLoadingMessage } from '@/hooks/useRotatingLoadingMessage'
+import { DOCUMENTS_VAULT_LOADING_MESSAGES } from '@/lib/ui/loading-messages'
 
 /**
  * Data-driven vault UI. Reads vault_folders + company_documents_internal
@@ -302,12 +304,7 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
   }
 
   if (loading) {
-    return (
-      <div className="p-6 text-center text-gray-400">
-        <div className="w-6 h-6 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-        Loading vault…
-      </div>
-    )
+    return <VaultLoadingState />
   }
 
   return (
@@ -730,6 +727,20 @@ function DocumentRow({
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+
+function VaultLoadingState() {
+  const message = useRotatingLoadingMessage({
+    active: true,
+    messages: DOCUMENTS_VAULT_LOADING_MESSAGES,
+  })
+  return (
+    <div className="p-6 text-center text-gray-400">
+      <div className="w-6 h-6 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+      <span key={message}>{message}</span>
     </div>
   )
 }
