@@ -13,7 +13,7 @@ import {
   type AIRequirementForReview,
   type ValidateComplianceResult,
 } from '../../actions-intelligence'
-import { listFactsForFY } from '../../actions-facts'
+import { listFactsForFY, hasUserAnsweredIntake } from '../../actions-facts'
 import { queryKeys } from '@/lib/react-query/query-keys'
 import ComplianceIntakeForm from './ComplianceIntakeForm'
 
@@ -75,13 +75,30 @@ export default function ComplianceIntelligencePanel({
   // needsIntake regress to true (false STEP 1 of 2) immediately after
   // Approve All — the bug the user reported.
   type ClientFact = { kind: string; amount: number | null; sourceKind: string }
-  type FactsCacheEntry = { facts: ClientFact[]; hasAnyUserDeclaredFacts: boolean }
   const queryClient = useQueryClient()
+
+  // ── STEP-1 gate (FY-INDEPENDENT) ────────────────────────────────────
+  // Keyed on companyId only — survives FY filter switches AND the
+  // "All Years" case where financialYear is empty/non-FY-shaped.
+  const intakeQueryKey = queryKeys.intakeAnswered(companyId)
+  const intakeQuery = useQuery<boolean>({
+    queryKey: intakeQueryKey,
+    queryFn: async () => {
+      const res = await hasUserAnsweredIntake(companyId)
+      const answered = res.success && res.hasFacts === true
+      console.log('[CIP:gate] hasUserAnsweredIntake', { companyId, answered })
+      return answered
+    },
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+  })
+
+  // ── Per-FY facts (for IntakeForm prefill) ───────────────────────────
   const factsQueryKey = queryKeys.complianceFacts(companyId, financialYear ?? null)
-  const factsQuery = useQuery<FactsCacheEntry>({
+  const factsQuery = useQuery<ClientFact[]>({
     queryKey: factsQueryKey,
     queryFn: async () => {
-      if (!financialYear) return { facts: [], hasAnyUserDeclaredFacts: false }
+      if (!financialYear) return []
       const res = await listFactsForFY(companyId, financialYear)
       if (!res.success) {
         console.warn('[CIP:loadFacts] server returned error:', res.error)
@@ -91,12 +108,8 @@ export default function ComplianceIntelligencePanel({
         amount: f.amount,
         sourceKind: f.sourceKind,
       }))
-      // Regression guard: if cache currently has user_declared facts and
-      // server returned 0 for THIS fy, treat as stale read (PgBouncer
-      // race). Keep cached value. Real deletions flow through explicit
-      // setQueryData — never via an empty fetch.
-      const cached = queryClient.getQueryData<FactsCacheEntry>(factsQueryKey)
-      const cachedUd = (cached?.facts || []).filter((f) => f.sourceKind === 'user_declared').length
+      const cached = queryClient.getQueryData<ClientFact[]>(factsQueryKey)
+      const cachedUd = (cached || []).filter((f) => f.sourceKind === 'user_declared').length
       const fetchedUd = list.filter((f) => f.sourceKind === 'user_declared').length
       if (cachedUd > 0 && fetchedUd === 0) {
         console.log('[CIP:loadFacts] suppressing 0-user_declared fetch as stale (cache has', cachedUd, ')')
@@ -107,26 +120,21 @@ export default function ComplianceIntelligencePanel({
         financialYear,
         total: list.length,
         userDeclared: fetchedUd,
-        hasAnyUserDeclaredFacts: res.hasAnyUserDeclaredFacts === true,
       })
-      return { facts: list, hasAnyUserDeclaredFacts: res.hasAnyUserDeclaredFacts === true }
+      return list
     },
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
   })
 
   const facts: ClientFact[] | null =
-    factsQuery.data === undefined ? (factsQuery.isError ? [] : null) : factsQuery.data.facts
-  // STEP-1 gate is FY-INDEPENDENT. Intake is a one-time onboarding gate;
-  // a user who answered "Do you pay rent?" once shouldn't be re-prompted
-  // when they switch to viewing a different year's tracker. We derive
-  // from `hasAnyUserDeclaredFacts` (any FY) instead of `facts.length`
-  // (this FY only). The previous behaviour made FY 2025-26 / "All Years"
-  // regress to STEP 1 even though the user had already onboarded.
+    factsQuery.data === undefined ? (factsQuery.isError ? [] : null) : factsQuery.data
+  // Gate decision uses the FY-INDEPENDENT query. needsIntake is null
+  // until we know; once known it stays consistent across FY switches.
   const needsIntake: boolean | null =
-    factsQuery.data === undefined
-      ? (factsQuery.isError ? false : null)
-      : !factsQuery.data.hasAnyUserDeclaredFacts
+    intakeQuery.data === undefined
+      ? (intakeQuery.isError ? false : null)
+      : !intakeQuery.data
 
   // External mutations (chat agent, document ingestion) still fire
   // cia:data-changed. We invalidate the cache rather than manually
@@ -434,11 +442,11 @@ export default function ComplianceIntelligencePanel({
           // race, no separate timeout to manage.
           initialFacts={facts || []}
           onComplete={(savedFacts) => {
-            // Write the just-saved facts straight into the React Query
-            // cache. Bypasses the read-after-write race (we know what
-            // we just wrote) AND survives CIP re-mount.
-            queryClient.setQueryData<FactsCacheEntry>(factsQueryKey, (prev) => {
-              const base = prev?.facts || []
+            // Optimistic write into the per-FY facts cache for the FY
+            // the user just saved against (so IntakeForm prefill
+            // reflects the new values immediately).
+            queryClient.setQueryData<ClientFact[]>(factsQueryKey, (prev) => {
+              const base = prev || []
               const next = [...base]
               const seen = new Set(base.map((f) => `${f.kind}|${f.sourceKind}`))
               for (const sf of savedFacts) {
@@ -451,15 +459,13 @@ export default function ComplianceIntelligencePanel({
                   seen.add(key)
                 }
               }
-              return { facts: next, hasAnyUserDeclaredFacts: true }
+              return next
             })
-            // Mirror the FY-independent flag into every other FY's cache
-            // entry too, so switching the FY filter doesn't bring back
-            // the STEP 1 prompt while the cross-FY queries are stale.
-            queryClient.setQueriesData<FactsCacheEntry>(
-              { queryKey: ['compliance-facts', companyId] },
-              (prev) => prev ? { ...prev, hasAnyUserDeclaredFacts: true } : prev,
-            )
+            // Mark the FY-independent gate as answered. This is the
+            // ONLY field the gate decision reads, so this single write
+            // keeps the panel out of STEP 1 across every FY filter
+            // (including "All Years") and across CIP re-mounts.
+            queryClient.setQueryData<boolean>(intakeQueryKey, true)
             setViewState('idle')
             handleGenerate()
           }}

@@ -44,4 +44,11 @@ export const queryKeys = {
   // regress to "STEP 1" after Approve All / re-fetches in the parent tree.
   complianceFacts: (companyId: string, financialYear: string | null) =>
     ['compliance-facts', companyId, financialYear] as const,
+
+  // Has the user EVER answered intake for this company (any FY)?
+  // FY-independent gate for the STEP-1 decision. Switching the FY
+  // filter (or selecting "All Years" which has no FY) must NOT
+  // regress the gate, so this query is keyed on companyId alone.
+  intakeAnswered: (companyId: string) =>
+    ['compliance-intake-answered', companyId] as const,
 } as const

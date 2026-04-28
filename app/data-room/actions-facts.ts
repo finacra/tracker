@@ -216,6 +216,36 @@ export async function listFacts(
  * UI saw 0 of them, which made the panel regress to "STEP 1 of 2"
  * after every reload despite a successful save.
  */
+/**
+ * FY-INDEPENDENT gate for the intake form. Returns true iff the user
+ * has ever recorded any user_declared fact for this company, in any FY.
+ *
+ * Why a separate action: the STEP-1 gate is a one-time onboarding
+ * decision, not a per-FY question. Switching the FY filter (or
+ * selecting "All Years" which has no FY at all) must NOT regress
+ * the gate. listFactsForFY is FY-scoped by definition, so we keep
+ * this separate.
+ */
+export async function hasUserAnsweredIntake(
+  companyId: string,
+): Promise<{ success: boolean; hasFacts?: boolean; error?: string }> {
+  try {
+    await assertCompanyAccess(companyId)
+    const { prisma } = await import('@/lib/prisma')
+    const count = await prisma.companyFact.count({
+      where: {
+        company_id: companyId,
+        source_kind: 'user_declared',
+        superseded_by_id: null,
+      },
+      take: 1,
+    })
+    return { success: true, hasFacts: count > 0 }
+  } catch (error) {
+    return handleActionError(error)
+  }
+}
+
 export async function listFactsForFY(
   companyId: string,
   financialYear: string,
