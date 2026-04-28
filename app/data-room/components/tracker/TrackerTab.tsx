@@ -98,6 +98,7 @@ export default function TrackerTab() {
     // Derived values
     displayRequirements,
     filteredRequirements,
+    requirementsForPillCounts,
     groupedByCategory,
     requirementsByDate,
   } = useTrackerContext()
@@ -200,11 +201,13 @@ export default function TrackerTab() {
         setSelectedRequirements={setSelectedRequirements}
       />
 
-      {/* Category Filters */}
+      {/* Category Filters — pills' counts must respect the active FY/Month/
+          Quarter/search filters but NOT the pill itself (otherwise selecting
+          a pill would set every count to that pill's filtered total). */}
       <TrackerCategoryFilters
         categoryFilter={categoryFilter}
         setCategoryFilter={setCategoryFilter}
-        requirements={displayRequirements}
+        requirements={requirementsForPillCounts}
       />
 
       {/* Category Dashboard — shown when a specific category is selected */}
