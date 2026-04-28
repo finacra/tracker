@@ -199,7 +199,13 @@ export async function getReviewCandidatesForDocument(
       reasoning: fullAgent.reasoning || null,
     }
 
-    // Build period-key candidates (FY-format tolerant)
+    // Build period-key candidates. Format tolerance covers:
+    //   • bare year-quarter / month: "2026-Q3", "2026-12"
+    //   • FY-prefixed annual: "FY2024-25", "FY 2024-25"
+    //   • Indian quarter→deadline-month mapping: a TDS Q3 return
+    //     covers Oct-Dec 2026 but the rule's period_key is the
+    //     DEADLINE month "2027-01". Without this mapping the
+    //     auto-resolver and review modal both miss the row.
     const pk = (agent.periodKey || agent.periodFY || '').trim()
     const periodCandidates = new Set<string>()
     if (pk) {
@@ -207,6 +213,25 @@ export async function getReviewCandidatesForDocument(
       periodCandidates.add(`FY${pk}`)
       periodCandidates.add(`FY ${pk}`)
       periodCandidates.add(pk.replace(/^FY\s*/i, ''))
+
+      // Quarter-of-year ("YYYY-Q1..Q4") → likely deadline month for
+      // recurring quarterly compliances. Indian convention: filings
+      // for Q1 (Apr-Jun) are due in July; Q2 (Jul-Sep) → October;
+      // Q3 (Oct-Dec) → January of next year; Q4 (Jan-Mar) → May.
+      // We add the deadline-month variant as an additional candidate;
+      // exact rules vary by compliance, but this covers the common
+      // TDS / GST / advance-tax pattern.
+      const qm = pk.match(/^(\d{4})-Q([1-4])$/)
+      if (qm) {
+        const year = parseInt(qm[1], 10)
+        const q = parseInt(qm[2], 10)
+        // Q1→07, Q2→10, Q3→01(year+1), Q4→05(year+1)
+        const deadlineMonth = q === 1 ? `${year}-07` : q === 2 ? `${year}-10` : q === 3 ? `${year + 1}-01` : `${year + 1}-05`
+        periodCandidates.add(deadlineMonth)
+        // Also add the calendar-month-end variant (last month of the quarter)
+        const endMonth = q === 1 ? `${year}-06` : q === 2 ? `${year}-09` : q === 3 ? `${year}-12` : `${year + 1}-03`
+        periodCandidates.add(endMonth)
+      }
     }
 
     // Pull all requirements for this company (cap query for safety).
@@ -227,16 +252,31 @@ export async function getReviewCandidatesForDocument(
 
     const docTypeLower = (agent.documentType || '').toLowerCase().trim()
 
+    // Token-overlap match: the agent emits short labels ("Form 26Q",
+    // "PAN Card") while rule names are longer ("TDS Return (Form
+    // 24Q/26Q) — Q3 — Jan 2027"). Pure substring fails here because
+    // a slash breaks the substring (Form 26Q is not a substring of
+    // "Form 24Q/26Q"). Tokenizing both and checking that every
+    // distinctive doc-type token appears in the rule's tokens
+    // bridges the gap.
+    const STOP = new Set(['form', 'the', 'of', 'and', 'or', 'a', 'an', 'for', 'in', 'to'])
+    function tokensOf(s: string): string[] {
+      return (s || '').toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length >= 2 && !STOP.has(t))
+    }
+    const docTypeTokens = tokensOf(docTypeLower)
+
     function scoreOf(r: typeof all[number]): number {
       const baseLower = stripPeriodSuffix(r.requirement).toLowerCase().trim()
       const periodHit = !!(r.period_key && periodCandidates.has(r.period_key))
       if (!docTypeLower && !periodHit) return 0
+      const baseTokens = new Set(tokensOf(baseLower))
+      const tokensMatch = docTypeTokens.length > 0 && docTypeTokens.every(t => baseTokens.has(t))
       // Exact base-name + period match — strongest signal
       if (periodHit && baseLower === docTypeLower) return 1.0
-      if (periodHit && (baseLower.startsWith(docTypeLower) || baseLower.includes(docTypeLower))) return 0.9
+      if (periodHit && tokensMatch) return 0.9
       if (periodHit) return 0.6
       if (docTypeLower && baseLower === docTypeLower) return 0.5
-      if (docTypeLower && (baseLower.startsWith(docTypeLower) || baseLower.includes(docTypeLower))) return 0.4
+      if (docTypeLower && tokensMatch) return 0.4
       return 0.05
     }
 
