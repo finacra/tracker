@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { verifyCIN, lookupCompanyByPerplexity, lookupGST, type GSTLookupResult } from '@/lib/api/cin-din'
 import { parseCIN, type ParsedCIN } from '@/utils/cin-parser'
+import Button from '@/components/ui/Button'
 
 const CIN_PATTERN = /^[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/
 const PAN_PATTERN = /^[A-Z]{5}\d{4}[A-Z]$/
@@ -158,13 +159,9 @@ export default function MagicalIntake({ onComplete, onSkip }: MagicalIntakeProps
       <div className="w-full max-w-[520px]">
         {/* Skip link top-right */}
         <div className="flex justify-end mb-6">
-          <button
-            type="button"
-            onClick={onSkip}
-            className="text-xs text-fg-muted hover:text-fg-secondary transition-colors duration-token ease-token"
-          >
+          <Button variant="ghost" size="sm" onClick={onSkip}>
             Skip — fill manually
-          </button>
+          </Button>
         </div>
 
         {/* Hero */}
@@ -214,28 +211,25 @@ export default function MagicalIntake({ onComplete, onSkip }: MagicalIntakeProps
             )}
           </div>
 
-          {/* Verify button — only when valid + still on cin step */}
-          {phase === 'cin' && cinValid && (
+          {/* Verify button — visible from valid CIN through verify-in-flight */}
+          {(phase === 'cin' || phase === 'cin-verifying') && cinValid && (
             <div className="pt-2 animate-fadeIn">
-              <button
-                type="button"
+              <Button
+                size="lg"
                 onClick={handleVerifyCIN}
-                className="inline-flex items-center gap-2 bg-fg-primary text-fg-inverse text-sm font-medium px-5 py-2.5 rounded-token-md hover:opacity-90 transition-opacity duration-token ease-token"
+                loading={phase === 'cin-verifying'}
+                iconRight={
+                  phase === 'cin' ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12h14" />
+                      <path d="M13 5l7 7-7 7" />
+                    </svg>
+                  ) : null
+                }
               >
-                Verify
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14" />
-                  <path d="M13 5l7 7-7 7" />
-                </svg>
-              </button>
+                {phase === 'cin-verifying' ? 'Verifying with MCA…' : 'Verify'}
+              </Button>
             </div>
-          )}
-
-          {phase === 'cin-verifying' && (
-            <p className="text-sm text-fg-secondary inline-flex items-center gap-2 pt-2">
-              <span className="inline-block w-3 h-3 border-2 border-fg-secondary border-t-transparent rounded-full animate-spin" />
-              Verifying with MCA…
-            </p>
           )}
 
           {phase !== 'cin' && phase !== 'cin-verifying' && companyName && (
