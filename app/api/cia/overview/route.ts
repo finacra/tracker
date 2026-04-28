@@ -93,25 +93,49 @@ Rules:
     { role: 'user', content: contextBlock },
   ]
 
+  // Pre-flight: try to OPEN the LLM stream synchronously. If we can
+  // get a stream handle without throwing, we promote to streaming
+  // response. If it throws here (auth, missing deployment, rate limit
+  // at the door), return a real HTTP 500 + JSON so the client can show
+  // a retry UI rather than "Failed to generate overview." being
+  // injected as the AI's content.
+  let tokenStream: AsyncIterable<string> | null = null
+  try {
+    tokenStream = await streamChatCompletion(messages)
+  } catch (error) {
+    console.error('[CIA Overview] stream open threw',
+      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : '')
+    return Response.json(
+      { error: 'unavailable', message: 'Overview generator is temporarily unavailable.' },
+      { status: 503 },
+    )
+  }
+  if (!tokenStream) {
+    return Response.json(
+      { error: 'unavailable', message: 'Overview generator returned no stream.' },
+      { status: 503 },
+    )
+  }
+
+  // Mid-stream errors: we've already started writing to the client and
+  // can't change the HTTP status. Use a sentinel marker the client
+  // splits on, then renders "couldn't finish" UI instead of treating
+  // the trailing text as content.
+  const STREAM_ERROR_SENTINEL = '​[STREAM_ERROR]​'
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const tokenStream = await streamChatCompletion(messages)
-        if (!tokenStream) {
-          controller.enqueue(encoder.encode('Unable to generate overview. Please try again.'))
-          controller.close()
-          return
-        }
-        for await (const token of tokenStream) {
+        for await (const token of tokenStream as AsyncIterable<string>) {
           controller.enqueue(encoder.encode(token))
         }
       } catch (error) {
-        console.error('[CIA Overview] stream threw',
+        console.error('[CIA Overview] stream mid-flight threw',
           error instanceof Error ? error.message : String(error),
           error instanceof Error ? error.stack : '')
-        controller.enqueue(encoder.encode('Failed to generate overview.'))
+        controller.enqueue(encoder.encode(STREAM_ERROR_SENTINEL))
       } finally {
         controller.close()
       }

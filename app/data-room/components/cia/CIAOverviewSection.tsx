@@ -109,10 +109,16 @@ function SourceCard({ doc }: { doc: SourceDoc }) {
   )
 }
 
+// Mid-stream sentinel emitted by /api/cia/overview when the LLM stream
+// dies after the response started. Lets the client distinguish "AI said
+// this" from "we couldn't finish generating".
+const STREAM_ERROR_SENTINEL = '​[STREAM_ERROR]​'
+
 export default function CIAOverviewSection({ companyId, documentCount, onDeepDive, recentDocuments = [] }: Props) {
   const [overviewText, setOverviewText] = useState('')
   const [loading, setLoading] = useState(true)
   const [streaming, setStreaming] = useState(false)
+  const [errorState, setErrorState] = useState<null | 'unavailable' | 'truncated'>(null)
   const [expanded, setExpanded] = useState(false)
   const accumulatorRef = useRef('')
   const fetchedRef = useRef<string | null>(null)
@@ -128,16 +134,23 @@ export default function CIAOverviewSection({ companyId, documentCount, onDeepDiv
       if (cached) {
         const { text, timestamp } = JSON.parse(cached)
         if (Date.now() - timestamp < 5 * 60 * 1000) {
-          setOverviewText(text); setLoading(false); fetchedRef.current = companyId; return
+          setOverviewText(text); setLoading(false); fetchedRef.current = companyId; setErrorState(null); return
         }
       }
     } catch {}
-    setLoading(true); setStreaming(true); accumulatorRef.current = ''; setOverviewText('')
+    setLoading(true); setStreaming(true); accumulatorRef.current = ''; setOverviewText(''); setErrorState(null)
     try {
       const res = await fetch('/api/cia/overview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId }) })
-      if (!res.ok) { setOverviewText('Unable to generate overview.'); setLoading(false); setStreaming(false); return }
+      if (!res.ok) {
+        // 503 / 500 = server couldn't even open the LLM stream. Don't
+        // inject the error message as overview content — show a real
+        // retry UI instead.
+        setErrorState('unavailable')
+        setLoading(false); setStreaming(false)
+        return
+      }
       const reader = res.body?.getReader()
-      if (!reader) return
+      if (!reader) { setErrorState('unavailable'); setLoading(false); setStreaming(false); return }
       const decoder = new TextDecoder()
       while (true) {
         const { done, value } = await reader.read()
@@ -145,9 +158,22 @@ export default function CIAOverviewSection({ companyId, documentCount, onDeepDiv
         accumulatorRef.current += decoder.decode(value, { stream: true })
         setOverviewText(accumulatorRef.current)
       }
-      try { localStorage.setItem(cacheKey, JSON.stringify({ text: accumulatorRef.current, timestamp: Date.now() })) } catch {}
-      fetchedRef.current = companyId
-    } catch { setOverviewText('Failed to generate overview. Please try again.') }
+      // Did the stream die mid-flight? Strip the sentinel from the
+      // visible text and surface a "couldn't finish" tail instead of
+      // bleeding error text into the overview body.
+      if (accumulatorRef.current.includes(STREAM_ERROR_SENTINEL)) {
+        const cleaned = accumulatorRef.current.split(STREAM_ERROR_SENTINEL)[0]
+        accumulatorRef.current = cleaned
+        setOverviewText(cleaned)
+        setErrorState('truncated')
+        // Don't cache a partial result.
+      } else {
+        try { localStorage.setItem(cacheKey, JSON.stringify({ text: accumulatorRef.current, timestamp: Date.now() })) } catch {}
+        fetchedRef.current = companyId
+      }
+    } catch {
+      setErrorState('unavailable')
+    }
     finally { setLoading(false); setStreaming(false) }
   }, [companyId])
 
@@ -176,7 +202,7 @@ export default function CIAOverviewSection({ companyId, documentCount, onDeepDiv
       </div>
 
       {/* ── Loading skeleton ── */}
-      {loading && !overviewText && (
+      {loading && !overviewText && !errorState && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '12px' }}>
           {[100, 90, 80, 72].map((w, i) => (
             <div key={i} className="animate-pulse" style={{ height: '14px', width: `${w}%`, borderRadius: '4px', background: 'rgba(255,255,255,0.05)' }} />
@@ -184,8 +210,24 @@ export default function CIAOverviewSection({ companyId, documentCount, onDeepDiv
         </div>
       )}
 
-      {/* ── Two-column content ── */}
-      {isReady && (
+      {/* ── Error state — distinct from "AI said this" ── */}
+      {errorState === 'unavailable' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', color: '#9aa0a6', fontSize: '13px' }}>
+          <span>Couldn't generate overview right now.</span>
+          <button
+            onClick={generateOverview}
+            style={{ padding: '4px 12px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: '#8ab4f8', fontSize: '12px', cursor: 'pointer' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(138,180,248,0.08)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* ── Two-column content (also shown when truncated — partial
+            text is still useful; a retry tail appears below it) ── */}
+      {isReady && errorState !== 'unavailable' && (
         <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
           {/* Left: text */}
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -198,6 +240,19 @@ export default function CIAOverviewSection({ companyId, documentCount, onDeepDiv
               <div style={{ animation: 'ovExpand 0.2s ease-out' }}>
                 {renderBody(overviewText)}
                 {streaming && <span className="animate-pulse" style={{ display: 'inline-block', width: '6px', height: '14px', borderRadius: '2px', background: '#4285f4', marginLeft: '3px', verticalAlign: 'middle' }} />}
+              </div>
+            )}
+
+            {/* Truncated — overview was cut off mid-stream; offer retry */}
+            {errorState === 'truncated' && !streaming && (
+              <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '10px', color: '#9aa0a6', fontSize: '12px' }}>
+                <span>(generation was interrupted)</span>
+                <button
+                  onClick={generateOverview}
+                  style={{ padding: '3px 10px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: '#8ab4f8', fontSize: '11px', cursor: 'pointer' }}
+                >
+                  Retry
+                </button>
               </div>
             )}
 
