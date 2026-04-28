@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { IRegulatoryService } from '../../services/RegulatoryService'
 import { showToast } from '@/components/ui/Toast'
 import { updateRequirement } from '@/app/data-room/actions'
+import { stripPeriodSuffix } from '@/lib/utils/strip-period-suffix'
 
 interface Requirement {
   id: string
@@ -258,29 +259,23 @@ export default function RequirementDesktopTableView({
                         </svg>
                       )}
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <div className="text-white font-medium text-base break-words">{req.requirement}</div>
-                          {formFreq && (
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${formFreq === 'monthly' ? 'bg-blue-500/20 text-blue-400' :
-                                formFreq === 'quarterly' ? 'bg-purple-500/20 text-purple-400' :
-                                  formFreq === 'annual' ? 'bg-green-500/20 text-green-400' :
-                                    'bg-gray-500/20 text-gray-400'
-                              }`}>
-                              {formFreq.toUpperCase()}
-                            </span>
-                          )}
+                        <div
+                          className="text-white font-medium text-sm leading-snug truncate"
+                          title={req.requirement}
+                        >
+                          {stripPeriodSuffix(req.requirement) || req.requirement}
                         </div>
                         {(formFreq || authority || legalSections.length > 0 || req.description) && (
                           <button
                             onClick={() => setComplianceDetailsModal(req)}
-                            className="mt-2 text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1 transition-colors"
+                            className="mt-1 text-gray-500 hover:text-gray-300 text-[11px] flex items-center gap-1 transition-colors"
                           >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <circle cx="12" cy="12" r="10" />
                               <line x1="12" y1="16" x2="12" y2="12" />
                               <line x1="12" y1="8" x2="12.01" y2="8" />
                             </svg>
-                            View Details
+                            Details
                           </button>
                         )}
                       </div>
@@ -291,15 +286,15 @@ export default function RequirementDesktopTableView({
                       <select
                         value={req.status}
                         onChange={(e) => handleStatusChange(req.id, e.target.value as 'not_started' | 'upcoming' | 'pending' | 'overdue' | 'completed')}
-                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${req.status === 'completed'
-                            ? 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/30'
+                        className={`px-2.5 py-0.5 rounded-md text-[11px] font-normal transition-colors cursor-pointer ${req.status === 'completed'
+                            ? 'bg-green-500/10 text-green-400/90 hover:bg-green-500/20'
                             : req.status === 'overdue'
-                              ? 'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30'
+                              ? 'bg-red-500/10 text-red-400/90 hover:bg-red-500/20'
                               : req.status === 'pending'
-                                ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30'
+                                ? 'bg-yellow-500/10 text-yellow-400/90 hover:bg-yellow-500/20'
                                 : req.status === 'upcoming'
-                                  ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30'
-                                  : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
+                                  ? 'bg-blue-500/10 text-blue-400/90 hover:bg-blue-500/20'
+                                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
                           }`}
                         style={{
                           appearance: 'none',
@@ -317,15 +312,15 @@ export default function RequirementDesktopTableView({
                       </select>
                     ) : (
                       <span
-                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${req.status === 'completed'
-                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-normal ${req.status === 'completed'
+                            ? 'bg-green-500/10 text-green-400/90'
                             : req.status === 'overdue'
-                              ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                              ? 'bg-red-500/10 text-red-400/90'
                               : req.status === 'pending'
-                                ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                                ? 'bg-yellow-500/10 text-yellow-400/90'
                                 : req.status === 'upcoming'
-                                  ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                                  : 'bg-gray-800 text-gray-400 border border-gray-700'
+                                  ? 'bg-blue-500/10 text-blue-400/90'
+                                  : 'bg-white/5 text-gray-400'
                           }`}
                       >
                         {req.status === 'completed'
@@ -510,8 +505,11 @@ export default function RequirementDesktopTableView({
                     })()}
                   </td>
                   <td className="px-6 py-4 hidden lg:table-cell">
-                    <div className="text-gray-300 text-sm break-words max-w-[150px]" title={req.penalty || ''}>
-                      {req.penalty ? (req.penalty.length > 30 ? req.penalty.substring(0, 30) + '...' : req.penalty) : '-'}
+                    <div
+                      className="text-gray-400 text-xs truncate max-w-[140px]"
+                      title={req.penalty || ''}
+                    >
+                      {req.penalty || '-'}
                     </div>
                   </td>
                   <td className="px-6 py-4 hidden lg:table-cell">
@@ -611,8 +609,11 @@ export default function RequirementDesktopTableView({
                         return <div className="text-gray-500 text-sm">-</div>
                       }
                       return (
-                        <div className="text-white text-xs max-w-[150px]" title={legalAction}>
-                          {legalAction.length > 40 ? legalAction.substring(0, 40) + '...' : legalAction}
+                        <div
+                          className="text-gray-400 text-xs truncate max-w-[140px]"
+                          title={legalAction}
+                        >
+                          {legalAction}
                         </div>
                       )
                     })()}
