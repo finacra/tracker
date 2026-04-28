@@ -330,22 +330,47 @@ export default function ComplianceIntelligencePanel({
     setShowHistorySelector(false)
     setHistoryResult(null)
 
-    const result = await generateHistoricalCompliances(companyId, years)
+    // Hard client-side bail-out so the "Generating..." button can't be
+    // stuck forever if the server hangs. Mirror the same Promise.race
+    // pattern handleGenerate uses; on cap, refresh the tracker so the
+    // user sees whatever historical entries DID land.
+    const TIMEOUT_MS = 120_000
+    const timeoutSignal = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('HISTORICAL_GEN_TIMEOUT')), TIMEOUT_MS)
+    )
 
-    if (result.success) {
-      setHistoryResult({
-        generated: result.generated || 0,
-        yearsBack: result.yearsBack || years,
-        capped: result.cappedAtIncorporation || false,
-      })
-      if ((result.generated || 0) > 0) {
-        onRequirementsApproved()
+    try {
+      console.log('[CIP:handleGenerateHistory] starting', { companyId, years })
+      const result = await Promise.race([
+        generateHistoricalCompliances(companyId, years),
+        timeoutSignal,
+      ])
+
+      if (result.success) {
+        setHistoryResult({
+          generated: result.generated || 0,
+          yearsBack: result.yearsBack || years,
+          capped: result.cappedAtIncorporation || false,
+        })
+        if ((result.generated || 0) > 0) {
+          onRequirementsApproved()
+        }
+      } else {
+        setError(result.error || 'Historical generation failed')
       }
-    } else {
-      setError(result.error || 'Historical generation failed')
+    } catch (err) {
+      console.error('[CIP:handleGenerateHistory] threw',
+        err instanceof Error ? err.message : String(err))
+      const isTimeout = err instanceof Error && err.message === 'HISTORICAL_GEN_TIMEOUT'
+      setError(isTimeout
+        ? 'Historical generation took longer than expected (2m+). Any entries that did land are visible in the tracker — refresh to see them.'
+        : (err instanceof Error ? err.message : 'Historical generation failed'))
+      // Even on timeout the server may have committed rows — refresh
+      // the tracker so the user sees whatever did land.
+      try { onRequirementsApproved() } catch {}
+    } finally {
+      setIsGeneratingHistory(false)
     }
-
-    setIsGeneratingHistory(false)
   }, [companyId, onRequirementsApproved])
 
   // Check for pending items on mount

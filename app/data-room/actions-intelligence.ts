@@ -767,9 +767,12 @@ export async function generateHistoricalCompliances(
     // Never go before incorporation
     const effectiveStart = startDate < incorpDate ? incorpDate : startDate
 
-    // Get all existing distinct requirements with their formulas
+    // Get existing recurring requirements with their formulas. We dedupe
+    // by (base_name, due_date_formula) below — the DB has many rows per
+    // base rule (one per period: "TDS Payment — Monthly — For Apr 2026",
+    // "— For May 2026", etc.) and we want ONE source per logical rule.
     const existingRules = await prisma.$queryRaw<any[]>(
-      Prisma.sql`SELECT DISTINCT ON (requirement)
+      Prisma.sql`SELECT
         requirement, category, description, penalty, is_critical,
         compliance_type, year_type, country_code, required_documents,
         source, confidence_score, needs_ca_review, source_url,
@@ -778,18 +781,44 @@ export async function generateHistoricalCompliances(
       WHERE company_id = ${companyId}::uuid
         AND due_date_formula IS NOT NULL
         AND compliance_type IN ('monthly', 'quarterly', 'half-yearly', 'annual')
-      ORDER BY requirement, created_at DESC`
+      ORDER BY created_at DESC`
     )
 
     if (!existingRules || existingRules.length === 0) {
       return { success: false, error: 'No recurring requirements found. Generate compliances first.' }
     }
 
+    // Strip the period suffix that the rules engine appends so we can
+    // (a) dedupe to one source row per base rule, and (b) rebuild the
+    // requirement name with the HISTORICAL period_label rather than
+    // copying the source row's (current-FY) period verbatim. Without
+    // this, historical entries inherited names like "ESI — For Dec 2026"
+    // even though their due_date was Jul 2025.
+    const stripPeriodSuffix = (name: string): string =>
+      name
+        .replace(/\s*[—–-]\s*(For\s+[A-Za-z]+\s*\d{2,4}|Q[1-4][^\n]*?\d{2,4}|H[12][^\n]*?\d{2,4})\s*$/i, '')
+        .replace(/\s*[—–-]\s*(Annual|Quarterly|Monthly|Half-Yearly|Half-yearly)?\s*[—–-]\s*For\s+[A-Za-z]+\s*\d{2,4}\s*$/i, '')
+        .trim()
+
+    type RuleSource = (typeof existingRules)[number] & { baseName: string }
+    const uniqueRulesByKey = new Map<string, RuleSource>()
+    for (const r of existingRules as any[]) {
+      const baseName = stripPeriodSuffix(String(r.requirement || ''))
+      const key = `${baseName}|${r.due_date_formula}`
+      if (!uniqueRulesByKey.has(key)) {
+        uniqueRulesByKey.set(key, { ...r, baseName })
+      }
+    }
+    console.log('[generateHistoricalCompliances] dedupe', {
+      sourceRows: existingRules.length,
+      uniqueBaseRules: uniqueRulesByKey.size,
+      yearsBack: actualYearsBack,
+    })
+
     const fyProfile = buildIndianFYProfile(incorpDate)
     let totalGenerated = 0
 
-    // Sequential inserts (no interactive transaction — compatible with PgBouncer)
-    for (const rule of existingRules) {
+    for (const rule of Array.from(uniqueRulesByKey.values())) {
       if (!rule.due_date_formula) continue
 
       const monthsBack = actualYearsBack * 12
@@ -806,6 +835,8 @@ export async function generateHistoricalCompliances(
         const dueDate = dl.date.toISOString().split('T')[0]
         const periodKey = dl.period || null
         const periodLabel = dl.label || null
+        // Rebuild the requirement name with THIS period's label.
+        const reqName = periodLabel ? `${rule.baseName} — ${periodLabel}` : rule.baseName
         const reqDocs = Array.isArray(rule.required_documents) ? rule.required_documents : []
         const reqDocsArray = `{${reqDocs.map((d: string) => `"${d.replace(/"/g, '\\"')}"`).join(',')}}`
 
@@ -821,7 +852,7 @@ export async function generateHistoricalCompliances(
               period_key, period_label,
               app_created_by, app_updated_by, created_at, updated_at
             ) VALUES (
-              ${companyId}::uuid, ${rule.category}::text, ${rule.requirement}::text,
+              ${companyId}::uuid, ${rule.category}::text, ${reqName}::text,
               ${rule.description || null}::text, 'overdue'::text, ${dueDate}::date,
               ${rule.penalty || null}::text, ${rule.is_critical || false}::boolean,
               ${rule.compliance_type || null}::text, ${rule.year_type || 'FY'}::text,
