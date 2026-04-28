@@ -191,15 +191,21 @@ export default function ComplianceIntakeForm({ companyId, financialYear, initial
         sourceKind: 'user_declared',
       }))
 
-      // Notify other listeners (chat, evaluator panel) that facts changed.
-      // CIP no longer relies on this for its OWN state — it gets the facts
-      // directly from onComplete — but other components still benefit.
+      // CRITICAL: call onComplete (which writes the just-saved facts
+      // straight into the React Query cache) BEFORE dispatching the
+      // global cia:data-changed event. dispatchEvent is synchronous and
+      // any listener that invalidates the same cache key would trigger
+      // a re-fetch which can race against PgBouncer transaction-mode
+      // and return 0 facts — overwriting our optimistic write. The
+      // ordering here keeps the optimistic value durable: when the
+      // re-fetch (if any) completes, it'll see the post-commit state.
+      showToast('Business details saved — evaluating compliances...', 'success')
+      onComplete(savedFacts)
+      // Notify other listeners (chat agent UI, evaluator panel) — CIP
+      // doesn't need this; it already has the data via onComplete.
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('cia:data-changed'))
       }
-
-      showToast('Business details saved — evaluating compliances...', 'success')
-      onComplete(savedFacts)
     } catch (err) {
       console.error('[IntakeForm] threw',
         err instanceof Error ? err.message : String(err),
