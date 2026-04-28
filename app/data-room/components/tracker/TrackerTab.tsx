@@ -230,48 +230,95 @@ export default function TrackerTab() {
 
       {/* Regulatory Requirements Table */}
       <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden">
-        {isLoadingRequirements || displayRequirements.length === 0 ? (
-          <TrackerEmptyState
-            isLoadingRequirements={isLoadingRequirements}
-            displayRequirements={displayRequirements}
-            regulatoryRequirements={regulatoryRequirements}
-            trackerSearchQuery={trackerSearchQuery}
-            selectedTrackerFY={selectedTrackerFY}
-            selectedMonth={selectedMonth}
-            selectedQuarter={selectedQuarter}
-            categoryFilter={categoryFilter}
-            selectedCategory={selectedCategory}
-            canEdit={canEdit}
-            setTrackerSearchQuery={setTrackerSearchQuery}
-            setSelectedTrackerFY={setSelectedTrackerFY}
-            setSelectedMonth={setSelectedMonth}
-            setSelectedQuarter={setSelectedQuarter}
-            setCategoryFilter={setCategoryFilter}
-            setSelectedCategory={setSelectedCategory}
-            setRequirementForm={setRequirementForm}
-            setIsCreateModalOpen={setIsCreateModalOpen}
-          />
-        ) : (
-          <div className="sm:overflow-x-auto scrollbar-hide">
-            {trackerView === 'calendar' ? (
-              <TrackerCalendarView
-                calendarMonth={calendarMonth}
-                calendarYear={calendarYear}
-                setCalendarMonth={setCalendarMonth}
-                setCalendarYear={setCalendarYear}
-                months={months}
+        {(() => {
+          // Three orthogonal cases:
+          //   loading            → desktop renders shell accordion (layout
+          //                        reserved using static country categories);
+          //                        mobile renders TrackerEmptyState (its
+          //                        existing skeleton path).
+          //   ready & 0 rows     → both render TrackerEmptyState (the
+          //                        genuine "no compliances yet" CTA).
+          //   ready & n rows     → mobile renders cards; desktop renders the
+          //                        populated accordion.
+          //
+          // Calendar view is its own branch and unchanged: shows
+          // TrackerEmptyState when there's nothing or still loading,
+          // otherwise the calendar.
+          const isReady = !isLoadingRequirements
+          const isGenuineEmpty = isReady && displayRequirements.length === 0
+
+          if (trackerView === 'calendar') {
+            return isLoadingRequirements || displayRequirements.length === 0 ? (
+              <TrackerEmptyState
+                isLoadingRequirements={isLoadingRequirements}
+                displayRequirements={displayRequirements}
+                regulatoryRequirements={regulatoryRequirements}
+                trackerSearchQuery={trackerSearchQuery}
                 selectedTrackerFY={selectedTrackerFY}
-                requirementsByDate={requirementsByDate}
-                calculateDelay={calculateDelayMemoized}
-                calculatePenalty={calculatePenaltyMemoized}
-                parseDateForCalendar={(dateStr: string | null | undefined) => {
-                  if (!dateStr) return null
-                  return normalizeDate(dateStr)
-                }}
+                selectedMonth={selectedMonth}
+                selectedQuarter={selectedQuarter}
+                categoryFilter={categoryFilter}
+                selectedCategory={selectedCategory}
+                canEdit={canEdit}
+                setTrackerSearchQuery={setTrackerSearchQuery}
+                setSelectedTrackerFY={setSelectedTrackerFY}
+                setSelectedMonth={setSelectedMonth}
+                setSelectedQuarter={setSelectedQuarter}
+                setCategoryFilter={setCategoryFilter}
+                setSelectedCategory={setSelectedCategory}
+                setRequirementForm={setRequirementForm}
+                setIsCreateModalOpen={setIsCreateModalOpen}
               />
             ) : (
-              <>
-                {/* Mobile Card View */}
+              <div className="sm:overflow-x-auto scrollbar-hide">
+                <TrackerCalendarView
+                  calendarMonth={calendarMonth}
+                  calendarYear={calendarYear}
+                  setCalendarMonth={setCalendarMonth}
+                  setCalendarYear={setCalendarYear}
+                  months={months}
+                  selectedTrackerFY={selectedTrackerFY}
+                  requirementsByDate={requirementsByDate}
+                  calculateDelay={calculateDelayMemoized}
+                  calculatePenalty={calculatePenaltyMemoized}
+                  parseDateForCalendar={(dateStr: string | null | undefined) => {
+                    if (!dateStr) return null
+                    return normalizeDate(dateStr)
+                  }}
+                />
+              </div>
+            )
+          }
+
+          return (
+            <div className="sm:overflow-x-auto scrollbar-hide">
+              {/* Mobile path — keeps today's behavior (TrackerEmptyState
+                  serves both loading skeleton and zero-rows CTA on small
+                  screens). */}
+              {(isLoadingRequirements || isGenuineEmpty) ? (
+                <div className="sm:hidden">
+                  <TrackerEmptyState
+                    isLoadingRequirements={isLoadingRequirements}
+                    displayRequirements={displayRequirements}
+                    regulatoryRequirements={regulatoryRequirements}
+                    trackerSearchQuery={trackerSearchQuery}
+                    selectedTrackerFY={selectedTrackerFY}
+                    selectedMonth={selectedMonth}
+                    selectedQuarter={selectedQuarter}
+                    categoryFilter={categoryFilter}
+                    selectedCategory={selectedCategory}
+                    canEdit={canEdit}
+                    setTrackerSearchQuery={setTrackerSearchQuery}
+                    setSelectedTrackerFY={setSelectedTrackerFY}
+                    setSelectedMonth={setSelectedMonth}
+                    setSelectedQuarter={setSelectedQuarter}
+                    setCategoryFilter={setCategoryFilter}
+                    setSelectedCategory={setSelectedCategory}
+                    setRequirementForm={setRequirementForm}
+                    setIsCreateModalOpen={setIsCreateModalOpen}
+                  />
+                </div>
+              ) : (
                 <RequirementMobileCardView
                   groupedByCategory={groupedByCategory}
                   canEdit={canEdit}
@@ -294,10 +341,39 @@ export default function TrackerTab() {
                   getRelevantLegalSections={getRelevantLegalSections}
                   getAuthorityForCategory={getAuthorityForCategory}
                 />
+              )}
 
-                {/* Desktop Category-Accordion View */}
+              {/* Desktop path — accordion always renders. Shell during load
+                  (layout reserved); populated when ready; the genuine empty
+                  CTA only when load finished with zero requirements. */}
+              {isGenuineEmpty ? (
+                <div className="hidden sm:block">
+                  <TrackerEmptyState
+                    isLoadingRequirements={isLoadingRequirements}
+                    displayRequirements={displayRequirements}
+                    regulatoryRequirements={regulatoryRequirements}
+                    trackerSearchQuery={trackerSearchQuery}
+                    selectedTrackerFY={selectedTrackerFY}
+                    selectedMonth={selectedMonth}
+                    selectedQuarter={selectedQuarter}
+                    categoryFilter={categoryFilter}
+                    selectedCategory={selectedCategory}
+                    canEdit={canEdit}
+                    setTrackerSearchQuery={setTrackerSearchQuery}
+                    setSelectedTrackerFY={setSelectedTrackerFY}
+                    setSelectedMonth={setSelectedMonth}
+                    setSelectedQuarter={setSelectedQuarter}
+                    setCategoryFilter={setCategoryFilter}
+                    setSelectedCategory={setSelectedCategory}
+                    setRequirementForm={setRequirementForm}
+                    setIsCreateModalOpen={setIsCreateModalOpen}
+                  />
+                </div>
+              ) : (
                 <div className="hidden sm:block p-3 sm:p-4">
                   <TrackerCategoryAccordionView
+                    status={isLoadingRequirements ? 'loading' : 'ready'}
+                    shellCategories={complianceCategories}
                     groupedByCategory={groupedByCategory}
                     filteredRequirements={filteredRequirements}
                     canEdit={canEdit}
@@ -323,10 +399,10 @@ export default function TrackerTab() {
                     getAuthorityForCategory={getAuthorityForCategory}
                   />
                 </div>
-              </>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )
+        })()}
       </div>
 
       {/* Create/Edit Compliance Modal */}
