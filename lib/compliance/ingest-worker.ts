@@ -206,6 +206,19 @@ export async function processIngestJob(job: ClaimedJob): Promise<void> {
     // recurring requirement; COI produces `entity.incorporation_date`,
     // etc. Without this lift, those facts are silently dropped on the
     // needs_review path.
+    //
+    // `created_by` is a UUID column — pass the document's uploader (a
+    // real UUID) so audit trails work. Literal 'system' would have
+    // Prisma reject the cast silently inside the per-fact try/catch.
+    let auditUserId: string | null = null
+    try {
+      const docMeta = await prisma.companyDocument.findUnique({
+        where: { id: documentId },
+        select: { created_by: true },
+      })
+      auditUserId = docMeta?.created_by ?? null
+    } catch {}
+
     if (Array.isArray(suggestion.facts)) {
       for (const f of suggestion.facts) {
         try {
@@ -221,11 +234,12 @@ export async function processIngestJob(job: ClaimedJob): Promise<void> {
             sourceKind: 'document_extracted',
             sourceDocId: documentId,
             confidence: f.confidence,
-            createdBy: 'system',
+            createdBy: auditUserId,
           })
         } catch (factErr) {
           console.error('[ingest-worker] fact persist failed (non-fatal):',
-            factErr instanceof Error ? factErr.message : factErr)
+            factErr instanceof Error ? factErr.message : factErr,
+            { kind: f.kind, sourceDocId: documentId })
         }
       }
     }
@@ -280,7 +294,7 @@ export async function processIngestJob(job: ClaimedJob): Promise<void> {
           acknowledgement: null,
           dueDate: null,
         },
-        updatedBy: 'system',
+        updatedBy: auditUserId,
       })
     } catch (filingErr) {
       console.error('[ingest-worker] filing upsert failed (non-fatal):',
