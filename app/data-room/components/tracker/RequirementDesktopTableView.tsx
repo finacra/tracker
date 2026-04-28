@@ -85,6 +85,12 @@ export default function RequirementDesktopTableView({
   const [baseAmountInputs, setBaseAmountInputs] = useState<Record<string, string>>({})
   const [savingBaseAmount, setSavingBaseAmount] = useState<Record<string, boolean>>({})
   const [openDocChecklist, setOpenDocChecklist] = useState<string | null>(null)
+  // Coords for the doc-checklist popover. Computed from the trigger
+  // button's bounding rect at click time. The popover uses
+  // position:fixed so it escapes the form-bucket card's
+  // `overflow-hidden` (which previously clipped it — the user saw
+  // half the popover hidden behind the next row).
+  const [docChecklistCoords, setDocChecklistCoords] = useState<{ top: number; left: number } | null>(null)
 
   // Match a vault doc against a required-doc slot. The agent's
   // `document_type` (e.g. "Form 26Q", "PAN Card") is a SHORT label;
@@ -454,7 +460,25 @@ export default function RequirementDesktopTableView({
                       return (
                         <div className="relative">
                           <button
-                            onClick={() => setOpenDocChecklist(isOpen ? null : req.id)}
+                            onClick={(e) => {
+                              if (isOpen) {
+                                setOpenDocChecklist(null)
+                                setDocChecklistCoords(null)
+                              } else {
+                                const r = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                                // Default: anchor the popover's top-left to
+                                // the button's bottom-left + 4px gap. Cap
+                                // left so a 320px-wide popover stays in
+                                // viewport (16px right margin).
+                                const popoverWidth = 320
+                                const maxLeft = window.innerWidth - popoverWidth - 16
+                                setDocChecklistCoords({
+                                  top: Math.round(r.bottom + 4),
+                                  left: Math.max(8, Math.min(Math.round(r.left), maxLeft)),
+                                })
+                                setOpenDocChecklist(req.id)
+                              }
+                            }}
                             className={`px-2.5 py-1.5 text-xs rounded-lg border flex items-center gap-1.5 transition-colors ${
                               allDone
                                 ? 'bg-green-500/15 text-green-400 border-green-500/30'
@@ -479,17 +503,24 @@ export default function RequirementDesktopTableView({
                               {allDone ? 'All uploaded' : `${uploadedCount}/${requiredDocs.length} · Upload`}
                             </span>
                           </button>
-                          {/* Click popup checklist */}
-                          {isOpen && (
+                          {/* Click popup checklist — position:fixed so it
+                              escapes the form-bucket card's overflow-hidden.
+                              Coords were captured from the trigger's
+                              bounding rect at click time. */}
+                          {isOpen && docChecklistCoords && (
                             <>
-                              <div className="fixed inset-0 z-40" onClick={() => setOpenDocChecklist(null)} />
-                              <div className="absolute z-50 left-0 top-full mt-1 w-80 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl p-4">
+                              <div className="fixed inset-0 z-40" onClick={() => { setOpenDocChecklist(null); setDocChecklistCoords(null) }} />
+                              <div
+                                className="fixed z-50 w-80 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl p-4"
+                                style={{ top: docChecklistCoords.top, left: docChecklistCoords.left }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <div className="flex items-center justify-between mb-3">
                                   <div className="text-sm font-medium text-gray-200 flex items-center gap-2">
                                     <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                                     Required Documents
                                   </div>
-                                  <button onClick={() => setOpenDocChecklist(null)} className="text-gray-500 hover:text-gray-300 p-0.5">
+                                  <button onClick={() => { setOpenDocChecklist(null); setDocChecklistCoords(null) }} className="text-gray-500 hover:text-gray-300 p-0.5">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                   </button>
                                 </div>
@@ -510,6 +541,7 @@ export default function RequirementDesktopTableView({
                                             <button
                                               onClick={() => {
                                                 setOpenDocChecklist(null)
+                                                setDocChecklistCoords(null)
                                                 setDocumentUploadModal({
                                                   isOpen: true,
                                                   requirementId: req.id,
