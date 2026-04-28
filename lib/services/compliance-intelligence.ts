@@ -266,7 +266,12 @@ RULES:
 - "category" must be one of: "Industry-Specific", "State Compliance", "SEBI", "Labour Law", "Renewals", "RoC", "GST", "Income Tax", "Payroll", "Others"
 - "confidenceScore" 0.0 to 1.0 — be honest, mark uncertain items 0.85-0.90
 - Include sourceUrl to the official government/authority website
-- Prioritize industry-specific and state-specific items — that's where templates have gaps`
+- Prioritize industry-specific and state-specific items — that's where templates have gaps
+- **The "name" MUST be year-agnostic.** Do NOT include "2024", "FY 2024-25", "2023-24",
+  "for April 2026", or any other year/date token in "name". The same rule applies to
+  past, present, and future financial years; the year lives in dueDate, not in the name.
+  Examples — GOOD: "TDS Payment", "GSTR-3B Monthly Return", "FSSAI Annual Return".
+  BAD: "TDS Payment 2026", "GSTR-3B for FY 2024-25", "AOC-4 Filing 2023-24".`
 }
 
 const SYSTEM_INSTRUCTIONS = `You are a senior Indian compliance expert (CA/CS qualified) specializing in industry-specific and state-specific regulations.
@@ -458,13 +463,29 @@ export async function generateComplianceIntelligence(
     const incorporationDate = profile.incorporationDate || new Date()
     const dateProfile = buildIndianFYProfile(incorporationDate)
 
+    // Strip year tokens from AI-returned names. Even with the strict
+    // prompt rule, models occasionally slip "2026" or "FY 2024-25" into
+    // the name. We dedupe at insert time on lowercased name, so a
+    // year-suffixed duplicate of an existing rule would slip through —
+    // hence the belt-and-suspenders sanitization here.
+    const stripYearFromName = (name: string): string => {
+      let out = name
+      out = out.replace(/\s*[—–-]\s*for\s+[A-Za-z]+\s*\d{4}\s*$/i, '')
+      out = out.replace(/\bF\.?Y\.?\s*\d{4}\s*[-–]\s*\d{2,4}\b/gi, '')
+      out = out.replace(/\b\d{4}\s*[-–]\s*\d{2,4}\b/g, '')
+      out = out.replace(/\b(19|20|21)\d{2}\b/g, '')
+      out = out.replace(/\s+[—–-]\s*$/g, '')
+      out = out.replace(/\s{2,}/g, ' ').trim()
+      return out || name
+    }
+
     const requirements: GeneratedRequirement[] = novel.map(item => {
       const nextDeadline = computeNextDeadline(item.dueDateFormula, dateProfile)
       const needsReview = item.confidenceScore < 0.95
 
       return {
         category: item.category,
-        requirement: item.name,
+        requirement: stripYearFromName(item.name),
         description: `${item.act} — ${item.section}. ${item.applicabilityReason}`,
         status: 'pending_review',
         due_date: nextDeadline,

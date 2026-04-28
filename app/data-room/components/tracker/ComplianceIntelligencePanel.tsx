@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useCallback, useEffect } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   generateComplianceForCompany,
   validateComplianceForCompany,
@@ -13,6 +14,7 @@ import {
   type ValidateComplianceResult,
 } from '../../actions-intelligence'
 import { listFacts } from '../../actions-facts'
+import { queryKeys } from '@/lib/react-query/query-keys'
 import ComplianceIntakeForm from './ComplianceIntakeForm'
 
 interface ComplianceIntelligencePanelProps {
@@ -65,94 +67,65 @@ export default function ComplianceIntelligencePanel({
   onRequirementsApproved,
 }: ComplianceIntelligencePanelProps) {
   const [viewState, setViewState] = useState<ViewState>('idle')
-  // SINGLE SOURCE OF TRUTH for facts in this panel + the IntakeForm
-  // it owns. We fetch ONCE on mount, then mutate locally as the user
-  // saves. The IntakeForm receives this via prop and hydrates synchronously
-  // — no second listFacts call, no read-after-write race, no second
-  // timeout-recovery layer. After the user saves the intake the new
-  // facts are appended to this state directly because the client knows
-  // exactly what it just sent to the server.
+
+  // Facts state lives in the React Query cache so it survives CIP
+  // re-mounts (e.g. when Approve All triggers refreshRequirements in the
+  // parent and React conditionally re-renders this subtree). The previous
+  // useState approach lost facts on every re-mount, which made
+  // needsIntake regress to true (false STEP 1 of 2) immediately after
+  // Approve All — the bug the user reported.
   type ClientFact = { kind: string; amount: number | null; sourceKind: string }
-  const [facts, setFacts] = useState<ClientFact[] | null>(null) // null = not yet loaded
+  const queryClient = useQueryClient()
+  const factsQueryKey = queryKeys.complianceFacts(companyId, financialYear ?? null)
+  const factsQuery = useQuery<ClientFact[]>({
+    queryKey: factsQueryKey,
+    queryFn: async () => {
+      if (!financialYear) return []
+      const fyStart = `${financialYear.slice(0, 4)}-04-01`
+      const fyEndYear = parseInt(financialYear.slice(0, 4), 10) + 1
+      const fyEnd = `${fyEndYear}-03-31`
+      const res = await listFacts(companyId, fyStart, fyEnd)
+      const list: ClientFact[] = (res.facts || []).map((f) => ({
+        kind: f.kind,
+        amount: f.amount,
+        sourceKind: f.sourceKind,
+      }))
+      console.log('[CIP:loadFacts]', {
+        companyId,
+        financialYear,
+        total: list.length,
+        userDeclared: list.filter((f) => f.sourceKind === 'user_declared').length,
+      })
+      return list
+    },
+    // Once loaded, treat as fresh for 5 minutes so a CIP re-mount does
+    // not cause a re-fetch (which can race against PgBouncer transaction
+    // mode and return stale data right after a write). Mutations call
+    // queryClient.setQueryData directly when they know what was written.
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+  })
+
+  const facts: ClientFact[] | null =
+    factsQuery.data === undefined ? (factsQuery.isError ? [] : null) : factsQuery.data
   const needsIntake: boolean | null =
     facts === null
       ? null
       : facts.filter((f) => f.sourceKind === 'user_declared').length === 0
 
-  useEffect(() => {
-    let cancelled = false
-    if (!financialYear) {
-      setFacts([])
-      return
-    }
-    ;(async () => {
-      try {
-        const fyStart = `${financialYear.slice(0, 4)}-04-01`
-        const fyEndYear = parseInt(financialYear.slice(0, 4), 10) + 1
-        const fyEnd = `${fyEndYear}-03-31`
-        const res = await listFacts(companyId, fyStart, fyEnd)
-        if (cancelled) return
-        const list: ClientFact[] = (res.facts || []).map((f) => ({
-          kind: f.kind,
-          amount: f.amount,
-          sourceKind: f.sourceKind,
-        }))
-        console.log('[CIP:loadFacts]', {
-          companyId,
-          financialYear,
-          total: list.length,
-          userDeclared: list.filter((f) => f.sourceKind === 'user_declared').length,
-        })
-        setFacts(list)
-      } catch (err) {
-        // Fail open: empty list lets the user proceed (they can still
-        // open intake and fill manually). Generation isn't blocked on
-        // a successful facts read.
-        console.warn('[CIP:loadFacts] threw', err instanceof Error ? err.message : err)
-        if (!cancelled) setFacts([])
-      }
-    })()
-    return () => { cancelled = true }
-  }, [companyId, financialYear])
-
-  // Other parts of the app (chat agent, document ingestion, evaluator)
-  // can mutate facts. When that happens we re-fetch — but only when the
-  // user is NOT mid-intake-save (handled by the local append). This
-  // listener is a fallback for external mutations only.
+  // External mutations (chat agent, document ingestion) still fire
+  // cia:data-changed. We invalidate the cache rather than manually
+  // re-fetching — React Query handles the request, dedup, and the
+  // regression-suppression we used to do by hand.
   useEffect(() => {
     if (!financialYear) return
     const handler = () => {
-      console.log('[CIP] cia:data-changed received — re-fetching facts')
-      ;(async () => {
-        try {
-          const fyStart = `${financialYear.slice(0, 4)}-04-01`
-          const fyEndYear = parseInt(financialYear.slice(0, 4), 10) + 1
-          const fyEnd = `${fyEndYear}-03-31`
-          const res = await listFacts(companyId, fyStart, fyEnd)
-          const list: ClientFact[] = (res.facts || []).map((f) => ({
-            kind: f.kind,
-            amount: f.amount,
-            sourceKind: f.sourceKind,
-          }))
-          // Suppress regressions: if we have a richer local set and the
-          // server returns fewer user-declared facts (PgBouncer race), keep ours.
-          setFacts((prev) => {
-            const prevUd = (prev || []).filter((f) => f.sourceKind === 'user_declared').length
-            const nextUd = list.filter((f) => f.sourceKind === 'user_declared').length
-            if (prev && prevUd > 0 && nextUd === 0) {
-              console.log('[CIP] cia:data-changed read returned 0 user-declared — suppressing as stale')
-              return prev
-            }
-            return list
-          })
-        } catch (err) {
-          console.warn('[CIP] cia:data-changed re-fetch threw', err instanceof Error ? err.message : err)
-        }
-      })()
+      console.log('[CIP] cia:data-changed received — invalidating facts cache')
+      queryClient.invalidateQueries({ queryKey: factsQueryKey })
     }
     window.addEventListener('cia:data-changed', handler)
     return () => window.removeEventListener('cia:data-changed', handler)
-  }, [companyId, financialYear])
+  }, [queryClient, factsQueryKey, financialYear])
   const [requirements, setRequirements] = useState<AIRequirementForReview[]>([])
   const [error, setError] = useState<string | null>(null)
   const [stats, setStats] = useState<{
@@ -446,18 +419,17 @@ export default function ComplianceIntelligencePanel({
           // race, no separate timeout to manage.
           initialFacts={facts || []}
           onComplete={(savedFacts) => {
-            // The intake form only calls onComplete on SUCCESS and
-            // hands back the exact rows it just wrote. We append them
-            // directly to our local state — no need to re-fetch from
-            // the DB and no PgBouncer race to dodge.
-            setFacts((prev) => {
+            // Write the just-saved facts straight into the React Query
+            // cache. This bypasses the read-after-write race entirely
+            // (we know what we just wrote) AND survives any subsequent
+            // CIP re-mount — the cache outlives the component instance.
+            queryClient.setQueryData<ClientFact[]>(factsQueryKey, (prev) => {
               const base = prev || []
               const next = [...base]
               const seen = new Set(base.map((f) => `${f.kind}|${f.sourceKind}`))
               for (const sf of savedFacts) {
                 const key = `${sf.kind}|${sf.sourceKind}`
                 if (seen.has(key)) {
-                  // upsert: replace existing user_declared fact of same kind
                   const idx = next.findIndex((f) => f.kind === sf.kind && f.sourceKind === sf.sourceKind)
                   if (idx >= 0) next[idx] = sf
                 } else {

@@ -38,4 +38,10 @@ export const queryKeys = {
   // Compliance templates
   complianceTemplates: () => ['compliance-templates'] as const,
   complianceTemplate: (templateId: string) => ['compliance-template', templateId] as const,
+
+  // Compliance facts (per company × FY) — owned by ComplianceIntelligencePanel
+  // and read by ComplianceIntakeForm. Survives CIP re-mount so panels don't
+  // regress to "STEP 1" after Approve All / re-fetches in the parent tree.
+  complianceFacts: (companyId: string, financialYear: string | null) =>
+    ['compliance-facts', companyId, financialYear] as const,
 } as const
