@@ -7,6 +7,7 @@ import { useCalendarSync } from '../../hooks/useCalendarSync'
 import RequirementFormModal, { EMPTY_REQUIREMENT_FORM } from './RequirementFormModal'
 import RequirementMobileCardView from './RequirementMobileCardView'
 import RequirementDesktopTableView from './RequirementDesktopTableView'
+import TrackerCategoryAccordionView from './TrackerCategoryAccordionView'
 import TrackerFilterControls from './TrackerFilterControls'
 import TrackerHeader from './TrackerHeader'
 import TrackerSearchAndActions from './TrackerSearchAndActions'
@@ -295,32 +296,34 @@ export default function TrackerTab() {
                   getAuthorityForCategory={getAuthorityForCategory}
                 />
 
-                {/* Desktop Table View */}
-                <RequirementDesktopTableView
-                  groupedByCategory={groupedByCategory}
-                  filteredRequirements={filteredRequirements}
-                  canEdit={canEdit}
-                  canManage={canManage}
-                  vaultDocuments={vaultDocuments}
-                  selectedRequirements={selectedRequirements}
-                  setSelectedRequirements={setSelectedRequirements}
-                  handleStatusChange={handleStatusChange}
-                  regulatoryService={regulatoryService}
-                  currentCompany={currentCompany}
-                  setHiddenCompliances={setHiddenCompliances}
-                  setRegulatoryRequirements={setRegulatoryRequirements}
-                  regulatoryRequirements={regulatoryRequirements}
-                  setEditingRequirement={setEditingRequirement}
-                  setRequirementForm={setRequirementForm}
-                  setIsEditModalOpen={setIsEditModalOpen}
-                  setComplianceDetailsModal={setComplianceDetailsModal}
-                  setDocumentUploadModal={setDocumentUploadModal}
-                  calculateDelay={calculateDelayMemoized}
-                  calculatePenalty={calculatePenaltyMemoized}
-                  getFormFrequency={getFormFrequency}
-                  getRelevantLegalSections={getRelevantLegalSections}
-                  getAuthorityForCategory={getAuthorityForCategory}
-                />
+                {/* Desktop Category-Accordion View */}
+                <div className="hidden sm:block p-3 sm:p-4">
+                  <TrackerCategoryAccordionView
+                    groupedByCategory={groupedByCategory}
+                    filteredRequirements={filteredRequirements}
+                    canEdit={canEdit}
+                    canManage={canManage}
+                    vaultDocuments={vaultDocuments}
+                    selectedRequirements={selectedRequirements}
+                    setSelectedRequirements={setSelectedRequirements}
+                    handleStatusChange={handleStatusChange}
+                    regulatoryService={regulatoryService}
+                    currentCompany={currentCompany}
+                    setHiddenCompliances={setHiddenCompliances}
+                    setRegulatoryRequirements={setRegulatoryRequirements}
+                    regulatoryRequirements={regulatoryRequirements}
+                    setEditingRequirement={setEditingRequirement}
+                    setRequirementForm={setRequirementForm}
+                    setIsEditModalOpen={setIsEditModalOpen}
+                    setComplianceDetailsModal={setComplianceDetailsModal}
+                    setDocumentUploadModal={setDocumentUploadModal}
+                    calculateDelay={calculateDelayMemoized}
+                    calculatePenalty={calculatePenaltyMemoized}
+                    getFormFrequency={getFormFrequency}
+                    getRelevantLegalSections={getRelevantLegalSections}
+                    getAuthorityForCategory={getAuthorityForCategory}
+                  />
+                </div>
               </>
             )}
           </div>

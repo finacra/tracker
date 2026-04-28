@@ -286,8 +286,7 @@ export default function RequirementDesktopTableView({
                             </span>
                           )}
                         </div>
-                        <div className="text-gray-400 text-sm break-words">{req.description}</div>
-                        {(formFreq || authority || legalSections.length > 0) && (
+                        {(formFreq || authority || legalSections.length > 0 || req.description) && (
                           <button
                             onClick={() => setComplianceDetailsModal(req)}
                             className="mt-2 text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1 transition-colors"
