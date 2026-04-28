@@ -718,7 +718,7 @@ function DocumentRow({
         className="flex-1 text-left min-w-0 flex items-center gap-2 hover:text-white transition-colors"
         title="Click to view document"
       >
-        <span className="text-xs text-gray-200 truncate">{doc.fileName || 'Unnamed document'}</span>
+        <span className="text-xs font-mono text-fg-secondary truncate">{doc.fileName || 'Unnamed document'}</span>
         {hasVersionHistory && (
           <button
             type="button"

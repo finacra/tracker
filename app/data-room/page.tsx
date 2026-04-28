@@ -4002,10 +4002,7 @@ function DataRoomPageInner() {
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark relative overflow-hidden">
-      {/* Subtle Circuit Board Background */}
-      <SubtleCircuitBackground />
-
+    <div className="min-h-screen bg-bg-base relative">
       {/* Header */}
       <Header />
 
@@ -4013,11 +4010,11 @@ function DataRoomPageInner() {
       {accessType === "trial" &&
         trialDaysRemaining !== null &&
         currentCompany && (
-          <div className="relative z-20 bg-gradient-to-r from-white/10 to-gray-600/20 border-b border-white/20">
-            <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between">
+          <div className="relative z-20 bg-accent-warn/10 border-b border-accent-warn/20">
+            <div className="container mx-auto px-3 sm:px-4 py-2 flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm">
                 <svg
-                  className="w-4 h-4 text-white"
+                  className="w-4 h-4 text-accent-warn"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -4029,20 +4026,20 @@ function DataRoomPageInner() {
                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <span className="text-gray-300">
-                  <span className="text-white font-semibold">
-                    {trialDaysRemaining} days
+                <span className="text-fg-secondary">
+                  <span className="text-fg-primary font-medium font-mono tabular-nums">
+                    {trialDaysRemaining}
                   </span>{" "}
-                  left in your trial
+                  days left in your trial
                 </span>
               </div>
               <button
                 onClick={() =>
                   router.push(`/subscribe?company_id=${currentCompany.id}`)
                 }
-                className="text-xs sm:text-sm bg-white text-black px-3 py-1 rounded-lg hover:bg-gray-700 transition-colors"
+                className="text-xs sm:text-sm font-medium text-accent-warn hover:opacity-80 transition-opacity"
               >
-                Upgrade Now
+                Upgrade →
               </button>
             </div>
           </div>
@@ -4052,7 +4049,7 @@ function DataRoomPageInner() {
       <div className="relative z-10 container mx-auto px-3 sm:px-4 py-4 sm:py-8 animate-fadeIn">
         {/* Company Selector */}
         <div className="mb-4 sm:mb-6">
-          <h2 className="text-gray-400 text-sm font-medium mb-2 sm:mb-3">
+          <h2 className="text-fg-muted text-xs font-medium uppercase tracking-wider mb-2 sm:mb-3">
             My companies
           </h2>
           <CompanySelector
@@ -4064,12 +4061,12 @@ function DataRoomPageInner() {
         </div>
 
         {/* Page Title */}
-        <h1 className="text-2xl sm:text-4xl font-light text-white mb-4 sm:mb-6">
+        <h1 className="text-2xl sm:text-3xl font-medium text-fg-primary tracking-tight mb-4 sm:mb-6">
           Data Room
         </h1>
 
         {/* Horizontal Tabs - Scrollable on Mobile */}
-        <div className="flex items-center gap-2 mb-4 sm:mb-8 overflow-x-auto pb-2 -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide">
+        <div className="flex items-center gap-1 mb-6 sm:mb-8 overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide border-b border-line/10">
           <button
             onClick={() => {
               const startTime = performance.now();
@@ -4082,10 +4079,10 @@ function DataRoomPageInner() {
                 });
               });
             }}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b-2 -mb-px transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === "overview"
-                ? "border-white/40 bg-white/10 text-white"
-                : "border-white/20 bg-black text-white hover:text-white hover:border-white/40"
+                ? "text-fg-primary border-fg-primary"
+                : "text-fg-muted border-transparent hover:text-fg-primary"
             }`}
           >
             <svg
@@ -4117,10 +4114,10 @@ function DataRoomPageInner() {
                 import("./components/tracker/TrackerTab");
               }
             }}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b-2 -mb-px transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === "tracker"
-                ? "border-white/40 bg-white/10 text-white"
-                : "border-white/20 bg-black text-white hover:text-white hover:border-white/40"
+                ? "text-fg-primary border-fg-primary"
+                : "text-fg-muted border-transparent hover:text-fg-primary"
             }`}
           >
             <svg
@@ -4140,10 +4137,10 @@ function DataRoomPageInner() {
           </button>
           <button
             onClick={() => startTransition(() => setActiveTab("documents"))}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b-2 -mb-px transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === "documents"
-                ? "border-white/40 bg-white/10 text-white"
-                : "border-white/20 bg-black text-white hover:text-white hover:border-white/40"
+                ? "text-fg-primary border-fg-primary"
+                : "text-fg-muted border-transparent hover:text-fg-primary"
             }`}
           >
             <svg
@@ -4167,10 +4164,10 @@ function DataRoomPageInner() {
           </button>
           <button
             onClick={() => startTransition(() => setActiveTab("reports"))}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b-2 -mb-px transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === "reports"
-                ? "border-white/40 bg-white/10 text-white"
-                : "border-white/20 bg-black text-white hover:text-white hover:border-white/40"
+                ? "text-fg-primary border-fg-primary"
+                : "text-fg-muted border-transparent hover:text-fg-primary"
             }`}
           >
             <svg
@@ -4194,10 +4191,10 @@ function DataRoomPageInner() {
           </button>
           <button
             onClick={() => startTransition(() => setActiveTab("dsc-din"))}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b-2 -mb-px transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === "dsc-din"
-                ? "border-white/40 bg-white/10 text-white"
-                : "border-white/20 bg-black text-white hover:text-white hover:border-white/40"
+                ? "text-fg-primary border-fg-primary"
+                : "text-fg-muted border-transparent hover:text-fg-primary"
             }`}
           >
             <svg
@@ -4220,10 +4217,10 @@ function DataRoomPageInner() {
           </button>
           <button
             onClick={() => startTransition(() => setActiveTab("notices"))}
-            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b-2 -mb-px transition-colors whitespace-nowrap flex-shrink-0 ${
               activeTab === "notices"
-                ? "border-white/40 bg-white/10 text-white"
-                : "border-white/20 bg-black text-white hover:text-white hover:border-white/40"
+                ? "text-fg-primary border-fg-primary"
+                : "text-fg-muted border-transparent hover:text-fg-primary"
             }`}
           >
             <svg
@@ -4248,10 +4245,10 @@ function DataRoomPageInner() {
           {countryCode === "IN" && (
             <button
               onClick={() => startTransition(() => setActiveTab("gst"))}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+              className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b-2 -mb-px transition-colors whitespace-nowrap flex-shrink-0 ${
                 activeTab === "gst"
-                  ? "border-white/40 bg-white/10 text-white"
-                  : "border-white/20 bg-black text-white hover:text-white hover:border-white/40"
+                  ? "text-fg-primary border-fg-primary"
+                  : "text-fg-muted border-transparent hover:text-fg-primary"
               }`}
             >
               <svg

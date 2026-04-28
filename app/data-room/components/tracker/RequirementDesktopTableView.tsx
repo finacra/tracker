@@ -407,7 +407,7 @@ export default function RequirementDesktopTableView({
                               <circle cx="12" cy="12" r="10" />
                               <polyline points="12 6 12 12 16 14" />
                             </svg>
-                            <span className="text-sm whitespace-nowrap">{req.dueDate}</span>
+                            <span className="text-sm font-mono tabular-nums whitespace-nowrap">{req.dueDate}</span>
                           </div>
                           {daysDelayed !== null && daysDelayed > 0 && (
                             <div className="text-red-400 text-xs mt-1 ml-6">

@@ -2,7 +2,6 @@
 
 import React from 'react'
 import Header from '@/components/layout/Header'
-import SubtleCircuitBackground from '@/components/ui/SubtleCircuitBackground'
 import TrackerCategoryAccordionView from './tracker/TrackerCategoryAccordionView'
 import { getCountryConfig } from '@/lib/config/countries'
 
@@ -50,34 +49,33 @@ export default function DataRoomBootShell({
       : ['Income Tax', 'GST', 'Payroll', 'RoC', 'Renewals', 'Others']
 
   return (
-    <div className="min-h-screen bg-primary-dark relative overflow-hidden">
-      <SubtleCircuitBackground />
+    <div className="min-h-screen bg-bg-base relative">
       <Header />
 
       <div className="relative z-10 container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Company Selector slot — matches post-boot dimensions */}
         <div className="mb-4 sm:mb-6">
-          <h2 className="text-gray-400 text-sm font-medium mb-2 sm:mb-3">My companies</h2>
-          <div className="h-[72px] sm:h-[84px] rounded-xl border border-white/10 bg-white/[0.03] animate-pulse" />
+          <h2 className="text-fg-muted text-xs font-medium uppercase tracking-wider mb-2 sm:mb-3">My companies</h2>
+          <div className="h-[72px] sm:h-[84px] rounded-token-md border border-line/10 bg-bg-card animate-pulse" />
         </div>
 
         {/* Page Title — real, no shell */}
-        <h1 className="text-2xl sm:text-4xl font-light text-white mb-4 sm:mb-6">Data Room</h1>
+        <h1 className="text-2xl sm:text-3xl font-medium text-fg-primary tracking-tight mb-4 sm:mb-6">Data Room</h1>
 
-        {/* Tab strip — visually matches the real tabs (rounded buttons,
-            border, padding) so dimensions are identical when the real
-            tabs render. Inert during shell. */}
-        <div className="flex items-center gap-2 mb-4 sm:mb-8 overflow-x-auto pb-2 -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide">
+        {/* Tab strip — Vercel-style hairline border-bottom selected state.
+            Matches the post-boot tabs in page.tsx so dimensions stay
+            stable when the real tabs render. Inert during shell. */}
+        <div className="flex items-center gap-1 mb-6 sm:mb-8 overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide border-b border-line/10">
           {['Overview', 'Tracker', 'Documents', 'Reports', 'DSC & DIN', 'Notices'].map((label) => (
             <div
               key={label}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 rounded-lg border-2 whitespace-nowrap flex-shrink-0 ${
+              className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b-2 -mb-px whitespace-nowrap flex-shrink-0 ${
                 label.toLowerCase() === activeTab
-                  ? 'border-white/40 bg-white/10 text-white'
-                  : 'border-white/20 bg-black text-gray-500'
+                  ? 'text-fg-primary border-fg-primary'
+                  : 'text-fg-muted border-transparent'
               }`}
             >
-              <div className="w-4 h-4 sm:w-[18px] sm:h-[18px] rounded bg-white/10 animate-pulse" />
+              <div className="w-4 h-4 sm:w-[18px] sm:h-[18px] rounded bg-line/15 animate-pulse" />
               <span className="text-sm sm:text-base">{label}</span>
             </div>
           ))}
@@ -115,8 +113,8 @@ function TrackerSectionShell({ shellCategories }: { shellCategories: string[] })
       {/* Title row: "Regulatory Timeline" + view switcher */}
       <div className="flex items-center justify-between mb-4 sm:mb-6 flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-light text-white">Regulatory Timeline</h2>
-          <p className="text-gray-400 text-sm mt-1">
+          <h2 className="text-xl sm:text-2xl font-medium text-fg-primary tracking-tight">Regulatory Timeline</h2>
+          <p className="text-fg-muted text-sm mt-1">
             Keep track of upcoming tax and compliance deadlines.
           </p>
         </div>
