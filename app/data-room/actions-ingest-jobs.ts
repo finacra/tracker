@@ -52,7 +52,11 @@ export async function getActiveIngestJobsForCompany(
       if (!membership) return { success: false, error: 'Access denied' }
     }
 
-    const cutoff = new Date(Date.now() - 30 * 1000) // 30s "linked recently" tail
+    // 5-minute "linked recently" tail. Originally 30s, but real-user
+    // feedback showed the chip vanished before they could notice it.
+    // 5 min is long enough to be visible across a typical browse
+    // session, short enough that stale chips don't accumulate.
+    const cutoff = new Date(Date.now() - 5 * 60 * 1000)
 
     const rows = await prisma.documentIngestJob.findMany({
       where: {
