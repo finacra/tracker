@@ -13,6 +13,7 @@ import {
   bulkDeleteDocuments,
 } from '@/app/data-room/actions-vault'
 import VersionHistoryModal from './VersionHistoryModal'
+import ReviewIngestModal from './ReviewIngestModal'
 import { useRotatingLoadingMessage } from '@/hooks/useRotatingLoadingMessage'
 import { DOCUMENTS_VAULT_LOADING_MESSAGES } from '@/lib/ui/loading-messages'
 import { getActiveIngestJobsForCompany } from '@/app/data-room/actions-ingest-jobs'
@@ -85,6 +86,9 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
   // any job is in flight, then backed off to every 30s once everything
   // is at terminal state, then stopped if the queue is fully empty.
   const [ingestByDoc, setIngestByDoc] = useState<Record<string, IngestStatus>>({})
+
+  // Document under review (clicked the yellow "Needs review" chip)
+  const [reviewDocId, setReviewDocId] = useState<string | null>(null)
 
   // Prevent the previous company's response from overwriting the new one
   // when the user switches companies mid-flight. Stamp every load with
@@ -426,9 +430,19 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
             onUploadToFolder={onUploadToFolder}
             onPreviewDocument={onPreviewDocument}
             ingestByDoc={ingestByDoc}
+            onReview={setReviewDocId}
           />
         ))}
       </div>
+
+      {reviewDocId && (
+        <ReviewIngestModal
+          companyId={companyId}
+          documentId={reviewDocId}
+          onClose={() => setReviewDocId(null)}
+          onLinked={() => { setReviewDocId(null); load() }}
+        />
+      )}
 
       {versionHistoryDoc && (
         <VersionHistoryModal
@@ -471,6 +485,7 @@ function FolderNode({
   onUploadToFolder,
   onPreviewDocument,
   ingestByDoc,
+  onReview,
 }: {
   folder: Folder
   depth: number
@@ -492,6 +507,7 @@ function FolderNode({
   onUploadToFolder?: (folderId: string, folderName: string) => void
   onPreviewDocument?: (doc: Doc) => void
   ingestByDoc: Record<string, IngestStatus>
+  onReview: (documentId: string) => void
 }) {
   const kids = childrenOf.get(folder.id) || []
   const docs = docsInFolder.get(folder.id) || []
@@ -625,6 +641,7 @@ function FolderNode({
                   onPreview={onPreviewDocument}
                   onShowVersions={onShowVersions}
                   onUploadNewVersion={onUploadNewVersion}
+                  onReview={onReview}
                 />
               ))}
             </div>
@@ -655,6 +672,7 @@ function FolderNode({
                   onUploadToFolder={onUploadToFolder}
                   onPreviewDocument={onPreviewDocument}
                   ingestByDoc={ingestByDoc}
+                  onReview={onReview}
                 />
               ))}
             </div>
@@ -686,6 +704,7 @@ function DocumentRow({
   onPreview,
   onShowVersions,
   onUploadNewVersion,
+  onReview,
 }: {
   doc: Doc
   depth: number
@@ -699,6 +718,7 @@ function DocumentRow({
   onPreview?: (d: Doc) => void
   onShowVersions: (d: Doc) => void
   onUploadNewVersion?: (d: Doc) => void
+  onReview: (documentId: string) => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const formatted = doc.updatedAt ? new Date(doc.updatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
@@ -739,7 +759,7 @@ function DocumentRow({
         )}
       </button>
 
-      <IngestChip ingest={ingestStatus} />
+      <IngestChip ingest={ingestStatus} onReview={() => onReview(doc.id)} />
 
       <span className="text-[10px] text-gray-500 flex-shrink-0">{formatted}</span>
 
@@ -825,7 +845,7 @@ function VaultLoadingState() {
  * Tooltips carry the agent's documentType / confidence / lastError
  * for power-user visibility without crowding the row.
  */
-function IngestChip({ ingest }: { ingest: IngestStatus | null }) {
+function IngestChip({ ingest, onReview }: { ingest: IngestStatus | null; onReview?: () => void }) {
   if (!ingest) return null
   const { status, documentType, confidence, lastError } = ingest
 
@@ -870,12 +890,14 @@ function IngestChip({ ingest }: { ingest: IngestStatus | null }) {
       lastError ? `Reason: ${lastError}` : null,
     ].filter(Boolean).join(' · ') || 'Manual review needed'
     return (
-      <span
-        className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-300 flex-shrink-0 cursor-help"
-        title={tip}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onReview?.() }}
+        className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-300 flex-shrink-0 hover:bg-yellow-500/20 transition-colors"
+        title={`${tip} — click to review`}
       >
         Needs review
-      </span>
+      </button>
     )
   }
   if (status === 'failed') {
