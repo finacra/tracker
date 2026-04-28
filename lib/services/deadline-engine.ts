@@ -125,7 +125,13 @@ export function computeDeadlines(
       const specificDay = dayOverride ? parseInt(dayOverride.replace('day:', ''), 10) : null
 
       if (!isNaN(months)) {
-        for (let fyOffset = 0; fyOffset <= 1; fyOffset++) {
+        // Walk a FY window sized to monthsAhead. Previously this branch
+        // hardcoded fyOffset=0..1 — only current + next FY — so the
+        // historical generator's effectiveStart=today-2y was unreachable
+        // for annual rules. Now we walk from -ceil(monthsAhead/12)
+        // through +1, mirroring the monthly branch's lookback semantics.
+        const yearsBack = Math.max(1, Math.ceil(monthsAhead / 12))
+        for (let fyOffset = -yearsBack; fyOffset <= 1; fyOffset++) {
           const fyEnd = new Date(
             profile.financialYearEnd.getFullYear() + fyOffset,
             profile.financialYearEnd.getMonth(),
