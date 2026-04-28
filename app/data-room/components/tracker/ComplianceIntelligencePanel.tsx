@@ -81,14 +81,35 @@ export default function ComplianceIntelligencePanel({
       const fyEnd = `${fyEndYear}-03-31`
       const res = await listFacts(companyId, fyStart, fyEnd)
       const userDeclared = (res.facts || []).filter(f => f.sourceKind === 'user_declared').length
-      setNeedsIntake(userDeclared === 0)
+      const next = userDeclared === 0
+      console.log('[CIP:refreshIntakeStatus]', {
+        companyId,
+        financialYear,
+        userDeclaredCount: userDeclared,
+        needsIntake: next,
+        sample: (res.facts || []).slice(0, 3).map(f => ({ kind: f.kind, source: f.sourceKind })),
+      })
+      setNeedsIntake(next)
     } catch (err) {
-      console.warn('[CIP] intake status check failed', err instanceof Error ? err.message : err)
+      console.warn('[CIP:refreshIntakeStatus] threw', err instanceof Error ? err.message : err)
       setNeedsIntake(false) // fail open — don't block Generate on a status-check error
     }
   }, [companyId, financialYear])
   useEffect(() => {
     refreshIntakeStatus()
+  }, [refreshIntakeStatus])
+
+  // Re-check intake status whenever facts change anywhere in the app
+  // (intake form save, evaluator run, agent mutation). Without this,
+  // a stale needsIntake=true could survive after the user completed
+  // intake — leading to "still asking for intake form after saving".
+  useEffect(() => {
+    const handler = () => {
+      console.log('[CIP] cia:data-changed received — refreshing intake status')
+      refreshIntakeStatus()
+    }
+    window.addEventListener('cia:data-changed', handler)
+    return () => window.removeEventListener('cia:data-changed', handler)
   }, [refreshIntakeStatus])
   const [requirements, setRequirements] = useState<AIRequirementForReview[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -136,31 +157,22 @@ export default function ComplianceIntelligencePanel({
     setViewState('generating')
     setError(null)
 
-    // Hard client-side bail-out. The server action can hit Vercel's
-    // ~60s function timeout when AI validation is slow, and the
-    // resulting promise can hang or throw a network error that the
-    // caller used to swallow — leaving the UI stuck on the generating
-    // spinner forever (until the user refreshed).
-    let timedOut = false
-    const timeoutHandle = setTimeout(() => {
-      timedOut = true
-    }, 90_000)
+    // Hard client-side bail-out via Promise.race. The previous
+    // implementation flipped a `timedOut` boolean but kept awaiting
+    // the same hung promise — useless, the UI stayed stuck on the
+    // spinner. With Promise.race, whichever resolves first wins; if
+    // the timeout fires we throw and land in the catch block.
+    const TIMEOUT_MS = 90_000
+    const timeoutSignal = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('CIP_GENERATE_TIMEOUT')), TIMEOUT_MS)
+    )
 
     try {
       console.log('[CIP:handleGenerate] starting', { companyId })
-      const result = await generateComplianceForCompany(companyId)
-      clearTimeout(timeoutHandle)
-      if (timedOut) {
-        // Server may have completed but we already timed out the UI;
-        // recover by checking whether requirements actually landed.
-        const reviewResult = await getAIRequirementsPendingReview(companyId)
-        if (reviewResult.success) {
-          onRequirementsApproved()
-          setViewState('idle')
-          return
-        }
-        throw new Error('Generation timed out after 90s')
-      }
+      const result = await Promise.race([
+        generateComplianceForCompany(companyId),
+        timeoutSignal,
+      ])
 
       if (!result.success) {
         console.error('[CIP:handleGenerate] server returned failure', result.error)
@@ -204,19 +216,35 @@ export default function ComplianceIntelligencePanel({
         }
       }
     } catch (err) {
-      clearTimeout(timeoutHandle)
+      const isTimeout = err instanceof Error && err.message === 'CIP_GENERATE_TIMEOUT'
       console.error('[CIP:handleGenerate] threw',
         err instanceof Error ? err.message : String(err),
         err instanceof Error ? err.stack : '')
-      // Even on failure, the server may have written some requirements.
-      // Refresh the tracker so the user sees what landed instead of a
-      // blank "Generation failed" page that contradicts reality.
+
+      // Even on timeout / failure, the server may have written some
+      // requirements before the client gave up. Refresh the tracker
+      // so the user sees what landed instead of a blank "Generation
+      // failed" page that contradicts reality. Then explicitly check
+      // the AI review queue too — if those landed, jump straight to
+      // the review state.
       try {
         onRequirementsApproved()
       } catch {}
+
+      if (isTimeout) {
+        try {
+          const reviewResult = await getAIRequirementsPendingReview(companyId)
+          if (reviewResult.success && reviewResult.requirements && reviewResult.requirements.length > 0) {
+            setRequirements(reviewResult.requirements)
+            setViewState('reviewing')
+            return
+          }
+        } catch {}
+      }
+
       const msg = err instanceof Error ? err.message : 'Generation failed'
-      setError(timedOut
-        ? 'Generation took longer than expected. Some compliances may have been saved — please refresh to see them, or click Re-evaluate to try again.'
+      setError(isTimeout
+        ? 'Generation took longer than expected (90s+). Any compliances that did land are now visible in the tracker below — click Re-evaluate to retry.'
         : msg)
       setViewState('error')
     }
