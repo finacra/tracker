@@ -62,7 +62,11 @@ export async function claimNextJobs(workerId: string, totalLimit: number = 30): 
 
   // Claim — at most PER_COMPANY_BATCH_LIMIT per company, totalLimit overall.
   // The ranked CTE numbers pending rows per company by enqueue order;
-  // we pick rank <= cap. SKIP LOCKED prevents double-claim.
+  // `capped` enforces the per-company cap + overall limit. SKIP LOCKED
+  // prevents double-claim across concurrent workers.
+  //
+  // Note: PostgreSQL UPDATE doesn't accept LIMIT directly; the cap must
+  // live inside the CTE that the UPDATE joins against.
   const rows = await prisma.$queryRaw<ClaimedJob[]>`
     WITH ranked AS (
       SELECT
@@ -76,17 +80,21 @@ export async function claimNextJobs(workerId: string, totalLimit: number = 30): 
       WHERE status = 'pending'
         AND attempts < ${MAX_ATTEMPTS}
       FOR UPDATE SKIP LOCKED
+    ),
+    capped AS (
+      SELECT id, document_id, company_id, source, attempts
+      FROM ranked
+      WHERE rn <= ${PER_COMPANY_BATCH_LIMIT}
+      LIMIT ${totalLimit}
     )
     UPDATE public.document_ingest_jobs j
     SET status = 'extracting',
         started_at = NOW(),
         worker_id = ${workerId},
         attempts = j.attempts + 1
-    FROM ranked r
+    FROM capped r
     WHERE j.id = r.id
-      AND r.rn <= ${PER_COMPANY_BATCH_LIMIT}
     RETURNING j.id, j.document_id, j.company_id, j.source, j.attempts
-    LIMIT ${totalLimit}
   `
 
   return rows
