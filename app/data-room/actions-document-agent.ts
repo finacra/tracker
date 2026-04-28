@@ -2,14 +2,12 @@
 
 import { createServerContainer } from '@/lib/composition/server-container'
 import { handleActionError } from '@/lib/errors/handle-error'
-import { validateCompanyId, sanitizeStringInput } from '@/lib/utils/input-validation'
+import { validateCompanyId } from '@/lib/utils/input-validation'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
-import { analyzeAndStoreSuggestion, type DocumentAgentSuggestion } from '@/lib/compliance/document-agent'
-import { recordFact, currentIndianFY } from '@/lib/compliance/facts'
-import { ensureSystemFolders, getSystemFolderId } from '@/lib/vault/folders'
-import { generateEmbedding } from '@/lib/utils/embeddings'
-import { upsertFiling } from '@/lib/compliance/filings'
+import { type DocumentAgentSuggestion } from '@/lib/compliance/document-agent'
+import { getSystemFolderId } from '@/lib/vault/folders'
+import { analyzeAndDraft, finalizeIngestion } from '@/lib/compliance/smart-ingest'
 
 async function assertCompanyAccess(companyId: string) {
   if (!validateCompanyId(companyId)) throw new Error('Invalid company ID')
@@ -62,43 +60,22 @@ export async function uploadAndAnalyze(
 }> {
   try {
     const { user } = await assertCompanyAccess(companyId)
-
-    const cleanName = sanitizeStringInput(input.fileName, 500)
-    const cleanPath = sanitizeStringInput(input.filePath, 1000)
-    if (!cleanName || !cleanPath) {
-      return { success: false, error: 'Invalid file name or path' }
-    }
-
-    await ensureSystemFolders(companyId)
-
-    const draft = await prisma.companyDocument.create({
-      data: {
-        company_id: companyId,
-        file_path: cleanPath,
-        file_name: cleanName,
-        is_draft: true,
-        is_latest: true,
-        created_by: user.id,
-      },
-      select: { id: true },
-    })
-
-    const analysis = await analyzeAndStoreSuggestion({
+    const result = await analyzeAndDraft({
       companyId,
-      documentId: draft.id,
+      userId: user.id,
+      filePath: input.filePath,
+      fileName: input.fileName,
     })
-
     console.log('[uploadAndAnalyze] ok', {
-      documentId: draft.id,
-      hasSuggestion: !!analysis.suggestion,
-      errors: analysis.errors,
+      documentId: result.documentId,
+      hasSuggestion: !!result.suggestion,
+      errors: result.errors,
     })
-
     return {
       success: true,
-      documentId: draft.id,
-      suggestion: analysis.suggestion,
-      analysisErrors: analysis.errors,
+      documentId: result.documentId,
+      suggestion: result.suggestion,
+      analysisErrors: result.errors,
     }
   } catch (error) {
     console.error('[uploadAndAnalyze] threw',
@@ -137,191 +114,17 @@ export async function finalizeDocument(
 ): Promise<{ success: boolean; documentId?: string; versionNumber?: number; error?: string }> {
   try {
     const { user } = await assertCompanyAccess(companyId)
-
-    const draft = await prisma.companyDocument.findFirst({
-      where: { id: documentId, company_id: companyId, deleted_at: null },
-      select: { id: true, is_draft: true, agent_suggestions: true, file_path: true, file_name: true },
+    const result = await finalizeIngestion({
+      companyId,
+      userId: user.id,
+      documentId,
+      confirmed,
     })
-    if (!draft) return { success: false, error: 'Draft not found' }
-
-    // Validate folder belongs to this company + get its name for legacy compat
-    const folder = await prisma.vaultFolder.findFirst({
-      where: { id: confirmed.folderId, company_id: companyId },
-      select: { id: true, name: true },
+    console.log('[finalizeDocument] ok', {
+      documentId: result.documentId,
+      versionNumber: result.versionNumber,
     })
-    if (!folder) return { success: false, error: 'Target folder not found' }
-
-    // Validate optional requirement id. Two separate ID spaces converge
-    // here and only the second one is writable:
-    //   - ComplianceRule.id is a stable slug like "dir3-kyc-annual" (plain
-    //     string). The agent returns THIS.
-    //   - CompanyDocument.requirement_id is typed @db.Uuid — it's meant
-    //     to point at a RegulatoryRequirement.id (UUID).
-    // Writing a slug into a UUID column blows up Prisma with
-    // "Error creating UUID, invalid character: found 'p' at 1".
-    //
-    // For now: accept only UUIDs. If the agent returns a rule slug, log
-    // it and null it out — the doc still saves, just without a formal
-    // link. (Proper fix will be a separate rule_id String? column on
-    // CompanyDocument that holds the slug natively.)
-    const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
-    if (confirmed.requirementId) {
-      if (!UUID_RE.test(confirmed.requirementId)) {
-        console.warn('[finalizeDocument] requirementId is not a UUID, clearing before save:', confirmed.requirementId)
-        confirmed.requirementId = undefined
-      } else {
-        // Confirm the UUID actually resolves to a RegulatoryRequirement
-        // row for this company; otherwise null it (stale / cross-company
-        // id shouldn't be saved either).
-        const req = await prisma.regulatoryRequirement.findFirst({
-          where: { id: confirmed.requirementId, company_id: companyId },
-          select: { id: true },
-        }).catch(() => null)
-        if (!req) {
-          console.warn('[finalizeDocument] requirementId UUID does not belong to this company, clearing:', confirmed.requirementId)
-          confirmed.requirementId = undefined
-        }
-      }
-    }
-
-    // Versioning — if supersedesDocumentId is set, mark the old doc
-    // is_latest = false and chain the new one. Do it BEFORE the finalize
-    // update so the version_number is correct.
-    let versionNumber = 1
-    let parentDocumentId: string | null = null
-    if (confirmed.supersedesDocumentId) {
-      const previous = await prisma.companyDocument.findFirst({
-        where: {
-          id: confirmed.supersedesDocumentId,
-          company_id: companyId,
-          deleted_at: null,
-        },
-        select: { id: true, version_number: true },
-      })
-      if (previous) {
-        versionNumber = (previous.version_number || 1) + 1
-        parentDocumentId = previous.id
-        await prisma.companyDocument.update({
-          where: { id: previous.id },
-          data: { is_latest: false, updated_at: new Date() },
-        })
-      }
-    }
-
-    const cleanDocType = sanitizeStringInput(confirmed.documentName, 500)
-    const cleanFileName = sanitizeStringInput(confirmed.fileName, 500)
-    if (!cleanDocType || !cleanFileName) {
-      return { success: false, error: 'Document name and file name are required' }
-    }
-
-    await prisma.companyDocument.update({
-      where: { id: draft.id },
-      data: {
-        is_draft: false,
-        agent_suggestions: Prisma.JsonNull,
-        document_type: cleanDocType,
-        file_name: cleanFileName,
-        folder_id: folder.id,
-        folder_name: folder.name,               // legacy field — vault UI still groups by this
-        period_type: confirmed.periodType ?? null,
-        period_financial_year: confirmed.periodFinancialYear ?? null,
-        period_key: confirmed.periodKey ?? null,
-        period_start: confirmed.periodStart ? new Date(confirmed.periodStart) : null,
-        period_end: confirmed.periodEnd ? new Date(confirmed.periodEnd) : null,
-        frequency: confirmed.frequency ?? null,
-        registration_date: confirmed.registrationDate ? new Date(confirmed.registrationDate) : null,
-        expiry_date: confirmed.expiryDate ? new Date(confirmed.expiryDate) : null,
-        requirement_id: confirmed.requirementId ?? null,
-        is_portal_required: confirmed.isPortalRequired ?? false,
-        portal_email: confirmed.portalEmail ?? null,
-        portal_password: confirmed.portalPassword ?? null,
-        parent_document_id: parentDocumentId,
-        version_number: versionNumber,
-        is_latest: true,
-        updated_at: new Date(),
-      },
-    })
-
-    // Refresh the pgvector embedding to reflect the confirmed name —
-    // Prisma doesn't type the Unsupported("vector") column so this goes
-    // via raw SQL. Wrap in try/catch so an embedding failure (Azure
-    // hiccup, pgvector cast edge case) can't fail the whole save after
-    // the user already clicked confirm.
-    try {
-      const embedding = await generateEmbedding(`${cleanDocType} ${cleanFileName}`)
-      if (embedding.length > 0) {
-        const vectorLiteral = `[${embedding.join(',')}]`
-        await prisma.$executeRaw`
-          UPDATE public.company_documents_internal
-          SET embedding = ${vectorLiteral}::vector
-          WHERE id = ${draft.id}::uuid
-        `
-      }
-    } catch (embedErr) {
-      console.error('[finalizeDocument] embedding refresh failed (non-fatal):',
-        embedErr instanceof Error ? embedErr.message : embedErr)
-    }
-
-    // Persist any facts the agent emitted — only the ones still backed
-    // by confirmed metadata (period must be present for the evaluator
-    // to use them).
-    if (confirmed.persistFacts !== false && draft.agent_suggestions) {
-      const suggestion = draft.agent_suggestions as unknown as DocumentAgentSuggestion
-      if (Array.isArray(suggestion?.facts)) {
-        for (const f of suggestion.facts) {
-          try {
-            await recordFact({
-              companyId,
-              kind: f.kind,
-              periodStart: new Date(f.periodStart),
-              periodEnd: new Date(f.periodEnd),
-              amount: typeof f.amount === 'number' ? f.amount : null,
-              unit: f.unit ?? null,
-              payload: { ...(f.payload as any || {}), evidenceQuote: f.evidenceQuote ?? null },
-              counterparty: f.counterparty ?? null,
-              sourceKind: 'document_extracted',
-              sourceDocId: draft.id,
-              confidence: f.confidence,
-              createdBy: user.id,
-            })
-          } catch (factErr) {
-            console.error('[finalizeDocument] fact persist failed (non-fatal):',
-              factErr instanceof Error ? factErr.message : factErr)
-          }
-        }
-      }
-    }
-
-    // Step 5.1: Vault → Tracker wiring. If the doc is linked to a
-    // compliance rule + has a period, auto-upsert the matching filing
-    // row so the tracker reflects the upload immediately.
-    if (confirmed.requirementId && (confirmed.periodKey || confirmed.periodFinancialYear)) {
-      try {
-        const fy = confirmed.periodFinancialYear || currentIndianFY()
-        const pk = confirmed.periodKey || fy
-        await upsertFiling({
-          companyId,
-          ruleId: confirmed.requirementId,
-          periodKey: pk,
-          financialYear: fy,
-          data: {
-            status: 'filed',
-            dateOfFiling: confirmed.registrationDate || new Date().toISOString().slice(0, 10),
-            documentId: draft.id,
-            acknowledgement: null,
-            dueDate: null,
-          },
-          updatedBy: user.id,
-        })
-        console.log('[finalizeDocument] filing upserted', { ruleId: confirmed.requirementId, periodKey: pk })
-      } catch (filingErr) {
-        console.error('[finalizeDocument] filing upsert failed (non-fatal):',
-          filingErr instanceof Error ? filingErr.message : filingErr)
-      }
-    }
-
-    console.log('[finalizeDocument] ok', { documentId: draft.id, versionNumber })
-    return { success: true, documentId: draft.id, versionNumber }
+    return { success: true, documentId: result.documentId, versionNumber: result.versionNumber }
   } catch (error) {
     console.error('[finalizeDocument] threw',
       error instanceof Error ? error.message : String(error),
