@@ -26,6 +26,7 @@
     "@vercel/speed-insights": "^2.0.0",
     "bcryptjs": "^3.0.3",
     "express-session": "^1.19.0",
+    "geist": "^1.7.0",
     "handsontable": "^16.2.0",
     "jose": "^6.2.1",
     "jspdf": "^4.0.0",
