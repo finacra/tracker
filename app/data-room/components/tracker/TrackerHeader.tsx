@@ -29,7 +29,7 @@ export default function TrackerHeader({
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-        <h2 className="text-xl sm:text-2xl font-medium text-fg-primary tracking-tight mb-1">Regulatory Timeline</h2>
+        <h2 className="text-xl sm:text-2xl font-semibold text-fg-primary tracking-tight mb-1">Regulatory <span className="aurora-text">Timeline</span></h2>
         <p className="text-fg-muted text-sm">Keep track of upcoming tax and compliance deadlines.</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">

@@ -43,6 +43,7 @@ const config: Config = {
         },
         accent: {
           brand: 'rgb(var(--accent-brand) / <alpha-value>)',
+          violet: 'rgb(var(--accent-violet) / <alpha-value>)',
           success: 'rgb(var(--accent-success) / <alpha-value>)',
           warn: 'rgb(var(--accent-warn) / <alpha-value>)',
           danger: 'rgb(var(--accent-danger) / <alpha-value>)',
