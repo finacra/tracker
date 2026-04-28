@@ -39,13 +39,25 @@ fi
 CHANGED_FILES_PR="$(gh pr view "$PR_NUMBER" --json files --jq '.files[].path')"
 PR_FILE_COUNT=$(awk 'NF' <<<"$CHANGED_FILES_PR" | wc -l | tr -d ' ')
 
-LANDED_FILES="$(git show --name-only --pretty=format: "$MERGE_SHA" | sed '/^$/d')"
+# Detect merge type. A "true" merge commit has 2+ parents — its file
+# changes live in the diff against the first parent, not in
+# `git show --name-only` (which would be empty). Squash and rebase
+# merges have one parent and `git show --name-only` works directly.
+PARENT_COUNT=$(git rev-list --parents -n 1 "$MERGE_SHA" | awk '{print NF-1}')
+
+if [[ "$PARENT_COUNT" -ge 2 ]]; then
+  LANDED_FILES="$(git diff --name-only "${MERGE_SHA}^1" "${MERGE_SHA}")"
+  MERGE_KIND="merge-commit"
+else
+  LANDED_FILES="$(git show --name-only --pretty=format: "$MERGE_SHA" | sed '/^$/d')"
+  MERGE_KIND="squash-or-rebase"
+fi
 LANDED_COUNT=$(awk 'NF' <<<"$LANDED_FILES" | wc -l | tr -d ' ')
 
 # Hard-fail mode: the squash bug from issue #30 produces a merge commit
 # with ZERO files changed. That's the case we MUST flag.
 if [[ -z "$LANDED_FILES" ]]; then
-  echo "FAIL: PR #$PR_NUMBER merge commit $MERGE_SHA contains 0 file changes."
+  echo "FAIL: PR #$PR_NUMBER merge commit $MERGE_SHA ($MERGE_KIND) contains 0 file changes."
   echo
   echo "GitHub squash-merge dropped EVERYTHING (the issue #30 bug)."
   echo "PR claimed to change $PR_FILE_COUNT file(s):"
@@ -71,9 +83,9 @@ while IFS= read -r f; do
 done <<<"$CHANGED_FILES_PR"
 
 if (( ${#missing[@]} > 0 )); then
-  echo "OK (with warning): PR #$PR_NUMBER ($MERGE_SHA) landed $LANDED_COUNT/$PR_FILE_COUNT files on $TARGET_BRANCH."
+  echo "OK (with warning): PR #$PR_NUMBER ($MERGE_SHA, $MERGE_KIND) landed $LANDED_COUNT/$PR_FILE_COUNT files on $TARGET_BRANCH."
   echo
-  echo "These files were in the PR but NOT in the squash commit:"
+  echo "These files were in the PR but NOT in the merge commit:"
   printf '  - %s\n' "${missing[@]}"
   echo
   echo "Most likely benign — base advanced during review and absorbed identical changes."
@@ -82,4 +94,4 @@ if (( ${#missing[@]} > 0 )); then
   exit 0
 fi
 
-echo "OK: PR #$PR_NUMBER ($MERGE_SHA) landed all $PR_FILE_COUNT file(s) on $TARGET_BRANCH."
+echo "OK: PR #$PR_NUMBER ($MERGE_SHA, $MERGE_KIND) landed all $PR_FILE_COUNT file(s) on $TARGET_BRANCH."
