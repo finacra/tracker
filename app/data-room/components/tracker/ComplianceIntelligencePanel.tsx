@@ -90,11 +90,24 @@ export default function ComplianceIntelligencePanel({
         amount: f.amount,
         sourceKind: f.sourceKind,
       }))
+      // Regression guard: if the cache currently has user_declared facts
+      // and the server returned 0, that's almost certainly a PgBouncer
+      // transaction-mode race (read landed on a connection that hasn't
+      // seen our recent commit). Keep the cached value rather than
+      // letting the stale read clobber it. Real "facts genuinely deleted"
+      // events go through explicit setQueryData, never an empty fetch.
+      const cached = queryClient.getQueryData<ClientFact[]>(factsQueryKey)
+      const cachedUd = (cached || []).filter((f) => f.sourceKind === 'user_declared').length
+      const fetchedUd = list.filter((f) => f.sourceKind === 'user_declared').length
+      if (cachedUd > 0 && fetchedUd === 0) {
+        console.log('[CIP:loadFacts] suppressing 0-user_declared fetch as stale (cache has', cachedUd, ')')
+        return cached!
+      }
       console.log('[CIP:loadFacts]', {
         companyId,
         financialYear,
         total: list.length,
-        userDeclared: list.filter((f) => f.sourceKind === 'user_declared').length,
+        userDeclared: fetchedUd,
       })
       return list
     },
