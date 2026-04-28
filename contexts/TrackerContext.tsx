@@ -118,6 +118,10 @@ interface TrackerContextValue extends TrackerExternalData {
   // Derived / computed
   displayRequirements: any[]
   filteredRequirements: any[]
+  /** Same pipeline as filteredRequirements MINUS the status-pill (categoryFilter)
+   * step. Counted by TrackerCategoryFilters so the All/Overdue/Critical/Pending/
+   * Upcoming/Completed pill counts respect the active FY/Month/Quarter/search. */
+  requirementsForPillCounts: any[]
   groupedByCategory: { category: string; items: any[] }[]
   requirementsByDate: Map<string, any[]>
 }
@@ -357,6 +361,61 @@ export function TrackerContextProvider({
     normalizeDate,
   ])
 
+  // ── Derived: requirementsForPillCounts ──────────────────────────────────────
+  // Same filter pipeline as filteredRequirements EXCEPT the status-pill
+  // (categoryFilter) step. The pills SET categoryFilter — if we fed the pills
+  // the post-pill list, every count would equal the currently-selected pill.
+  // Pills consume this list to show "Of FY 2025-26's items, how many are
+  // overdue/critical/pending/upcoming/completed".
+  const requirementsForPillCounts = useMemo(() => {
+    if (displayRequirements.length === 0) return []
+    const parseDate = (dateStr: string): Date | null => {
+      if (!dateStr) return null
+      return normalizeDate(dateStr)
+    }
+    const isInFY = (reqDate: Date | null, fyStr: string): boolean => {
+      if (!reqDate || !fyStr) return false
+      return isInFinancialYearUtil(reqDate, fyStr, countryCode)
+    }
+    let filtered = displayRequirements
+    if (selectedTrackerFY) {
+      filtered = filtered.filter((req) => req.dueDate && isInFY(parseDate(req.dueDate), selectedTrackerFY))
+    }
+    if (selectedMonth) {
+      const monthIndex = MONTHS.indexOf(selectedMonth)
+      filtered = filtered.filter((req) => {
+        const d = parseDate(req.dueDate)
+        return d ? d.getUTCMonth() === monthIndex : false
+      })
+    }
+    if (selectedQuarter) {
+      filtered = filtered.filter((req) => {
+        const d = parseDate(req.dueDate)
+        if (!d) return false
+        const m = d.getUTCMonth()
+        const q = m >= 3 && m <= 5 ? 'Q1' : m >= 6 && m <= 8 ? 'Q2' : m >= 9 && m <= 11 ? 'Q3' : 'Q4'
+        return q === selectedQuarter
+      })
+    }
+    if (trackerSearchQuery.trim()) {
+      const q = trackerSearchQuery.toLowerCase().trim()
+      filtered = filtered.filter((req) => {
+        const text = [req.category, req.requirement, req.description, req.status, req.compliance_type, req.financial_year]
+          .filter(Boolean).join(' ').toLowerCase()
+        return text.includes(q)
+      })
+    }
+    return filtered
+  }, [
+    displayRequirements,
+    selectedTrackerFY,
+    selectedMonth,
+    selectedQuarter,
+    trackerSearchQuery,
+    countryCode,
+    normalizeDate,
+  ])
+
   // ── Derived: categoryOrder ────────────────────────────────────────────────────
   const categoryOrder = useMemo(() => {
     const allCategories = Array.from(new Set(displayRequirements.map((r) => r.category).filter(Boolean)))
@@ -440,6 +499,7 @@ export function TrackerContextProvider({
     // Derived
     displayRequirements,
     filteredRequirements,
+    requirementsForPillCounts,
     groupedByCategory,
     requirementsByDate,
   }
