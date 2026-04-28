@@ -29,6 +29,7 @@ const DscDinTab = lazy(() => import("./components/DscDinTab"));
 import Header from "@/components/layout/Header";
 import CompanySelector from "@/components/features/CompanySelector";
 import SubtleCircuitBackground from "@/components/ui/SubtleCircuitBackground";
+import HeroGlows from "@/components/ui/HeroGlows";
 import { RequirementTableSkeleton } from "@/components/ui/skeletons/RequirementRowSkeleton";
 import { createClient } from "@/utils/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -4003,6 +4004,15 @@ function DataRoomPageInner() {
 
   return (
     <div className="min-h-screen bg-bg-base relative">
+      {/* PR-13: futuristic skin — graph-paper grid + violet glow blobs
+          behind the hero area only. Both layers are absolute with no
+          z-index, so they naturally sit below Header (z-50 sticky) and
+          main content (relative z-10). pointer-events-none keeps clicks
+          flowing through to anything below. */}
+      <div className="absolute inset-x-0 top-0 h-[640px] bg-grid pointer-events-none overflow-hidden" />
+      <div className="absolute inset-x-0 top-0 h-[640px] pointer-events-none overflow-hidden">
+        <HeroGlows />
+      </div>
       {/* Header */}
       <Header />
 
@@ -4060,10 +4070,16 @@ function DataRoomPageInner() {
           />
         </div>
 
-        {/* Page Title */}
-        <h1 className="text-2xl sm:text-3xl font-medium text-fg-primary tracking-tight mb-4 sm:mb-6">
-          Data Room
-        </h1>
+        {/* Page Title — eyebrow chip + display headline with aurora accent */}
+        <div className="mb-6 sm:mb-8">
+          <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold tracking-[0.18em] uppercase text-fg-secondary bg-bg-card border border-line/15 rounded-full px-3 py-1 mb-3">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent-brand" />
+            <span className="aurora-text">Live · {currentCompany?.country_code === 'SA' ? 'Saudi Arabia' : 'India'}</span>
+          </span>
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-semibold text-fg-primary tracking-tight leading-[1.05]">
+            Data <span className="aurora-text">Room</span>
+          </h1>
+        </div>
 
         {/* Horizontal Tabs - Scrollable on Mobile */}
         <div className="flex items-center gap-1 mb-6 sm:mb-8 overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide border-b border-line/10">

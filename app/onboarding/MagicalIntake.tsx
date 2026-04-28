@@ -155,8 +155,36 @@ export default function MagicalIntake({ onComplete, onSkip }: MagicalIntakeProps
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark relative overflow-hidden flex items-start justify-center pt-20 sm:pt-32 px-4">
-      <div className="w-full max-w-[520px]">
+    <div className="min-h-screen bg-bg-base relative overflow-hidden flex items-start justify-center pt-20 sm:pt-32 px-4">
+      {/* PR-13: bg-grid + glow blobs for parity with the data-room hero. */}
+      <div className="absolute inset-x-0 top-0 h-[720px] bg-grid pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 h-[720px] pointer-events-none overflow-hidden">
+        <div
+          aria-hidden="true"
+          className="glow-blob"
+          style={{
+            top: '40px',
+            left: '20%',
+            width: '320px',
+            height: '320px',
+            background:
+              'radial-gradient(circle, rgb(var(--accent-violet)) 0%, rgb(var(--accent-brand) / 0.6) 50%, transparent 80%)',
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="glow-blob"
+          style={{
+            top: '120px',
+            right: '15%',
+            width: '240px',
+            height: '240px',
+            background:
+              'radial-gradient(circle, rgb(var(--accent-brand)) 0%, rgb(var(--accent-violet) / 0.5) 60%, transparent 85%)',
+          }}
+        />
+      </div>
+      <div className="relative z-10 w-full max-w-[520px]">
         {/* Skip link top-right */}
         <div className="flex justify-end mb-6">
           <Button variant="ghost" size="sm" onClick={onSkip}>
@@ -166,8 +194,9 @@ export default function MagicalIntake({ onComplete, onSkip }: MagicalIntakeProps
 
         {/* Hero */}
         <div className="mb-8 text-center">
-          <h1 className="font-sans text-3xl sm:text-4xl font-medium text-fg-primary tracking-tight mb-2">
-            Let's set up your company
+          <h1 className="font-sans text-4xl sm:text-5xl font-semibold text-fg-primary tracking-tight mb-2 leading-[1.05]">
+            Let's set up <br className="sm:hidden" />
+            your <span className="aurora-text">company</span>
           </h1>
           <p className="text-sm text-fg-muted">
             Two IDs and we'll handle the rest.

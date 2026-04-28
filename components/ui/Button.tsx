@@ -52,8 +52,11 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
     'inline-flex items-center justify-center gap-2 font-medium rounded-token-md transition-colors duration-token ease-token outline-none focus-visible:ring-2 focus-visible:ring-accent-brand/40 disabled:opacity-50 disabled:cursor-not-allowed'
 
   const variants: Record<ButtonVariant, string> = {
+    // PR-13: primary is now the brand indigo. Was bg-fg-primary (plain
+    // black/white) — that read flat and generic. Indigo gives primary
+    // CTAs the modern-SaaS punch the marketing landing established.
     primary:
-      'bg-fg-primary text-fg-inverse hover:opacity-90 active:opacity-80',
+      'bg-accent-brand text-white hover:opacity-90 active:opacity-80 shadow-sm shadow-accent-brand/20',
     secondary:
       'bg-bg-card text-fg-primary border border-line/15 hover:bg-bg-hover hover:border-line/30',
     ghost:

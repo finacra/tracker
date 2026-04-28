@@ -2,6 +2,7 @@
 
 import React from 'react'
 import Header from '@/components/layout/Header'
+import HeroGlows from '@/components/ui/HeroGlows'
 import TrackerCategoryAccordionView from './tracker/TrackerCategoryAccordionView'
 import { getCountryConfig } from '@/lib/config/countries'
 
@@ -50,6 +51,12 @@ export default function DataRoomBootShell({
 
   return (
     <div className="min-h-screen bg-bg-base relative">
+      {/* PR-13: futuristic skin — same bg-grid + glows as page.tsx so
+          loading→loaded has zero shift. */}
+      <div className="absolute inset-x-0 top-0 h-[640px] bg-grid pointer-events-none overflow-hidden" />
+      <div className="absolute inset-x-0 top-0 h-[640px] pointer-events-none overflow-hidden">
+        <HeroGlows />
+      </div>
       <Header />
 
       <div className="relative z-10 container mx-auto px-3 sm:px-4 py-4 sm:py-8">
@@ -59,8 +66,17 @@ export default function DataRoomBootShell({
           <div className="h-[72px] sm:h-[84px] rounded-token-md border border-line/10 bg-bg-card animate-pulse" />
         </div>
 
-        {/* Page Title — real, no shell */}
-        <h1 className="text-2xl sm:text-3xl font-medium text-fg-primary tracking-tight mb-4 sm:mb-6">Data Room</h1>
+        {/* Page Title — eyebrow + display headline with aurora accent.
+            Same shape as page.tsx so loading→loaded has zero shift. */}
+        <div className="mb-6 sm:mb-8">
+          <span className="inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-semibold tracking-[0.18em] uppercase text-fg-secondary bg-bg-card border border-line/15 rounded-full px-3 py-1 mb-3">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent-brand" />
+            <span className="aurora-text">Live · {countryCode === 'SA' ? 'Saudi Arabia' : 'India'}</span>
+          </span>
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-semibold text-fg-primary tracking-tight leading-[1.05]">
+            Data <span className="aurora-text">Room</span>
+          </h1>
+        </div>
 
         {/* Tab strip — Vercel-style hairline border-bottom selected state.
             Matches the post-boot tabs in page.tsx so dimensions stay
@@ -113,7 +129,7 @@ function TrackerSectionShell({ shellCategories }: { shellCategories: string[] })
       {/* Title row: "Regulatory Timeline" + view switcher */}
       <div className="flex items-center justify-between mb-4 sm:mb-6 flex-wrap gap-3">
         <div>
-          <h2 className="text-xl sm:text-2xl font-medium text-fg-primary tracking-tight">Regulatory Timeline</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold text-fg-primary tracking-tight">Regulatory <span className="aurora-text">Timeline</span></h2>
           <p className="text-fg-muted text-sm mt-1">
             Keep track of upcoming tax and compliance deadlines.
           </p>

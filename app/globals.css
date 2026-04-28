@@ -26,7 +26,14 @@
   --border-subtle: 255 255 255;  /* used with /5 alpha */
   --border-strong: 255 255 255;  /* used with /30 alpha */
 
-  --accent-brand: 30 58 95;     /* primary-navy */
+  /* PR-13: brand swapped from #1E3A5F navy to #4F46E5 indigo-600. The
+   * navy read "1995 enterprise"; the indigo reads "2026 SaaS". Cascades
+   * through the entire token system — every accent-brand consumer
+   * (focus rings, primary chip, magical onboarding) flips indigo
+   * automatically. accent-violet added as a sibling for aurora gradients
+   * and floating-glow blobs that pair with brand. */
+  --accent-brand: 79 70 229;    /* indigo-600 */
+  --accent-violet: 139 92 246;  /* violet-500 — companion to brand for gradients/glows */
   --accent-success: 33 115 70;  /* primary-green */
   --accent-warn: 234 179 8;     /* amber-500 */
   --accent-danger: 239 68 68;   /* red-500 */
@@ -117,4 +124,75 @@ select {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Chrome, Safari and Opera */
+}
+
+/*
+ * PR-13: futuristic skin utilities.
+ *
+ * .aurora-text — animated gradient applied to text via background-clip.
+ *   The gradient slides across the text on a 6s loop. Used on key display
+ *   words ("Room", "Timeline", magical-intake hero). Adds the modern-SaaS
+ *   "shimmer" vibe without ANY layout cost — pure background-position
+ *   animation.
+ *
+ * .bg-grid — subtle 56px graph-paper grid. Replaces the circuit-pattern
+ *   we removed in PR-7. Masked with a radial vignette so it never
+ *   competes with content; fades to nothing toward viewport edges.
+ *
+ * .glow-blob — utility for absolutely-positioned violet glow shapes that
+ *   live behind heroes. Soft radial gradient, low opacity, blurred.
+ */
+
+@keyframes aurora-slide {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+.aurora-text {
+  background-image: linear-gradient(
+    110deg,
+    rgb(var(--fg-primary)) 0%,
+    rgb(var(--accent-brand)) 35%,
+    rgb(var(--fg-primary)) 70%,
+    rgb(var(--accent-brand)) 100%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: aurora-slide 6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-text {
+    animation: none;
+    background-position: 0% 50%;
+  }
+}
+
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgb(var(--border-default) / 0.08) 1px, transparent 1px),
+    linear-gradient(rgb(var(--border-default) / 0.08) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 35%, black 30%, transparent 80%);
+          mask-image: radial-gradient(ellipse 80% 60% at 50% 35%, black 30%, transparent 80%);
+}
+
+[data-theme='light'] .bg-grid {
+  background-image:
+    linear-gradient(to right, rgb(var(--border-default) / 0.12) 1px, transparent 1px),
+    linear-gradient(rgb(var(--border-default) / 0.12) 1px, transparent 1px);
+}
+
+.glow-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  pointer-events: none;
+  opacity: 0.35;
+}
+[data-theme='light'] .glow-blob {
+  opacity: 0.45;
 }
