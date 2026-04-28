@@ -48,8 +48,17 @@ function parseArgs(argv) {
 //   "Advance Tax — Q1 Instalment (15%) — Jun 2026"
 // must keep the "Q1 Instalment (15%)" part as base; only "— Jun 2026"
 // is stripped.
-const SUFFIX_RE = /\s*[—–-]\s*(?:For\s+)?(?:Q[1-4]\s+)?[A-Za-z]{3,9}\s+\d{4}\s*$/
-const stripPeriodSuffix = (name) => name.replace(SUFFIX_RE, '').trim()
+const SUFFIX_RE = /\s*[—–-]\s*(?:Monthly|Quarterly|Annual|Half-Yearly|Half-yearly|For\s+|Q[1-4]\s+|H[12]\s+)*(?:For\s+)?(?:Q[1-4]\s+)?(?:H[12]\s+)?[A-Za-z]{3,9}\s+\d{4}\s*$/i
+const stripPeriodSuffix = (name) => {
+  let prev = name
+  let next = name.replace(SUFFIX_RE, '').trim()
+  let i = 0
+  while (next !== prev && i++ < 8) {
+    prev = next
+    next = next.replace(SUFFIX_RE, '').trim()
+  }
+  return next
+}
 
 ;(async () => {
   const args = parseArgs(process.argv)
@@ -93,13 +102,18 @@ const stripPeriodSuffix = (name) => name.replace(SUFFIX_RE, '').trim()
   const samples = []
 
   for (const r of rows) {
-    const expectedSuffix = ` — ${r.period_label}`
-    if (r.requirement.endsWith(expectedSuffix)) continue
-    if (!SUFFIX_RE.test(r.requirement)) continue
+    // Compute the canonical name: full strip → base → append period_label.
+    // This catches BOTH cases:
+    //   1. Trailing suffix wrong: "...— Dec 2026" with period_label "Jul 2025"
+    //   2. Compound stray suffix: "...— Dec 2024 — Sep 2024" (ends with the
+    //      right period_label but has a stray "Dec 2024" before it)
+    if (!SUFFIX_RE.test(r.requirement)) continue // no period suffix at all → leave alone
 
     const baseName = stripPeriodSuffix(r.requirement)
     if (!baseName) { skipped++; continue }
     const correctName = `${baseName} — ${r.period_label}`
+
+    if (r.requirement === correctName) continue // already canonical
     needFix++
 
     const key = `${r.company_id}|${r.period_key}`

@@ -791,14 +791,30 @@ export async function generateHistoricalCompliances(
     // Strip the period suffix that the rules engine appends so we can
     // (a) dedupe to one source row per base rule, and (b) rebuild the
     // requirement name with the HISTORICAL period_label rather than
-    // copying the source row's (current-FY) period verbatim. Without
-    // this, historical entries inherited names like "ESI — For Dec 2026"
-    // even though their due_date was Jul 2025.
-    const stripPeriodSuffix = (name: string): string =>
-      name
-        .replace(/\s*[—–-]\s*(For\s+[A-Za-z]+\s*\d{2,4}|Q[1-4][^\n]*?\d{2,4}|H[12][^\n]*?\d{2,4})\s*$/i, '')
-        .replace(/\s*[—–-]\s*(Annual|Quarterly|Monthly|Half-Yearly|Half-yearly)?\s*[—–-]\s*For\s+[A-Za-z]+\s*\d{2,4}\s*$/i, '')
-        .trim()
+    // copying the source row's (current-FY) period verbatim.
+    //
+    // Strips ANY of:
+    //   "— For Apr 2026"   (with "For" prefix)
+    //   "— Apr 2026"       (plain "<Mon> <Year>")
+    //   "— Q1 Apr 2026"    (with quarter prefix)
+    //   "— H1 Apr 2026"    (with half-year prefix)
+    //   "— Monthly — For Apr 2026" (frequency + period)
+    //
+    // And iterates: a re-run that left compound suffixes
+    // ("— Dec 2024 — Sep 2024") gets fully stripped on subsequent runs.
+    const SUFFIX_RE = /\s*[—–-]\s*(?:Monthly|Quarterly|Annual|Half-Yearly|Half-yearly|For\s+|Q[1-4]\s+|H[12]\s+)*(?:For\s+)?(?:Q[1-4]\s+)?(?:H[12]\s+)?[A-Za-z]{3,9}\s+\d{4}\s*$/i
+    const stripPeriodSuffix = (name: string): string => {
+      let prev = name
+      let next = name.replace(SUFFIX_RE, '').trim()
+      // Iterate: keep stripping until no more period suffix is present.
+      // Bounded to 8 iterations as a safety net.
+      let i = 0
+      while (next !== prev && i++ < 8) {
+        prev = next
+        next = next.replace(SUFFIX_RE, '').trim()
+      }
+      return next
+    }
 
     type RuleSource = (typeof existingRules)[number] & { baseName: string }
     const uniqueRulesByKey = new Map<string, RuleSource>()
