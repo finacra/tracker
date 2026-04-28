@@ -60,7 +60,7 @@ export default function Header() {
   }
 
   return (
-    <header className="bg-primary-dark border-b border-gray-800/50 sticky top-0 z-50" style={{ overflow: 'visible' }}>
+    <header className="bg-bg-base/80 backdrop-blur-md border-b border-line/10 sticky top-0 z-50" style={{ overflow: 'visible' }}>
       <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4" style={{ overflow: 'visible' }}>
         <div className="flex items-center justify-between" style={{ overflow: 'visible' }}>
           {/* Logo */}
@@ -74,34 +74,34 @@ export default function Header() {
 
           {/* Navigation (Desktop) */}
           <nav className="hidden md:flex items-center gap-6">
-            <a 
-              href="/data-room" 
-              className={`font-light pb-1 transition-colors ${
-                pathname === '/data-room' 
-                  ? 'text-white border-b-2 border-gray-600' 
-                  : 'text-gray-400 hover:text-white'
+            <a
+              href="/data-room"
+              className={`text-sm transition-colors ${
+                pathname === '/data-room'
+                  ? 'text-fg-primary font-medium'
+                  : 'text-fg-muted hover:text-fg-primary'
               }`}
             >
               Data Room
             </a>
             {isSuperadmin && (
-              <a 
-                href="/admin" 
-                className={`font-light transition-colors ${
-                  pathname?.startsWith('/admin') 
-                    ? 'text-white border-b-2 border-gray-600 pb-1' 
-                    : 'text-gray-400 hover:text-white'
+              <a
+                href="/admin"
+                className={`text-sm transition-colors ${
+                  pathname?.startsWith('/admin')
+                    ? 'text-fg-primary font-medium'
+                    : 'text-fg-muted hover:text-fg-primary'
                 }`}
               >
                 Admin
               </a>
             )}
-            <a 
-              href="/team" 
-              className={`font-light transition-colors ${
-                pathname === '/team' 
-                  ? 'text-white border-b-2 border-gray-600 pb-1' 
-                  : 'text-gray-400 hover:text-white'
+            <a
+              href="/team"
+              className={`text-sm transition-colors ${
+                pathname === '/team'
+                  ? 'text-fg-primary font-medium'
+                  : 'text-fg-muted hover:text-fg-primary'
               }`}
             >
               Team
