@@ -5,6 +5,7 @@ import { validateCompanyId, sanitizeStringInput, isValidUUID } from '@/lib/utils
 import { generateEmbedding } from '@/lib/utils/embeddings'
 import { processDocumentContent } from '@/lib/utils/document-processor'
 import { createServerContainer } from '@/lib/composition/server-container'
+import { enqueueIngestJob } from '@/lib/compliance/ingest-worker'
 
 async function requireCurrentUser() {
   const { authService } = createServerContainer()
@@ -108,11 +109,27 @@ export async function uploadDocument(
     requirementId: data.requirementId || null,
   }])
 
-  // Trigger content processing in background
+  // Trigger content processing in background (chunks + embeddings for CIA search).
   if (insertedDoc) {
     processDocumentContent(insertedDoc.id, companyId, insertedDoc.filePath).catch(err =>
       console.error(`Async processing failed for ${insertedDoc.id}:`, err)
     )
+
+    // Smart-ingest queue: pick up the doc, run the AI agent in the
+    // background, and either auto-link to a tracker requirement or
+    // mark needs_review. The Supabase pg_cron tick fires every 30s
+    // and processes up to 3 jobs per company per batch. The user
+    // sees the upload complete immediately; metadata fills in
+    // out-of-band. Enqueue is non-fatal — if it fails, the upload
+    // still succeeded and the user can manually link via tracker.
+    enqueueIngestJob({
+      documentId: insertedDoc.id,
+      companyId,
+      source: 'vault',
+    }).catch(err => {
+      console.error(`Ingest enqueue failed for ${insertedDoc.id}:`,
+        err instanceof Error ? err.message : err)
+    })
   }
 
   return { success: true, documentId: insertedDoc?.id }

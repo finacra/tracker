@@ -675,6 +675,44 @@ model CompanyDocument {
   @@map("company_documents_internal")
 }
 
+// ── Document Ingest Job Queue ────────────────────────────────────────────
+// Background queue for the smart-ingest pipeline. Vault & onboarding
+// uploads create the CompanyDocument row immediately as dumb storage,
+// then enqueue a job here. A Supabase pg_cron tick fires every 30s,
+// pg_net POSTs to /api/jobs/run-ingest, which claims up to 3 pending
+// rows per company via SELECT … FOR UPDATE SKIP LOCKED, runs the AI
+// agent (analyzeAndStoreSuggestion), resolves the matching tracker
+// requirement, and either auto-links the doc (status=linked) or marks
+// it needs_review for the user to confirm in the vault sidebar.
+//
+// Concurrency rationale: 3 per company keeps Azure OpenAI TPM at
+// ~15k/min (3 × ~5k tokens), well inside the safe envelope, and
+// leaves headroom for synchronous tracker uploads happening at the
+// same time. Jobs across companies run in parallel.
+//
+// Status transitions:
+//   pending → extracting → matching → linked
+//                                  → needs_review
+//                       → failed (on error; retried up to 3 times)
+model DocumentIngestJob {
+  id           String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  document_id  String    @db.Uuid
+  company_id   String    @db.Uuid
+  source       String                                      // 'vault' | 'tracker' | 'onboarding'
+  status       String    @default("pending")               // 'pending' | 'extracting' | 'matching' | 'linked' | 'needs_review' | 'failed'
+  attempts     Int       @default(0)
+  last_error   String?
+  result       Json?                                        // { suggestion, resolvedRequirementId, confidence }
+  enqueued_at  DateTime  @default(now()) @db.Timestamptz
+  started_at   DateTime? @db.Timestamptz
+  finished_at  DateTime? @db.Timestamptz
+  worker_id    String?                                     // for liveness debugging
+
+  @@index([company_id, status])
+  @@index([status, enqueued_at])
+  @@map("document_ingest_jobs")
+}
+
 // ── Vault Folder Tree ─────────────────────────────────────────────────────
 // A per-company folder hierarchy. Seeded system folders (kind = "system")
 // implement the PRD v1.1 §2.2 / §3.1 taxonomy:
