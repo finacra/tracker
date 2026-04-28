@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import {
   generateComplianceForCompany,
   validateComplianceForCompany,
@@ -70,16 +70,29 @@ export default function ComplianceIntelligencePanel({
   // turnover?) and the output is noisy. Loading happens once per
   // mount; the form's onComplete refreshes this.
   const [needsIntake, setNeedsIntake] = useState<boolean | null>(null) // null = unknown / loading
-  const refreshIntakeStatus = useCallback(async () => {
+  // Pin timestamp for the optimistic-update window. After the user
+  // saves the intake form we KNOW facts were written successfully, so
+  // we set needsIntake=false directly. But PgBouncer's transaction-mode
+  // routing means a listFacts query immediately after may land on a
+  // stale connection that hasn't seen the commit yet, returning 0
+  // facts and re-flipping needsIntake=true. This pin makes refreshes
+  // ignore that read-after-write race for 15s — long enough for any
+  // pooled connection to catch up.
+  const optimisticPinUntilRef = useRef<number>(0)
+  const refreshIntakeStatus = useCallback(async (opts?: { force?: boolean }) => {
     if (!financialYear) {
       setNeedsIntake(false)
       return
     }
+    // Honor the optimistic pin unless the caller explicitly forces.
+    // The mount-time refresh DOES bypass the pin (no pin yet at mount).
+    if (!opts?.force && Date.now() < optimisticPinUntilRef.current) {
+      console.log('[CIP:refreshIntakeStatus] skipped — within optimistic-pin window')
+      return
+    }
     // Client-side timeout. Without this, a hung listFacts call would
     // leave needsIntake = null forever, leaving the user staring at the
-    // "Checking your business profile…" placeholder spinner — which is
-    // exactly the "infinite loop" the user reported, just upstream of
-    // Generate.
+    // "Checking your business profile…" placeholder spinner.
     const timeoutSignal = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('LIST_FACTS_TIMEOUT')), 8_000),
     )
@@ -100,6 +113,13 @@ export default function ComplianceIntelligencePanel({
         needsIntake: next,
         sample: (res.facts || []).slice(0, 3).map(f => ({ kind: f.kind, source: f.sourceKind })),
       })
+      // Belt-and-suspenders: if the optimistic pin is active and listFacts
+      // returned 0 user-declared facts, that's almost certainly the
+      // read-after-write race rather than truth — keep the optimistic value.
+      if (Date.now() < optimisticPinUntilRef.current && next === true) {
+        console.log('[CIP:refreshIntakeStatus] suppressing stale 0-facts read inside pin window')
+        return
+      }
       setNeedsIntake(next)
     } catch (err) {
       console.warn('[CIP:refreshIntakeStatus] threw', err instanceof Error ? err.message : err)
@@ -444,16 +464,14 @@ export default function ComplianceIntelligencePanel({
           onComplete={() => {
             // Optimistic — the intake form only calls onComplete on a
             // SUCCESSFUL save (it surfaces errors itself and bails out).
-            // So we know facts are written. Setting needsIntake=false
-            // here avoids the read-after-write race where listFacts on
-            // PgBouncer transaction mode lands on a connection that
-            // hasn't seen the just-written rows yet — that race was
-            // exactly what re-prompted the intake form after save.
+            // So we know facts are written. Pin the optimistic value
+            // for 15s so the cia:data-changed listener (and our own
+            // belt-and-suspenders refresh below) can't clobber it via
+            // the read-after-write race where PgBouncer transaction-
+            // mode routing returns 0 facts from a stale connection.
+            optimisticPinUntilRef.current = Date.now() + 15_000
             setNeedsIntake(false)
             setViewState('idle')
-            // Belt-and-suspenders: still refresh in the background so a
-            // partial write or external mutation gets reconciled.
-            void refreshIntakeStatus()
             // Trigger generate immediately so the user doesn't have
             // to click another button after completing intake.
             handleGenerate()
