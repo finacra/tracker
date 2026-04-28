@@ -200,6 +200,36 @@ export async function processIngestJob(job: ClaimedJob): Promise<void> {
       }
     }
 
+    // Persist agent-emitted facts BEFORE any early return — facts are
+    // valuable independent of requirement-match success. PAN cert OCR
+    // produces `entity.pan` even though PAN is one-time and has no
+    // recurring requirement; COI produces `entity.incorporation_date`,
+    // etc. Without this lift, those facts are silently dropped on the
+    // needs_review path.
+    if (Array.isArray(suggestion.facts)) {
+      for (const f of suggestion.facts) {
+        try {
+          await recordFact({
+            companyId,
+            kind: f.kind,
+            periodStart: new Date(f.periodStart),
+            periodEnd: new Date(f.periodEnd),
+            amount: typeof f.amount === 'number' ? f.amount : null,
+            unit: f.unit ?? null,
+            payload: { ...(f.payload as any || {}), evidenceQuote: f.evidenceQuote ?? null },
+            counterparty: f.counterparty ?? null,
+            sourceKind: 'document_extracted',
+            sourceDocId: documentId,
+            confidence: f.confidence,
+            createdBy: 'system',
+          })
+        } catch (factErr) {
+          console.error('[ingest-worker] fact persist failed (non-fatal):',
+            factErr instanceof Error ? factErr.message : factErr)
+        }
+      }
+    }
+
     if (!resolvedRequirementId || !meetsConfidence || !hasPeriod) {
       await markNeedsReview(jobId, suggestion, [
         ...(analysis.errors || []),
@@ -257,32 +287,7 @@ export async function processIngestJob(job: ClaimedJob): Promise<void> {
         filingErr instanceof Error ? filingErr.message : filingErr)
     }
 
-    // 7. Persist agent-emitted facts.
-    if (Array.isArray(suggestion.facts)) {
-      for (const f of suggestion.facts) {
-        try {
-          await recordFact({
-            companyId,
-            kind: f.kind,
-            periodStart: new Date(f.periodStart),
-            periodEnd: new Date(f.periodEnd),
-            amount: typeof f.amount === 'number' ? f.amount : null,
-            unit: f.unit ?? null,
-            payload: { ...(f.payload as any || {}), evidenceQuote: f.evidenceQuote ?? null },
-            counterparty: f.counterparty ?? null,
-            sourceKind: 'document_extracted',
-            sourceDocId: documentId,
-            confidence: f.confidence,
-            createdBy: 'system',
-          })
-        } catch (factErr) {
-          console.error('[ingest-worker] fact persist failed (non-fatal):',
-            factErr instanceof Error ? factErr.message : factErr)
-        }
-      }
-    }
-
-    // 8. Mark job linked.
+    // 7. Mark job linked.
     await prisma.documentIngestJob.update({
       where: { id: jobId },
       data: {
