@@ -280,11 +280,15 @@ export function TrackerContextProvider({
     }
 
     if (selectedQuarter) {
+      // The dropdown stores quarter values as 'Q1' / 'Q2' / 'Q3' / 'Q4'
+      // (uppercase). The filter previously computed lowercase 'q1' etc
+      // so EVERY selection returned 0 rows. Compare uppercase to match
+      // the source of truth (TrackerTab's `quarters` array).
       filtered = filtered.filter((req) => {
         const d = parseDate(req.dueDate)
         if (!d) return false
         const m = d.getUTCMonth()
-        const q = m >= 3 && m <= 5 ? 'q1' : m >= 6 && m <= 8 ? 'q2' : m >= 9 && m <= 11 ? 'q3' : 'q4'
+        const q = m >= 3 && m <= 5 ? 'Q1' : m >= 6 && m <= 8 ? 'Q2' : m >= 9 && m <= 11 ? 'Q3' : 'Q4'
         return q === selectedQuarter
       })
     }
