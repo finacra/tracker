@@ -579,44 +579,15 @@ function FolderNode({
             </button>
           )}
           {canEdit && (
-            <div className="relative">
-              <button
-                onClick={() => setMenuOpen(o => !o)}
-                className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white rounded"
-                aria-label="Folder actions"
-              >
-                ⋯
-              </button>
-              {menuOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                  <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl py-1 text-xs">
-                    <button
-                      onClick={() => { setMenuOpen(false); onCreateSubfolder(folder.id) }}
-                      className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
-                    >
-                      + New sub-folder
-                    </button>
-                    {folder.kind === 'user' && (
-                      <>
-                        <button
-                          onClick={() => { setMenuOpen(false); onRenameFolder(folder) }}
-                          className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
-                        >
-                          Rename
-                        </button>
-                        <button
-                          onClick={() => { setMenuOpen(false); onDeleteFolder(folder) }}
-                          className="w-full text-left px-3 py-1.5 text-red-300 hover:bg-red-500/10"
-                        >
-                          Delete folder
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
+            <FolderActionsMenu
+              folder={folder}
+              isOpen={menuOpen}
+              onToggle={() => setMenuOpen(o => !o)}
+              onClose={() => setMenuOpen(false)}
+              onCreateSubfolder={onCreateSubfolder}
+              onRenameFolder={onRenameFolder}
+              onDeleteFolder={onDeleteFolder}
+            />
           )}
         </div>
       </div>
@@ -764,60 +735,193 @@ function DocumentRow({
       <span className="text-[10px] text-gray-500 flex-shrink-0">{formatted}</span>
 
       {canEdit && (
-        <div className="relative flex-shrink-0">
-          <button
-            onClick={() => setMenuOpen(o => !o)}
-            className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white rounded"
-            aria-label="Document actions"
-          >
-            ⋯
-          </button>
-          {menuOpen && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl py-1 text-xs">
-                {onUploadNewVersion && (
-                  <button
-                    onClick={() => { setMenuOpen(false); onUploadNewVersion(doc) }}
-                    className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
-                  >
-                    Upload new version
-                  </button>
-                )}
-                <button
-                  onClick={() => { setMenuOpen(false); onShowVersions(doc) }}
-                  className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
-                >
-                  Version history
-                </button>
-                <div className="h-px bg-white/5 my-1" />
-                <button
-                  onClick={() => { setMenuOpen(false); onRename(doc) }}
-                  className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
-                >
-                  Rename
-                </button>
-                <button
-                  onClick={() => { setMenuOpen(false); onMove(doc) }}
-                  className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
-                >
-                  Move to…
-                </button>
-                <button
-                  onClick={() => { setMenuOpen(false); onDelete(doc) }}
-                  className="w-full text-left px-3 py-1.5 text-red-300 hover:bg-red-500/10"
-                >
-                  Delete
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        <DocActionsMenu
+          doc={doc}
+          isOpen={menuOpen}
+          onToggle={() => setMenuOpen(o => !o)}
+          onClose={() => setMenuOpen(false)}
+          onUploadNewVersion={onUploadNewVersion}
+          onShowVersions={onShowVersions}
+          onRename={onRename}
+          onMove={onMove}
+          onDelete={onDelete}
+        />
       )}
     </div>
   )
 }
 
+
+/**
+ * Per-document actions menu (the ⋯ dropdown). Uses position:fixed
+ * with computed coords so the menu escapes any ancestor
+ * `overflow-hidden` — the FolderNode wrapper has it for the rounded
+ * card aesthetic, which previously clipped the menu and made it look
+ * like clicking ⋯ "did nothing" or hid the menu.
+ */
+function DocActionsMenu({
+  doc, isOpen, onToggle, onClose,
+  onUploadNewVersion, onShowVersions, onRename, onMove, onDelete,
+}: {
+  doc: Doc
+  isOpen: boolean
+  onToggle: () => void
+  onClose: () => void
+  onUploadNewVersion?: (d: Doc) => void
+  onShowVersions: (d: Doc) => void
+  onRename: (d: Doc) => void
+  onMove: (d: Doc) => void
+  onDelete: (d: Doc) => void
+}) {
+  const btnRef = useRef<HTMLButtonElement | null>(null)
+  // Coords are computed at toggle time; recompute on open so scroll
+  // doesn't strand the menu.
+  const [coords, setCoords] = useState<{ top: number; right: number } | null>(null)
+
+  function handleToggle(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!isOpen && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setCoords({ top: Math.round(r.bottom + 4), right: Math.round(window.innerWidth - r.right) })
+    }
+    onToggle()
+  }
+
+  return (
+    <div className="relative flex-shrink-0">
+      <button
+        ref={btnRef}
+        onClick={handleToggle}
+        className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white rounded"
+        aria-label="Document actions"
+        aria-expanded={isOpen}
+      >
+        ⋯
+      </button>
+      {isOpen && coords && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={onClose} />
+          <div
+            className="fixed z-50 w-44 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl py-1 text-xs"
+            style={{ top: coords.top, right: coords.right }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {onUploadNewVersion && (
+              <button
+                onClick={() => { onClose(); onUploadNewVersion(doc) }}
+                className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
+              >
+                Upload new version
+              </button>
+            )}
+            <button
+              onClick={() => { onClose(); onShowVersions(doc) }}
+              className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
+            >
+              Version history
+            </button>
+            <div className="h-px bg-white/5 my-1" />
+            <button
+              onClick={() => { onClose(); onRename(doc) }}
+              className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
+            >
+              Rename
+            </button>
+            <button
+              onClick={() => { onClose(); onMove(doc) }}
+              className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
+            >
+              Move to…
+            </button>
+            <button
+              onClick={() => { onClose(); onDelete(doc) }}
+              className="w-full text-left px-3 py-1.5 text-red-300 hover:bg-red-500/10"
+            >
+              Delete
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Per-folder actions menu (the ⋯ dropdown on a folder header).
+ * Same fixed-position pattern as DocActionsMenu so the menu escapes
+ * the FolderNode's `overflow-hidden` card wrapper.
+ */
+function FolderActionsMenu({
+  folder, isOpen, onToggle, onClose,
+  onCreateSubfolder, onRenameFolder, onDeleteFolder,
+}: {
+  folder: Folder
+  isOpen: boolean
+  onToggle: () => void
+  onClose: () => void
+  onCreateSubfolder: (parentId: string | null) => void
+  onRenameFolder: (f: Folder) => void
+  onDeleteFolder: (f: Folder) => void
+}) {
+  const btnRef = useRef<HTMLButtonElement | null>(null)
+  const [coords, setCoords] = useState<{ top: number; right: number } | null>(null)
+
+  function handleToggle(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!isOpen && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setCoords({ top: Math.round(r.bottom + 4), right: Math.round(window.innerWidth - r.right) })
+    }
+    onToggle()
+  }
+
+  return (
+    <div className="relative">
+      <button
+        ref={btnRef}
+        onClick={handleToggle}
+        className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white rounded"
+        aria-label="Folder actions"
+        aria-expanded={isOpen}
+      >
+        ⋯
+      </button>
+      {isOpen && coords && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={onClose} />
+          <div
+            className="fixed z-50 w-44 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl py-1 text-xs"
+            style={{ top: coords.top, right: coords.right }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => { onClose(); onCreateSubfolder(folder.id) }}
+              className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
+            >
+              + New sub-folder
+            </button>
+            {folder.kind === 'user' && (
+              <>
+                <button
+                  onClick={() => { onClose(); onRenameFolder(folder) }}
+                  className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
+                >
+                  Rename
+                </button>
+                <button
+                  onClick={() => { onClose(); onDeleteFolder(folder) }}
+                  className="w-full text-left px-3 py-1.5 text-red-300 hover:bg-red-500/10"
+                >
+                  Delete folder
+                </button>
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
 function VaultLoadingState() {
   const message = useRotatingLoadingMessage({

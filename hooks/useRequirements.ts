@@ -30,9 +30,14 @@ export function useRequirements(
   // Tracks which companyId we already have fresh data for (skip re-fetch).
   const fetchedForRef = useRef<string | null>(null)
 
-  const fetchForCompany = useCallback(async (id: string) => {
+  const fetchForCompany = useCallback(async (id: string, quiet = false) => {
     activeCompanyRef.current = id
-    setIsLoading(true)
+    // Quiet mode (background refresh from cia:data-changed): keep the
+    // existing data on screen, swap atomically when the response
+    // arrives. Per project rule 5 — never clear state to empty before
+    // replacing. The "Loading compliances…" shell only appears on a
+    // truly cold load.
+    if (!quiet) setIsLoading(true)
 
     try {
       const result = await getRegulatoryRequirements(id)
@@ -44,7 +49,8 @@ export function useRequirements(
         if (result.success && result.requirements) {
           setRequirements(result.requirements)
           fetchedForRef.current = id
-        } else {
+        } else if (!quiet) {
+          // Don't blow away existing data on a quiet background failure.
           setRequirements([])
           if (result.error?.includes('UnrecognizedActionError')) {
             window.location.reload()
@@ -57,18 +63,18 @@ export function useRequirements(
         window.location.reload()
         return
       }
-      startTransition(() => setRequirements([]))
+      if (!quiet) startTransition(() => setRequirements([]))
     } finally {
-      if (activeCompanyRef.current === id) {
+      if (activeCompanyRef.current === id && !quiet) {
         setIsLoading(false)
       }
     }
   }, [])
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback((opts?: { quiet?: boolean }) => {
     if (!companyId || !enabled || !hasAccess) return
     fetchedForRef.current = null
-    fetchForCompany(companyId)
+    fetchForCompany(companyId, opts?.quiet ?? false)
   }, [companyId, enabled, hasAccess, fetchForCompany])
 
   useEffect(() => {
@@ -100,9 +106,12 @@ export function useRequirements(
     activeCompanyRef.current = id
   }, [])
 
-  // Refresh when the CIA agent mutates requirements (tool calls)
+  // Refresh when the CIA agent mutates requirements (tool calls), or
+  // when TrackerEvaluationPanel finishes a (silent) re-evaluation.
+  // Uses quiet=true so the existing accordion stays on screen and the
+  // updated data atomically swaps in — no "Loading compliances…" flash.
   useEffect(() => {
-    const handler = () => refresh()
+    const handler = () => refresh({ quiet: true })
     window.addEventListener('cia:data-changed', handler)
     return () => window.removeEventListener('cia:data-changed', handler)
   }, [refresh])
