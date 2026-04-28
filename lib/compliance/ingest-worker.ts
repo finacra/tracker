@@ -28,6 +28,8 @@ import { Prisma } from '@prisma/client'
 import { analyzeAndStoreSuggestion, type DocumentAgentSuggestion } from '@/lib/compliance/document-agent'
 import { upsertFiling } from '@/lib/compliance/filings'
 import { recordFact, currentIndianFY } from '@/lib/compliance/facts'
+import { generateHistoricalForCompany, yearsBackFromFY, NoIncorporationDateError, NoRecurringRulesError } from '@/lib/compliance/historical-generator'
+import { stripPeriodSuffix } from '@/lib/utils/strip-period-suffix'
 
 const MAX_ATTEMPTS = 3
 const PER_COMPANY_BATCH_LIMIT = 3
@@ -136,28 +138,75 @@ export async function processIngestJob(job: ClaimedJob): Promise<void> {
     })
 
     // 3. Resolve requirement: only accept UUID that belongs to this company.
-    let resolvedRequirementId: string | null = null
-    if (suggestion.requirementId && UUID_RE.test(suggestion.requirementId)) {
-      const req = await prisma.regulatoryRequirement.findFirst({
-        where: { id: suggestion.requirementId, company_id: companyId },
-        select: { id: true },
-      }).catch(() => null)
-      if (req) resolvedRequirementId = req.id
-    }
+    let resolvedRequirementId: string | null = await resolveRequirementUuid(suggestion, companyId)
 
     // 4. Confidence gate. < 0.6 → manual review even if a UUID came back.
     const confidence = typeof suggestion.confidence === 'number' ? suggestion.confidence : 0
     const meetsConfidence = confidence >= 0.6
+    const hasPeriod = !!(suggestion.periodKey || suggestion.periodFY)
 
-    if (!resolvedRequirementId || !meetsConfidence || (!suggestion.periodKey && !suggestion.periodFY)) {
-      // PR C will hook in here: if no requirement matches but a recurring
-      // rule exists for a different year, auto-generate that year's rows
-      // and re-resolve. For now: mark needs_review.
+    // 4a. Auto-generate historical compliances when the agent is
+    // confident, has a period, but no requirement matched. The most
+    // common case: user uploads "MGT-7A FY 2024-25" into a tracker
+    // that only has FY 2026-27 generated — the rule exists, just not
+    // for that year. We compute years-back from the extracted FY and
+    // call generateHistoricalForCompany silently. Idempotent.
+    let historicalGenerated: number | null = null
+    if (meetsConfidence && hasPeriod && !resolvedRequirementId) {
+      const fy = suggestion.periodFY || currentIndianFY()
+      const yb = yearsBackFromFY(fy)
+      if (yb > 0) {
+        try {
+          // The job carries no user context. Use the document's
+          // created_by so audit trails stay coherent (silent backfill
+          // attributed to whoever uploaded the file). Fall back to a
+          // null-equivalent UUID if missing — some legacy rows have it.
+          const doc = await prisma.companyDocument.findUnique({
+            where: { id: documentId },
+            select: { created_by: true },
+          })
+          const userIdForAudit = doc?.created_by || '00000000-0000-0000-0000-000000000000'
+
+          const result = await generateHistoricalForCompany({
+            companyId,
+            userId: userIdForAudit,
+            yearsBack: yb,
+          })
+          historicalGenerated = result.generated
+          console.log('[ingest-worker] historical auto-gen', {
+            jobId, documentId, fy, yearsBack: yb, generated: result.generated,
+          })
+
+          // Re-attempt the resolution now that historical rows exist.
+          resolvedRequirementId = await resolveRequirementByNameAndPeriod({
+            companyId,
+            documentType: suggestion.documentType ?? undefined,
+            periodKey: suggestion.periodKey || fy,
+            ruleSlug: suggestion.requirementId || null,
+          })
+        } catch (genErr) {
+          // Generation can fail when the company has no incorporation
+          // date or no recurring rules to base history on. Both are
+          // legitimate "needs_review" outcomes — log and fall through.
+          if (genErr instanceof NoIncorporationDateError || genErr instanceof NoRecurringRulesError) {
+            console.log('[ingest-worker] historical auto-gen skipped', {
+              jobId, reason: genErr.message,
+            })
+          } else {
+            console.error('[ingest-worker] historical auto-gen failed (non-fatal):',
+              genErr instanceof Error ? genErr.message : genErr)
+          }
+        }
+      }
+    }
+
+    if (!resolvedRequirementId || !meetsConfidence || !hasPeriod) {
       await markNeedsReview(jobId, suggestion, [
         ...(analysis.errors || []),
         ...(meetsConfidence ? [] : [`confidence ${confidence.toFixed(2)} below 0.6`]),
         ...(resolvedRequirementId ? [] : ['no matching requirement in this company']),
-        ...(suggestion.periodKey || suggestion.periodFY ? [] : ['no period extracted']),
+        ...(hasPeriod ? [] : ['no period extracted']),
+        ...(historicalGenerated !== null ? [`historical-gen produced ${historicalGenerated} rows but still no match`] : []),
       ])
       return
     }
@@ -300,6 +349,69 @@ export async function processIngestBatch(workerId: string): Promise<{ claimed: n
   await Promise.all(claimed.map(job => processIngestJob(job)))
 
   return { claimed: claimed.length, processed: claimed.length }
+}
+
+/**
+ * Resolve the agent-suggested requirementId to a UUID belonging to
+ * this company. The agent emits either a stable rule slug
+ * ("mgt-7a-annual") or a real UUID; only the latter is writable to
+ * `CompanyDocument.requirement_id` (the column is @db.Uuid).
+ */
+async function resolveRequirementUuid(suggestion: DocumentAgentSuggestion, companyId: string): Promise<string | null> {
+  if (!suggestion.requirementId || !UUID_RE.test(suggestion.requirementId)) return null
+  const req = await prisma.regulatoryRequirement.findFirst({
+    where: { id: suggestion.requirementId, company_id: companyId },
+    select: { id: true },
+  }).catch(() => null)
+  return req?.id || null
+}
+
+/**
+ * Fallback resolution after auto-generating historical rows: find a
+ * requirement whose stripped base name matches the agent's
+ * `documentType` AND whose period_key matches the extracted period.
+ *
+ * Match strategy:
+ *   1. If a slug-style ruleSlug is present, try to find a row whose
+ *      requirement starts with the documentType (which the rule
+ *      typically encodes as a prefix), at the requested period_key.
+ *   2. Otherwise, scan rows at this period_key and pick the one whose
+ *      stripped base name equals the documentType (case-insensitive).
+ *
+ * Returns null if no unambiguous match. The job will then go to
+ * needs_review for the user to confirm.
+ */
+async function resolveRequirementByNameAndPeriod(input: {
+  companyId: string
+  documentType?: string
+  periodKey: string
+  ruleSlug?: string | null
+}): Promise<string | null> {
+  const { companyId, documentType, periodKey } = input
+  if (!documentType) return null
+
+  const rows = await prisma.regulatoryRequirement.findMany({
+    where: {
+      company_id: companyId,
+      period_key: periodKey,
+    },
+    select: { id: true, requirement: true },
+  })
+  if (rows.length === 0) return null
+
+  const docTypeLower = documentType.toLowerCase().trim()
+  // 1. Exact base-name match (preferred)
+  const exact = rows.find(r => stripPeriodSuffix(r.requirement).toLowerCase().trim() === docTypeLower)
+  if (exact) return exact.id
+
+  // 2. Prefix match — agent's documentType is often a prefix of the rule name
+  const prefix = rows.find(r => {
+    const base = stripPeriodSuffix(r.requirement).toLowerCase()
+    return base.startsWith(docTypeLower) || base.includes(docTypeLower)
+  })
+  if (prefix) return prefix.id
+
+  return null
 }
 
 /**
