@@ -9,7 +9,10 @@ import { getCountryConfig } from '@/lib/config/countries'
  * Falls back to config file if database fetch fails
  */
 export function useComplianceCategories(countryCode: string = 'IN') {
-  const [categories, setCategories] = useState<string[]>([])
+  // Seed synchronously from the static country config so consumers (e.g.
+  // the tracker accordion shell) never see an empty list during the first
+  // paint. The async DB fetch below either confirms or replaces it.
+  const [categories, setCategories] = useState<string[]>(() => getFallbackCategories(countryCode))
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 

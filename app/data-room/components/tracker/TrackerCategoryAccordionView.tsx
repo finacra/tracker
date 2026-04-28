@@ -31,6 +31,20 @@ type RequirementDesktopProps = React.ComponentProps<typeof RequirementDesktopTab
 interface Props extends Omit<RequirementDesktopProps, 'groupedByCategory' | 'filteredRequirements'> {
   groupedByCategory: Group[]
   filteredRequirements: any[]
+  /**
+   * Render-mode. `loading` produces the static shell — outer cards with their
+   * names, numbered badges, and color theme, but no counts / frequencies /
+   * bodies — so the layout is reserved before the rules-engine result is
+   * fetched. Defaults to 'ready'.
+   */
+  status?: 'loading' | 'ready'
+  /**
+   * Static category list used for the shell. Sourced from
+   * `COUNTRY_CONFIGS[countryCode].compliance.defaultCategories` (or the
+   * server-overridable `useComplianceCategories` hook). Required when
+   * `status` is `'loading'`.
+   */
+  shellCategories?: string[]
 }
 
 const FREQ_ORDER = [
@@ -117,7 +131,15 @@ function summariseFrequencies(items: any[]): string[] {
 }
 
 export default function TrackerCategoryAccordionView(props: Props) {
-  const { groupedByCategory, ...rest } = props
+  const { groupedByCategory, status = 'ready', shellCategories = [], ...rest } = props
+
+  if (status === 'loading') {
+    // Render the accordion *shell* — same outer dimensions and structure as
+    // the populated accordion, but with a shimmer chip in place of the count
+    // and disabled bodies. This reserves layout space so the populated
+    // accordion drops into pre-allocated slots, no pop-in, no CLS.
+    return <ShellView shellCategories={shellCategories} />
+  }
 
   // Open-state sets keyed independently per level so toggling one doesn't
   // collapse the others. Keys:
@@ -375,6 +397,79 @@ export default function TrackerCategoryAccordionView(props: Props) {
                   })}
                 </div>
               )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Pre-data shell. Renders one closed card per category from the static
+ * country config — same outer geometry as the populated accordion (numbered
+ * badge, name, count slot, chevron) but inert. The toolbar shows a "Loading
+ * compliances…" notice instead of "X compliances across Y categories".
+ *
+ * Why a separate component: keeps the loading branch free of any
+ * `useState`/`useEffect` hooks that depend on populated data, so the live
+ * accordion's open-state isn't reset when the parent flips status from
+ * 'loading' → 'ready' (the live component remounts cleanly with real data).
+ */
+function ShellView({ shellCategories }: { shellCategories: string[] }) {
+  const cats = shellCategories && shellCategories.length > 0 ? shellCategories : Object.keys(CATEGORY_THEME)
+  return (
+    <div className="space-y-3 sm:space-y-4">
+      <div className="flex items-center justify-between px-1">
+        <div className="text-xs sm:text-sm text-gray-500">Loading compliances…</div>
+        <div className="flex items-center gap-2">
+          <span className="px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-600">
+            Expand all
+          </span>
+          <span className="px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-600">
+            Collapse all
+          </span>
+        </div>
+      </div>
+      <div className="space-y-3">
+        {cats.map((cat, idx) => {
+          const theme = themeFor(cat)
+          return (
+            <div
+              key={cat}
+              className="bg-black/40 border border-white/10 rounded-xl overflow-hidden"
+            >
+              <div
+                className="w-full flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 sm:py-4 text-left select-none"
+                aria-busy="true"
+              >
+                <div
+                  className={`flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-lg ${theme.bg} ${theme.text} flex items-center justify-center font-mono text-sm sm:text-base font-semibold ring-1 ${theme.ring}`}
+                >
+                  {idx + 1}
+                </div>
+                <div className="flex-1 min-w-0 flex items-center gap-3 flex-wrap">
+                  <span className="text-white font-semibold text-base sm:text-lg truncate">
+                    {cat}
+                  </span>
+                  <span
+                    className="inline-block w-8 h-4 rounded-full bg-white/5 animate-pulse"
+                    aria-label="loading count"
+                  />
+                </div>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="flex-shrink-0 text-gray-700"
+                  aria-hidden="true"
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </div>
             </div>
           )
         })}
