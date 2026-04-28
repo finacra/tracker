@@ -265,7 +265,13 @@ export async function completeOnboarding(
       isStartupDpiit: formData.isStartupDpiit ?? null,
     })
   } catch (factErr) {
-    console.error('[onboarding] Fact ingestion failed (non-fatal):', factErr instanceof Error ? factErr.message : factErr)
+    // Non-fatal but loud: a silent swallow here is exactly what made
+    // intake re-prompt for users who DID fill onboarding — facts never
+    // landed and refreshIntakeStatus correctly reported needsIntake=true.
+    // Log full stack so the failure mode is debuggable next time.
+    console.error('[onboarding] recordOnboardingFacts failed (non-fatal, but intake will re-prompt):',
+      factErr instanceof Error ? factErr.message : factErr,
+      factErr instanceof Error ? factErr.stack : '')
   }
 
   // 2. Insert Directors
