@@ -740,163 +740,34 @@ export async function generateHistoricalCompliances(
     if (!user) return { success: false, error: 'Not authenticated' }
     if (!(await canUserEdit(companyId))) return { success: false, error: 'Permission denied' }
 
-    const company = await prisma.company.findUnique({
-      where: { id: companyId },
-      select: { id: true, incorporation_date: true },
-    })
-    if (!company) return { success: false, error: 'Company not found' }
-
-    const incorpDate = company.incorporation_date
-    if (!incorpDate) {
-      return { success: false, error: 'Incorporation date not set. Update the company profile first.' }
-    }
-
-    // Cap yearsBack at incorporation date
-    const now = new Date()
-    const maxYearsBack = Math.floor((now.getTime() - incorpDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
-    const actualYearsBack = Math.min(yearsBack, Math.max(maxYearsBack, 0))
-    const cappedAtIncorporation = actualYearsBack < yearsBack
-
-    if (actualYearsBack <= 0) {
-      return { success: false, error: 'Company was incorporated less than 1 year ago. No historical entries to generate.' }
-    }
-
-    // Compute the start date for historical generation
-    const startDate = new Date(now)
-    startDate.setFullYear(startDate.getFullYear() - actualYearsBack)
-    // Never go before incorporation
-    const effectiveStart = startDate < incorpDate ? incorpDate : startDate
-
-    // Get existing recurring requirements with their formulas. We dedupe
-    // by (base_name, due_date_formula) below — the DB has many rows per
-    // base rule (one per period: "TDS Payment — Monthly — For Apr 2026",
-    // "— For May 2026", etc.) and we want ONE source per logical rule.
-    const existingRules = await prisma.$queryRaw<any[]>(
-      Prisma.sql`SELECT
-        requirement, category, description, penalty, is_critical,
-        compliance_type, year_type, country_code, required_documents,
-        source, confidence_score, needs_ca_review, source_url,
-        act, section, authority, due_date_formula, applicability_reason
-      FROM regulatory_requirements
-      WHERE company_id = ${companyId}::uuid
-        AND due_date_formula IS NOT NULL
-        AND compliance_type IN ('monthly', 'quarterly', 'half-yearly', 'annual')
-      ORDER BY created_at DESC`
-    )
-
-    if (!existingRules || existingRules.length === 0) {
-      return { success: false, error: 'No recurring requirements found. Generate compliances first.' }
-    }
-
-    // Strip the period suffix that the rules engine appends so we can
-    // (a) dedupe to one source row per base rule, and (b) rebuild the
-    // requirement name with the HISTORICAL period_label rather than
-    // copying the source row's (current-FY) period verbatim.
-    //
-    // Strips ANY of:
-    //   "— For Apr 2026"   (with "For" prefix)
-    //   "— Apr 2026"       (plain "<Mon> <Year>")
-    //   "— Q1 Apr 2026"    (with quarter prefix)
-    //   "— H1 Apr 2026"    (with half-year prefix)
-    //   "— Monthly — For Apr 2026" (frequency + period)
-    //
-    // And iterates: a re-run that left compound suffixes
-    // ("— Dec 2024 — Sep 2024") gets fully stripped on subsequent runs.
-    const SUFFIX_RE = /\s*[—–-]\s*(?:Monthly|Quarterly|Annual|Half-Yearly|Half-yearly|For\s+|Q[1-4]\s+|H[12]\s+)*(?:For\s+)?(?:Q[1-4]\s+)?(?:H[12]\s+)?[A-Za-z]{3,9}\s+\d{4}\s*$/i
-    const stripPeriodSuffix = (name: string): string => {
-      let prev = name
-      let next = name.replace(SUFFIX_RE, '').trim()
-      // Iterate: keep stripping until no more period suffix is present.
-      // Bounded to 8 iterations as a safety net.
-      let i = 0
-      while (next !== prev && i++ < 8) {
-        prev = next
-        next = next.replace(SUFFIX_RE, '').trim()
+    // Delegate to the shared service. Keep the auth + error-shape
+    // wrapper here so the existing server-action surface is unchanged.
+    try {
+      const { generateHistoricalForCompany, NoIncorporationDateError, NoRecurringRulesError } =
+        await import('@/lib/compliance/historical-generator')
+      const result = await generateHistoricalForCompany({
+        companyId,
+        userId: user.id,
+        yearsBack,
+      })
+      return {
+        success: true,
+        generated: result.generated,
+        yearsBack: result.yearsBack,
+        cappedAtIncorporation: result.cappedAtIncorporation,
       }
-      return next
-    }
-
-    type RuleSource = (typeof existingRules)[number] & { baseName: string }
-    const uniqueRulesByKey = new Map<string, RuleSource>()
-    for (const r of existingRules as any[]) {
-      const baseName = stripPeriodSuffix(String(r.requirement || ''))
-      const key = `${baseName}|${r.due_date_formula}`
-      if (!uniqueRulesByKey.has(key)) {
-        uniqueRulesByKey.set(key, { ...r, baseName })
+    } catch (svcErr) {
+      const { NoIncorporationDateError, NoRecurringRulesError } =
+        await import('@/lib/compliance/historical-generator')
+      if (svcErr instanceof NoIncorporationDateError) {
+        return { success: false, error: 'Incorporation date not set. Update the company profile first.' }
       }
-    }
-    console.log('[generateHistoricalCompliances] dedupe', {
-      sourceRows: existingRules.length,
-      uniqueBaseRules: uniqueRulesByKey.size,
-      yearsBack: actualYearsBack,
-    })
-
-    const fyProfile = buildIndianFYProfile(incorpDate)
-    let totalGenerated = 0
-
-    for (const rule of Array.from(uniqueRulesByKey.values())) {
-      if (!rule.due_date_formula) continue
-
-      const monthsBack = actualYearsBack * 12
-      const deadlines = computeDeadlines(
-        rule.due_date_formula,
-        fyProfile,
-        monthsBack,
-        effectiveStart
-      )
-
-      const pastDeadlines = deadlines.filter(dl => dl.date < now)
-
-      for (const dl of pastDeadlines) {
-        const dueDate = dl.date.toISOString().split('T')[0]
-        const periodKey = dl.period || null
-        const periodLabel = dl.label || null
-        // Rebuild the requirement name with THIS period's label.
-        const reqName = periodLabel ? `${rule.baseName} — ${periodLabel}` : rule.baseName
-        const reqDocs = Array.isArray(rule.required_documents) ? rule.required_documents : []
-        const reqDocsArray = `{${reqDocs.map((d: string) => `"${d.replace(/"/g, '\\"')}"`).join(',')}}`
-
-        try {
-          await prisma.$queryRaw(
-            Prisma.sql`INSERT INTO regulatory_requirements (
-              company_id, category, requirement, description, status,
-              due_date, penalty, is_critical, compliance_type,
-              year_type, country_code, required_documents,
-              source, confidence_score, needs_ca_review,
-              source_url, act, section, authority,
-              due_date_formula, applicability_reason,
-              period_key, period_label,
-              app_created_by, app_updated_by, created_at, updated_at
-            ) VALUES (
-              ${companyId}::uuid, ${rule.category}::text, ${reqName}::text,
-              ${rule.description || null}::text, 'overdue'::text, ${dueDate}::date,
-              ${rule.penalty || null}::text, ${rule.is_critical || false}::boolean,
-              ${rule.compliance_type || null}::text, ${rule.year_type || 'FY'}::text,
-              ${rule.country_code || 'IN'}::text, ${reqDocsArray}::text[],
-              ${rule.source || 'rules_engine'}::text,
-              ${rule.confidence_score || 1.0}::double precision,
-              ${false}::boolean, ${rule.source_url || null}::text,
-              ${rule.act || null}::text, ${rule.section || null}::text,
-              ${rule.authority || null}::text, ${rule.due_date_formula}::text,
-              ${rule.applicability_reason || null}::text,
-              ${periodKey}::text, ${periodLabel}::text,
-              ${user.id}::uuid, ${user.id}::uuid, NOW(), NOW()
-            ) ON CONFLICT (company_id, requirement, period_key)
-              WHERE period_key IS NOT NULL DO NOTHING`
-          )
-          totalGenerated++
-        } catch {
-          // Skip constraint violations silently
-        }
+      if (svcErr instanceof NoRecurringRulesError) {
+        return { success: false, error: 'No recurring requirements found. Generate compliances first.' }
       }
+      throw svcErr
     }
 
-    return {
-      success: true,
-      generated: totalGenerated,
-      yearsBack: actualYearsBack,
-      cappedAtIncorporation,
-    }
   } catch (error) {
     return handleActionError(error)
   }
