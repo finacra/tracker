@@ -61,25 +61,32 @@ export async function claimNextJobs(workerId: string, totalLimit: number = 30): 
   `
 
   // Claim — at most PER_COMPANY_BATCH_LIMIT per company, totalLimit overall.
-  // The ranked CTE numbers pending rows per company by enqueue order;
-  // `capped` enforces the per-company cap + overall limit. SKIP LOCKED
-  // prevents double-claim across concurrent workers.
-  //
-  // Note: PostgreSQL UPDATE doesn't accept LIMIT directly; the cap must
-  // live inside the CTE that the UPDATE joins against.
+  // PostgreSQL forbids `FOR UPDATE` in a query that uses window
+  // functions, so we lock and rank in separate CTEs:
+  //   1. `locked` — pulls a generous buffer of pending rows ORDER BY
+  //      enqueue time, applies FOR UPDATE SKIP LOCKED to claim them
+  //      exclusively against concurrent workers.
+  //   2. `ranked` — joins the locked rows back to the table and runs
+  //      ROW_NUMBER() OVER (PARTITION BY company_id) to enforce the
+  //      per-company concurrency cap.
+  //   3. `capped` — keeps rank <= cap, applies the overall LIMIT.
+  // The UPDATE joins against `capped` and bumps status + attempts.
+  const FETCH_BUFFER = totalLimit * 4
   const rows = await prisma.$queryRaw<ClaimedJob[]>`
-    WITH ranked AS (
-      SELECT
-        id,
-        document_id,
-        company_id,
-        source,
-        attempts,
-        ROW_NUMBER() OVER (PARTITION BY company_id ORDER BY enqueued_at ASC) AS rn
+    WITH locked AS (
+      SELECT id, document_id, company_id, source, attempts, enqueued_at
       FROM public.document_ingest_jobs
       WHERE status = 'pending'
         AND attempts < ${MAX_ATTEMPTS}
+      ORDER BY enqueued_at ASC
       FOR UPDATE SKIP LOCKED
+      LIMIT ${FETCH_BUFFER}
+    ),
+    ranked AS (
+      SELECT
+        id, document_id, company_id, source, attempts,
+        ROW_NUMBER() OVER (PARTITION BY company_id ORDER BY enqueued_at ASC) AS rn
+      FROM locked
     ),
     capped AS (
       SELECT id, document_id, company_id, source, attempts
