@@ -13,7 +13,7 @@ import {
   type AIRequirementForReview,
   type ValidateComplianceResult,
 } from '../../actions-intelligence'
-import { listFacts } from '../../actions-facts'
+import { listFactsForFY } from '../../actions-facts'
 import { queryKeys } from '@/lib/react-query/query-keys'
 import ComplianceIntakeForm from './ComplianceIntakeForm'
 
@@ -81,10 +81,15 @@ export default function ComplianceIntelligencePanel({
     queryKey: factsQueryKey,
     queryFn: async () => {
       if (!financialYear) return []
-      const fyStart = `${financialYear.slice(0, 4)}-04-01`
-      const fyEndYear = parseInt(financialYear.slice(0, 4), 10) + 1
-      const fyEnd = `${fyEndYear}-03-31`
-      const res = await listFacts(companyId, fyStart, fyEnd)
+      // Use the FY-aware server action — it parses the financialYear
+      // string with the same regex fyWindow() uses on the write path.
+      // The previous client-side `slice(0, 4)` parsing returned "FY 2"
+      // for "FY 2026-27" and produced Invalid Date strings that never
+      // matched anything in the DB.
+      const res = await listFactsForFY(companyId, financialYear)
+      if (!res.success) {
+        console.warn('[CIP:loadFacts] server returned error:', res.error)
+      }
       const list: ClientFact[] = (res.facts || []).map((f) => ({
         kind: f.kind,
         amount: f.amount,

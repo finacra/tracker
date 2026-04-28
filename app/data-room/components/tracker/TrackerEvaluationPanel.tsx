@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { runApplicabilityEvaluation, listAssessments, overrideAssessment } from '../../actions-evaluator'
-import { listFacts, recordUserFact } from '../../actions-facts'
+import { listFactsForFY, recordUserFact } from '../../actions-facts'
 import { showToast } from '@/components/ui/Toast'
 import {
   TRIGGER_QUESTIONS,
@@ -67,10 +67,10 @@ export default function TrackerEvaluationPanel({ companyId, financialYear }: Pro
       // the intake even though their data was already saved. Now we
       // treat ANY user_declared fact for this FY as proof the intake
       // has been done at least once.
-      const fyStart = `${financialYear.slice(0, 4)}-04-01`
-      const fyEndYear = parseInt(financialYear.slice(0, 4), 10) + 1
-      const fyEnd = `${fyEndYear}-03-31`
-      const factsRes = await listFacts(companyId, fyStart, fyEnd)
+      // Use the FY-aware variant — `financialYear` is "FY 2026-27" not
+      // "2026-27", so client-side `slice(0, 4)` parsing produces invalid
+      // date strings that match nothing.
+      const factsRes = await listFactsForFY(companyId, financialYear)
       const allFacts = factsRes.facts || []
       const userDeclaredCount = allFacts.filter(f => f.sourceKind === 'user_declared').length
       setNeedsIntake(userDeclaredCount === 0)

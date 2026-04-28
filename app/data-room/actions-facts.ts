@@ -199,3 +199,47 @@ export async function listFacts(
     return handleActionError(error)
   }
 }
+
+/**
+ * FY-aware variant of listFacts. Takes the financialYear string the
+ * UI already has (e.g. "FY 2026-27" or "2026-27") and resolves the
+ * window server-side via fyWindow — the SAME function recordUserFact
+ * and recordOnboardingFacts use to write the period_start/period_end
+ * columns. This keeps reads aligned with writes.
+ *
+ * The previous read path had each caller (CIP, IntakeForm) compute
+ * `fyStart = financialYear.slice(0, 4) + "-04-01"`. That works for
+ * "2026-27" but for "FY 2026-27" returns "FY 2-04-01" — an invalid
+ * date string. listFacts then casts it via `new Date(...)` which
+ * yields Invalid Date, and the resulting Prisma date comparison
+ * never matches anything. Result: facts existed in the DB but the
+ * UI saw 0 of them, which made the panel regress to "STEP 1 of 2"
+ * after every reload despite a successful save.
+ */
+export async function listFactsForFY(
+  companyId: string,
+  financialYear: string,
+  kinds?: string[],
+): Promise<ReturnType<typeof listFacts> extends Promise<infer R> ? R : never> {
+  try {
+    await assertCompanyAccess(companyId)
+    const { periodStart, periodEnd } = fyWindow(financialYear)
+    const rows = await getFactsForPeriod({ companyId, periodStart, periodEnd, kinds })
+    return {
+      success: true,
+      facts: rows.map((r) => ({
+        id: r.id,
+        kind: r.kind,
+        amount: r.amount ? Number(r.amount) : null,
+        unit: r.unit,
+        periodStart: r.period_start.toISOString().slice(0, 10),
+        periodEnd: r.period_end.toISOString().slice(0, 10),
+        counterparty: r.counterparty,
+        sourceKind: r.source_kind,
+        confidence: r.confidence,
+      })),
+    }
+  } catch (error) {
+    return handleActionError(error)
+  }
+}
