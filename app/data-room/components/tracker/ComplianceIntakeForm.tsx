@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { showToast } from '@/components/ui/Toast'
-import { listFacts, recordUserFacts } from '../../actions-facts'
+import { recordUserFacts } from '../../actions-facts'
 
 /**
  * Quick intake form that collects the key operational facts BEFORE
@@ -11,30 +11,40 @@ import { listFacts, recordUserFacts } from '../../actions-facts'
  *
  * Modelled after what tax software does: "Do you pay rent?" before
  * showing the rent TDS section. 8-10 questions, takes 2 minutes.
+ *
+ * Architectural note: this form does NOT fetch facts itself. The parent
+ * (ComplianceIntelligencePanel) is the single owner of fact state for
+ * the page; we receive `initialFacts` as a prop and hydrate synchronously
+ * from it on first render. After save we hand the new facts back via
+ * `onComplete(savedFacts)` so the parent can update its own state without
+ * a re-fetch — that path used to hit a PgBouncer read-after-write race.
  */
+
+export type IntakeClientFact = {
+  kind: string
+  amount: number | null
+  sourceKind: string
+}
+
+export type IntakeSavedFact = IntakeClientFact
 
 interface Props {
   companyId: string
   financialYear: string
-  onComplete: () => void
+  initialFacts: IntakeClientFact[]
+  onComplete: (savedFacts: IntakeSavedFact[]) => void
 }
 
 interface IntakeData {
-  // Rent
   paysRent: boolean | null
   monthlyRentAmount: string
-  // Contractors
   hiresContractors: boolean | null
   largestContractorPayment: string
-  // Professional fees
   paysProfessionalFees: boolean | null
   largestProfFeePayment: string
-  // Employees
   employeeCount: string
   anyEmployeeBelow21k: boolean | null
-  // Turnover
   annualTurnover: string
-  // Other
   isCompositionDealer: boolean | null
   hasImportsExports: boolean | null
   paysDirectorRemuneration: boolean | null
@@ -57,75 +67,52 @@ const INITIAL: IntakeData = {
   directorRemunerationAmount: '',
 }
 
-export default function ComplianceIntakeForm({ companyId, financialYear, onComplete }: Props) {
-  const [data, setData] = useState<IntakeData>(INITIAL)
-  const [saving, setSaving] = useState(false)
-  const [hydrating, setHydrating] = useState(true)
+function hydrate(initialFacts: IntakeClientFact[]): { data: IntakeData; hasPrefill: boolean } {
+  const userFacts = initialFacts.filter((f) => f.sourceKind === 'user_declared')
+  if (userFacts.length === 0) return { data: INITIAL, hasPrefill: false }
 
-  // Pre-populate from facts already recorded by onboarding (recordOnboardingFacts)
-  // or a previous intake save. Without this, even users who answered
-  // these questions in onboarding see a blank intake form and have to
-  // retype turnover, employees, GST, MSME, imports/exports, etc.
-  // Mapping fact.kind → IntakeData field, kept conservative (only the
-  // overlap between onboarding and intake is hydrated).
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      if (!financialYear) {
-        setHydrating(false)
-        return
-      }
-      try {
-        const fyStart = `${financialYear.slice(0, 4)}-04-01`
-        const fyEndYear = parseInt(financialYear.slice(0, 4), 10) + 1
-        const fyEnd = `${fyEndYear}-03-31`
-        const res = await listFacts(companyId, fyStart, fyEnd)
-        if (cancelled) return
-        const facts = (res.facts || []).filter(f => f.sourceKind === 'user_declared')
-        if (facts.length === 0) {
-          setHydrating(false)
-          return
-        }
-        const byKind = new Map(facts.map(f => [f.kind, f]))
-        const next: IntakeData = { ...INITIAL }
-        const headcount = byKind.get('headcount.total')
-        if (headcount?.amount != null) next.employeeCount = String(headcount.amount)
-        const turnover = byKind.get('turnover.annual')
-        if (turnover?.amount != null) next.annualTurnover = String(turnover.amount)
-        const rent = byKind.get('rent.monthly_payment')
-        if (rent?.amount != null) {
-          next.paysRent = rent.amount > 0
-          if (rent.amount > 0) next.monthlyRentAmount = String(rent.amount)
-        }
-        const contractor = byKind.get('contractor.annual_spend')
-        if (contractor?.amount != null) {
-          next.hiresContractors = contractor.amount > 0
-          if (contractor.amount > 0) next.largestContractorPayment = String(contractor.amount)
-        }
-        const profFee = byKind.get('professional_fee.annual_spend')
-        if (profFee?.amount != null) {
-          next.paysProfessionalFees = profFee.amount > 0
-          if (profFee.amount > 0) next.largestProfFeePayment = String(profFee.amount)
-        }
-        const director = byKind.get('director.remuneration')
-        if (director?.amount != null) {
-          next.paysDirectorRemuneration = director.amount > 0
-          if (director.amount > 0) next.directorRemunerationAmount = String(director.amount)
-        }
-        console.log('[IntakeForm:hydrate]', {
-          companyId,
-          financialYear,
-          hydratedFromKinds: Array.from(byKind.keys()),
-        })
-        setData(next)
-      } catch (err) {
-        console.warn('[IntakeForm:hydrate] threw', err instanceof Error ? err.message : err)
-      } finally {
-        if (!cancelled) setHydrating(false)
-      }
-    })()
-    return () => { cancelled = true }
-  }, [companyId, financialYear])
+  const byKind = new Map(userFacts.map((f) => [f.kind, f]))
+  const next: IntakeData = { ...INITIAL }
+
+  const headcount = byKind.get('headcount.total')
+  if (headcount?.amount != null) next.employeeCount = String(headcount.amount)
+  const turnover = byKind.get('turnover.annual')
+  if (turnover?.amount != null) next.annualTurnover = String(turnover.amount)
+  const rent = byKind.get('rent.monthly_payment')
+  if (rent?.amount != null) {
+    next.paysRent = rent.amount > 0
+    if (rent.amount > 0) next.monthlyRentAmount = String(rent.amount)
+  }
+  const contractor = byKind.get('contractor.annual_spend')
+  if (contractor?.amount != null) {
+    next.hiresContractors = contractor.amount > 0
+    if (contractor.amount > 0) next.largestContractorPayment = String(contractor.amount)
+  }
+  const profFee = byKind.get('professional_fee.annual_spend')
+  if (profFee?.amount != null) {
+    next.paysProfessionalFees = profFee.amount > 0
+    if (profFee.amount > 0) next.largestProfFeePayment = String(profFee.amount)
+  }
+  const director = byKind.get('director.remuneration')
+  if (director?.amount != null) {
+    next.paysDirectorRemuneration = director.amount > 0
+    if (director.amount > 0) next.directorRemunerationAmount = String(director.amount)
+  }
+
+  const hasPrefill =
+    next.employeeCount !== '' ||
+    next.annualTurnover !== '' ||
+    next.paysRent !== null ||
+    next.hiresContractors !== null ||
+    next.paysProfessionalFees !== null ||
+    next.paysDirectorRemuneration !== null
+  return { data: next, hasPrefill }
+}
+
+export default function ComplianceIntakeForm({ companyId, financialYear, initialFacts, onComplete }: Props) {
+  const initial = useMemo(() => hydrate(initialFacts), [initialFacts])
+  const [data, setData] = useState<IntakeData>(initial.data)
+  const [saving, setSaving] = useState(false)
 
   const set = <K extends keyof IntakeData>(key: K, value: IntakeData[K]) =>
     setData(prev => ({ ...prev, [key]: value }))
@@ -186,8 +173,6 @@ export default function ComplianceIntakeForm({ companyId, financialYear, onCompl
       }
 
       console.log('[IntakeForm] submitting', { companyId, factCount: facts.length, financialYear })
-      // Single batched roundtrip — was previously a sequential for-loop
-      // that paid Vercel cold-start tax (~3-5s) per fact.
       const res = await recordUserFacts(companyId, facts)
       if (!res.success) {
         console.error('[IntakeForm] save failed', res.error)
@@ -197,17 +182,24 @@ export default function ComplianceIntakeForm({ companyId, financialYear, onCompl
       }
       console.log('[IntakeForm] save ok', { factIds: res.factIds })
 
-      // Dispatch a global event so any other panel/component watching
-      // for facts (TrackerEvaluationPanel, CIP's needsIntake gate, etc.)
-      // refreshes immediately. Without this, a panel that loaded BEFORE
-      // the user completed intake would keep its stale "needsIntake=true"
-      // state until its own re-mount or its own deps changed.
+      // Hand the just-saved facts back to the parent so it can update
+      // its single fact-state without re-fetching from the DB. We mirror
+      // the FactPayload shape the parent expects (kind / amount / sourceKind).
+      const savedFacts: IntakeSavedFact[] = facts.map((f) => ({
+        kind: f.kind,
+        amount: typeof f.amount === 'number' ? f.amount : null,
+        sourceKind: 'user_declared',
+      }))
+
+      // Notify other listeners (chat, evaluator panel) that facts changed.
+      // CIP no longer relies on this for its OWN state — it gets the facts
+      // directly from onComplete — but other components still benefit.
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('cia:data-changed'))
       }
 
       showToast('Business details saved — evaluating compliances...', 'success')
-      onComplete()
+      onComplete(savedFacts)
     } catch (err) {
       console.error('[IntakeForm] threw',
         err instanceof Error ? err.message : String(err),
@@ -218,38 +210,18 @@ export default function ComplianceIntakeForm({ companyId, financialYear, onCompl
     setSaving(false)
   }
 
-  if (hydrating) {
-    return (
-      <div className="max-w-2xl mx-auto p-6">
-        <div className="flex items-center gap-3 text-sm text-gray-400">
-          <div className="w-4 h-4 border-2 border-gray-600 border-t-white rounded-full animate-spin" />
-          Loading what you've already told us…
-        </div>
-      </div>
-    )
-  }
-
-  const hasPrefill =
-    data.employeeCount !== '' ||
-    data.annualTurnover !== '' ||
-    data.paysRent !== null ||
-    data.hiresContractors !== null ||
-    data.paysProfessionalFees !== null ||
-    data.paysDirectorRemuneration !== null
-
   return (
     <div className="max-w-2xl mx-auto p-6">
       <div className="mb-6">
         <h3 className="text-xl font-light text-white">Tell us about your business</h3>
         <p className="text-sm text-gray-400 mt-1">
-          {hasPrefill
+          {initial.hasPrefill
             ? 'We pre-filled what you already shared during onboarding — confirm or update below.'
             : 'We need a few details to show only the compliances that apply to you. Takes 2 minutes.'}
         </p>
       </div>
 
       <div className="space-y-5">
-        {/* Rent */}
         <Question
           label="Do you pay office/premises rent?"
           value={data.paysRent}
@@ -265,7 +237,6 @@ export default function ComplianceIntakeForm({ companyId, financialYear, onCompl
           />
         )}
 
-        {/* Contractors */}
         <Question
           label="Do you hire contractors or sub-contractors?"
           value={data.hiresContractors}
@@ -281,7 +252,6 @@ export default function ComplianceIntakeForm({ companyId, financialYear, onCompl
           />
         )}
 
-        {/* Professional fees */}
         <Question
           label="Do you pay professional/technical fees (CA, lawyer, consultant)?"
           value={data.paysProfessionalFees}
@@ -297,7 +267,6 @@ export default function ComplianceIntakeForm({ companyId, financialYear, onCompl
           />
         )}
 
-        {/* Director remuneration */}
         <Question
           label="Do you pay director salary/remuneration?"
           value={data.paysDirectorRemuneration}
@@ -313,7 +282,6 @@ export default function ComplianceIntakeForm({ companyId, financialYear, onCompl
           />
         )}
 
-        {/* Employees */}
         <AmountField
           label="Total number of employees"
           value={data.employeeCount}
@@ -330,7 +298,6 @@ export default function ComplianceIntakeForm({ companyId, financialYear, onCompl
           />
         )}
 
-        {/* Turnover */}
         <AmountField
           label="Annual turnover (₹)"
           value={data.annualTurnover}
@@ -339,7 +306,6 @@ export default function ComplianceIntakeForm({ companyId, financialYear, onCompl
           hint="Determines tax audit (>₹1Cr), E-invoicing (>₹5Cr), QRMP eligibility"
         />
 
-        {/* GST composition */}
         <Question
           label="Are you a composition dealer under GST?"
           value={data.isCompositionDealer}
@@ -347,7 +313,6 @@ export default function ComplianceIntakeForm({ companyId, financialYear, onCompl
           hint="Composition dealers file CMP-08 + GSTR-4 instead of regular returns"
         />
 
-        {/* Imports/exports */}
         <Question
           label="Do you have imports or exports?"
           value={data.hasImportsExports}
@@ -358,7 +323,7 @@ export default function ComplianceIntakeForm({ companyId, financialYear, onCompl
 
       <div className="mt-8 flex items-center justify-between">
         <button
-          onClick={onComplete}
+          onClick={() => onComplete([])}
           className="text-sm text-gray-400 hover:text-white"
         >
           Skip for now
