@@ -409,16 +409,29 @@ async function resolveRequirementByNameAndPeriod(input: {
   const { companyId, documentType, periodKey } = input
   if (!documentType) return null
 
-  // Period key format varies across rules. The agent extracts "2024-25"
-  // but the rules-engine annual rules store "FY2024-25" (with prefix,
-  // no space) and other monthly rules store "2024-04" (YYYY-MM). Try
-  // all reasonable variants. Order: exact first, then variants.
+  // Period key format varies. Cover the common ones:
+  //   • Bare ("2026-Q3" / "2024-25" / "2024-04")
+  //   • FY prefix ("FY2024-25", "FY 2024-25") for annual rules
+  //   • Indian quarter→deadline-month mapping: a quarterly compliance
+  //     filed for Q3 of FY 2026-27 (Oct-Dec 2026) has its rule
+  //     period_key set to the DEADLINE MONTH "2027-01", not "2026-Q3".
+  //     Without this mapping, "Form 26Q for Q3 FY 2026-27" never
+  //     matches the rule "TDS Return (Form 24Q/26Q) — Q3 — Jan 2027"
+  //     (period_key=2027-01).
   const trimmedKey = periodKey.trim()
   const candidates = new Set<string>([trimmedKey])
   candidates.add(`FY${trimmedKey}`)
   candidates.add(`FY ${trimmedKey}`)
-  // If the agent gave "FY2024-25" or "FY 2024-25", strip and try bare
   candidates.add(trimmedKey.replace(/^FY\s*/i, ''))
+  const qm = trimmedKey.match(/^(\d{4})-Q([1-4])$/)
+  if (qm) {
+    const year = parseInt(qm[1], 10)
+    const q = parseInt(qm[2], 10)
+    const deadlineMonth = q === 1 ? `${year}-07` : q === 2 ? `${year}-10` : q === 3 ? `${year + 1}-01` : `${year + 1}-05`
+    candidates.add(deadlineMonth)
+    const endMonth = q === 1 ? `${year}-06` : q === 2 ? `${year}-09` : q === 3 ? `${year}-12` : `${year + 1}-03`
+    candidates.add(endMonth)
+  }
 
   const rows = await prisma.regulatoryRequirement.findMany({
     where: {
@@ -429,21 +442,30 @@ async function resolveRequirementByNameAndPeriod(input: {
   })
   if (rows.length === 0) return null
 
+  // Token-overlap match: "Form 26Q" tokens must all appear in the
+  // rule's tokens. Bridges short agent labels ("Form 26Q") against
+  // long rule names ("TDS Return (Form 24Q/26Q)") where pure
+  // substring fails because "/" breaks the substring.
+  const STOP = new Set(['form', 'the', 'of', 'and', 'or', 'a', 'an', 'for', 'in', 'to'])
+  function tokensOf(s: string): string[] {
+    return (s || '').toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length >= 2 && !STOP.has(t))
+  }
+  const docTokens = tokensOf(documentType)
   const docTypeLower = documentType.toLowerCase().trim()
+
   // 1. Exact base-name match (preferred)
   const exact = rows.find(r => stripPeriodSuffix(r.requirement).toLowerCase().trim() === docTypeLower)
   if (exact) return exact.id
 
-  // 2. Prefix / substring match — agent's documentType is often a
-  // prefix of the rule name (e.g. "MGT-7A" vs "MGT-7 / MGT-7A — Annual
-  // Return — FY2026-27"). After stripPeriodSuffix the rule reduces to
-  // its base; we then check the docType is a prefix or appears anywhere
-  // in the base.
-  const prefix = rows.find(r => {
-    const base = stripPeriodSuffix(r.requirement).toLowerCase()
-    return base.startsWith(docTypeLower) || base.includes(docTypeLower)
-  })
-  if (prefix) return prefix.id
+  // 2. Token-overlap match — every distinctive doc-type token must
+  // appear in the rule's tokens.
+  if (docTokens.length > 0) {
+    const tokenMatch = rows.find(r => {
+      const baseTokens = new Set(tokensOf(stripPeriodSuffix(r.requirement)))
+      return docTokens.every(t => baseTokens.has(t))
+    })
+    if (tokenMatch) return tokenMatch.id
+  }
 
   return null
 }

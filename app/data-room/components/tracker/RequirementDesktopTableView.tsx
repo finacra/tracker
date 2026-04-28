@@ -86,13 +86,42 @@ export default function RequirementDesktopTableView({
   const [savingBaseAmount, setSavingBaseAmount] = useState<Record<string, boolean>>({})
   const [openDocChecklist, setOpenDocChecklist] = useState<string | null>(null)
 
-  const uploadedDocSet = new Set(
-    vaultDocuments
-      .filter(d => d.requirement_id || d.requirementId)
-      .map(d => `${d.requirement_id || d.requirementId}::${(d.document_type || '').toLowerCase().trim()}`)
-  )
-  const isDocUploaded = (reqId: string, docName: string) =>
-    uploadedDocSet.has(`${reqId}::${docName.toLowerCase().trim()}`)
+  // Match a vault doc against a required-doc slot. The agent's
+  // `document_type` (e.g. "Form 26Q", "PAN Card") is a SHORT label;
+  // the rule's `required_documents` entries are LONG descriptive
+  // strings (e.g. "Form 140 (salary + non-salary TDS; formerly 24Q/26Q)").
+  // Pure exact-string matching never connects them — even when the
+  // doc is correctly linked to the requirement.
+  //
+  // Token-overlap match: tokenize both, require the SHORTER side's
+  // distinctive tokens (length ≥ 2, alphanumeric) to all appear in
+  // the LONGER side. Stop-words (form, the, of, etc.) are excluded
+  // so "Form 26Q" still demands "26q" present in the required text,
+  // and matches "...formerly 24Q/26Q" because "26q" appears there.
+  const STOP = new Set(['form', 'the', 'of', 'and', 'or', 'a', 'an', 'for', 'in', 'to'])
+  function tokensOf(s: string): string[] {
+    return (s || '')
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(t => t.length >= 2 && !STOP.has(t))
+  }
+  function docMatchesSlot(docType: string, requiredName: string): boolean {
+    const dt = tokensOf(docType)
+    const rn = tokensOf(requiredName)
+    if (dt.length === 0 || rn.length === 0) return false
+    // All distinctive tokens of the shorter side must appear in the longer.
+    const shorter = dt.length <= rn.length ? dt : rn
+    const longerSet = new Set(dt.length <= rn.length ? rn : dt)
+    return shorter.every(t => longerSet.has(t))
+  }
+
+  const isDocUploaded = (reqId: string, requiredName: string): boolean => {
+    return vaultDocuments.some(d => {
+      const rid = d.requirement_id || d.requirementId
+      if (rid !== reqId) return false
+      return docMatchesSlot(d.document_type || '', requiredName)
+    })
+  }
 
   const docsByRequirement = useMemo(() => {
     const map = new Map<string, any[]>()
@@ -409,7 +438,17 @@ export default function RequirementDesktopTableView({
                       if (!Array.isArray(requiredDocs) || requiredDocs.length === 0) {
                         return <div className="text-gray-500 text-sm">-</div>
                       }
-                      const uploadedCount = requiredDocs.filter((doc: string) => isDocUploaded(req.id, doc)).length
+                      const slotMatchCount = requiredDocs.filter((doc: string) => isDocUploaded(req.id, doc)).length
+                      // If the doc is linked to the requirement but doesn't
+                      // match a specific required-doc slot (agent
+                      // document_type vs CA-friendly long names), we still
+                      // want the count to reflect "user uploaded something".
+                      // Cap at requiredDocs.length so the chip never overflows.
+                      const linkedDocsCount = (docsByRequirement.get(req.id) || []).length
+                      const uploadedCount = Math.min(
+                        Math.max(slotMatchCount, linkedDocsCount),
+                        requiredDocs.length
+                      )
                       const allDone = uploadedCount === requiredDocs.length
                       const isOpen = openDocChecklist === req.id
                       return (
