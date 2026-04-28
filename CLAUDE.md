@@ -68,11 +68,24 @@ These rules came from a multi-PR perf sweep where I shipped fix-after-fix that "
 
 16. **Question dead code before optimizing it.** When you find `await expensiveCall()` in a critical path, the FIRST question is "what is the result actually used for?" Trace the assignment forward — does the value get persisted? Read by anything? Returned to the client? In this sprint a 30-second `generateEmbedding()` call was running on every onboarding because no one asked: the embedding wasn't even being persisted by the repository. The right fix was `git rm`, not `Promise.all`. **Never optimize code that does nothing.**
 
-17. **GitHub squash-merge silently drops diffs when develop has interleaved merge commits.** Three PRs in this sprint (#23, #25, #27) merged "successfully" but the squash commit on main contained zero of the actual file changes. Always verify after every `gh pr merge`:
-    ```
-    git fetch origin && git show origin/main:path/to/changed/file.ts | grep -n 'unique-string-from-your-diff'
-    ```
-    If the verification fails, open a follow-up PR immediately. To avoid: rebase develop onto main before opening the PR (no merge commits between your work and main).
+17. **GitHub squash-merge silently drops diffs when the source branch carries interleaved merge commits.** Three PRs in one sprint (#23, #25, #27) merged "successfully" but the squash commit on main contained zero of the actual file changes — issue #30 tracks the root cause. The repeat offender is `Merge remote-tracking branch 'origin/main' into develop` commits accumulating on `develop`, which corrupt the merge base GitHub uses for squash-diff computation when a feature branch (or develop itself) lands on main.
+
+    **Mandatory workflow** — these eliminate the bug class, in order of preference:
+
+    a. **Branch from `main`, not `develop`. PR back to `main`.** Feature branches must rebase onto `origin/main` immediately before `gh pr create`. This guarantees the PR has zero merge commits between its work and the target — squash logic stays simple and correct.
+
+    b. **Never merge `main` into a feature branch.** If you need fresh main-side work in your branch, `git rebase origin/main`, never `git merge origin/main`. Same for syncing `develop` (when unavoidable: `git rebase`, not `git merge`).
+
+    c. **Always verify after `gh pr merge --squash`.** Use the helper:
+       ```bash
+       scripts/verify-pr-merge.sh <PR_NUMBER>
+       ```
+       It compares the file list `gh pr view` reports vs. what actually landed in the squash commit. Exits non-zero on mismatch — at which point open a follow-up PR immediately. The legacy one-liner still works as a fallback:
+       ```bash
+       git fetch origin && git show origin/main:path/to/changed/file.ts | grep -n 'unique-string-from-your-diff'
+       ```
+
+    d. **Don't target `develop` for shippable work.** PRs that go to develop inherit its merge-commit pollution when develop later flows to main. The long-term path is to sunset develop (or treat it as a holding area you rebase onto main, never the other way around).
 
 18. **Smoke-test the user-facing flow YOU just changed before reporting done.** "Looks right in code" cost this team three rounds of follow-up PRs that day. The actual workflow is:
     1. Make the change
