@@ -190,9 +190,24 @@ FIELD COMPLETION RULES — fill EVERY field, think holistically:
   DIR-3 KYC → find the rule with "din-kyc" in its id
 
 For facts: only emit facts grounded in the document; confidence ≥ 0.6; follow
-the same kinds used elsewhere (rent.monthly_payment, contractor.annual_spend,
-salary.annual_bill, headcount.total, turnover.annual, gst.registered_state,
-director.remuneration, imports.annual_value, exports.annual_value).
+the same kinds used elsewhere. Permitted kinds:
+  Operational facts:
+    rent.monthly_payment, contractor.annual_spend, salary.annual_bill,
+    headcount.total, turnover.annual, gst.registered_state,
+    director.remuneration, imports.annual_value, exports.annual_value
+  Entity facts (PAN/GST/COI/MOA cert OCR — populate from the cert
+  itself, not the prompt context):
+    entity.pan                — PAN string (10 chars), payload: { value: "ABCPK1234R" }
+    entity.gstn               — GSTN string (15 chars), payload: { value: "29AABCX1234R1ZM" }
+    entity.cin                — CIN string (21 chars), payload: { value: "U72200KA2019PTC123456" }
+    entity.tan                — TAN string (10 chars), payload: { value: "BLRA12345A" }
+    entity.incorporation_date — periodStart = the date itself, payload: {}
+    entity.authorized_capital — amount in rupees, unit: "rupees", payload: {}
+    entity.paid_up_capital    — amount in rupees, unit: "rupees", payload: {}
+    entity.registered_state   — payload: { value: "Karnataka" }
+For entity.* facts that aren't period-bound, set periodStart and periodEnd
+to the document's registrationDate (or today if absent). Don't fabricate
+entity facts — only emit when the document literally contains them.
 Return { ..., "facts": [] } if nothing extractable.`
 
 function rulesForPrompt(rules: Awaited<ReturnType<typeof getRulesInForce>>): string {

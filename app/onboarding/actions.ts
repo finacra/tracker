@@ -329,6 +329,26 @@ export async function completeOnboarding(
         processDocumentContent(doc.id, company.id, doc.filePath).catch(err =>
           console.error(`Async processing failed for ${doc.id}:`, err)
         )
+
+        // Smart-ingest queue: PAN / GST / COI / MOA-AOA / etc. cert
+        // images get OCR'd and parsed for entity facts (PAN number,
+        // GSTN, CIN, incorporation date, authorized capital). Those
+        // facts back-fill `company_facts` with `confidence=0.7,
+        // sourceKind=document_extracted` while the user-typed values
+        // already in `company_facts` carry `confidence=1.0,
+        // sourceKind=user_declared` — the reader prefers typed on
+        // conflict, so OCR fills gaps without overriding correct
+        // entries. Fire-and-forget; failure logs but doesn't block
+        // onboarding completion.
+        const { enqueueIngestJob } = await import('@/lib/compliance/ingest-worker')
+        enqueueIngestJob({
+          documentId: doc.id,
+          companyId: company.id,
+          source: 'onboarding',
+        }).catch(err => {
+          console.error(`Onboarding ingest enqueue failed for ${doc.id}:`,
+            err instanceof Error ? err.message : err)
+        })
       }
     }
   }
