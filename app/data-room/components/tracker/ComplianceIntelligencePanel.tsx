@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import {
   generateComplianceForCompany,
   validateComplianceForCompany,
@@ -65,83 +65,94 @@ export default function ComplianceIntelligencePanel({
   onRequirementsApproved,
 }: ComplianceIntelligencePanelProps) {
   const [viewState, setViewState] = useState<ViewState>('idle')
-  // Intake completion is the gate for the Generate button. Without
-  // intake facts, the rules engine has to guess (rent? employees?
-  // turnover?) and the output is noisy. Loading happens once per
-  // mount; the form's onComplete refreshes this.
-  const [needsIntake, setNeedsIntake] = useState<boolean | null>(null) // null = unknown / loading
-  // Pin timestamp for the optimistic-update window. After the user
-  // saves the intake form we KNOW facts were written successfully, so
-  // we set needsIntake=false directly. But PgBouncer's transaction-mode
-  // routing means a listFacts query immediately after may land on a
-  // stale connection that hasn't seen the commit yet, returning 0
-  // facts and re-flipping needsIntake=true. This pin makes refreshes
-  // ignore that read-after-write race for 15s — long enough for any
-  // pooled connection to catch up.
-  const optimisticPinUntilRef = useRef<number>(0)
-  const refreshIntakeStatus = useCallback(async (opts?: { force?: boolean }) => {
-    if (!financialYear) {
-      setNeedsIntake(false)
-      return
-    }
-    // Honor the optimistic pin unless the caller explicitly forces.
-    // The mount-time refresh DOES bypass the pin (no pin yet at mount).
-    if (!opts?.force && Date.now() < optimisticPinUntilRef.current) {
-      console.log('[CIP:refreshIntakeStatus] skipped — within optimistic-pin window')
-      return
-    }
-    // Client-side timeout. Without this, a hung listFacts call would
-    // leave needsIntake = null forever, leaving the user staring at the
-    // "Checking your business profile…" placeholder spinner.
-    const timeoutSignal = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('LIST_FACTS_TIMEOUT')), 8_000),
-    )
-    try {
-      const fyStart = `${financialYear.slice(0, 4)}-04-01`
-      const fyEndYear = parseInt(financialYear.slice(0, 4), 10) + 1
-      const fyEnd = `${fyEndYear}-03-31`
-      const res = await Promise.race([
-        listFacts(companyId, fyStart, fyEnd),
-        timeoutSignal,
-      ])
-      const userDeclared = (res.facts || []).filter(f => f.sourceKind === 'user_declared').length
-      const next = userDeclared === 0
-      console.log('[CIP:refreshIntakeStatus]', {
-        companyId,
-        financialYear,
-        userDeclaredCount: userDeclared,
-        needsIntake: next,
-        sample: (res.facts || []).slice(0, 3).map(f => ({ kind: f.kind, source: f.sourceKind })),
-      })
-      // Belt-and-suspenders: if the optimistic pin is active and listFacts
-      // returned 0 user-declared facts, that's almost certainly the
-      // read-after-write race rather than truth — keep the optimistic value.
-      if (Date.now() < optimisticPinUntilRef.current && next === true) {
-        console.log('[CIP:refreshIntakeStatus] suppressing stale 0-facts read inside pin window')
-        return
-      }
-      setNeedsIntake(next)
-    } catch (err) {
-      console.warn('[CIP:refreshIntakeStatus] threw', err instanceof Error ? err.message : err)
-      setNeedsIntake(false) // fail open — don't block Generate on a status-check error
-    }
-  }, [companyId, financialYear])
-  useEffect(() => {
-    refreshIntakeStatus()
-  }, [refreshIntakeStatus])
+  // SINGLE SOURCE OF TRUTH for facts in this panel + the IntakeForm
+  // it owns. We fetch ONCE on mount, then mutate locally as the user
+  // saves. The IntakeForm receives this via prop and hydrates synchronously
+  // — no second listFacts call, no read-after-write race, no second
+  // timeout-recovery layer. After the user saves the intake the new
+  // facts are appended to this state directly because the client knows
+  // exactly what it just sent to the server.
+  type ClientFact = { kind: string; amount: number | null; sourceKind: string }
+  const [facts, setFacts] = useState<ClientFact[] | null>(null) // null = not yet loaded
+  const needsIntake: boolean | null =
+    facts === null
+      ? null
+      : facts.filter((f) => f.sourceKind === 'user_declared').length === 0
 
-  // Re-check intake status whenever facts change anywhere in the app
-  // (intake form save, evaluator run, agent mutation). Without this,
-  // a stale needsIntake=true could survive after the user completed
-  // intake — leading to "still asking for intake form after saving".
   useEffect(() => {
+    let cancelled = false
+    if (!financialYear) {
+      setFacts([])
+      return
+    }
+    ;(async () => {
+      try {
+        const fyStart = `${financialYear.slice(0, 4)}-04-01`
+        const fyEndYear = parseInt(financialYear.slice(0, 4), 10) + 1
+        const fyEnd = `${fyEndYear}-03-31`
+        const res = await listFacts(companyId, fyStart, fyEnd)
+        if (cancelled) return
+        const list: ClientFact[] = (res.facts || []).map((f) => ({
+          kind: f.kind,
+          amount: f.amount,
+          sourceKind: f.sourceKind,
+        }))
+        console.log('[CIP:loadFacts]', {
+          companyId,
+          financialYear,
+          total: list.length,
+          userDeclared: list.filter((f) => f.sourceKind === 'user_declared').length,
+        })
+        setFacts(list)
+      } catch (err) {
+        // Fail open: empty list lets the user proceed (they can still
+        // open intake and fill manually). Generation isn't blocked on
+        // a successful facts read.
+        console.warn('[CIP:loadFacts] threw', err instanceof Error ? err.message : err)
+        if (!cancelled) setFacts([])
+      }
+    })()
+    return () => { cancelled = true }
+  }, [companyId, financialYear])
+
+  // Other parts of the app (chat agent, document ingestion, evaluator)
+  // can mutate facts. When that happens we re-fetch — but only when the
+  // user is NOT mid-intake-save (handled by the local append). This
+  // listener is a fallback for external mutations only.
+  useEffect(() => {
+    if (!financialYear) return
     const handler = () => {
-      console.log('[CIP] cia:data-changed received — refreshing intake status')
-      refreshIntakeStatus()
+      console.log('[CIP] cia:data-changed received — re-fetching facts')
+      ;(async () => {
+        try {
+          const fyStart = `${financialYear.slice(0, 4)}-04-01`
+          const fyEndYear = parseInt(financialYear.slice(0, 4), 10) + 1
+          const fyEnd = `${fyEndYear}-03-31`
+          const res = await listFacts(companyId, fyStart, fyEnd)
+          const list: ClientFact[] = (res.facts || []).map((f) => ({
+            kind: f.kind,
+            amount: f.amount,
+            sourceKind: f.sourceKind,
+          }))
+          // Suppress regressions: if we have a richer local set and the
+          // server returns fewer user-declared facts (PgBouncer race), keep ours.
+          setFacts((prev) => {
+            const prevUd = (prev || []).filter((f) => f.sourceKind === 'user_declared').length
+            const nextUd = list.filter((f) => f.sourceKind === 'user_declared').length
+            if (prev && prevUd > 0 && nextUd === 0) {
+              console.log('[CIP] cia:data-changed read returned 0 user-declared — suppressing as stale')
+              return prev
+            }
+            return list
+          })
+        } catch (err) {
+          console.warn('[CIP] cia:data-changed re-fetch threw', err instanceof Error ? err.message : err)
+        }
+      })()
     }
     window.addEventListener('cia:data-changed', handler)
     return () => window.removeEventListener('cia:data-changed', handler)
-  }, [refreshIntakeStatus])
+  }, [companyId, financialYear])
   const [requirements, setRequirements] = useState<AIRequirementForReview[]>([])
   const [error, setError] = useState<string | null>(null)
   const [stats, setStats] = useState<{
@@ -188,22 +199,19 @@ export default function ComplianceIntelligencePanel({
     setViewState('generating')
     setError(null)
 
-    // Hard client-side bail-out via Promise.race. The previous
-    // implementation flipped a `timedOut` boolean but kept awaiting
-    // the same hung promise — useless, the UI stayed stuck on the
-    // spinner. With Promise.race, whichever resolves first wins; if
-    // the timeout fires we throw and land in the catch block.
-    const TIMEOUT_MS = 90_000
-    const timeoutSignal = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('CIP_GENERATE_TIMEOUT')), TIMEOUT_MS)
-    )
+    // No client-side timeout. Earlier we wrapped this in a 90s
+    // Promise.race because the server pipeline could hang past
+    // Vercel's 60s default. We've since (a) raised the route's
+    // maxDuration to 300, (b) replaced 1400 sequential DB roundtrips
+    // with two bulk INSERTs, and (c) moved AI validation out of the
+    // first-generate path. The server now reliably returns within
+    // ~30-60s. Artificially racing it against a client timer would
+    // re-introduce the original "spinner forever after Promise.race
+    // throws" bug class. Trust the server; it will respond.
 
     try {
       console.log('[CIP:handleGenerate] starting', { companyId })
-      const result = await Promise.race([
-        generateComplianceForCompany(companyId),
-        timeoutSignal,
-      ])
+      const result = await generateComplianceForCompany(companyId)
 
       if (!result.success) {
         console.error('[CIP:handleGenerate] server returned failure', result.error)
@@ -247,46 +255,18 @@ export default function ComplianceIntelligencePanel({
         }
       }
     } catch (err) {
-      const isTimeout = err instanceof Error && err.message === 'CIP_GENERATE_TIMEOUT'
       console.error('[CIP:handleGenerate] threw',
         err instanceof Error ? err.message : String(err),
         err instanceof Error ? err.stack : '')
-
-      // CRITICAL: leave the spinner state IMMEDIATELY before any further
-      // async work. The previous version awaited getAIRequirementsPendingReview
-      // here without a timeout — when that second server call also stalled
-      // on a Vercel cold start, viewState stayed 'generating' and the
-      // spinner ran forever. That's the real "infinite loop" the user
-      // saw: not the original Promise.race, but the second hidden await.
+      // Tear down the spinner FIRST, then do best-effort recovery. The
+      // server may have committed rules-engine rows even on partial
+      // failure (we use bulk INSERT that's all-or-nothing per chunk,
+      // but multiple chunks can land independently), so we still trigger
+      // a tracker refresh to show whatever did land.
       const msg = err instanceof Error ? err.message : 'Generation failed'
-      setError(isTimeout
-        ? 'Generation took longer than expected (90s+). Any compliances that did land are now visible in the tracker below — click Re-evaluate to retry.'
-        : msg)
+      setError(msg)
       setViewState('error')
-
-      // Best-effort recovery — refresh the tracker (cheap, fire-and-forget)
-      // and probe the AI review queue (with its own timeout). Both run
-      // AFTER the spinner has been torn down, so a hang here is invisible
-      // to the user.
-      try {
-        onRequirementsApproved()
-      } catch {}
-
-      if (isTimeout) {
-        try {
-          const probeTimeout = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('REVIEW_PROBE_TIMEOUT')), 8_000),
-          )
-          const reviewResult = await Promise.race([
-            getAIRequirementsPendingReview(companyId),
-            probeTimeout,
-          ])
-          if (reviewResult.success && reviewResult.requirements && reviewResult.requirements.length > 0) {
-            setRequirements(reviewResult.requirements)
-            setViewState('reviewing')
-          }
-        } catch {}
-      }
+      try { onRequirementsApproved() } catch {}
     }
   }, [companyId, onRequirementsApproved])
 
@@ -461,16 +441,32 @@ export default function ComplianceIntelligencePanel({
         <ComplianceIntakeForm
           companyId={companyId}
           financialYear={financialYear}
-          onComplete={() => {
-            // Optimistic — the intake form only calls onComplete on a
-            // SUCCESSFUL save (it surfaces errors itself and bails out).
-            // So we know facts are written. Pin the optimistic value
-            // for 15s so the cia:data-changed listener (and our own
-            // belt-and-suspenders refresh below) can't clobber it via
-            // the read-after-write race where PgBouncer transaction-
-            // mode routing returns 0 facts from a stale connection.
-            optimisticPinUntilRef.current = Date.now() + 15_000
-            setNeedsIntake(false)
+          // Hydrate the form synchronously from the parent's facts —
+          // no second listFacts call inside the form, no read-after-write
+          // race, no separate timeout to manage.
+          initialFacts={facts || []}
+          onComplete={(savedFacts) => {
+            // The intake form only calls onComplete on SUCCESS and
+            // hands back the exact rows it just wrote. We append them
+            // directly to our local state — no need to re-fetch from
+            // the DB and no PgBouncer race to dodge.
+            setFacts((prev) => {
+              const base = prev || []
+              const next = [...base]
+              const seen = new Set(base.map((f) => `${f.kind}|${f.sourceKind}`))
+              for (const sf of savedFacts) {
+                const key = `${sf.kind}|${sf.sourceKind}`
+                if (seen.has(key)) {
+                  // upsert: replace existing user_declared fact of same kind
+                  const idx = next.findIndex((f) => f.kind === sf.kind && f.sourceKind === sf.sourceKind)
+                  if (idx >= 0) next[idx] = sf
+                } else {
+                  next.push(sf)
+                  seen.add(key)
+                }
+              }
+              return next
+            })
             setViewState('idle')
             // Trigger generate immediately so the user doesn't have
             // to click another button after completing intake.

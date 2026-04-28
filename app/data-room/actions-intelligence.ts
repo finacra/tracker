@@ -55,6 +55,7 @@ export async function generateComplianceForCompany(
   companyId: string,
   options?: { skipAI?: boolean }
 ): Promise<GenerateComplianceResult> {
+  const t0 = Date.now()
   try {
     const user = await getCurrentUserOrNull()
     if (!user) return { success: false, error: 'Not authenticated' }
@@ -118,8 +119,13 @@ export async function generateComplianceForCompany(
     if (newRules.length > 0) {
       rulesInsertedCount = await bulkInsertRulesEngineResults(companyId, newRules, user.id, batchId, ruleProfile.incorporationDate)
     }
+    console.log('[generateComplianceForCompany] rules engine done', { ms: Date.now() - t0, inserted: rulesInsertedCount })
 
     // ── Step 2: Perplexity AI (specialized, cached by profile key) ───
+    // Validation (Step 3 in the old flow) is now a SEPARATE explicit
+    // "Validate with AI" action — running it inline added 30-60s and
+    // only catches edge cases. First-generate stays focused on getting
+    // the user a usable tracker quickly: rules engine + AI discoveries.
     let aiCount = 0
     let needsReview = 0
 
@@ -152,107 +158,32 @@ export async function generateComplianceForCompany(
         }
       } catch (aiError) {
         // AI failure is non-fatal — rules engine results are already saved
-        console.warn('[generateComplianceForCompany] AI validation failed (non-fatal):', aiError instanceof Error ? aiError.message : aiError)
+        console.warn('[generateComplianceForCompany] AI generation failed (non-fatal):', aiError instanceof Error ? aiError.message : aiError)
       }
     }
 
-    // ── Step 3: Perplexity AI Validation (review rules engine output) ──
-    let validationRan = false
-    let validatedCount = 0
-    let flaggedCount = 0
-    let removedByValidation = 0
-    let validationResults: GenerateComplianceResult['validationResults'] = []
-
-    try {
-      // Fetch all requirements just inserted (rules engine + AI)
-      const allReqs = await prisma.$queryRaw<any[]>(
-        Prisma.sql`SELECT id, requirement, category, compliance_type, due_date::text as due_date, source
-          FROM regulatory_requirements
-          WHERE company_id = ${companyId}::uuid
-          ORDER BY category, requirement`
-      )
-
-      if (allReqs && allReqs.length > 0) {
-        const validationResult = await validateExistingCompliances(
-          company as any,
-          allReqs.map((r: any) => ({
-            requirement: r.requirement,
-            category: r.category,
-            compliance_type: r.compliance_type,
-            due_date: r.due_date,
-            source: r.source,
-          }))
-        )
-
-        if (validationResult.success) {
-          validationRan = true
-          validatedCount = validationResult.validations.length
-          flaggedCount = validationResult.flaggedCount
-
-          // Process validation results
-          for (const v of validationResult.validations) {
-            if (v.verdict === 'not_applicable') {
-              // Find matching requirement and delete it
-              const match = allReqs.find((r: any) =>
-                r.requirement.toLowerCase().includes(v.requirementName.toLowerCase().slice(0, 30)) ||
-                v.requirementName.toLowerCase().includes(r.requirement.toLowerCase().slice(0, 30))
-              )
-              if (match) {
-                await prisma.$executeRaw(
-                  Prisma.sql`DELETE FROM regulatory_requirements
-                    WHERE id = ${match.id}::uuid AND company_id = ${companyId}::uuid`
-                )
-                removedByValidation++
-              }
-            } else if (v.verdict === 'uncertain') {
-              // Mark as needs CA review
-              const match = allReqs.find((r: any) =>
-                r.requirement.toLowerCase().includes(v.requirementName.toLowerCase().slice(0, 30)) ||
-                v.requirementName.toLowerCase().includes(r.requirement.toLowerCase().slice(0, 30))
-              )
-              if (match) {
-                await prisma.$executeRaw(
-                  Prisma.sql`UPDATE regulatory_requirements
-                    SET needs_ca_review = true,
-                        applicability_reason = COALESCE(applicability_reason, '') || ${'\n\n⚠️ AI Validation: ' + v.reason}::text,
-                        updated_at = NOW()
-                    WHERE id = ${match.id}::uuid AND company_id = ${companyId}::uuid`
-                )
-              }
-            }
-
-            // Collect results for UI display (only flagged items)
-            if (v.verdict !== 'applicable') {
-              validationResults!.push({
-                requirementName: v.requirementName,
-                verdict: v.verdict,
-                reason: v.reason,
-                sourceUrl: v.sourceUrl,
-              })
-            }
-          }
-        }
-      }
-    } catch (valError) {
-      console.warn('[generateComplianceForCompany] Validation failed (non-fatal):', valError instanceof Error ? valError.message : valError)
-    }
-
+    console.log('[generateComplianceForCompany] done', { totalMs: Date.now() - t0, rulesInsertedCount, aiCount })
     return {
       success: true,
       batchId,
-      totalGenerated: rulesInsertedCount + aiCount - removedByValidation,
+      totalGenerated: rulesInsertedCount + aiCount,
       rulesEngineCount: rulesInsertedCount,
       aiCount,
       highConfidence: newRules.length,
       needsReview,
       missingProfileFields: rulesResult.missingProfileFields,
-      validationRan,
-      validatedCount,
-      flaggedCount,
-      removedByValidation,
-      validationResults,
+      // Validation no longer runs inline — left as zero/false. The
+      // standalone validateComplianceForCompany action covers it.
+      validationRan: false,
+      validatedCount: 0,
+      flaggedCount: 0,
+      removedByValidation: 0,
+      validationResults: [],
     }
   } catch (error) {
+    console.error('[generateComplianceForCompany] threw',
+      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.stack : '')
     return handleActionError(error)
   }
 }
@@ -284,6 +215,44 @@ function isRuleDuplicate(
 }
 
 // ── Bulk Insert Rules Engine Results ─────────────────────────────────────
+//
+// Old implementation did:
+//   for each rule (~30):
+//     for each deadline (~24 periods over 2 FYs):
+//       SELECT 1 FROM regulatory_requirements WHERE …  -- existence check
+//       INSERT INTO regulatory_requirements …            -- one row
+//
+// At ~720 round-trips × ~5ms PgBouncer overhead, that's ~3.6s of pure
+// network latency on top of any actual SQL work. Combined with cold
+// starts and the LLM call later in the pipeline, this was a major
+// reason generation hit Vercel's function timeout.
+//
+// New implementation:
+//   1) Single SELECT to fetch ALL existing (requirement, period_key)
+//      tuples for the company. (One round-trip, regardless of rule count.)
+//   2) Build candidate rows in memory.
+//   3) Filter out ones that already exist.
+//   4) Single multi-VALUES INSERT for the rest. (One round-trip.)
+
+interface PendingInsert {
+  category: string
+  requirement: string
+  description: string
+  status: string
+  dueDate: string | null
+  penalty: string | null
+  isCritical: boolean
+  complianceType: string | null
+  requiredDocsArray: string
+  sourceUrl: string | null
+  act: string | null
+  section: string | null
+  authority: string | null
+  dueDateFormula: string | null
+  matchReasons: string
+  periodKey: string | null
+  periodLabel: string | null
+}
 
 async function bulkInsertRulesEngineResults(
   companyId: string,
@@ -294,9 +263,23 @@ async function bulkInsertRulesEngineResults(
 ): Promise<number> {
   const fyProfile = buildIndianFYProfile(incorporationDate || new Date())
   const now = new Date()
-  let totalInserted = 0
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 
-  // Sequential inserts (no interactive transaction — compatible with PgBouncer)
+  // Step 1: ONE round-trip to fetch all existing (requirement, period_key)
+  // pairs for this company. We use COALESCE to normalise NULL period_key
+  // to '' so set-membership checks match the JS-side keys we build below.
+  const existingRows = await prisma.$queryRaw<Array<{ requirement: string; period_key: string | null }>>(
+    Prisma.sql`SELECT requirement, period_key
+      FROM regulatory_requirements
+      WHERE company_id = ${companyId}::uuid`
+  )
+  const existingKeys = new Set(
+    (existingRows || []).map((r) => `${r.requirement}|${r.period_key ?? ''}`)
+  )
+
+  // Step 2: Build all pending rows in memory.
+  const pending: PendingInsert[] = []
+
   for (const ec of evaluated) {
     const rule = ec.rule
     const complianceType = frequencyToComplianceType(rule.frequency)
@@ -307,115 +290,113 @@ async function bulkInsertRulesEngineResults(
       ? `\n\n⚠️ Missing data: ${ec.missingData.join('; ')}`
       : ''
     const description = `${rule.applicabilityReason}${missingWarnings}`
-
     const isRecurring = ['monthly', 'quarterly', 'half-yearly', 'annual'].includes(rule.frequency)
 
     if (isRecurring && rule.dueDateFormula) {
-      // Pass FY start as startFrom so all periods from FY start are generated (not just future ones)
       const deadlines = computeDeadlines(rule.dueDateFormula, fyProfile, 24, undefined, fyProfile.financialYearStart)
-
       if (deadlines.length > 0) {
         for (const dl of deadlines) {
           const dueDate = dl.date.toISOString().split('T')[0]
           const periodKey = dl.period || null
           const periodLabel = dl.label || null
-          // Compare dates only (ignore time) — due today = not_started, before today = overdue
-          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
           const dueDay = new Date(dl.date.getFullYear(), dl.date.getMonth(), dl.date.getDate())
           const status = dueDay < today ? 'overdue' : 'not_started'
-
-          // Build requirement name with period context (e.g., "TDS Payment — For Apr 2026")
           const reqName = periodLabel ? `${rule.name} — ${periodLabel}` : rule.name
-
-          // Check if this exact requirement+period already exists (avoids ON CONFLICT constraint dependency)
-          const existing = await prisma.$queryRaw<any[]>(
-            Prisma.sql`SELECT 1 FROM regulatory_requirements
-              WHERE company_id = ${companyId}::uuid
-                AND requirement = ${reqName}::text
-                AND period_key = ${periodKey}::text
-              LIMIT 1`
-          )
-          if (existing && existing.length > 0) continue
-
-          await prisma.$queryRaw(
-            Prisma.sql`INSERT INTO regulatory_requirements (
-              company_id, category, requirement, description, status,
-              due_date, penalty, is_critical, compliance_type,
-              year_type, country_code, required_documents,
-              source, confidence_score, needs_ca_review,
-              source_url, act, section, authority,
-              due_date_formula, applicability_reason, ai_batch_id,
-              period_key, period_label,
-              app_created_by, app_updated_by, created_at, updated_at
-            ) VALUES (
-              ${companyId}::uuid, ${rule.category}::text, ${reqName}::text,
-              ${description}::text, ${status}::text, ${dueDate}::date,
-              ${rule.penalty}::text, ${rule.isCritical}::boolean,
-              ${complianceType || null}::text, 'FY'::text, 'IN'::text,
-              ${requiredDocsArray}::text[], 'rules_engine'::text,
-              ${1.0}::double precision, ${false}::boolean,
-              ${rule.sourceUrl}::text, ${rule.act}::text, ${rule.section}::text,
-              ${rule.authority}::text, ${rule.dueDateFormula}::text,
-              ${matchReasons}::text, ${batchId}::text,
-              ${periodKey}::text, ${periodLabel}::text,
-              ${userId}::uuid, ${userId}::uuid, NOW(), NOW()
-            )`
-          )
-          totalInserted++
+          const key = `${reqName}|${periodKey ?? ''}`
+          if (existingKeys.has(key)) continue
+          existingKeys.add(key) // dedup within this run too
+          pending.push({
+            category: rule.category,
+            requirement: reqName,
+            description,
+            status,
+            dueDate,
+            penalty: rule.penalty,
+            isCritical: rule.isCritical,
+            complianceType: complianceType || null,
+            requiredDocsArray,
+            sourceUrl: rule.sourceUrl,
+            act: rule.act,
+            section: rule.section,
+            authority: rule.authority,
+            dueDateFormula: rule.dueDateFormula,
+            matchReasons,
+            periodKey,
+            periodLabel,
+          })
         }
-      } else {
-        await insertSingleRequirement(prisma, companyId, rule, complianceType, description, requiredDocsArray, matchReasons, batchId, userId, fyProfile)
-        totalInserted++
+        continue
       }
-    } else {
-      await insertSingleRequirement(prisma, companyId, rule, complianceType, description, requiredDocsArray, matchReasons, batchId, userId, fyProfile)
-      totalInserted++
+      // fall through to single-row insert below
     }
+
+    // Single-row (non-recurring or no deadlines computed) path
+    let dueDate: string | null = null
+    try {
+      const nextDate = computeNextDeadline(rule.dueDateFormula, fyProfile)
+      if (nextDate) dueDate = nextDate.toISOString().split('T')[0]
+    } catch { /* non-fatal */ }
+    const key = `${rule.name}|`
+    if (existingKeys.has(key)) continue
+    existingKeys.add(key)
+    pending.push({
+      category: rule.category,
+      requirement: rule.name,
+      description,
+      status: 'not_started',
+      dueDate,
+      penalty: rule.penalty,
+      isCritical: rule.isCritical,
+      complianceType: complianceType || null,
+      requiredDocsArray,
+      sourceUrl: rule.sourceUrl,
+      act: rule.act,
+      section: rule.section,
+      authority: rule.authority,
+      dueDateFormula: rule.dueDateFormula,
+      matchReasons,
+      periodKey: null,
+      periodLabel: null,
+    })
   }
 
-  return totalInserted
-}
+  if (pending.length === 0) return 0
 
-async function insertSingleRequirement(
-  tx: any,
-  companyId: string,
-  rule: ComplianceRule,
-  complianceType: string | null,
-  description: string,
-  requiredDocsArray: string,
-  matchReasons: string,
-  batchId: string,
-  userId: string,
-  fyProfile: any
-): Promise<void> {
-  let dueDate: string | null = null
-  try {
-    const nextDate = computeNextDeadline(rule.dueDateFormula, fyProfile)
-    if (nextDate) dueDate = nextDate.toISOString().split('T')[0]
-  } catch { /* non-fatal */ }
-
-  await tx.$queryRaw(
-    Prisma.sql`INSERT INTO regulatory_requirements (
+  // Step 3: ONE round-trip — multi-VALUES INSERT.
+  // PostgreSQL parameter limit is 65k; we have 26 params/row, so chunk
+  // generously (1000 rows ≈ 26k params) — well under the cap and never
+  // anywhere close to it for a real company (~30 rules × 24 deadlines).
+  const CHUNK = 1000
+  let totalInserted = 0
+  for (let i = 0; i < pending.length; i += CHUNK) {
+    const chunk = pending.slice(i, i + CHUNK)
+    const valuesSql = chunk.map((p) => Prisma.sql`(
+      ${companyId}::uuid, ${p.category}::text, ${p.requirement}::text,
+      ${p.description}::text, ${p.status}::text, ${p.dueDate}::date,
+      ${p.penalty}::text, ${p.isCritical}::boolean,
+      ${p.complianceType}::text, 'FY'::text, 'IN'::text,
+      ${p.requiredDocsArray}::text[], 'rules_engine'::text,
+      ${1.0}::double precision, ${false}::boolean,
+      ${p.sourceUrl}::text, ${p.act}::text, ${p.section}::text,
+      ${p.authority}::text, ${p.dueDateFormula}::text,
+      ${p.matchReasons}::text, ${batchId}::text,
+      ${p.periodKey}::text, ${p.periodLabel}::text,
+      ${userId}::uuid, ${userId}::uuid, NOW(), NOW()
+    )`)
+    await prisma.$executeRaw(Prisma.sql`INSERT INTO regulatory_requirements (
       company_id, category, requirement, description, status,
       due_date, penalty, is_critical, compliance_type,
       year_type, country_code, required_documents,
       source, confidence_score, needs_ca_review,
       source_url, act, section, authority,
       due_date_formula, applicability_reason, ai_batch_id,
+      period_key, period_label,
       app_created_by, app_updated_by, created_at, updated_at
-    ) VALUES (
-      ${companyId}::uuid, ${rule.category}::text, ${rule.name}::text,
-      ${description}::text, 'not_started'::text, ${dueDate}::date,
-      ${rule.penalty}::text, ${rule.isCritical}::boolean,
-      ${complianceType || null}::text, 'FY'::text, 'IN'::text,
-      ${requiredDocsArray}::text[], 'rules_engine'::text,
-      ${1.0}::double precision, ${false}::boolean,
-      ${rule.sourceUrl}::text, ${rule.act}::text, ${rule.section}::text,
-      ${rule.authority}::text, ${rule.dueDateFormula}::text,
-      ${matchReasons}::text, ${batchId}::text,
-      ${userId}::uuid, ${userId}::uuid, NOW(), NOW()
-    )`
-  )
+    ) VALUES ${Prisma.join(valuesSql, ',')}`)
+    totalInserted += chunk.length
+  }
+
+  return totalInserted
 }
 
 // ── Bulk Insert AI Requirements ────────────────────────────────────────────
@@ -425,76 +406,53 @@ async function bulkInsertAIRequirements(
   requirements: GeneratedRequirement[],
   userId: string
 ): Promise<void> {
-  // Sequential inserts (no interactive transaction — compatible with PgBouncer)
-  for (const req of requirements) {
+  if (requirements.length === 0) return
+  // Single multi-VALUES INSERT (same pattern as rules engine bulk insert)
+  const valuesSql = requirements.map((req) => {
     const dueDateStr = req.due_date ? req.due_date.toISOString().split('T')[0] : null
     const reqDocs = req.required_documents || []
     const reqDocsArray = `{${reqDocs.map((d: string) => `"${d.replace(/"/g, '\\"')}"`).join(',')}}`
-
-    await prisma.$queryRaw(
-        Prisma.sql`INSERT INTO regulatory_requirements (
-          company_id,
-          category,
-          requirement,
-          description,
-          status,
-          due_date,
-          penalty,
-          is_critical,
-          compliance_type,
-          entity_type,
-          industry,
-          industry_category,
-          year_type,
-          country_code,
-          required_documents,
-          source,
-          confidence_score,
-          needs_ca_review,
-          source_url,
-          act,
-          section,
-          authority,
-          due_date_formula,
-          applicability_reason,
-          ai_batch_id,
-          app_created_by,
-          app_updated_by,
-          created_at,
-          updated_at
-        ) VALUES (
-          ${companyId}::uuid,
-          ${req.category}::text,
-          ${req.requirement}::text,
-          ${req.description || null}::text,
-          ${req.status}::text,
-          ${dueDateStr}::date,
-          ${req.penalty || null}::text,
-          ${req.is_critical}::boolean,
-          ${req.compliance_type || null}::text,
-          ${req.entity_type || null}::text,
-          ${req.industry || null}::text,
-          ${req.industry_category || null}::text,
-          ${req.year_type || 'FY'}::text,
-          ${req.country_code || 'IN'}::text,
-          ${reqDocsArray}::text[],
-          ${req.source}::text,
-          ${req.confidence_score}::double precision,
-          ${req.needs_ca_review}::boolean,
-          ${req.source_url || null}::text,
-          ${req.act || null}::text,
-          ${req.section || null}::text,
-          ${req.authority || null}::text,
-          ${req.due_date_formula || null}::text,
-          ${req.applicability_reason || null}::text,
-          ${req.ai_batch_id || null}::text,
-          ${userId}::uuid,
-          ${userId}::uuid,
-          NOW(),
-          NOW()
-        )`
-    )
-  }
+    return Prisma.sql`(
+      ${companyId}::uuid,
+      ${req.category}::text,
+      ${req.requirement}::text,
+      ${req.description || null}::text,
+      ${req.status}::text,
+      ${dueDateStr}::date,
+      ${req.penalty || null}::text,
+      ${req.is_critical}::boolean,
+      ${req.compliance_type || null}::text,
+      ${req.entity_type || null}::text,
+      ${req.industry || null}::text,
+      ${req.industry_category || null}::text,
+      ${req.year_type || 'FY'}::text,
+      ${req.country_code || 'IN'}::text,
+      ${reqDocsArray}::text[],
+      ${req.source}::text,
+      ${req.confidence_score}::double precision,
+      ${req.needs_ca_review}::boolean,
+      ${req.source_url || null}::text,
+      ${req.act || null}::text,
+      ${req.section || null}::text,
+      ${req.authority || null}::text,
+      ${req.due_date_formula || null}::text,
+      ${req.applicability_reason || null}::text,
+      ${req.ai_batch_id || null}::text,
+      ${userId}::uuid,
+      ${userId}::uuid,
+      NOW(),
+      NOW()
+    )`
+  })
+  await prisma.$executeRaw(Prisma.sql`INSERT INTO regulatory_requirements (
+    company_id, category, requirement, description, status,
+    due_date, penalty, is_critical, compliance_type,
+    entity_type, industry, industry_category, year_type, country_code,
+    required_documents, source, confidence_score, needs_ca_review,
+    source_url, act, section, authority,
+    due_date_formula, applicability_reason, ai_batch_id,
+    app_created_by, app_updated_by, created_at, updated_at
+  ) VALUES ${Prisma.join(valuesSql, ',')}`)
 }
 
 // ── Get AI-Generated Requirements Pending Review ───────────────────────────
