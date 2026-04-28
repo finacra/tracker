@@ -390,12 +390,23 @@ async function resolveRequirementByNameAndPeriod(input: {
   const { companyId, documentType, periodKey } = input
   if (!documentType) return null
 
+  // Period key format varies across rules. The agent extracts "2024-25"
+  // but the rules-engine annual rules store "FY2024-25" (with prefix,
+  // no space) and other monthly rules store "2024-04" (YYYY-MM). Try
+  // all reasonable variants. Order: exact first, then variants.
+  const trimmedKey = periodKey.trim()
+  const candidates = new Set<string>([trimmedKey])
+  candidates.add(`FY${trimmedKey}`)
+  candidates.add(`FY ${trimmedKey}`)
+  // If the agent gave "FY2024-25" or "FY 2024-25", strip and try bare
+  candidates.add(trimmedKey.replace(/^FY\s*/i, ''))
+
   const rows = await prisma.regulatoryRequirement.findMany({
     where: {
       company_id: companyId,
-      period_key: periodKey,
+      period_key: { in: Array.from(candidates) },
     },
-    select: { id: true, requirement: true },
+    select: { id: true, requirement: true, period_key: true },
   })
   if (rows.length === 0) return null
 
@@ -404,7 +415,11 @@ async function resolveRequirementByNameAndPeriod(input: {
   const exact = rows.find(r => stripPeriodSuffix(r.requirement).toLowerCase().trim() === docTypeLower)
   if (exact) return exact.id
 
-  // 2. Prefix match — agent's documentType is often a prefix of the rule name
+  // 2. Prefix / substring match — agent's documentType is often a
+  // prefix of the rule name (e.g. "MGT-7A" vs "MGT-7 / MGT-7A — Annual
+  // Return — FY2026-27"). After stripPeriodSuffix the rule reduces to
+  // its base; we then check the docType is a prefix or appears anywhere
+  // in the base.
   const prefix = rows.find(r => {
     const base = stripPeriodSuffix(r.requirement).toLowerCase()
     return base.startsWith(docTypeLower) || base.includes(docTypeLower)
