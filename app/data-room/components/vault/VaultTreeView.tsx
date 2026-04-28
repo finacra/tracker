@@ -11,6 +11,7 @@ import {
   moveDocument,
   deleteDocument,
   bulkDeleteDocuments,
+  getDocumentSignedUrl,
 } from '@/app/data-room/actions-vault'
 import VersionHistoryModal from './VersionHistoryModal'
 import ReviewIngestModal from './ReviewIngestModal'
@@ -428,9 +429,9 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
             onShowVersions={setVersionHistoryDoc}
             onUploadNewVersion={onUploadNewVersion}
             onUploadToFolder={onUploadToFolder}
-            onPreviewDocument={onPreviewDocument}
             ingestByDoc={ingestByDoc}
             onReview={setReviewDocId}
+            companyId={companyId}
           />
         ))}
       </div>
@@ -483,9 +484,9 @@ function FolderNode({
   onShowVersions,
   onUploadNewVersion,
   onUploadToFolder,
-  onPreviewDocument,
   ingestByDoc,
   onReview,
+  companyId,
 }: {
   folder: Folder
   depth: number
@@ -494,6 +495,7 @@ function FolderNode({
   expanded: Set<string>
   selected: Set<string>
   canEdit: boolean
+  companyId: string
   onToggleExpand: (id: string) => void
   onToggleSelect: (id: string) => void
   onCreateSubfolder: (parentId: string | null) => void
@@ -505,7 +507,6 @@ function FolderNode({
   onShowVersions: (d: Doc) => void
   onUploadNewVersion?: (d: Doc) => void
   onUploadToFolder?: (folderId: string, folderName: string) => void
-  onPreviewDocument?: (doc: Doc) => void
   ingestByDoc: Record<string, IngestStatus>
   onReview: (documentId: string) => void
 }) {
@@ -604,12 +605,12 @@ function FolderNode({
                   depth={depth}
                   selected={selected.has(doc.id)}
                   canEdit={canEdit}
+                  companyId={companyId}
                   ingestStatus={ingestByDoc[doc.id] || null}
                   onToggleSelect={onToggleSelect}
                   onRename={onRenameDoc}
                   onDelete={onDeleteDoc}
                   onMove={onMoveDoc}
-                  onPreview={onPreviewDocument}
                   onShowVersions={onShowVersions}
                   onUploadNewVersion={onUploadNewVersion}
                   onReview={onReview}
@@ -641,9 +642,9 @@ function FolderNode({
                   onShowVersions={onShowVersions}
                   onUploadNewVersion={onUploadNewVersion}
                   onUploadToFolder={onUploadToFolder}
-                  onPreviewDocument={onPreviewDocument}
                   ingestByDoc={ingestByDoc}
                   onReview={onReview}
+                  companyId={companyId}
                 />
               ))}
             </div>
@@ -667,12 +668,12 @@ function DocumentRow({
   depth,
   selected,
   canEdit,
+  companyId,
   ingestStatus,
   onToggleSelect,
   onRename,
   onDelete,
   onMove,
-  onPreview,
   onShowVersions,
   onUploadNewVersion,
   onReview,
@@ -681,12 +682,12 @@ function DocumentRow({
   depth: number
   selected: boolean
   canEdit: boolean
+  companyId: string
   ingestStatus: IngestStatus | null
   onToggleSelect: (id: string) => void
   onRename: (d: Doc) => void
   onDelete: (d: Doc) => void
   onMove: (d: Doc) => void
-  onPreview?: (d: Doc) => void
   onShowVersions: (d: Doc) => void
   onUploadNewVersion?: (d: Doc) => void
   onReview: (documentId: string) => void
@@ -713,9 +714,9 @@ function DocumentRow({
       </svg>
 
       <button
-        onClick={() => onPreview?.(doc)}
-        className="flex-1 text-left min-w-0 flex items-center gap-2"
-        disabled={!onPreview}
+        onClick={() => openDocumentInTab(companyId, doc.id)}
+        className="flex-1 text-left min-w-0 flex items-center gap-2 hover:text-white transition-colors"
+        title="Click to view document"
       >
         <span className="text-xs text-gray-200 truncate">{doc.fileName || 'Unnamed document'}</span>
         {hasVersionHistory && (
@@ -737,6 +738,7 @@ function DocumentRow({
       {canEdit && (
         <DocActionsMenu
           doc={doc}
+          companyId={companyId}
           isOpen={menuOpen}
           onToggle={() => setMenuOpen(o => !o)}
           onClose={() => setMenuOpen(false)}
@@ -759,11 +761,26 @@ function DocumentRow({
  * card aesthetic, which previously clipped the menu and made it look
  * like clicking ⋯ "did nothing" or hid the menu.
  */
+/**
+ * Open a document in a new tab via a 1-hour signed URL. Used by the
+ * "View document" menu item (vault) and the per-slot "View" link
+ * (tracker doc-checklist).
+ */
+async function openDocumentInTab(companyId: string, documentId: string) {
+  const res = await getDocumentSignedUrl(companyId, documentId).catch(() => null)
+  if (!res || !res.success || !res.url) {
+    showToast(res?.error || 'Could not open document', 'error')
+    return
+  }
+  window.open(res.url, '_blank', 'noopener,noreferrer')
+}
+
 function DocActionsMenu({
-  doc, isOpen, onToggle, onClose,
+  doc, companyId, isOpen, onToggle, onClose,
   onUploadNewVersion, onShowVersions, onRename, onMove, onDelete,
 }: {
   doc: Doc
+  companyId: string
   isOpen: boolean
   onToggle: () => void
   onClose: () => void
@@ -806,6 +823,13 @@ function DocActionsMenu({
             style={{ top: coords.top, right: coords.right }}
             onClick={(e) => e.stopPropagation()}
           >
+            <button
+              onClick={() => { onClose(); openDocumentInTab(companyId, doc.id) }}
+              className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
+            >
+              View document
+            </button>
+            <div className="h-px bg-white/5 my-1" />
             {onUploadNewVersion && (
               <button
                 onClick={() => { onClose(); onUploadNewVersion(doc) }}

@@ -453,3 +453,35 @@ export async function listDocumentVersions(
     return handleActionError(error)
   }
 }
+
+/**
+ * Returns a short-lived signed URL for viewing a vault document. Used
+ * by the "View document" menu item in both the vault tree and the
+ * tracker's doc-checklist popover.
+ *
+ * Auth: any company member (incl. viewers) can preview their own
+ * company's documents — read-only.
+ */
+export async function getDocumentSignedUrl(
+  companyId: string,
+  documentId: string,
+): Promise<{ success: boolean; url?: string; fileName?: string | null; error?: string }> {
+  try {
+    await assertCompanyAccess(companyId)
+
+    const doc = await prisma.companyDocument.findFirst({
+      where: { id: documentId, company_id: companyId, deleted_at: null },
+      select: { id: true, file_path: true, file_name: true },
+    })
+    if (!doc) return { success: false, error: 'Document not found' }
+
+    const { createStorageAdapter } = await import('@/lib/storage/factory')
+    const storage = createStorageAdapter()
+    // 1 hour TTL — long enough for the user to open + glance through;
+    // short enough that leaked URLs become invalid quickly.
+    const url = await storage.createSignedUrl('company-documents', doc.file_path, 3600)
+    return { success: true, url, fileName: doc.file_name }
+  } catch (error) {
+    return handleActionError(error)
+  }
+}

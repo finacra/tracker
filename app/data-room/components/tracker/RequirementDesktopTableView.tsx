@@ -5,6 +5,16 @@ import { IRegulatoryService } from '../../services/RegulatoryService'
 import { showToast } from '@/components/ui/Toast'
 import { updateRequirement } from '@/app/data-room/actions'
 import { stripPeriodSuffix } from '@/lib/utils/strip-period-suffix'
+import { getDocumentSignedUrl } from '@/app/data-room/actions-vault'
+
+async function openDocInNewTab(companyId: string, documentId: string) {
+  const res = await getDocumentSignedUrl(companyId, documentId).catch(() => null)
+  if (!res || !res.success || !res.url) {
+    showToast(res?.error || 'Could not open document', 'error')
+    return
+  }
+  window.open(res.url, '_blank', 'noopener,noreferrer')
+}
 
 interface Requirement {
   id: string
@@ -122,11 +132,21 @@ export default function RequirementDesktopTableView({
   }
 
   const isDocUploaded = (reqId: string, requiredName: string): boolean => {
-    return vaultDocuments.some(d => {
+    return !!findDocForSlot(reqId, requiredName)
+  }
+
+  /**
+   * Returns the first vault doc satisfying a (requirement, slot) pair.
+   * Used to wire the "View" link in the doc-checklist popover so the
+   * user can open the actual file behind a checked slot.
+   */
+  function findDocForSlot(reqId: string, requiredName: string): any | null {
+    for (const d of vaultDocuments) {
       const rid = d.requirement_id || d.requirementId
-      if (rid !== reqId) return false
-      return docMatchesSlot(d.document_type || '', requiredName)
-    })
+      if (rid !== reqId) continue
+      if (docMatchesSlot(d.document_type || '', requiredName)) return d
+    }
+    return null
   }
 
   const docsByRequirement = useMemo(() => {
@@ -527,7 +547,8 @@ export default function RequirementDesktopTableView({
                                 <div className="text-[10px] text-gray-500 mb-3">{uploadedCount} of {requiredDocs.length} uploaded</div>
                                 <div className="space-y-2">
                                   {requiredDocs.map((doc: string, idx: number) => {
-                                    const uploaded = isDocUploaded(req.id, doc)
+                                    const matchedDoc = findDocForSlot(req.id, doc)
+                                    const uploaded = !!matchedDoc
                                     return (
                                       <div key={idx} className={`flex items-start gap-2.5 p-2 rounded-lg ${uploaded ? 'bg-green-500/5' : 'bg-gray-800/50'}`}>
                                         {uploaded ? (
@@ -560,8 +581,18 @@ export default function RequirementDesktopTableView({
                                               Upload
                                             </button>
                                           )}
-                                          {uploaded && (
-                                            <span className="text-[10px] text-green-500/60">Uploaded</span>
+                                          {uploaded && matchedDoc && currentCompany && (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                openDocInNewTab(currentCompany.id, matchedDoc.id)
+                                              }}
+                                              className="text-[11px] text-blue-400 hover:text-blue-300 mt-0.5 flex items-center gap-1"
+                                            >
+                                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                              View
+                                            </button>
                                           )}
                                         </div>
                                       </div>
