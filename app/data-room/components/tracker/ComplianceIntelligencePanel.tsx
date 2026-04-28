@@ -75,17 +75,13 @@ export default function ComplianceIntelligencePanel({
   // needsIntake regress to true (false STEP 1 of 2) immediately after
   // Approve All — the bug the user reported.
   type ClientFact = { kind: string; amount: number | null; sourceKind: string }
+  type FactsCacheEntry = { facts: ClientFact[]; hasAnyUserDeclaredFacts: boolean }
   const queryClient = useQueryClient()
   const factsQueryKey = queryKeys.complianceFacts(companyId, financialYear ?? null)
-  const factsQuery = useQuery<ClientFact[]>({
+  const factsQuery = useQuery<FactsCacheEntry>({
     queryKey: factsQueryKey,
     queryFn: async () => {
-      if (!financialYear) return []
-      // Use the FY-aware server action — it parses the financialYear
-      // string with the same regex fyWindow() uses on the write path.
-      // The previous client-side `slice(0, 4)` parsing returned "FY 2"
-      // for "FY 2026-27" and produced Invalid Date strings that never
-      // matched anything in the DB.
+      if (!financialYear) return { facts: [], hasAnyUserDeclaredFacts: false }
       const res = await listFactsForFY(companyId, financialYear)
       if (!res.success) {
         console.warn('[CIP:loadFacts] server returned error:', res.error)
@@ -95,14 +91,12 @@ export default function ComplianceIntelligencePanel({
         amount: f.amount,
         sourceKind: f.sourceKind,
       }))
-      // Regression guard: if the cache currently has user_declared facts
-      // and the server returned 0, that's almost certainly a PgBouncer
-      // transaction-mode race (read landed on a connection that hasn't
-      // seen our recent commit). Keep the cached value rather than
-      // letting the stale read clobber it. Real "facts genuinely deleted"
-      // events go through explicit setQueryData, never an empty fetch.
-      const cached = queryClient.getQueryData<ClientFact[]>(factsQueryKey)
-      const cachedUd = (cached || []).filter((f) => f.sourceKind === 'user_declared').length
+      // Regression guard: if cache currently has user_declared facts and
+      // server returned 0 for THIS fy, treat as stale read (PgBouncer
+      // race). Keep cached value. Real deletions flow through explicit
+      // setQueryData — never via an empty fetch.
+      const cached = queryClient.getQueryData<FactsCacheEntry>(factsQueryKey)
+      const cachedUd = (cached?.facts || []).filter((f) => f.sourceKind === 'user_declared').length
       const fetchedUd = list.filter((f) => f.sourceKind === 'user_declared').length
       if (cachedUd > 0 && fetchedUd === 0) {
         console.log('[CIP:loadFacts] suppressing 0-user_declared fetch as stale (cache has', cachedUd, ')')
@@ -113,23 +107,26 @@ export default function ComplianceIntelligencePanel({
         financialYear,
         total: list.length,
         userDeclared: fetchedUd,
+        hasAnyUserDeclaredFacts: res.hasAnyUserDeclaredFacts === true,
       })
-      return list
+      return { facts: list, hasAnyUserDeclaredFacts: res.hasAnyUserDeclaredFacts === true }
     },
-    // Once loaded, treat as fresh for 5 minutes so a CIP re-mount does
-    // not cause a re-fetch (which can race against PgBouncer transaction
-    // mode and return stale data right after a write). Mutations call
-    // queryClient.setQueryData directly when they know what was written.
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
   })
 
   const facts: ClientFact[] | null =
-    factsQuery.data === undefined ? (factsQuery.isError ? [] : null) : factsQuery.data
+    factsQuery.data === undefined ? (factsQuery.isError ? [] : null) : factsQuery.data.facts
+  // STEP-1 gate is FY-INDEPENDENT. Intake is a one-time onboarding gate;
+  // a user who answered "Do you pay rent?" once shouldn't be re-prompted
+  // when they switch to viewing a different year's tracker. We derive
+  // from `hasAnyUserDeclaredFacts` (any FY) instead of `facts.length`
+  // (this FY only). The previous behaviour made FY 2025-26 / "All Years"
+  // regress to STEP 1 even though the user had already onboarded.
   const needsIntake: boolean | null =
-    facts === null
-      ? null
-      : facts.filter((f) => f.sourceKind === 'user_declared').length === 0
+    factsQuery.data === undefined
+      ? (factsQuery.isError ? false : null)
+      : !factsQuery.data.hasAnyUserDeclaredFacts
 
   // External mutations (chat agent, document ingestion) still fire
   // cia:data-changed. We invalidate the cache rather than manually
@@ -438,11 +435,10 @@ export default function ComplianceIntelligencePanel({
           initialFacts={facts || []}
           onComplete={(savedFacts) => {
             // Write the just-saved facts straight into the React Query
-            // cache. This bypasses the read-after-write race entirely
-            // (we know what we just wrote) AND survives any subsequent
-            // CIP re-mount — the cache outlives the component instance.
-            queryClient.setQueryData<ClientFact[]>(factsQueryKey, (prev) => {
-              const base = prev || []
+            // cache. Bypasses the read-after-write race (we know what
+            // we just wrote) AND survives CIP re-mount.
+            queryClient.setQueryData<FactsCacheEntry>(factsQueryKey, (prev) => {
+              const base = prev?.facts || []
               const next = [...base]
               const seen = new Set(base.map((f) => `${f.kind}|${f.sourceKind}`))
               for (const sf of savedFacts) {
@@ -455,11 +451,16 @@ export default function ComplianceIntelligencePanel({
                   seen.add(key)
                 }
               }
-              return next
+              return { facts: next, hasAnyUserDeclaredFacts: true }
             })
+            // Mirror the FY-independent flag into every other FY's cache
+            // entry too, so switching the FY filter doesn't bring back
+            // the STEP 1 prompt while the cross-FY queries are stale.
+            queryClient.setQueriesData<FactsCacheEntry>(
+              { queryKey: ['compliance-facts', companyId] },
+              (prev) => prev ? { ...prev, hasAnyUserDeclaredFacts: true } : prev,
+            )
             setViewState('idle')
-            // Trigger generate immediately so the user doesn't have
-            // to click another button after completing intake.
             handleGenerate()
           }}
         />

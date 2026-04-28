@@ -220,11 +220,45 @@ export async function listFactsForFY(
   companyId: string,
   financialYear: string,
   kinds?: string[],
-): Promise<ReturnType<typeof listFacts> extends Promise<infer R> ? R : never> {
+): Promise<{
+  success: boolean
+  facts?: Array<{
+    id: string
+    kind: string
+    amount: number | null
+    unit: string | null
+    periodStart: string
+    periodEnd: string
+    counterparty: string | null
+    sourceKind: string
+    confidence: number
+  }>
+  /**
+   * Has the user EVER answered intake (any FY)? Distinct from
+   * `facts.length` because intake is a one-time onboarding gate —
+   * once the user told us they pay rent / have N employees once,
+   * we shouldn't re-prompt just because they're viewing a different
+   * year's tracker. UI uses this for the STEP-1 gate decision while
+   * still using `facts` (this FY) for IntakeForm prefill.
+   */
+  hasAnyUserDeclaredFacts?: boolean
+  error?: string
+}> {
   try {
     await assertCompanyAccess(companyId)
     const { periodStart, periodEnd } = fyWindow(financialYear)
-    const rows = await getFactsForPeriod({ companyId, periodStart, periodEnd, kinds })
+    const { prisma } = await import('@/lib/prisma')
+    const [rows, anyUserDeclared] = await Promise.all([
+      getFactsForPeriod({ companyId, periodStart, periodEnd, kinds }),
+      prisma.companyFact.count({
+        where: {
+          company_id: companyId,
+          source_kind: 'user_declared',
+          superseded_by_id: null,
+        },
+        take: 1, // we only need to know "any" — exists semantics
+      }),
+    ])
     return {
       success: true,
       facts: rows.map((r) => ({
@@ -238,6 +272,7 @@ export async function listFactsForFY(
         sourceKind: r.source_kind,
         confidence: r.confidence,
       })),
+      hasAnyUserDeclaredFacts: anyUserDeclared > 0,
     }
   } catch (error) {
     return handleActionError(error)
