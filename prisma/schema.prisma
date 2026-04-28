@@ -675,6 +675,26 @@ model CompanyDocument {
   @@map("company_documents_internal")
 }
 
+// ── Pollution Watchdog Audit ────────────────────────────────────────────
+// One row per `check_compliance_pollution()` cron run. Populated by the
+// pg_cron job scheduled in 2026-04-28-pollution-watchdog.sql. Detects
+// rows in `regulatory_requirements` whose `requirement` text drifts from
+// the canonical `<base> — <period_label>` format (PR #58/#60 fixes).
+//
+// MUST stay in this Prisma schema even though the table is created by
+// raw SQL — otherwise `prisma db push` will drop it on the next sync.
+model CompliancePollutionAudit {
+  id            String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  checked_at    DateTime @default(now()) @db.Timestamptz
+  rows_scanned  Int
+  rows_polluted Int
+  by_company    Json     @default("[]")
+  samples       Json     @default("[]")
+
+  @@index([checked_at(sort: Desc)])
+  @@map("compliance_pollution_audit")
+}
+
 // ── Document Ingest Job Queue ────────────────────────────────────────────
 // Background queue for the smart-ingest pipeline. Vault & onboarding
 // uploads create the CompanyDocument row immediately as dumb storage,
