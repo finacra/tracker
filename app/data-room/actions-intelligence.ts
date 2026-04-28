@@ -401,14 +401,65 @@ async function bulkInsertRulesEngineResults(
 
 // ── Bulk Insert AI Requirements ────────────────────────────────────────────
 
+/**
+ * Strip year tokens (4-digit years 19xx-21xx, `FY 2024-25`, `2023-24`,
+ * trailing " — For Apr 2026" period labels, etc) from an AI-generated
+ * compliance NAME so the name itself is year-agnostic. The actual year
+ * lives in due_date / period_key / period_label — names with hard-coded
+ * years break historical generation, where the same rule needs to apply
+ * to multiple FYs.
+ */
+function stripYearFromName(name: string): string {
+  let out = name
+  // Remove " — For <Month> <Year>" trailing labels
+  out = out.replace(/\s*[—–-]\s*for\s+[A-Za-z]+\s*\d{4}\s*$/i, '')
+  // Remove standalone "FY 2024-25" / "FY2024-25" / "F.Y. 2024-25"
+  out = out.replace(/\bF\.?Y\.?\s*\d{4}\s*[-–]\s*\d{2,4}\b/gi, '')
+  // Remove "2024-25" / "2024–25" pairs
+  out = out.replace(/\b\d{4}\s*[-–]\s*\d{2,4}\b/g, '')
+  // Remove standalone 4-digit years 19xx-21xx
+  out = out.replace(/\b(19|20|21)\d{2}\b/g, '')
+  // Cleanup leftover separators / double spaces
+  out = out.replace(/\s+[—–-]\s*$/g, '')
+  out = out.replace(/\s{2,}/g, ' ').trim()
+  return out || name // fallback to original if we stripped everything
+}
+
 async function bulkInsertAIRequirements(
   companyId: string,
   requirements: GeneratedRequirement[],
   userId: string
 ): Promise<void> {
   if (requirements.length === 0) return
+
+  // Sanitize names — strip year tokens so historical generation can
+  // re-deadline the same rule for any FY without baking the wrong year
+  // into the requirement name.
+  const sanitized = requirements.map((r) => ({ ...r, requirement: stripYearFromName(r.requirement) }))
+
+  // Idempotency: prefetch existing requirement names for this company
+  // and skip any AI items that match (case-insensitive). Prevents
+  // duplicates when the user clicks Generate / Re-evaluate again.
+  const existingRows = await prisma.$queryRaw<Array<{ requirement: string }>>(
+    Prisma.sql`SELECT DISTINCT requirement FROM regulatory_requirements WHERE company_id = ${companyId}::uuid`
+  )
+  const existingNorm = new Set(
+    (existingRows || []).map((r) => r.requirement.trim().toLowerCase())
+  )
+  const fresh = sanitized.filter((r) => !existingNorm.has(r.requirement.trim().toLowerCase()))
+  if (fresh.length === 0) {
+    console.log('[bulkInsertAIRequirements] all items already exist — nothing to insert')
+    return
+  }
+  console.log('[bulkInsertAIRequirements]', {
+    received: requirements.length,
+    sanitized: sanitized.length,
+    skippedDuplicates: sanitized.length - fresh.length,
+    inserting: fresh.length,
+  })
+
   // Single multi-VALUES INSERT (same pattern as rules engine bulk insert)
-  const valuesSql = requirements.map((req) => {
+  const valuesSql = fresh.map((req) => {
     const dueDateStr = req.due_date ? req.due_date.toISOString().split('T')[0] : null
     const reqDocs = req.required_documents || []
     const reqDocsArray = `{${reqDocs.map((d: string) => `"${d.replace(/"/g, '\\"')}"`).join(',')}}`
