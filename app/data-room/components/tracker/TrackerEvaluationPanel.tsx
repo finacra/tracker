@@ -149,6 +149,14 @@ export default function TrackerEvaluationPanel({ companyId, financialYear }: Pro
   const pendingCount = reviewItems.length
   const hasAnything = pendingCount > 0
 
+  // While the first load() is in flight we render nothing. The previous
+  // version showed the optimistic "up to date" strip here — which then
+  // flickered to a different banner once load() resolved (~3-5s on cold
+  // start), or vanished entirely if needsIntake came back true. That's
+  // the "old banner, then flickers to new banner card" the user reported.
+  // Single source of truth: render only after we KNOW the state.
+  if (loading) return null
+
   // If intake is required, hide this panel entirely. CIP is showing
   // its own intake CTA; surfacing a second strip here just adds noise.
   if (needsIntake) return null

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { showToast } from '@/components/ui/Toast'
-import { recordUserFacts } from '../../actions-facts'
+import { listFacts, recordUserFacts } from '../../actions-facts'
 
 /**
  * Quick intake form that collects the key operational facts BEFORE
@@ -60,6 +60,72 @@ const INITIAL: IntakeData = {
 export default function ComplianceIntakeForm({ companyId, financialYear, onComplete }: Props) {
   const [data, setData] = useState<IntakeData>(INITIAL)
   const [saving, setSaving] = useState(false)
+  const [hydrating, setHydrating] = useState(true)
+
+  // Pre-populate from facts already recorded by onboarding (recordOnboardingFacts)
+  // or a previous intake save. Without this, even users who answered
+  // these questions in onboarding see a blank intake form and have to
+  // retype turnover, employees, GST, MSME, imports/exports, etc.
+  // Mapping fact.kind → IntakeData field, kept conservative (only the
+  // overlap between onboarding and intake is hydrated).
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      if (!financialYear) {
+        setHydrating(false)
+        return
+      }
+      try {
+        const fyStart = `${financialYear.slice(0, 4)}-04-01`
+        const fyEndYear = parseInt(financialYear.slice(0, 4), 10) + 1
+        const fyEnd = `${fyEndYear}-03-31`
+        const res = await listFacts(companyId, fyStart, fyEnd)
+        if (cancelled) return
+        const facts = (res.facts || []).filter(f => f.sourceKind === 'user_declared')
+        if (facts.length === 0) {
+          setHydrating(false)
+          return
+        }
+        const byKind = new Map(facts.map(f => [f.kind, f]))
+        const next: IntakeData = { ...INITIAL }
+        const headcount = byKind.get('headcount.total')
+        if (headcount?.amount != null) next.employeeCount = String(headcount.amount)
+        const turnover = byKind.get('turnover.annual')
+        if (turnover?.amount != null) next.annualTurnover = String(turnover.amount)
+        const rent = byKind.get('rent.monthly_payment')
+        if (rent?.amount != null) {
+          next.paysRent = rent.amount > 0
+          if (rent.amount > 0) next.monthlyRentAmount = String(rent.amount)
+        }
+        const contractor = byKind.get('contractor.annual_spend')
+        if (contractor?.amount != null) {
+          next.hiresContractors = contractor.amount > 0
+          if (contractor.amount > 0) next.largestContractorPayment = String(contractor.amount)
+        }
+        const profFee = byKind.get('professional_fee.annual_spend')
+        if (profFee?.amount != null) {
+          next.paysProfessionalFees = profFee.amount > 0
+          if (profFee.amount > 0) next.largestProfFeePayment = String(profFee.amount)
+        }
+        const director = byKind.get('director.remuneration')
+        if (director?.amount != null) {
+          next.paysDirectorRemuneration = director.amount > 0
+          if (director.amount > 0) next.directorRemunerationAmount = String(director.amount)
+        }
+        console.log('[IntakeForm:hydrate]', {
+          companyId,
+          financialYear,
+          hydratedFromKinds: Array.from(byKind.keys()),
+        })
+        setData(next)
+      } catch (err) {
+        console.warn('[IntakeForm:hydrate] threw', err instanceof Error ? err.message : err)
+      } finally {
+        if (!cancelled) setHydrating(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [companyId, financialYear])
 
   const set = <K extends keyof IntakeData>(key: K, value: IntakeData[K]) =>
     setData(prev => ({ ...prev, [key]: value }))
@@ -152,12 +218,33 @@ export default function ComplianceIntakeForm({ companyId, financialYear, onCompl
     setSaving(false)
   }
 
+  if (hydrating) {
+    return (
+      <div className="max-w-2xl mx-auto p-6">
+        <div className="flex items-center gap-3 text-sm text-gray-400">
+          <div className="w-4 h-4 border-2 border-gray-600 border-t-white rounded-full animate-spin" />
+          Loading what you've already told us…
+        </div>
+      </div>
+    )
+  }
+
+  const hasPrefill =
+    data.employeeCount !== '' ||
+    data.annualTurnover !== '' ||
+    data.paysRent !== null ||
+    data.hiresContractors !== null ||
+    data.paysProfessionalFees !== null ||
+    data.paysDirectorRemuneration !== null
+
   return (
     <div className="max-w-2xl mx-auto p-6">
       <div className="mb-6">
         <h3 className="text-xl font-light text-white">Tell us about your business</h3>
         <p className="text-sm text-gray-400 mt-1">
-          We need a few details to show only the compliances that apply to you. Takes 2 minutes.
+          {hasPrefill
+            ? 'We pre-filled what you already shared during onboarding — confirm or update below.'
+            : 'We need a few details to show only the compliances that apply to you. Takes 2 minutes.'}
         </p>
       </div>
 

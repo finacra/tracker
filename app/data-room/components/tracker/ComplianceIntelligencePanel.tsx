@@ -75,11 +75,22 @@ export default function ComplianceIntelligencePanel({
       setNeedsIntake(false)
       return
     }
+    // Client-side timeout. Without this, a hung listFacts call would
+    // leave needsIntake = null forever, leaving the user staring at the
+    // "Checking your business profile…" placeholder spinner — which is
+    // exactly the "infinite loop" the user reported, just upstream of
+    // Generate.
+    const timeoutSignal = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('LIST_FACTS_TIMEOUT')), 8_000),
+    )
     try {
       const fyStart = `${financialYear.slice(0, 4)}-04-01`
       const fyEndYear = parseInt(financialYear.slice(0, 4), 10) + 1
       const fyEnd = `${fyEndYear}-03-31`
-      const res = await listFacts(companyId, fyStart, fyEnd)
+      const res = await Promise.race([
+        listFacts(companyId, fyStart, fyEnd),
+        timeoutSignal,
+      ])
       const userDeclared = (res.facts || []).filter(f => f.sourceKind === 'user_declared').length
       const next = userDeclared === 0
       console.log('[CIP:refreshIntakeStatus]', {
@@ -221,32 +232,41 @@ export default function ComplianceIntelligencePanel({
         err instanceof Error ? err.message : String(err),
         err instanceof Error ? err.stack : '')
 
-      // Even on timeout / failure, the server may have written some
-      // requirements before the client gave up. Refresh the tracker
-      // so the user sees what landed instead of a blank "Generation
-      // failed" page that contradicts reality. Then explicitly check
-      // the AI review queue too — if those landed, jump straight to
-      // the review state.
+      // CRITICAL: leave the spinner state IMMEDIATELY before any further
+      // async work. The previous version awaited getAIRequirementsPendingReview
+      // here without a timeout — when that second server call also stalled
+      // on a Vercel cold start, viewState stayed 'generating' and the
+      // spinner ran forever. That's the real "infinite loop" the user
+      // saw: not the original Promise.race, but the second hidden await.
+      const msg = err instanceof Error ? err.message : 'Generation failed'
+      setError(isTimeout
+        ? 'Generation took longer than expected (90s+). Any compliances that did land are now visible in the tracker below — click Re-evaluate to retry.'
+        : msg)
+      setViewState('error')
+
+      // Best-effort recovery — refresh the tracker (cheap, fire-and-forget)
+      // and probe the AI review queue (with its own timeout). Both run
+      // AFTER the spinner has been torn down, so a hang here is invisible
+      // to the user.
       try {
         onRequirementsApproved()
       } catch {}
 
       if (isTimeout) {
         try {
-          const reviewResult = await getAIRequirementsPendingReview(companyId)
+          const probeTimeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('REVIEW_PROBE_TIMEOUT')), 8_000),
+          )
+          const reviewResult = await Promise.race([
+            getAIRequirementsPendingReview(companyId),
+            probeTimeout,
+          ])
           if (reviewResult.success && reviewResult.requirements && reviewResult.requirements.length > 0) {
             setRequirements(reviewResult.requirements)
             setViewState('reviewing')
-            return
           }
         } catch {}
       }
-
-      const msg = err instanceof Error ? err.message : 'Generation failed'
-      setError(isTimeout
-        ? 'Generation took longer than expected (90s+). Any compliances that did land are now visible in the tracker below — click Re-evaluate to retry.'
-        : msg)
-      setViewState('error')
     }
   }, [companyId, onRequirementsApproved])
 
@@ -421,9 +441,19 @@ export default function ComplianceIntelligencePanel({
         <ComplianceIntakeForm
           companyId={companyId}
           financialYear={financialYear}
-          onComplete={async () => {
-            await refreshIntakeStatus()
+          onComplete={() => {
+            // Optimistic — the intake form only calls onComplete on a
+            // SUCCESSFUL save (it surfaces errors itself and bails out).
+            // So we know facts are written. Setting needsIntake=false
+            // here avoids the read-after-write race where listFacts on
+            // PgBouncer transaction mode lands on a connection that
+            // hasn't seen the just-written rows yet — that race was
+            // exactly what re-prompted the intake form after save.
+            setNeedsIntake(false)
             setViewState('idle')
+            // Belt-and-suspenders: still refresh in the background so a
+            // partial write or external mutation gets reconciled.
+            void refreshIntakeStatus()
             // Trigger generate immediately so the user doesn't have
             // to click another button after completing intake.
             handleGenerate()
