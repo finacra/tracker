@@ -22,6 +22,7 @@ import CountrySelector from '@/components/features/CountrySelector'
 import { ManualVerificationNotice } from '@/components/features/ManualVerificationNotice'
 import { useRotatingLoadingMessage } from '@/hooks/useRotatingLoadingMessage'
 import { CREATE_COMPANY_LOADING_MESSAGES } from '@/lib/ui/loading-messages'
+import MagicalIntake, { type MagicalIntakePayload } from './MagicalIntake'
 
 interface Director {
   id: string
@@ -60,6 +61,13 @@ export default function OnboardingPage() {
   const [isLookingUpGST, setIsLookingUpGST] = useState(false)
   const [currentStep, setCurrentStep] = useState(1) // 1 = Company Details, 2 = Documents
   const [exDirectors, setExDirectors] = useState<string>('') // Comma-separated or newline-separated names
+  // PR-2.5: Magical CIN→PAN intake gate. Shown by default for India; for
+  // non-India countries (no CIN concept) it auto-skips. Users can also
+  // skip manually (sole-prop/partnership). Once skipped or completed,
+  // the existing form renders unchanged so every legacy feature
+  // (DIN-per-director verify, document upload step, ex-directors,
+  // subscription gating) keeps working.
+  const [showMagicalIntake, setShowMagicalIntake] = useState<boolean>(true)
 
   const [countryCode, setCountryCode] = useState<string>('IN')
   const { config: countryConfig } = useCountryConfig(countryCode)
@@ -160,6 +168,15 @@ export default function OnboardingPage() {
       countryCode: countryCode,
     }))
   }, [countryCode, countryConfig])
+
+  // PR-2.5: The magical intake gate is India-only (CIN doesn't exist
+  // elsewhere). The moment a user picks a non-IN country, drop the gate
+  // so they land directly on the existing manual form.
+  useEffect(() => {
+    if (countryCode !== 'IN') {
+      setShowMagicalIntake(false)
+    }
+  }, [countryCode])
 
   // Show loading state while checking auth or subscription
   if (loading || subLoading) {
@@ -507,6 +524,89 @@ export default function OnboardingPage() {
       dateOfLastAgm: companyData?.dateOfLastAGM || prev.dateOfLastAgm,
       balanceSheetDate: companyData?.balanceSheetDate || prev.balanceSheetDate,
     }))
+  }
+
+  /**
+   * PR-2.5: Apply MagicalIntake's payload to the form, then drop the gate.
+   *
+   * MagicalIntake fetches MCA + GST in its own UI. We reuse the existing
+   * applyParsedCINData (single source of truth for company prefill) plus
+   * mirror the director and GST setter snippets from handleCINVerification
+   * so the user lands on the existing form fully populated and ready to
+   * edit. Optional fields (employeeCount, MSME, DPIIT, etc.) stay empty
+   * until the user fills them — exactly the "below the fold" plan.
+   */
+  const handleMagicalIntakeComplete = (payload: MagicalIntakePayload) => {
+    // Seed the IDs first so applyParsedCINData / downstream code see them.
+    setFormData((prev) => ({
+      ...prev,
+      cinNumber: payload.cin,
+      panNumber: payload.pan,
+    }))
+
+    // Mark CIN as verified so the existing CIN-verify button doesn't ask
+    // the user to verify again.
+    setIsCINVerified(true)
+
+    // Run entity detection (sets the entity-detection card on the form).
+    const detection = detectEntity(
+      payload.companyData && payload.companyData.cin
+        ? payload.companyData
+        : { cin: payload.cin },
+      true,
+    )
+    setEntityDetection(detection)
+
+    // Apply company prefill via the SAME helper the legacy flow uses.
+    applyParsedCINData(payload.parsed, payload.companyData, payload.directorData)
+
+    // Directors — mirror handleCINVerification's mapping so verification
+    // status, IDs, and source labels stay consistent with the legacy flow.
+    if (payload.directorData.length > 0) {
+      const cinDirectors: Director[] = payload.directorData.map((dir, index) => ({
+        id: `cin-${Date.now()}-${index}`,
+        firstName: dir.firstName || (dir as any).FirstName || '',
+        lastName: dir.lastName || (dir as any).LastName || '',
+        middleName: dir.middleName || (dir as any).MiddleName || '',
+        din: dir.din || (dir as any).DIN || dir.dinOrPAN || (dir as any).DINOrPAN || '',
+        designation: dir.designation || (dir as any).Designation || '',
+        dob: formatDate(dir.dob || (dir as any).DOB) || '',
+        verified: false,
+        source: 'cin' as const,
+      }))
+      setDirectors(cinDirectors)
+    }
+
+    // GST registrations — same shape the legacy GST callback writes.
+    const gst = payload.gstResult
+    if (gst?.found && gst.gstNumbers && gst.gstNumbers.length > 0) {
+      const registrations = gst.gstNumbers.map((g) => ({ gstin: g.gstn, state: g.state }))
+      setFormData((prev) => ({
+        ...prev,
+        isGstRegistered: true,
+        gstRegistrations: registrations,
+        gstNumber: registrations[0].gstin,
+        ...((!prev.panNumber && gst.pan) ? { panNumber: gst.pan } : {}),
+      }))
+    }
+
+    // Toast quantifies the magic — count populated company fields.
+    const filledCount = [
+      payload.companyData?.company,
+      payload.companyData?.dateOfIncorporation,
+      payload.companyData?.registeredaddress,
+      payload.companyData?.authorisedCapital,
+      payload.companyData?.rocName,
+      payload.directorData.length > 0,
+      gst?.gstNumbers && gst.gstNumbers.length > 0,
+    ].filter(Boolean).length
+    showToast(
+      `✨ Pre-filled ${filledCount} fields from MCA${gst?.found ? ' + GSTN' : ''}`,
+      'success',
+    )
+
+    // Drop the gate — existing form now renders, fully populated.
+    setShowMagicalIntake(false)
   }
 
   const handleDINVerification = async (directorId: string, din: string) => {
@@ -1063,6 +1163,19 @@ export default function OnboardingPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // PR-2.5: Magical CIN→PAN gate. Shown by default for India users; auto-
+  // skipped for other countries (see useEffect above). When the user
+  // skips manually, the existing form renders with empty fields just
+  // like before — no behavior change for that path.
+  if (showMagicalIntake) {
+    return (
+      <MagicalIntake
+        onComplete={handleMagicalIntakeComplete}
+        onSkip={() => setShowMagicalIntake(false)}
+      />
+    )
   }
 
   return (
