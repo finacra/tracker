@@ -156,13 +156,7 @@ export default function RequirementDesktopTableView({
             </th>
           )}
           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-            CATEGORY
-          </th>
-          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
             REQUIREMENT
-          </th>
-          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-            TYPE
           </th>
           <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
             STATUS
@@ -213,7 +207,7 @@ export default function RequirementDesktopTableView({
             {/* Visual Separator between categories */}
             {groupIndex > 0 && (
               <tr>
-                <td colSpan={canEdit ? 16 : 15} className="px-0 py-0">
+                <td colSpan={canEdit ? 14 : 13} className="px-0 py-0">
                   <div className="h-0.5 bg-gradient-to-r from-transparent via-white/30 to-transparent my-2"></div>
                 </td>
               </tr>
@@ -242,16 +236,6 @@ export default function RequirementDesktopTableView({
                         }}
                         className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-white focus:ring-white/40 focus:ring-2 cursor-pointer"
                       />
-                    </td>
-                  )}
-                  {itemIndex === 0 && (
-                    <td
-                      className="px-6 py-4 border-r-0 border-l-0 border-t-0 border-b-0 align-top"
-                      rowSpan={group.items.length}
-                    >
-                      <span className="text-white font-semibold text-2xl block">
-                        {group.category}
-                      </span>
                     </td>
                   )}
                   <td className="px-6 py-4">
@@ -301,30 +285,6 @@ export default function RequirementDesktopTableView({
                         )}
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    {(() => {
-                      const complianceType = req.compliance_type
-                      if (!complianceType) return <span className="text-gray-500 text-sm">-</span>
-                      return (
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${complianceType === 'one-time' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
-                            complianceType === 'annual' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                              complianceType === 'monthly' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                                complianceType === 'quarterly' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' :
-                                  'bg-gray-500/20 text-white border border-gray-500/30'
-                          }`} title={
-                            complianceType === 'one-time' ? 'One-time: happens once, no recurring' :
-                              complianceType === 'annual' ? 'Annual: recurs every year' :
-                                complianceType === 'monthly' ? 'Monthly: recurs every month' :
-                                  complianceType === 'quarterly' ? 'Quarterly: recurs every quarter' :
-                                    ''
-                        }>
-                          {complianceType === 'one-time' ? 'ONE-TIME' :
-                            complianceType === 'annual' ? 'ANNUAL' :
-                              complianceType.toUpperCase()}
-                        </span>
-                      )
-                    })()}
                   </td>
                   <td className="px-6 py-4">
                     {canEdit ? (
