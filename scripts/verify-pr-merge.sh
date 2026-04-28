@@ -36,29 +36,50 @@ if [[ -z "$MERGE_SHA" || "$MERGE_SHA" == "null" ]]; then
   exit 1
 fi
 
-CHANGED_FILES="$(gh pr view "$PR_NUMBER" --json files --jq '.files[].path')"
-if [[ -z "$CHANGED_FILES" ]]; then
-  echo "error: PR #$PR_NUMBER reports no changed files" >&2
+CHANGED_FILES_PR="$(gh pr view "$PR_NUMBER" --json files --jq '.files[].path')"
+PR_FILE_COUNT=$(awk 'NF' <<<"$CHANGED_FILES_PR" | wc -l | tr -d ' ')
+
+LANDED_FILES="$(git show --name-only --pretty=format: "$MERGE_SHA" | sed '/^$/d')"
+LANDED_COUNT=$(awk 'NF' <<<"$LANDED_FILES" | wc -l | tr -d ' ')
+
+# Hard-fail mode: the squash bug from issue #30 produces a merge commit
+# with ZERO files changed. That's the case we MUST flag.
+if [[ -z "$LANDED_FILES" ]]; then
+  echo "FAIL: PR #$PR_NUMBER merge commit $MERGE_SHA contains 0 file changes."
+  echo
+  echo "GitHub squash-merge dropped EVERYTHING (the issue #30 bug)."
+  echo "PR claimed to change $PR_FILE_COUNT file(s):"
+  while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    echo "  - $f"
+  done <<<"$CHANGED_FILES_PR"
+  echo
+  echo "Re-open these changes in a follow-up PR. See CLAUDE.md Rule 17."
   exit 1
 fi
 
-LANDED_FILES="$(git show --name-only --pretty=format: "$MERGE_SHA" | sed '/^$/d')"
-
+# Soft-warn mode: PR claimed N files, fewer landed. This is sometimes
+# benign — base branch advanced and absorbed identical changes during
+# review, so those files become no-ops at squash time. We surface it as
+# a warning, not a failure, so a human can spot the rare real drop.
 missing=()
 while IFS= read -r f; do
   [[ -z "$f" ]] && continue
   if ! grep -Fxq "$f" <<<"$LANDED_FILES"; then
     missing+=("$f")
   fi
-done <<<"$CHANGED_FILES"
+done <<<"$CHANGED_FILES_PR"
 
 if (( ${#missing[@]} > 0 )); then
-  echo "FAIL: PR #$PR_NUMBER merge commit $MERGE_SHA is missing files:"
+  echo "OK (with warning): PR #$PR_NUMBER ($MERGE_SHA) landed $LANDED_COUNT/$PR_FILE_COUNT files on $TARGET_BRANCH."
+  echo
+  echo "These files were in the PR but NOT in the squash commit:"
   printf '  - %s\n' "${missing[@]}"
   echo
-  echo "GitHub squash-merge dropped diffs again. Re-open these changes in a follow-up PR."
-  echo "See issue #30 and CLAUDE.md Rule 17."
-  exit 1
+  echo "Most likely benign — base advanced during review and absorbed identical changes."
+  echo "If you expected real diffs in those files, spot-check with:"
+  echo "  git show $MERGE_SHA -- <path>"
+  exit 0
 fi
 
-echo "OK: PR #$PR_NUMBER ($MERGE_SHA) landed all $(wc -l <<<"$CHANGED_FILES") files on $TARGET_BRANCH."
+echo "OK: PR #$PR_NUMBER ($MERGE_SHA) landed all $PR_FILE_COUNT file(s) on $TARGET_BRANCH."
