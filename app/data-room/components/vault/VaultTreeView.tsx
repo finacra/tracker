@@ -15,6 +15,16 @@ import {
 import VersionHistoryModal from './VersionHistoryModal'
 import { useRotatingLoadingMessage } from '@/hooks/useRotatingLoadingMessage'
 import { DOCUMENTS_VAULT_LOADING_MESSAGES } from '@/lib/ui/loading-messages'
+import { getActiveIngestJobsForCompany } from '@/app/data-room/actions-ingest-jobs'
+
+interface IngestStatus {
+  status: string
+  suggestedRequirementId: string | null
+  documentType: string | null
+  confidence: number | null
+  lastError: string | null
+  finishedAt: string | null
+}
 
 /**
  * Data-driven vault UI. Reads vault_folders + company_documents_internal
@@ -71,6 +81,11 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
+  // Background ingest status per documentId — polled every 3s while
+  // any job is in flight, then backed off to every 30s once everything
+  // is at terminal state, then stopped if the queue is fully empty.
+  const [ingestByDoc, setIngestByDoc] = useState<Record<string, IngestStatus>>({})
+
   // Prevent the previous company's response from overwriting the new one
   // when the user switches companies mid-flight. Stamp every load with
   // the companyId it's for; drop stale results.
@@ -120,6 +135,49 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
       window.removeEventListener('vault:data-changed', h)
     }
   }, [load])
+
+  // Poll background ingest jobs. Cadence:
+  //   • 3 s while any job is pending / extracting / matching (active)
+  //   • 30 s when all jobs are needs_review / linked-recently (idle)
+  //   • stop entirely when the server returns no rows (empty queue),
+  //     until the next vault reload re-checks.
+  // We also reload the document tree once when a job transitions to
+  // 'linked' so the chip disappears and the doc gains its real
+  // metadata (document_type / period_key) without a manual refresh.
+  useEffect(() => {
+    if (!companyId) return
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const seenLinked = new Set<string>()
+
+    async function tick() {
+      if (cancelled) return
+      const res = await getActiveIngestJobsForCompany(companyId).catch(() => null)
+      if (cancelled) return
+      const jobs = (res && res.success && res.jobs) || {}
+
+      // Detect new linkages — trigger one tree reload to swap fresh metadata in.
+      let needsReload = false
+      for (const [docId, j] of Object.entries(jobs)) {
+        if (j.status === 'linked' && !seenLinked.has(docId)) {
+          seenLinked.add(docId)
+          needsReload = true
+        }
+      }
+      setIngestByDoc(jobs)
+      if (needsReload) load()
+
+      const hasActive = Object.values(jobs).some(j => ['pending', 'extracting', 'matching'].includes(j.status))
+      const hasIdleNonEmpty = Object.keys(jobs).length > 0
+      const nextDelay = hasActive ? 3000 : hasIdleNonEmpty ? 30000 : 0
+      if (nextDelay > 0) timer = setTimeout(tick, nextDelay)
+    }
+    tick()
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [companyId, load])
 
   // Build parent → children map once per folders change
   const { childrenOf, docsInFolder, rootFolders } = useMemo(() => {
@@ -367,6 +425,7 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
             onUploadNewVersion={onUploadNewVersion}
             onUploadToFolder={onUploadToFolder}
             onPreviewDocument={onPreviewDocument}
+            ingestByDoc={ingestByDoc}
           />
         ))}
       </div>
@@ -411,6 +470,7 @@ function FolderNode({
   onUploadNewVersion,
   onUploadToFolder,
   onPreviewDocument,
+  ingestByDoc,
 }: {
   folder: Folder
   depth: number
@@ -431,6 +491,7 @@ function FolderNode({
   onUploadNewVersion?: (d: Doc) => void
   onUploadToFolder?: (folderId: string, folderName: string) => void
   onPreviewDocument?: (doc: Doc) => void
+  ingestByDoc: Record<string, IngestStatus>
 }) {
   const kids = childrenOf.get(folder.id) || []
   const docs = docsInFolder.get(folder.id) || []
@@ -556,6 +617,7 @@ function FolderNode({
                   depth={depth}
                   selected={selected.has(doc.id)}
                   canEdit={canEdit}
+                  ingestStatus={ingestByDoc[doc.id] || null}
                   onToggleSelect={onToggleSelect}
                   onRename={onRenameDoc}
                   onDelete={onDeleteDoc}
@@ -592,6 +654,7 @@ function FolderNode({
                   onUploadNewVersion={onUploadNewVersion}
                   onUploadToFolder={onUploadToFolder}
                   onPreviewDocument={onPreviewDocument}
+                  ingestByDoc={ingestByDoc}
                 />
               ))}
             </div>
@@ -615,6 +678,7 @@ function DocumentRow({
   depth,
   selected,
   canEdit,
+  ingestStatus,
   onToggleSelect,
   onRename,
   onDelete,
@@ -627,6 +691,7 @@ function DocumentRow({
   depth: number
   selected: boolean
   canEdit: boolean
+  ingestStatus: IngestStatus | null
   onToggleSelect: (id: string) => void
   onRename: (d: Doc) => void
   onDelete: (d: Doc) => void
@@ -673,6 +738,8 @@ function DocumentRow({
           </button>
         )}
       </button>
+
+      <IngestChip ingest={ingestStatus} />
 
       <span className="text-[10px] text-gray-500 flex-shrink-0">{formatted}</span>
 
@@ -743,4 +810,83 @@ function VaultLoadingState() {
       <span key={message}>{message}</span>
     </div>
   )
+}
+
+/**
+ * Per-document progress chip. Visible only when there's an active or
+ * recently-finished ingest job for the document. Cycles through:
+ *   pending      → "Queued"
+ *   extracting   → "Reading…"   (animated pulse)
+ *   matching     → "Matching…"  (animated pulse)
+ *   linked       → "Linked"     (green, briefly)
+ *   needs_review → "Needs review" (yellow, persistent until resolved;
+ *                  hover reveals the agent's suggestion + reason)
+ *
+ * Tooltips carry the agent's documentType / confidence / lastError
+ * for power-user visibility without crowding the row.
+ */
+function IngestChip({ ingest }: { ingest: IngestStatus | null }) {
+  if (!ingest) return null
+  const { status, documentType, confidence, lastError } = ingest
+
+  if (status === 'pending') {
+    return (
+      <span
+        className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400 flex-shrink-0"
+        title="Queued for AI extraction"
+      >
+        Queued
+      </span>
+    )
+  }
+  if (status === 'extracting' || status === 'matching') {
+    return (
+      <span
+        className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300 flex-shrink-0 animate-pulse"
+        title={status === 'extracting' ? 'AI is reading the document…' : 'Matching to a tracker requirement…'}
+      >
+        {status === 'extracting' ? 'Reading…' : 'Matching…'}
+      </span>
+    )
+  }
+  if (status === 'linked') {
+    return (
+      <span
+        className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-300 flex-shrink-0"
+        title={
+          documentType
+            ? `Auto-linked as ${documentType}${confidence ? ` (${Math.round(confidence * 100)}% confidence)` : ''}`
+            : 'Auto-linked to a tracker requirement'
+        }
+      >
+        ✓ Linked
+      </span>
+    )
+  }
+  if (status === 'needs_review') {
+    const tip = [
+      documentType ? `Suggested: ${documentType}` : null,
+      confidence != null ? `Confidence ${Math.round(confidence * 100)}%` : null,
+      lastError ? `Reason: ${lastError}` : null,
+    ].filter(Boolean).join(' · ') || 'Manual review needed'
+    return (
+      <span
+        className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-300 flex-shrink-0 cursor-help"
+        title={tip}
+      >
+        Needs review
+      </span>
+    )
+  }
+  if (status === 'failed') {
+    return (
+      <span
+        className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-300 flex-shrink-0 cursor-help"
+        title={lastError || 'Ingest failed'}
+      >
+        Failed
+      </span>
+    )
+  }
+  return null
 }
