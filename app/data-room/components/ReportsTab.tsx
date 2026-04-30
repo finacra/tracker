@@ -1060,7 +1060,7 @@ export default function ReportsTab({
             <button
               onClick={exportPDFReport}
               disabled={isGeneratingEnhancedPDF}
-              className="px-3 sm:px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 sm:px-4 py-2 bg-white text-black rounded-lg hover:bg-bg-hover transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isGeneratingEnhancedPDF ? (
                 <>
@@ -1123,19 +1123,19 @@ export default function ReportsTab({
                 <div className="flex-1">
                   <div className="text-white text-sm font-medium">{pdfGenerationProgress.step}</div>
                   {pdfGenerationProgress.total > 0 && (
-                    <div className="text-gray-400 text-xs mt-1">
+                    <div className="text-fg-muted text-xs mt-1">
                       {pdfGenerationProgress.current} of {pdfGenerationProgress.total} items enriched
                     </div>
                   )}
                 </div>
               </div>
-              <div className="mt-2 text-xs text-gray-400">
+              <div className="mt-2 text-xs text-fg-muted">
                 This may take a few moments as we research legal sections and analyze business impact...
               </div>
             </div>
           )}
         </div>
-        <p className="text-gray-400 text-sm sm:text-base">Comprehensive compliance analytics and insights</p>
+        <p className="text-fg-muted text-sm sm:text-base">Comprehensive compliance analytics and insights</p>
       </div>
 
       {/* Statistics Overview */}
@@ -1143,7 +1143,7 @@ export default function ReportsTab({
         {/* Total Compliances */}
         <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h3 className="text-base sm:text-lg font-medium text-gray-300">Total Compliances</h3>
+            <h3 className="text-base sm:text-lg font-medium text-fg-secondary">Total Compliances</h3>
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
               <svg width="20" height="20" className="sm:w-6 sm:h-6 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M9 11l3 3L22 4" />
@@ -1152,13 +1152,13 @@ export default function ReportsTab({
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{totalCompliances}</div>
-          <p className="text-xs sm:text-sm text-gray-400">All compliance requirements</p>
+          <p className="text-xs sm:text-sm text-fg-muted">All compliance requirements</p>
         </div>
 
         {/* Completed */}
         <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h3 className="text-base sm:text-lg font-medium text-gray-300">Completed</h3>
+            <h3 className="text-base sm:text-lg font-medium text-fg-secondary">Completed</h3>
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
               <svg width="20" height="20" className="sm:w-6 sm:h-6 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="20 6 9 17 4 12" />
@@ -1166,7 +1166,7 @@ export default function ReportsTab({
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{completed}</div>
-          <p className="text-xs sm:text-sm text-gray-400">
+          <p className="text-xs sm:text-sm text-fg-muted">
             {totalCompliances > 0 ? `${Math.round((completed / totalCompliances) * 100)}% completion rate` : 'No compliances'}
           </p>
         </div>
@@ -1174,7 +1174,7 @@ export default function ReportsTab({
         {/* Overdue */}
         <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h3 className="text-base sm:text-lg font-medium text-gray-300">Overdue</h3>
+            <h3 className="text-base sm:text-lg font-medium text-fg-secondary">Overdue</h3>
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
               <svg width="20" height="20" className="sm:w-6 sm:h-6 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
@@ -1184,7 +1184,7 @@ export default function ReportsTab({
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{overdue}</div>
-          <p className="text-xs sm:text-sm text-gray-400">
+          <p className="text-xs sm:text-sm text-fg-muted">
             {totalCompliances > 0 ? `${Math.round((overdue / totalCompliances) * 100)}% overdue rate` : 'No compliances'}
           </p>
         </div>
@@ -1192,7 +1192,7 @@ export default function ReportsTab({
         {/* Pending */}
         <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h3 className="text-base sm:text-lg font-medium text-gray-300">Pending</h3>
+            <h3 className="text-base sm:text-lg font-medium text-fg-secondary">Pending</h3>
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
               <svg width="20" height="20" className="sm:w-6 sm:h-6 text-yellow-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
@@ -1202,15 +1202,15 @@ export default function ReportsTab({
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{pending}</div>
-          <p className="text-xs sm:text-sm text-gray-400">In progress</p>
+          <p className="text-xs sm:text-sm text-fg-muted">In progress</p>
         </div>
 
         {/* Not Started */}
         <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h3 className="text-base sm:text-lg font-medium text-gray-300">Not Started</h3>
+            <h3 className="text-base sm:text-lg font-medium text-fg-secondary">Not Started</h3>
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <svg width="20" height="20" className="sm:w-6 sm:h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="20" height="20" className="sm:w-6 sm:h-6 text-fg-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" y1="8" x2="12" y2="12" />
                 <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -1218,17 +1218,17 @@ export default function ReportsTab({
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{notStarted}</div>
-          <p className="text-xs sm:text-sm text-gray-400">Awaiting action</p>
+          <p className="text-xs sm:text-sm text-fg-muted">Awaiting action</p>
         </div>
 
         {/* Compliance Score */}
         <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h3 className="text-base sm:text-lg font-medium text-gray-300">Compliance Score</h3>
+            <h3 className="text-base sm:text-lg font-medium text-fg-secondary">Compliance Score</h3>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsComplianceScoreModalOpen(true)}
-                className="text-gray-400 hover:text-white transition-colors"
+                className="text-fg-muted hover:text-white transition-colors"
                 title="Learn more about compliance score"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1251,10 +1251,10 @@ export default function ReportsTab({
               {totalCompliances === 0 ? '—' : `${complianceScore}`}
             </div>
             {totalCompliances > 0 && (
-              <div className="text-xs sm:text-sm text-gray-400">/ 100</div>
+              <div className="text-xs sm:text-sm text-fg-muted">/ 100</div>
             )}
           </div>
-          <p className="text-xs sm:text-sm text-gray-400">
+          <p className="text-xs sm:text-sm text-fg-muted">
             Overall compliance health based on completion and overdue items
           </p>
         </div>
@@ -1262,7 +1262,7 @@ export default function ReportsTab({
         {/* Total Penalty */}
         <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <h3 className="text-base sm:text-lg font-medium text-gray-300">Total Penalty</h3>
+            <h3 className="text-base sm:text-lg font-medium text-fg-secondary">Total Penalty</h3>
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
               <svg width="20" height="20" className="sm:w-6 sm:h-6 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
@@ -1274,7 +1274,7 @@ export default function ReportsTab({
           <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">
             {totalPenalty > 0 ? formatCurrency(totalPenalty, countryCode) : formatCurrency(0, countryCode)}
           </div>
-          <p className="text-xs sm:text-sm text-gray-400">Accumulated penalties</p>
+          <p className="text-xs sm:text-sm text-fg-muted">Accumulated penalties</p>
         </div>
       </div>
 
@@ -1288,7 +1288,7 @@ export default function ReportsTab({
               completed: { bg: 'bg-green-500/20', text: 'text-green-400', bar: 'bg-green-500' },
               pending: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', bar: 'bg-yellow-500' },
               overdue: { bg: 'bg-red-500/20', text: 'text-red-400', bar: 'bg-red-500' },
-              notStarted: { bg: 'bg-gray-500/20', text: 'text-gray-400', bar: 'bg-gray-500' },
+              notStarted: { bg: 'bg-gray-500/20', text: 'text-fg-muted', bar: 'bg-gray-500' },
               upcoming: { bg: 'bg-blue-500/20', text: 'text-blue-400', bar: 'bg-blue-500' }
             }
             const colors = statusColors[status] || statusColors.notStarted
@@ -1298,9 +1298,9 @@ export default function ReportsTab({
               <div key={status}>
                 <div className="flex items-center justify-between mb-1.5 sm:mb-2">
                   <span className={`text-xs sm:text-sm font-medium ${colors.text}`}>{statusLabel}</span>
-                  <span className="text-xs sm:text-sm text-gray-400">{count} ({Math.round(percentage)}%)</span>
+                  <span className="text-xs sm:text-sm text-fg-muted">{count} ({Math.round(percentage)}%)</span>
                 </div>
-                <div className="w-full bg-gray-800 rounded-full h-1.5 sm:h-2">
+                <div className="w-full bg-bg-elevated rounded-full h-1.5 sm:h-2">
                   <div
                     className={`h-1.5 sm:h-2 rounded-full ${colors.bar} transition-all duration-300`}
                     style={{ width: `${percentage}%` }}
@@ -1326,13 +1326,13 @@ export default function ReportsTab({
                     <span className="text-white font-medium text-sm sm:text-base break-words">{category}</span>
                     <span className="text-white font-semibold text-sm sm:text-base flex-shrink-0 ml-2">{count}</span>
                   </div>
-                  <div className="w-full bg-gray-800 rounded-full h-1 sm:h-1.5">
+                  <div className="w-full bg-bg-elevated rounded-full h-1 sm:h-1.5">
                     <div
                       className="bg-white h-1 sm:h-1.5 rounded-full transition-all duration-300"
                       style={{ width: `${percentage}%` }}
                     />
                   </div>
-                  <p className="text-[10px] sm:text-xs text-gray-400 mt-1">{Math.round(percentage)}% of total</p>
+                  <p className="text-[10px] sm:text-xs text-fg-muted mt-1">{Math.round(percentage)}% of total</p>
                 </div>
               )
             })}
@@ -1370,28 +1370,28 @@ export default function ReportsTab({
                   </div>
                   <div className="space-y-1.5 sm:space-y-2">
                     <div className="flex items-center justify-between text-xs sm:text-sm">
-                      <span className="text-gray-400">Completed</span>
+                      <span className="text-fg-muted">Completed</span>
                       <span className="text-green-400 font-medium">{data.completed}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs sm:text-sm">
-                      <span className="text-gray-400">Overdue</span>
+                      <span className="text-fg-muted">Overdue</span>
                       <span className="text-red-400 font-medium">{data.overdue}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs sm:text-sm">
-                      <span className="text-gray-400">Pending</span>
+                      <span className="text-fg-muted">Pending</span>
                       <span className="text-yellow-400 font-medium">{data.pending}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs sm:text-sm">
-                      <span className="text-gray-400">Not Started</span>
-                      <span className="text-gray-400 font-medium">{data.notStarted}</span>
+                      <span className="text-fg-muted">Not Started</span>
+                      <span className="text-fg-muted font-medium">{data.notStarted}</span>
                     </div>
                   </div>
                   <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-white/10">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] sm:text-xs text-gray-400">Completion Rate</span>
+                      <span className="text-[10px] sm:text-xs text-fg-muted">Completion Rate</span>
                       <span className={`text-[10px] sm:text-xs font-semibold ${colors.text}`}>{Math.round(completionRate)}%</span>
                     </div>
-                    <div className="w-full bg-gray-800 rounded-full h-1 sm:h-1.5">
+                    <div className="w-full bg-bg-elevated rounded-full h-1 sm:h-1.5">
                       <div
                         className={`h-1 sm:h-1.5 rounded-full ${colors.bar} transition-all duration-300`}
                         style={{ width: `${completionRate}%` }}
@@ -1422,7 +1422,7 @@ export default function ReportsTab({
               .map(([fy, count]) => (
                 <div key={fy} className="border border-white/10 rounded-lg p-3 sm:p-4 text-center">
                   <div className="text-xl sm:text-2xl font-light text-white mb-1">{count}</div>
-                  <div className="text-xs sm:text-sm text-gray-400 break-words">{fy}</div>
+                  <div className="text-xs sm:text-sm text-fg-muted break-words">{fy}</div>
                 </div>
               ))}
           </div>
@@ -1447,32 +1447,32 @@ export default function ReportsTab({
                 return (
                   <div key={req.id} className="bg-black border border-white/10 rounded-lg p-3 space-y-2">
                     <div>
-                      <div className="text-xs text-gray-400 mb-1">Category</div>
+                      <div className="text-xs text-fg-muted mb-1">Category</div>
                       <div className="text-white text-sm font-medium break-words">{req.category}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-gray-400 mb-1">Requirement</div>
+                      <div className="text-xs text-fg-muted mb-1">Requirement</div>
                       <div className="text-white text-sm break-words">{req.requirement}</div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div>
-                        <div className="text-gray-400 mb-1">Due Date</div>
-                        <div className="text-gray-300">{req.dueDate}</div>
+                        <div className="text-fg-muted mb-1">Due Date</div>
+                        <div className="text-fg-secondary">{req.dueDate}</div>
                       </div>
                       <div>
-                        <div className="text-gray-400 mb-1">Days Delayed</div>
+                        <div className="text-fg-muted mb-1">Days Delayed</div>
                         <div className="text-red-400 font-medium">{delay || 0} days</div>
                       </div>
                     </div>
                     {req.penalty && (
                       <div>
-                        <div className="text-xs text-gray-400 mb-1">Penalty</div>
-                        <div className="text-gray-300 text-xs break-words">{req.penalty}</div>
+                        <div className="text-xs text-fg-muted mb-1">Penalty</div>
+                        <div className="text-fg-secondary text-xs break-words">{req.penalty}</div>
                       </div>
                     )}
                     {penalty !== '-' && !penalty.includes('Cannot calculate') && (
                       <div>
-                        <div className="text-xs text-gray-400 mb-1">Calculated Penalty</div>
+                        <div className="text-xs text-fg-muted mb-1">Calculated Penalty</div>
                         <div className="text-red-400 font-semibold text-sm">{penalty}</div>
                       </div>
                     )}
@@ -1484,12 +1484,12 @@ export default function ReportsTab({
             <table className="hidden sm:table w-full">
               <thead>
                 <tr className="border-b border-white/10">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Category</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Requirement</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Due Date</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Days Delayed</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Penalty</th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Calculated Penalty</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-fg-muted">Category</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-fg-muted">Requirement</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-fg-muted">Due Date</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-fg-muted">Days Delayed</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-fg-muted">Penalty</th>
+                  <th className="text-left py-3 px-4 text-sm font-medium text-fg-muted">Calculated Penalty</th>
                 </tr>
               </thead>
               <tbody>
@@ -1500,16 +1500,16 @@ export default function ReportsTab({
                     <tr key={req.id} className="border-b border-white/10 hover:bg-black/50">
                       <td className="py-3 px-4 text-white">{req.category}</td>
                       <td className="py-3 px-4 text-white">{req.requirement}</td>
-                      <td className="py-3 px-4 text-gray-400">{req.dueDate}</td>
+                      <td className="py-3 px-4 text-fg-muted">{req.dueDate}</td>
                       <td className="py-3 px-4">
                         <span className="text-red-400 font-medium">{delay || 0} days</span>
                       </td>
-                      <td className="py-3 px-4 text-gray-400">{req.penalty || '-'}</td>
+                      <td className="py-3 px-4 text-fg-muted">{req.penalty || '-'}</td>
                       <td className="py-3 px-4">
                         {penalty !== '-' && !penalty.includes('Cannot calculate') ? (
                           <span className="text-red-400 font-semibold">{penalty}</span>
                         ) : (
-                          <span className="text-gray-500">-</span>
+                          <span className="text-fg-muted">-</span>
                         )}
                       </td>
                     </tr>
@@ -1518,7 +1518,7 @@ export default function ReportsTab({
               </tbody>
             </table>
             {overdueCompliances.length > 10 && (
-              <p className="text-xs sm:text-sm text-gray-400 mt-4 text-center">
+              <p className="text-xs sm:text-sm text-fg-muted mt-4 text-center">
                 Showing 10 of {overdueCompliances.length} overdue compliances. Export to see all.
               </p>
             )}

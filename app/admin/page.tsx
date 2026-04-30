@@ -544,7 +544,7 @@ function AdminPageInner() {
       return (
         <div key={folder.path}>
           <div
-            className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors ${isSelected ? 'bg-primary-orange/20 border border-primary-orange/50' : ''
+            className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-bg-elevated transition-colors ${isSelected ? 'bg-primary-orange/20 border border-primary-orange/50' : ''
               }`}
             style={{ paddingLeft: `${level * 20 + 8}px` }}
             onClick={() => setSelectedFolderPath(folder.path)}
@@ -555,7 +555,7 @@ function AdminPageInner() {
                   e.stopPropagation()
                   toggleVaultFolderExpansion(folder.path)
                 }}
-                className="w-4 h-4 flex items-center justify-center text-gray-400 hover:text-white"
+                className="w-4 h-4 flex items-center justify-center text-fg-muted hover:text-white"
               >
                 {isExpanded ? '▼' : '▶'}
               </button>
@@ -573,7 +573,7 @@ function AdminPageInner() {
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
             </svg>
             <span className="flex-1 text-sm text-white">{folder.name}</span>
-            <span className="text-xs text-gray-500">({folder.documentCount})</span>
+            <span className="text-xs text-fg-muted">({folder.documentCount})</span>
             <div className="flex items-center gap-1">
               <button
                 onClick={(e) => {
@@ -581,7 +581,7 @@ function AdminPageInner() {
                   setEditingVaultFolder(folder)
                   setVaultFolderForm({ name: folder.name, description: '' })
                 }}
-                className="p-1 text-gray-400 hover:text-primary-orange transition-colors"
+                className="p-1 text-fg-muted hover:text-primary-orange transition-colors"
                 title="Edit folder"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -594,7 +594,7 @@ function AdminPageInner() {
                   e.stopPropagation()
                   handleDeleteVaultFolder(folder.path)
                 }}
-                className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+                className="p-1 text-fg-muted hover:text-red-400 transition-colors"
                 title="Delete folder"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -672,7 +672,7 @@ function AdminPageInner() {
         <div className="relative z-10 container mx-auto px-4 py-8 flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="w-10 h-10 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mb-4 mx-auto"></div>
-            <p className="text-gray-400">Loading...</p>
+            <p className="text-fg-muted">Loading...</p>
           </div>
         </div>
       </div>
@@ -703,7 +703,7 @@ function AdminPageInner() {
       <div className="relative z-10 container mx-auto px-4 py-8 animate-fadeIn">
         <div className="mb-6">
           <h1 className="text-4xl font-light text-white mb-2">Superadmin Dashboard</h1>
-          <p className="text-gray-400">Manage all companies, compliances, and users across the platform</p>
+          <p className="text-fg-muted">Manage all companies, compliances, and users across the platform</p>
         </div>
 
         {/* Tabs — Mobile select */}
@@ -711,7 +711,7 @@ function AdminPageInner() {
           <select
             value={activeTab}
             onChange={(e) => setActiveTab(e.target.value as typeof activeTab)}
-            className="w-full bg-primary-dark-card border border-gray-700 text-white rounded-lg px-4 py-3 font-light text-sm focus:outline-none focus:border-gray-500"
+            className="w-full bg-bg-card border border-line/15 text-white rounded-lg px-4 py-3 font-light text-sm focus:outline-none focus:border-line/40"
           >
             <option value="overview">Overview</option>
             <option value="companies">Companies</option>
@@ -733,7 +733,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('overview')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'overview'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -748,7 +748,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('companies')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'companies'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -761,7 +761,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('compliances')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'compliances'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -773,7 +773,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('templates')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'templates'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -789,7 +789,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('subscriptions')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'subscriptions'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -802,7 +802,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('allusers')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'allusers'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -817,7 +817,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('financials')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'financials'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -830,7 +830,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('transactions')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'transactions'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -846,7 +846,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('vault')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'vault'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -860,7 +860,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('kpis')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'kpis'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -874,7 +874,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('tracking')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'tracking'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-gray-700 bg-primary-dark-card text-gray-400 hover:text-white hover:border-gray-600'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -887,9 +887,9 @@ function AdminPageInner() {
         {/* Content */}
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-6">
+            <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-gray-400 text-sm font-medium">Total Companies</h3>
+                <h3 className="text-fg-muted text-sm font-medium">Total Companies</h3>
                 <div className="w-10 h-10 bg-primary-orange/20 rounded-lg flex items-center justify-center">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary-orange">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -900,9 +900,9 @@ function AdminPageInner() {
               <p className="text-3xl font-light text-white">{stats.totalCompanies}</p>
             </div>
 
-            <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-6">
+            <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-gray-400 text-sm font-medium">Total Compliances</h3>
+                <h3 className="text-fg-muted text-sm font-medium">Total Compliances</h3>
                 <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -912,9 +912,9 @@ function AdminPageInner() {
               <p className="text-3xl font-light text-white">{stats.totalRequirements}</p>
             </div>
 
-            <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-6">
+            <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-gray-400 text-sm font-medium">Overdue</h3>
+                <h3 className="text-fg-muted text-sm font-medium">Overdue</h3>
                 <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-500">
                     <circle cx="12" cy="12" r="10" />
@@ -925,9 +925,9 @@ function AdminPageInner() {
               <p className="text-3xl font-light text-red-400">{stats.overdueRequirements}</p>
             </div>
 
-            <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-6">
+            <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-gray-400 text-sm font-medium">Pending</h3>
+                <h3 className="text-fg-muted text-sm font-medium">Pending</h3>
                 <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-yellow-500">
                     <circle cx="12" cy="12" r="10" />
@@ -941,30 +941,30 @@ function AdminPageInner() {
         )}
 
         {activeTab === 'companies' && (
-          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
-            <div className="p-6 border-b border-gray-800">
+          <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-line/10">
               <h2 className="text-2xl font-light text-white">All Companies</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-900 border-b border-gray-800">
+                <thead className="bg-bg-card border-b border-line/10">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Company Name</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Type</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Country</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Owner Email</th>
-                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Company Name</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Type</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Country</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Owner Email</th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {companies.map((company) => (
-                    <tr key={company.id} className="hover:bg-gray-900/50 transition-colors border-t border-gray-800">
+                    <tr key={company.id} className="hover:bg-bg-card/50 transition-colors border-t border-line/10">
                       <td className="px-6 py-4 text-white font-medium">{company.name}</td>
-                      <td className="px-6 py-4 text-gray-300">{company.type}</td>
-                      <td className="px-6 py-4 text-gray-300">
+                      <td className="px-6 py-4 text-fg-secondary">{company.type}</td>
+                      <td className="px-6 py-4 text-fg-secondary">
                         {company.country_code || 'IN'}
                       </td>
-                      <td className="px-6 py-4 text-gray-300 truncate max-w-[200px]" title={company.owner_email}>
+                      <td className="px-6 py-4 text-fg-secondary truncate max-w-[200px]" title={company.owner_email}>
                         {company.owner_email || 'Unknown'}
                       </td>
                       <td className="px-6 py-4">
@@ -987,11 +987,11 @@ function AdminPageInner() {
           <div className="space-y-6">
             {/* Company Filter */}
             <div className="flex items-center gap-3">
-              <label className="text-sm font-medium text-gray-300">Filter by Company:</label>
+              <label className="text-sm font-medium text-fg-secondary">Filter by Company:</label>
               <select
                 value={selectedCompany}
                 onChange={(e) => setSelectedCompany(e.target.value)}
-                className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
               >
                 <option value="all">All Companies</option>
                 {companies.map((company) => (
@@ -1001,37 +1001,37 @@ function AdminPageInner() {
             </div>
 
             {/* Requirements Table */}
-            <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
-              <div className="p-6 border-b border-gray-800">
+            <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl overflow-hidden">
+              <div className="p-6 border-b border-line/10">
                 <h2 className="text-2xl font-light text-white">All Compliance Requirements</h2>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-900 border-b border-gray-800">
+                  <thead className="bg-bg-card border-b border-line/10">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Company</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Category</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Requirement</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Due Date</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Company</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Category</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Requirement</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Status</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Due Date</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredRequirements.map((req) => (
-                      <tr key={req.id} className="hover:bg-gray-900/50 transition-colors border-t border-gray-800">
+                      <tr key={req.id} className="hover:bg-bg-card/50 transition-colors border-t border-line/10">
                         <td className="px-6 py-4 text-white font-medium">{req.company_name}</td>
-                        <td className="px-6 py-4 text-gray-300">{req.category}</td>
+                        <td className="px-6 py-4 text-fg-secondary">{req.category}</td>
                         <td className="px-6 py-4 text-white">{req.requirement}</td>
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-medium ${req.status === 'completed' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
                             req.status === 'overdue' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
                               req.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
-                                'bg-gray-800 text-gray-400 border border-gray-700'
+                                'bg-bg-elevated text-fg-muted border border-line/15'
                             }`}>
                             {req.status.toUpperCase()}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-gray-300">
+                        <td className="px-6 py-4 text-fg-secondary">
                           {new Date(req.due_date).toLocaleDateString()}
                         </td>
                       </tr>
@@ -1052,17 +1052,17 @@ function AdminPageInner() {
                   <h2 className="text-2xl font-light text-white mb-2">
                     Compliance Templates
                     {templates.length > 0 && (
-                      <span className="ml-3 text-sm font-normal text-gray-400">
+                      <span className="ml-3 text-sm font-normal text-fg-muted">
                         ({templates.length} template{templates.length !== 1 ? 's' : ''})
                       </span>
                     )}
                   </h2>
-                  <p className="text-gray-400">Create templates that automatically apply to matching companies</p>
+                  <p className="text-fg-muted">Create templates that automatically apply to matching companies</p>
                 </div>
                 <button
                   onClick={loadTemplates}
                   disabled={isLoadingTemplates}
-                  className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+                  className="px-3 py-1.5 text-sm bg-bg-elevated hover:bg-bg-hover text-fg-secondary rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
                   title="Refresh templates list"
                 >
                   <svg
@@ -1195,18 +1195,18 @@ function AdminPageInner() {
 
             {/* Templates List */}
             {isLoadingTemplates ? (
-              <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-12 flex flex-col items-center justify-center">
+              <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-12 flex flex-col items-center justify-center">
                 <div className="w-10 h-10 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mb-4"></div>
-                <p className="text-gray-400">Loading templates...</p>
+                <p className="text-fg-muted">Loading templates...</p>
               </div>
             ) : (
-              <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
-                <div className="p-6 border-b border-gray-800">
+              <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl overflow-hidden">
+                <div className="p-6 border-b border-line/10">
                   <h3 className="text-xl font-light text-white">All Templates</h3>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-gray-900 border-b border-gray-800">
+                    <thead className="bg-bg-card border-b border-line/10">
                       <tr>
                         <th className="px-4 py-4 text-left">
                           <input
@@ -1219,29 +1219,29 @@ function AdminPageInner() {
                                 setSelectedTemplates([])
                               }
                             }}
-                            className="w-4 h-4 text-primary-orange bg-gray-900 border-gray-700 rounded focus:ring-primary-orange"
+                            className="w-4 h-4 text-primary-orange bg-bg-card border-line/15 rounded focus:ring-primary-orange"
                           />
                         </th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Requirement</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Compliance Type</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Required Docs</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Entity Types</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Industries</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Matching</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
-                        <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Requirement</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Compliance Type</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Required Docs</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Entity Types</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Industries</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Matching</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Status</th>
+                        <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {templates.length === 0 ? (
                         <tr>
-                          <td colSpan={9} className="px-6 py-12 text-center text-gray-400">
+                          <td colSpan={9} className="px-6 py-12 text-center text-fg-muted">
                             No templates found. Create your first template to get started.
                           </td>
                         </tr>
                       ) : (
                         templates.map((template) => (
-                          <tr key={template.id} className={`hover:bg-gray-900/50 transition-colors border-t border-gray-800 ${selectedTemplates.includes(template.id) ? 'bg-primary-orange/10' : ''}`}>
+                          <tr key={template.id} className={`hover:bg-bg-card/50 transition-colors border-t border-line/10 ${selectedTemplates.includes(template.id) ? 'bg-primary-orange/10' : ''}`}>
                             <td className="px-4 py-4">
                               <input
                                 type="checkbox"
@@ -1253,7 +1253,7 @@ function AdminPageInner() {
                                     setSelectedTemplates(prev => prev.filter(id => id !== template.id))
                                   }
                                 }}
-                                className="w-4 h-4 text-primary-orange bg-gray-900 border-gray-700 rounded focus:ring-primary-orange"
+                                className="w-4 h-4 text-primary-orange bg-bg-card border-line/15 rounded focus:ring-primary-orange"
                               />
                             </td>
                             <td className="px-6 py-4 text-white font-medium">{template.requirement}</td>
@@ -1275,38 +1275,38 @@ function AdminPageInner() {
                                     </span>
                                   ))}
                                   {template.required_documents.length > 2 && (
-                                    <span className="text-gray-400 text-xs">+{template.required_documents.length - 2}</span>
+                                    <span className="text-fg-muted text-xs">+{template.required_documents.length - 2}</span>
                                   )}
                                 </div>
                               ) : (
-                                <span className="text-gray-500 text-sm">-</span>
+                                <span className="text-fg-muted text-sm">-</span>
                               )}
                             </td>
-                            <td className="px-6 py-4 text-gray-300 text-sm">
+                            <td className="px-6 py-4 text-fg-secondary text-sm">
                               {template.entity_types && template.entity_types.length > 0 ? (
                                 <>
                                   {template.entity_types.slice(0, 2).join(', ')}
                                   {template.entity_types.length > 2 && ` +${template.entity_types.length - 2}`}
                                 </>
                               ) : (
-                                <span className="text-gray-500">All entities</span>
+                                <span className="text-fg-muted">All entities</span>
                               )}
                             </td>
-                            <td className="px-6 py-4 text-gray-300 text-sm">
+                            <td className="px-6 py-4 text-fg-secondary text-sm">
                               {template.industries && template.industries.length > 0 ? (
                                 <>
                                   {template.industries.slice(0, 2).join(', ')}
                                   {template.industries.length > 2 && ` +${template.industries.length - 2}`}
                                 </>
                               ) : (
-                                <span className="text-gray-500">All industries</span>
+                                <span className="text-fg-muted">All industries</span>
                               )}
                             </td>
-                            <td className="px-6 py-4 text-gray-300 text-center">{template.matching_companies_count || 0}</td>
+                            <td className="px-6 py-4 text-fg-secondary text-center">{template.matching_companies_count || 0}</td>
                             <td className="px-6 py-4">
                               <span className={`px-3 py-1 rounded-full text-xs font-medium ${template.is_active
                                 ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                : 'bg-gray-800 text-gray-400 border border-gray-700'
+                                : 'bg-bg-elevated text-fg-muted border border-line/15'
                                 }`}>
                                 {template.is_active ? 'Active' : 'Inactive'}
                               </span>
@@ -1424,92 +1424,92 @@ function AdminPageInner() {
         {activeTab === 'financials' && (
           <div className="space-y-6">
             {/* Cost Breakdown */}
-            <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-6">
+            <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-6">
               <h2 className="text-2xl font-light text-white mb-6">Cost Structure</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-lg font-medium text-gray-300 mb-4">Operational Costs</h3>
+                  <h3 className="text-lg font-medium text-fg-secondary mb-4">Operational Costs</h3>
                   <div className="space-y-2 text-sm">
-                    <div className="flex justify-between text-gray-400">
+                    <div className="flex justify-between text-fg-muted">
                       <span>APIs</span>
                       <span>{formatCurrency(FIXED_COSTS.apis)}</span>
                     </div>
-                    <div className="flex justify-between text-gray-400">
+                    <div className="flex justify-between text-fg-muted">
                       <span>Salaries (Current Team)</span>
                       <span>{formatCurrency(FIXED_COSTS.salaries)}</span>
                     </div>
-                    <div className="flex justify-between text-gray-400">
+                    <div className="flex justify-between text-fg-muted">
                       <span>New Hires (5 × ₹20k/month)</span>
                       <span>{formatCurrency(FIXED_COSTS.newHires)}</span>
                     </div>
-                    <div className="flex justify-between text-gray-400">
+                    <div className="flex justify-between text-fg-muted">
                       <span>Subscriptions</span>
                       <span>{formatCurrency(FIXED_COSTS.subscriptions)}</span>
                     </div>
-                    <div className="flex justify-between text-gray-400">
+                    <div className="flex justify-between text-fg-muted">
                       <span>Workplace</span>
                       <span>{formatCurrency(FIXED_COSTS.workplace)}</span>
                     </div>
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-300 mb-4">Marketing & Sales</h3>
+                  <h3 className="text-lg font-medium text-fg-secondary mb-4">Marketing & Sales</h3>
                   <div className="space-y-2 text-sm">
-                    <div className="flex justify-between text-gray-400">
+                    <div className="flex justify-between text-fg-muted">
                       <span>Marketing</span>
                       <span>{formatCurrency(FIXED_COSTS.marketing)}</span>
                     </div>
-                    <div className="flex justify-between text-gray-400">
+                    <div className="flex justify-between text-fg-muted">
                       <span>Branding</span>
                       <span>{formatCurrency(FIXED_COSTS.branding)}</span>
                     </div>
-                    <div className="flex justify-between text-gray-400">
+                    <div className="flex justify-between text-fg-muted">
                       <span>Outreach Programs</span>
                       <span>{formatCurrency(FIXED_COSTS.outreachPrograms)}</span>
                     </div>
-                    <div className="flex justify-between text-gray-400">
+                    <div className="flex justify-between text-fg-muted">
                       <span>Printing Costs</span>
                       <span>{formatCurrency(FIXED_COSTS.printingCosts)}</span>
                     </div>
-                    <div className="flex justify-between text-gray-400">
+                    <div className="flex justify-between text-fg-muted">
                       <span>Travelling Costs</span>
                       <span>{formatCurrency(FIXED_COSTS.travellingCosts)}</span>
                     </div>
-                    <div className="flex justify-between text-gray-400">
+                    <div className="flex justify-between text-fg-muted">
                       <span>Gifts</span>
                       <span>{formatCurrency(FIXED_COSTS.gifts)}</span>
                     </div>
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-300 mb-4">Operations & Admin</h3>
+                  <h3 className="text-lg font-medium text-fg-secondary mb-4">Operations & Admin</h3>
                   <div className="space-y-2 text-sm">
-                    <div className="flex justify-between text-gray-400">
+                    <div className="flex justify-between text-fg-muted">
                       <span>Staff Welfare</span>
                       <span>{formatCurrency(FIXED_COSTS.staffWelfare)}</span>
                     </div>
-                    <div className="flex justify-between text-gray-400">
+                    <div className="flex justify-between text-fg-muted">
                       <span>Office Expenses</span>
                       <span>{formatCurrency(FIXED_COSTS.officeExpenses)}</span>
                     </div>
-                    <div className="flex justify-between text-gray-400">
+                    <div className="flex justify-between text-fg-muted">
                       <span>Misc Expenses</span>
                       <span>{formatCurrency(FIXED_COSTS.miscExpenses)}</span>
                     </div>
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-300 mb-4">Summary</h3>
+                  <h3 className="text-lg font-medium text-fg-secondary mb-4">Summary</h3>
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center pt-2 border-t border-gray-700">
+                    <div className="flex justify-between items-center pt-2 border-t border-line/15">
                       <span className="text-white font-medium">Total Annual Fixed Costs</span>
                       <span className="text-xl font-bold text-primary-orange">{formatCurrency(FIXED_COSTS.total)}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-400">CapEx (Year 1 Only)</span>
+                      <span className="text-fg-muted">CapEx (Year 1 Only)</span>
                       <span className="text-white font-medium">{formatCurrency(CAPEX_YEAR_1)}</span>
                     </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-gray-700">
+                    <div className="flex justify-between items-center pt-2 border-t border-line/15">
                       <span className="text-white font-medium">Year 1 Total Costs</span>
                       <span className="text-xl font-bold text-red-400">{formatCurrency(FIXED_COSTS.total + CAPEX_YEAR_1)}</span>
                     </div>
@@ -1519,32 +1519,32 @@ function AdminPageInner() {
             </div>
 
             {/* Break-Even Analysis */}
-            <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-6">
+            <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-6">
               <h2 className="text-2xl font-light text-white mb-6">Break-Even Analysis (3-4 Year Timeline)</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-lg font-medium text-gray-300 mb-4">Year 1 (with CapEx)</h3>
+                  <h3 className="text-lg font-medium text-fg-secondary mb-4">Year 1 (with CapEx)</h3>
                   {(() => {
                     const year1Analysis = calculateBreakEven(60000, FIXED_COSTS.total, CAPEX_YEAR_1)
                     return (
                       <div className="space-y-2 text-sm">
-                        <div className="flex justify-between text-gray-400">
+                        <div className="flex justify-between text-fg-muted">
                           <span>Fixed Costs</span>
                           <span>{formatCurrency(year1Analysis.fixedCosts)}</span>
                         </div>
-                        <div className="flex justify-between text-gray-400">
+                        <div className="flex justify-between text-fg-muted">
                           <span>CapEx</span>
                           <span>{formatCurrency(CAPEX_YEAR_1)}</span>
                         </div>
-                        <div className="flex justify-between text-gray-400">
+                        <div className="flex justify-between text-fg-muted">
                           <span>Required Revenue</span>
                           <span className="text-white font-medium">{formatCurrency(year1Analysis.requiredRevenue)}</span>
                         </div>
-                        <div className="flex justify-between text-gray-400">
+                        <div className="flex justify-between text-fg-muted">
                           <span>Break-Even Customers</span>
                           <span className="text-primary-orange font-medium">{year1Analysis.breakEvenCustomers}</span>
                         </div>
-                        <div className="flex justify-between text-gray-400">
+                        <div className="flex justify-between text-fg-muted">
                           <span>Contribution Margin</span>
                           <span>{formatPercent(year1Analysis.contributionMargin)}</span>
                         </div>
@@ -1553,24 +1553,24 @@ function AdminPageInner() {
                   })()}
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-300 mb-4">Year 2+ (without CapEx)</h3>
+                  <h3 className="text-lg font-medium text-fg-secondary mb-4">Year 2+ (without CapEx)</h3>
                   {(() => {
                     const year2Analysis = calculateBreakEven(60000, FIXED_COSTS.total, 0)
                     return (
                       <div className="space-y-2 text-sm">
-                        <div className="flex justify-between text-gray-400">
+                        <div className="flex justify-between text-fg-muted">
                           <span>Fixed Costs</span>
                           <span>{formatCurrency(year2Analysis.fixedCosts)}</span>
                         </div>
-                        <div className="flex justify-between text-gray-400">
+                        <div className="flex justify-between text-fg-muted">
                           <span>Required Revenue</span>
                           <span className="text-white font-medium">{formatCurrency(year2Analysis.requiredRevenue)}</span>
                         </div>
-                        <div className="flex justify-between text-gray-400">
+                        <div className="flex justify-between text-fg-muted">
                           <span>Break-Even Customers</span>
                           <span className="text-primary-orange font-medium">{year2Analysis.breakEvenCustomers}</span>
                         </div>
-                        <div className="flex justify-between text-gray-400">
+                        <div className="flex justify-between text-fg-muted">
                           <span>Contribution Margin</span>
                           <span>{formatPercent(year2Analysis.contributionMargin)}</span>
                         </div>
@@ -1591,7 +1591,7 @@ function AdminPageInner() {
             </div>
 
             {/* Financial Metrics */}
-            <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-6">
+            <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-6">
               <h2 className="text-2xl font-light text-white mb-6">Financial Metrics</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {(() => {
@@ -1604,61 +1604,61 @@ function AdminPageInner() {
                   const metrics = calculateFinancialMetrics(exampleMix, 20000, 0.05, 36)
                   return (
                     <>
-                      <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
-                        <div className="text-xs text-gray-400 mb-1">MRR</div>
+                      <div className="bg-bg-card/50 rounded-lg p-4 border border-line/15">
+                        <div className="text-xs text-fg-muted mb-1">MRR</div>
                         <div className="text-2xl font-bold text-white">{formatCurrency(metrics.mrr)}</div>
                       </div>
-                      <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
-                        <div className="text-xs text-gray-400 mb-1">ARR</div>
+                      <div className="bg-bg-card/50 rounded-lg p-4 border border-line/15">
+                        <div className="text-xs text-fg-muted mb-1">ARR</div>
                         <div className="text-2xl font-bold text-white">{formatCurrency(metrics.arr)}</div>
                       </div>
-                      <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
-                        <div className="text-xs text-gray-400 mb-1">CAC</div>
+                      <div className="bg-bg-card/50 rounded-lg p-4 border border-line/15">
+                        <div className="text-xs text-fg-muted mb-1">CAC</div>
                         <div className="text-2xl font-bold text-primary-orange">{formatCurrency(metrics.cac)}</div>
                       </div>
-                      <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
-                        <div className="text-xs text-gray-400 mb-1">LTV</div>
+                      <div className="bg-bg-card/50 rounded-lg p-4 border border-line/15">
+                        <div className="text-xs text-fg-muted mb-1">LTV</div>
                         <div className="text-2xl font-bold text-green-400">{formatCurrency(metrics.ltv)}</div>
                       </div>
-                      <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
-                        <div className="text-xs text-gray-400 mb-1">LTV:CAC Ratio</div>
+                      <div className="bg-bg-card/50 rounded-lg p-4 border border-line/15">
+                        <div className="text-xs text-fg-muted mb-1">LTV:CAC Ratio</div>
                         <div className="text-2xl font-bold text-white">{metrics.ltvCacRatio}x</div>
                       </div>
-                      <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
-                        <div className="text-xs text-gray-400 mb-1">CAC Payback</div>
+                      <div className="bg-bg-card/50 rounded-lg p-4 border border-line/15">
+                        <div className="text-xs text-fg-muted mb-1">CAC Payback</div>
                         <div className="text-2xl font-bold text-white">{metrics.cacPaybackMonths} months</div>
                       </div>
-                      <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
-                        <div className="text-xs text-gray-400 mb-1">Churn Rate</div>
+                      <div className="bg-bg-card/50 rounded-lg p-4 border border-line/15">
+                        <div className="text-xs text-fg-muted mb-1">Churn Rate</div>
                         <div className="text-2xl font-bold text-yellow-400">{formatPercent(metrics.churnRate)}</div>
                       </div>
-                      <div className="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
-                        <div className="text-xs text-gray-400 mb-1">Contribution Margin</div>
+                      <div className="bg-bg-card/50 rounded-lg p-4 border border-line/15">
+                        <div className="text-xs text-fg-muted mb-1">Contribution Margin</div>
                         <div className="text-2xl font-bold text-green-400">{formatPercent(metrics.contributionMargin)}</div>
                       </div>
                     </>
                   )
                 })()}
               </div>
-              <p className="text-xs text-gray-500 mt-4">
+              <p className="text-xs text-fg-muted mt-4">
                 * Metrics calculated with example customer mix: 20 Starter, 15 Professional, 8 Enterprise (annual plans)
               </p>
             </div>
 
             {/* Profitability Projection */}
-            <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-6">
+            <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-6">
               <h2 className="text-2xl font-light text-white mb-6">Profitability Projection</h2>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-900 border-b border-gray-800">
+                  <thead className="bg-bg-card border-b border-line/10">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Year</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Revenue</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Variable Costs</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Gross Profit</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Fixed Costs</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">CapEx</th>
-                      <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Net Profit/Loss</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Year</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Revenue</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Variable Costs</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Gross Profit</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Fixed Costs</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">CapEx</th>
+                      <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Net Profit/Loss</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1675,13 +1675,13 @@ function AdminPageInner() {
                       ]
                       const profitability = calculateProfitability(mix, FIXED_COSTS.total, scenario.year === 1 ? CAPEX_YEAR_1 : 0)
                       return (
-                        <tr key={scenario.year} className="hover:bg-gray-900/50 transition-colors border-t border-gray-800">
+                        <tr key={scenario.year} className="hover:bg-bg-card/50 transition-colors border-t border-line/10">
                           <td className="px-6 py-4 text-white font-medium">Year {scenario.year}</td>
-                          <td className="px-6 py-4 text-gray-300">{formatCurrency(profitability.revenue)}</td>
-                          <td className="px-6 py-4 text-gray-300">{formatCurrency(profitability.variableCosts)}</td>
+                          <td className="px-6 py-4 text-fg-secondary">{formatCurrency(profitability.revenue)}</td>
+                          <td className="px-6 py-4 text-fg-secondary">{formatCurrency(profitability.variableCosts)}</td>
                           <td className="px-6 py-4 text-green-400">{formatCurrency(profitability.grossProfit)}</td>
-                          <td className="px-6 py-4 text-gray-300">{formatCurrency(profitability.fixedCosts)}</td>
-                          <td className="px-6 py-4 text-gray-300">{scenario.year === 1 ? formatCurrency(CAPEX_YEAR_1) : '-'}</td>
+                          <td className="px-6 py-4 text-fg-secondary">{formatCurrency(profitability.fixedCosts)}</td>
+                          <td className="px-6 py-4 text-fg-secondary">{scenario.year === 1 ? formatCurrency(CAPEX_YEAR_1) : '-'}</td>
                           <td className={`px-6 py-4 font-medium ${profitability.netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                             {formatCurrency(profitability.netProfit)}
                           </td>
@@ -1691,7 +1691,7 @@ function AdminPageInner() {
                   </tbody>
                 </table>
               </div>
-              <p className="text-xs text-gray-500 mt-4">
+              <p className="text-xs text-fg-muted mt-4">
                 * Projections based on moderate growth scenario with current pricing
               </p>
             </div>
@@ -1701,8 +1701,8 @@ function AdminPageInner() {
         {/* Template Form Modal */}
         {isTemplateModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b border-gray-800">
+            <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-line/10">
                 <div className="flex items-center justify-between">
                   <h3 className="text-2xl font-light text-white">
                     {editingTemplate ? 'Edit Compliance Template' : 'Create Compliance Template'}
@@ -1713,7 +1713,7 @@ function AdminPageInner() {
                       setEditingTemplate(null)
                       setTemplateForm({ ...EMPTY_TEMPLATE_FORM })
                     }}
-                    className="text-gray-400 hover:text-white transition-colors"
+                    className="text-fg-muted hover:text-white transition-colors"
                   >
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <line x1="18" y1="6" x2="6" y2="18" />
@@ -1726,13 +1726,13 @@ function AdminPageInner() {
               <div className="p-6 space-y-4">
                 {/* Category */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-fg-secondary mb-2">
                     Category *
                   </label>
                   <select
                     value={templateForm.category}
                     onChange={(e) => setTemplateForm(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     disabled={categoriesLoading}
                   >
                     <option value="">Select Category</option>
@@ -1744,27 +1744,27 @@ function AdminPageInner() {
 
                 {/* Requirement Name */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-fg-secondary mb-2">
                     Requirement *
                   </label>
                   <input
                     type="text"
                     value={templateForm.requirement}
                     onChange={(e) => setTemplateForm(prev => ({ ...prev, requirement: e.target.value }))}
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     placeholder="e.g., TDS Payment - Monthly"
                   />
                 </div>
 
                 {/* Description */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-fg-secondary mb-2">
                     Description
                   </label>
                   <textarea
                     value={templateForm.description}
                     onChange={(e) => setTemplateForm(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     rows={3}
                     placeholder="Brief description of the requirement"
                   />
@@ -1772,13 +1772,13 @@ function AdminPageInner() {
 
                 {/* Compliance Type */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-fg-secondary mb-2">
                     Compliance Type *
                   </label>
                   <select
                     value={templateForm.compliance_type}
                     onChange={(e) => setTemplateForm(prev => ({ ...prev, compliance_type: e.target.value as any }))}
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                   >
                     <option value="one-time">One-time</option>
                     <option value="monthly">Monthly</option>
@@ -1789,7 +1789,7 @@ function AdminPageInner() {
 
                 {/* Country Code */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-fg-secondary mb-2">
                     Country *
                   </label>
                   <CountrySelector
@@ -1797,7 +1797,7 @@ function AdminPageInner() {
                     onChange={(countryCode) => setTemplateForm(prev => ({ ...prev, country_code: countryCode }))}
                     className="w-full"
                   />
-                  <p className="mt-1 text-xs text-gray-400">
+                  <p className="mt-1 text-xs text-fg-muted">
                     Select the country where this compliance template applies. Defaults to India (IN).
                   </p>
                 </div>
@@ -1805,18 +1805,18 @@ function AdminPageInner() {
                 {/* Year Type - Show for quarterly, annual, and monthly compliance */}
                 {(templateForm.compliance_type === 'quarterly' || templateForm.compliance_type === 'annual' || templateForm.compliance_type === 'monthly') && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-fg-secondary mb-2">
                       Year Type *
                     </label>
                     <select
                       value={templateForm.year_type}
                       onChange={(e) => setTemplateForm(prev => ({ ...prev, year_type: e.target.value as 'FY' | 'CY' }))}
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     >
                       <option value="FY">Financial Year (India) - FY starts from April</option>
                       <option value="CY">Calendar Year (Gulf/USA) - CY starts from January</option>
                     </select>
-                    <p className="mt-1 text-xs text-gray-400">
+                    <p className="mt-1 text-xs text-fg-muted">
                       {templateForm.compliance_type === 'quarterly' && 'For quarterly: FY Q1: Apr-Jun, Q2: Jul-Sep, Q3: Oct-Dec, Q4: Jan-Mar | CY Q1: Jan-Mar, Q2: Apr-Jun, Q3: Jul-Sep, Q4: Oct-Dec'}
                       {templateForm.compliance_type === 'annual' && 'Select the year type for annual compliance calculations. Indian companies use Financial Year (FY).'}
                       {templateForm.compliance_type === 'monthly' && 'Select the year type for monthly compliance calculations. Indian companies use Financial Year (FY).'}
@@ -1826,12 +1826,12 @@ function AdminPageInner() {
 
                 {/* Entity Types - Multi-select */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-fg-secondary mb-2">
                     Entity Types * (Select at least one)
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     {['Private Limited', 'Public Limited', 'LLP', 'NGO / Section 8', 'Other'].map((type) => (
-                      <label key={type} className="flex items-center gap-2 p-3 bg-gray-900 border border-gray-700 rounded-lg hover:border-primary-orange/50 transition-colors cursor-pointer">
+                      <label key={type} className="flex items-center gap-2 p-3 bg-bg-card border border-line/15 rounded-lg hover:border-primary-orange/50 transition-colors cursor-pointer">
                         <input
                           type="checkbox"
                           checked={templateForm.entity_types.includes(type)}
@@ -1842,7 +1842,7 @@ function AdminPageInner() {
                               setTemplateForm(prev => ({ ...prev, entity_types: prev.entity_types.filter(t => t !== type) }))
                             }
                           }}
-                          className="w-4 h-4 text-primary-orange bg-gray-900 border-gray-700 rounded focus:ring-primary-orange"
+                          className="w-4 h-4 text-primary-orange bg-bg-card border-line/15 rounded focus:ring-primary-orange"
                         />
                         <span className="text-white text-sm">{type}</span>
                       </label>
@@ -1853,10 +1853,10 @@ function AdminPageInner() {
                 {/* Industries - Multi-select */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-300">
+                    <label className="block text-sm font-medium text-fg-secondary">
                       Industries * (Select at least one)
                     </label>
-                    <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-lg hover:border-primary-orange/50 transition-colors cursor-pointer">
+                    <label className="flex items-center gap-2 px-3 py-1.5 bg-bg-card border border-line/15 rounded-lg hover:border-primary-orange/50 transition-colors cursor-pointer">
                       <input
                         type="checkbox"
                         checked={['IT & Technology Services', 'Healthcare', 'Education', 'Finance', 'Food Manufacturing', 'Food & Hospitality', 'Construction', 'Real Estate', 'Manufacturing', 'Retail & Trading', 'Professional Services', 'Ecommerce', 'Other'].every(industry => templateForm.industries.includes(industry))}
@@ -1868,14 +1868,14 @@ function AdminPageInner() {
                             setTemplateForm(prev => ({ ...prev, industries: [] }))
                           }
                         }}
-                        className="w-4 h-4 text-primary-orange bg-gray-900 border-gray-700 rounded focus:ring-primary-orange"
+                        className="w-4 h-4 text-primary-orange bg-bg-card border-line/15 rounded focus:ring-primary-orange"
                       />
                       <span className="text-white text-sm font-medium">Select All</span>
                     </label>
                   </div>
                   <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
                     {['IT & Technology Services', 'Healthcare', 'Education', 'Finance', 'Food Manufacturing', 'Food & Hospitality', 'Construction', 'Real Estate', 'Manufacturing', 'Retail & Trading', 'Professional Services', 'Ecommerce', 'Other'].map((industry) => (
-                      <label key={industry} className="flex items-center gap-2 p-3 bg-gray-900 border border-gray-700 rounded-lg hover:border-primary-orange/50 transition-colors cursor-pointer">
+                      <label key={industry} className="flex items-center gap-2 p-3 bg-bg-card border border-line/15 rounded-lg hover:border-primary-orange/50 transition-colors cursor-pointer">
                         <input
                           type="checkbox"
                           checked={templateForm.industries.includes(industry)}
@@ -1886,7 +1886,7 @@ function AdminPageInner() {
                               setTemplateForm(prev => ({ ...prev, industries: prev.industries.filter(i => i !== industry) }))
                             }
                           }}
-                          className="w-4 h-4 text-primary-orange bg-gray-900 border-gray-700 rounded focus:ring-primary-orange"
+                          className="w-4 h-4 text-primary-orange bg-bg-card border-line/15 rounded focus:ring-primary-orange"
                         />
                         <span className="text-white text-sm">{industry}</span>
                       </label>
@@ -1897,10 +1897,10 @@ function AdminPageInner() {
                 {/* Industry Categories - Multi-select */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-medium text-gray-300">
+                    <label className="block text-sm font-medium text-fg-secondary">
                       Industry Categories * (Select at least one)
                     </label>
-                    <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-lg hover:border-primary-orange/50 transition-colors cursor-pointer">
+                    <label className="flex items-center gap-2 px-3 py-1.5 bg-bg-card border border-line/15 rounded-lg hover:border-primary-orange/50 transition-colors cursor-pointer">
                       <input
                         type="checkbox"
                         checked={['Startups & MSMEs', 'Large Enterprises', 'NGOs & Section 8 Companies', 'Healthcare & Education', 'Real Estate & Construction', 'IT & Technology Services', 'Retail & Manufacturing', 'Food & Hospitality', 'Ecommerce & D2C', 'Other'].every(category => templateForm.industry_categories.includes(category))}
@@ -1912,14 +1912,14 @@ function AdminPageInner() {
                             setTemplateForm(prev => ({ ...prev, industry_categories: [] }))
                           }
                         }}
-                        className="w-4 h-4 text-primary-orange bg-gray-900 border-gray-700 rounded focus:ring-primary-orange"
+                        className="w-4 h-4 text-primary-orange bg-bg-card border-line/15 rounded focus:ring-primary-orange"
                       />
                       <span className="text-white text-sm font-medium">Select All</span>
                     </label>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     {['Startups & MSMEs', 'Large Enterprises', 'NGOs & Section 8 Companies', 'Healthcare & Education', 'Real Estate & Construction', 'IT & Technology Services', 'Retail & Manufacturing', 'Food & Hospitality', 'Ecommerce & D2C', 'Other'].map((category) => (
-                      <label key={category} className="flex items-center gap-2 p-3 bg-gray-900 border border-gray-700 rounded-lg hover:border-primary-orange/50 transition-colors cursor-pointer">
+                      <label key={category} className="flex items-center gap-2 p-3 bg-bg-card border border-line/15 rounded-lg hover:border-primary-orange/50 transition-colors cursor-pointer">
                         <input
                           type="checkbox"
                           checked={templateForm.industry_categories.includes(category)}
@@ -1930,7 +1930,7 @@ function AdminPageInner() {
                               setTemplateForm(prev => ({ ...prev, industry_categories: prev.industry_categories.filter(c => c !== category) }))
                             }
                           }}
-                          className="w-4 h-4 text-primary-orange bg-gray-900 border-gray-700 rounded focus:ring-primary-orange"
+                          className="w-4 h-4 text-primary-orange bg-bg-card border-line/15 rounded focus:ring-primary-orange"
                         />
                         <span className="text-white text-sm">{category}</span>
                       </label>
@@ -1942,25 +1942,25 @@ function AdminPageInner() {
                 {templateForm.compliance_type === 'one-time' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="block text-sm font-medium text-fg-secondary mb-2">
                         Due Date *
                       </label>
                       <input
                         type="date"
                         value={templateForm.due_date}
                         onChange={(e) => setTemplateForm(prev => ({ ...prev, due_date: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="block text-sm font-medium text-fg-secondary mb-2">
                         Financial Year (Optional)
                       </label>
                       <input
                         type="text"
                         value={templateForm.financial_year}
                         onChange={(e) => setTemplateForm(prev => ({ ...prev, financial_year: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                         placeholder="e.g., FY 2025-26"
                       />
                     </div>
@@ -1969,7 +1969,7 @@ function AdminPageInner() {
 
                 {templateForm.compliance_type === 'monthly' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-fg-secondary mb-2">
                       Due Date Offset * (Day of month, e.g., 15 for 15th of each month)
                     </label>
                     <input
@@ -1978,7 +1978,7 @@ function AdminPageInner() {
                       max="31"
                       value={templateForm.due_date_offset || ''}
                       onChange={(e) => setTemplateForm(prev => ({ ...prev, due_date_offset: e.target.value ? parseInt(e.target.value) : undefined }))}
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                       placeholder="15"
                     />
                   </div>
@@ -2015,7 +2015,7 @@ function AdminPageInner() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-fg-secondary mb-2">
                           Month in Quarter * (1st, 2nd, or 3rd)
                         </label>
                         <select
@@ -2024,19 +2024,19 @@ function AdminPageInner() {
                             const monthInQuarter = e.target.value ? parseInt(e.target.value) : undefined
                             setTemplateForm(prev => ({ ...prev, due_month: monthInQuarter }))
                           }}
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                         >
                           <option value="">Select Month</option>
                           <option value="1">1st Month of Quarter</option>
                           <option value="2">2nd Month of Quarter</option>
                           <option value="3">3rd Month of Quarter</option>
                         </select>
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-xs text-fg-muted mt-1">
                           Which month within each quarter (Q1: Jan, Q2: Apr, Q3: Jul, Q4: Oct)
                         </p>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-fg-secondary mb-2">
                           Day of Month * (1-31)
                         </label>
                         <input
@@ -2045,10 +2045,10 @@ function AdminPageInner() {
                           max="31"
                           value={templateForm.due_day || ''}
                           onChange={(e) => setTemplateForm(prev => ({ ...prev, due_day: e.target.value ? parseInt(e.target.value) : undefined }))}
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                           placeholder="15"
                         />
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-xs text-fg-muted mt-1">
                           The day of the selected month
                         </p>
                       </div>
@@ -2059,7 +2059,7 @@ function AdminPageInner() {
                 {templateForm.compliance_type === 'annual' && (
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="block text-sm font-medium text-fg-secondary mb-2">
                         Due Month * (1-12)
                       </label>
                       <input
@@ -2068,12 +2068,12 @@ function AdminPageInner() {
                         max="12"
                         value={templateForm.due_month || ''}
                         onChange={(e) => setTemplateForm(prev => ({ ...prev, due_month: e.target.value ? parseInt(e.target.value) : undefined }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                         placeholder="3"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="block text-sm font-medium text-fg-secondary mb-2">
                         Due Day * (1-31)
                       </label>
                       <input
@@ -2082,7 +2082,7 @@ function AdminPageInner() {
                         max="31"
                         value={templateForm.due_day || ''}
                         onChange={(e) => setTemplateForm(prev => ({ ...prev, due_day: e.target.value ? parseInt(e.target.value) : undefined }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                         placeholder="31"
                       />
                     </div>
@@ -2091,34 +2091,34 @@ function AdminPageInner() {
 
                 {/* Penalty */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-fg-secondary mb-2">
                     Penalty
                   </label>
                   <input
                     type="text"
                     value={templateForm.penalty}
                     onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty: e.target.value }))}
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     placeholder="e.g., Late fee ₹200/day"
                   />
                 </div>
 
                 {/* Penalty Calculator (structured penalty_config) */}
-                <div className="border border-gray-700 rounded-xl p-4 space-y-4 bg-gray-900/30">
+                <div className="border border-line/15 rounded-xl p-4 space-y-4 bg-bg-card/30">
                   <div className="flex items-center gap-2">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-yellow-400">
                       <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                     </svg>
                     <span className="text-sm font-medium text-white">Penalty Calculator</span>
-                    <span className="text-xs text-gray-400">(enables automatic penalty calculation when applied to companies)</span>
+                    <span className="text-xs text-fg-muted">(enables automatic penalty calculation when applied to companies)</span>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Penalty Type</label>
+                    <label className="block text-sm font-medium text-fg-secondary mb-2">Penalty Type</label>
                     <select
                       value={templateForm.penalty_config_type}
                       onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_type: e.target.value as any }))}
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     >
                       <option value="none">None / Text only</option>
                       <option value="flat">Flat amount (fixed penalty)</option>
@@ -2130,10 +2130,10 @@ function AdminPageInner() {
 
                   {templateForm.penalty_config_type === 'flat' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Fixed Penalty Amount (₹)</label>
+                      <label className="block text-sm font-medium text-fg-secondary mb-2">Fixed Penalty Amount (₹)</label>
                       <input type="number" value={templateForm.penalty_config_amount}
                         onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_amount: e.target.value }))}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                         placeholder="e.g., 5000" min="0" />
                     </div>
                   )}
@@ -2141,17 +2141,17 @@ function AdminPageInner() {
                   {templateForm.penalty_config_type === 'daily' && (
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Rate per Day (₹)</label>
+                        <label className="block text-sm font-medium text-fg-secondary mb-2">Rate per Day (₹)</label>
                         <input type="number" value={templateForm.penalty_config_rate}
                           onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_rate: e.target.value }))}
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                           placeholder="e.g., 200" min="0" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Maximum Cap (₹, optional)</label>
+                        <label className="block text-sm font-medium text-fg-secondary mb-2">Maximum Cap (₹, optional)</label>
                         <input type="number" value={templateForm.penalty_config_cap}
                           onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_cap: e.target.value }))}
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                           placeholder="e.g., 10000" min="0" />
                       </div>
                     </div>
@@ -2160,18 +2160,18 @@ function AdminPageInner() {
                   {(templateForm.penalty_config_type === 'interest' || templateForm.penalty_config_type === 'percentage') && (
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Rate (%)</label>
+                        <label className="block text-sm font-medium text-fg-secondary mb-2">Rate (%)</label>
                         <input type="number" value={templateForm.penalty_config_rate}
                           onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_rate: e.target.value }))}
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                           placeholder="e.g., 1.5" min="0" step="0.01" />
                       </div>
                       {templateForm.penalty_config_type === 'interest' && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-2">Per</label>
+                          <label className="block text-sm font-medium text-fg-secondary mb-2">Per</label>
                           <select value={templateForm.penalty_config_period}
                             onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_period: e.target.value as any }))}
-                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors">
+                            className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors">
                             <option value="month">Month</option>
                             <option value="day">Day</option>
                             <option value="year">Year</option>
@@ -2179,10 +2179,10 @@ function AdminPageInner() {
                         </div>
                       )}
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Base Amount Type</label>
+                        <label className="block text-sm font-medium text-fg-secondary mb-2">Base Amount Type</label>
                         <select value={templateForm.penalty_config_base}
                           onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_base: e.target.value }))}
-                          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors">
+                          className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors">
                           <option value="tax_due">Tax Due</option>
                           <option value="turnover">Turnover</option>
                           <option value="income">Income</option>
@@ -2191,10 +2191,10 @@ function AdminPageInner() {
                       </div>
                       {templateForm.penalty_config_type === 'percentage' && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-2">Cap (₹, optional)</label>
+                          <label className="block text-sm font-medium text-fg-secondary mb-2">Cap (₹, optional)</label>
                           <input type="number" value={templateForm.penalty_config_cap}
                             onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_cap: e.target.value }))}
-                            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                            className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                             placeholder="Maximum penalty cap" min="0" />
                         </div>
                       )}
@@ -2212,21 +2212,21 @@ function AdminPageInner() {
 
                 {/* Possible Legal Action */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-fg-secondary mb-2">
                     Possible Legal Action
                   </label>
                   <input
                     type="text"
                     value={templateForm.possible_legal_action}
                     onChange={(e) => setTemplateForm(prev => ({ ...prev, possible_legal_action: e.target.value }))}
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     placeholder="e.g., Prosecution under Section 276B"
                   />
                 </div>
 
                 {/* Required Documents */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-fg-secondary mb-2">
                     Required Documents
                   </label>
                   <div className="flex gap-2 mb-2">
@@ -2244,7 +2244,7 @@ function AdminPageInner() {
                           }))
                         }
                       }}
-                      className="flex-1 px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="flex-1 px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                       placeholder="Type document name and press Enter"
                     />
                     <button
@@ -2297,9 +2297,9 @@ function AdminPageInner() {
                     id="is_critical_template"
                     checked={templateForm.is_critical}
                     onChange={(e) => setTemplateForm(prev => ({ ...prev, is_critical: e.target.checked }))}
-                    className="w-4 h-4 text-primary-orange bg-gray-900 border-gray-700 rounded focus:ring-primary-orange"
+                    className="w-4 h-4 text-primary-orange bg-bg-card border-line/15 rounded focus:ring-primary-orange"
                   />
-                  <label htmlFor="is_critical_template" className="text-sm font-medium text-gray-300">
+                  <label htmlFor="is_critical_template" className="text-sm font-medium text-fg-secondary">
                     Mark as Critical
                   </label>
                 </div>
@@ -2312,9 +2312,9 @@ function AdminPageInner() {
                       id="is_active_template"
                       checked={templateForm.is_active}
                       onChange={(e) => setTemplateForm(prev => ({ ...prev, is_active: e.target.checked }))}
-                      className="w-4 h-4 text-primary-orange bg-gray-900 border-gray-700 rounded focus:ring-primary-orange"
+                      className="w-4 h-4 text-primary-orange bg-bg-card border-line/15 rounded focus:ring-primary-orange"
                     />
-                    <label htmlFor="is_active_template" className="text-sm font-medium text-gray-300">
+                    <label htmlFor="is_active_template" className="text-sm font-medium text-fg-secondary">
                       Template is Active
                     </label>
                   </div>
@@ -2411,7 +2411,7 @@ function AdminPageInner() {
                       setEditingTemplate(null)
                       setTemplateForm({ ...EMPTY_TEMPLATE_FORM })
                     }}
-                    className="px-6 py-3 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                    className="px-6 py-3 bg-bg-elevated text-fg-secondary rounded-lg hover:bg-bg-hover transition-colors font-medium"
                   >
                     Cancel
                   </button>
@@ -2425,7 +2425,7 @@ function AdminPageInner() {
           <div className="space-y-6">
             <div className="mb-6">
               <h2 className="text-2xl font-light text-white mb-2">Compliance Vault</h2>
-              <p className="text-gray-400">Manage global folder structure and document templates for all companies</p>
+              <p className="text-fg-muted">Manage global folder structure and document templates for all companies</p>
             </div>
 
             {isLoadingVaultFolders ? (
@@ -2436,7 +2436,7 @@ function AdminPageInner() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Folder Tree Sidebar */}
                 <div className="lg:col-span-1">
-                  <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-4">
+                  <div className="bg-bg-card border border-line/10 rounded-xl p-4">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-lg font-semibold text-white">Folders</h3>
                       <button
@@ -2454,7 +2454,7 @@ function AdminPageInner() {
                     {/* Root level button */}
                     <button
                       onClick={() => setSelectedFolderPath(null)}
-                      className={`w-full flex items-center gap-2 p-2 rounded-lg hover:bg-gray-800 transition-colors mb-2 ${selectedFolderPath === null ? 'bg-primary-orange/20 border border-primary-orange/50' : ''
+                      className={`w-full flex items-center gap-2 p-2 rounded-lg hover:bg-bg-elevated transition-colors mb-2 ${selectedFolderPath === null ? 'bg-primary-orange/20 border border-primary-orange/50' : ''
                         }`}
                     >
                       <svg
@@ -2480,14 +2480,14 @@ function AdminPageInner() {
 
                 {/* Document Templates List */}
                 <div className="lg:col-span-2">
-                  <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6">
+                  <div className="bg-bg-card border border-line/10 rounded-xl p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <h3 className="text-lg font-semibold text-white">
                           {selectedFolderPath ? getFolderName(selectedFolderPath) : 'Root'} Documents
                         </h3>
                         {selectedFolderPath && (
-                          <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
+                          <div className="flex items-center gap-2 mt-2 text-sm text-fg-muted">
                             {buildBreadcrumb(selectedFolderPath).map((crumb, idx) => (
                               <span key={crumb.path}>
                                 {idx > 0 && <span className="mx-1">/</span>}
@@ -2522,7 +2522,7 @@ function AdminPageInner() {
 
                     {isLoadingVaultTemplates ? (
                       <div className="flex items-center justify-center py-8">
-                        <div className="flex items-center gap-3 text-gray-400">
+                        <div className="flex items-center gap-3 text-fg-muted">
                           <div className="w-5 h-5 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
                           <span className="text-sm">Loading templates...</span>
                         </div>
@@ -2536,21 +2536,21 @@ function AdminPageInner() {
                           fill="none"
                           stroke="currentColor"
                           strokeWidth="2"
-                          className="text-gray-600 mx-auto mb-4"
+                          className="text-fg-muted/60 mx-auto mb-4"
                         >
                           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                           <polyline points="14 2 14 8 20 8" />
                           <line x1="16" y1="13" x2="8" y2="13" />
                           <line x1="16" y1="17" x2="8" y2="17" />
                         </svg>
-                        <p className="text-gray-400">No document templates in this folder</p>
+                        <p className="text-fg-muted">No document templates in this folder</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
                         {vaultTemplates.map(template => (
                           <div
                             key={template.id || template.document_name}
-                            className="flex items-center gap-4 p-4 bg-gray-900/50 rounded-lg border border-gray-800 hover:border-gray-700 transition-colors"
+                            className="flex items-center gap-4 p-4 bg-bg-card/50 rounded-lg border border-line/10 hover:border-line/15 transition-colors"
                           >
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-3 mb-2">
@@ -2565,9 +2565,9 @@ function AdminPageInner() {
                                 )}
                               </div>
                               {template.description && (
-                                <p className="text-sm text-gray-400 truncate mb-2">{template.description}</p>
+                                <p className="text-sm text-fg-muted truncate mb-2">{template.description}</p>
                               )}
-                              <div className="flex items-center gap-4 text-xs text-gray-500">
+                              <div className="flex items-center gap-4 text-xs text-fg-muted">
                                 {template.category && (
                                   <span className="px-2 py-0.5 bg-primary-orange/20 text-primary-orange rounded">
                                     {template.category}
@@ -2587,7 +2587,7 @@ function AdminPageInner() {
                                     isMandatory: template.is_mandatory,
                                   })
                                 }}
-                                className="p-2 text-gray-400 hover:text-primary-orange transition-colors"
+                                className="p-2 text-fg-muted hover:text-primary-orange transition-colors"
                                 title="Edit"
                               >
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2597,7 +2597,7 @@ function AdminPageInner() {
                               </button>
                               <button
                                 onClick={() => template.id && handleDeleteVaultTemplate(template.id)}
-                                className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                                className="p-2 text-fg-muted hover:text-red-400 transition-colors"
                                 title="Delete"
                               >
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2618,33 +2618,33 @@ function AdminPageInner() {
             {/* Create/Edit Folder Modal */}
             {(showCreateVaultFolderModal || editingVaultFolder) && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6 w-full max-w-md">
+                <div className="bg-bg-card border border-line/10 rounded-xl p-6 w-full max-w-md">
                   <h2 className="text-xl font-semibold text-white mb-4">
                     {editingVaultFolder ? 'Edit Folder' : 'Create New Folder'}
                   </h2>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Folder Name</label>
+                      <label className="block text-sm font-medium text-fg-secondary mb-2">Folder Name</label>
                       <input
                         type="text"
                         value={vaultFolderForm.name}
                         onChange={(e) => setVaultFolderForm({ ...vaultFolderForm, name: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
                         placeholder="Enter folder name"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Description (Optional)</label>
+                      <label className="block text-sm font-medium text-fg-secondary mb-2">Description (Optional)</label>
                       <textarea
                         value={vaultFolderForm.description}
                         onChange={(e) => setVaultFolderForm({ ...vaultFolderForm, description: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
                         placeholder="Enter folder description"
                         rows={3}
                       />
                     </div>
                     {selectedFolderPath && !editingVaultFolder && (
-                      <div className="text-sm text-gray-400">
+                      <div className="text-sm text-fg-muted">
                         Creating in: <span className="text-primary-orange">{selectedFolderPath}</span>
                       </div>
                     )}
@@ -2662,7 +2662,7 @@ function AdminPageInner() {
                           setEditingVaultFolder(null)
                           setVaultFolderForm({ name: '', description: '' })
                         }}
-                        className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                        className="px-4 py-2 bg-bg-hover text-white rounded-lg hover:bg-gray-600 transition-colors"
                       >
                         Cancel
                       </button>
@@ -2675,30 +2675,30 @@ function AdminPageInner() {
             {/* Create/Edit Document Template Modal */}
             {(showCreateVaultTemplateModal || editingVaultTemplate) && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6 w-full max-w-md">
+                <div className="bg-bg-card border border-line/10 rounded-xl p-6 w-full max-w-md">
                   <h2 className="text-xl font-semibold text-white mb-4">
                     {editingVaultTemplate ? 'Edit Document Template' : 'Create New Document Template'}
                   </h2>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Document Name</label>
+                      <label className="block text-sm font-medium text-fg-secondary mb-2">Document Name</label>
                       <input
                         type="text"
                         value={vaultTemplateForm.name}
                         onChange={(e) => setVaultTemplateForm({ ...vaultTemplateForm, name: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
                         placeholder="e.g., GSTR-3B Filed Copy"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Frequency</label>
+                      <label className="block text-sm font-medium text-fg-secondary mb-2">Frequency</label>
                       <select
                         value={vaultTemplateForm.frequency}
                         onChange={(e) => {
                           const value = e.target.value as 'one-time' | 'monthly' | 'quarterly' | 'yearly'
                           setVaultTemplateForm({ ...vaultTemplateForm, frequency: value })
                         }}
-                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
                       >
                         <option value="one-time">One-Time</option>
                         <option value="monthly">Monthly</option>
@@ -2707,21 +2707,21 @@ function AdminPageInner() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Category (Optional)</label>
+                      <label className="block text-sm font-medium text-fg-secondary mb-2">Category (Optional)</label>
                       <input
                         type="text"
                         value={vaultTemplateForm.category}
                         onChange={(e) => setVaultTemplateForm({ ...vaultTemplateForm, category: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
                         placeholder="e.g., GST, Income Tax"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Description (Optional)</label>
+                      <label className="block text-sm font-medium text-fg-secondary mb-2">Description (Optional)</label>
                       <textarea
                         value={vaultTemplateForm.description}
                         onChange={(e) => setVaultTemplateForm({ ...vaultTemplateForm, description: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
                         placeholder="Enter document description"
                         rows={3}
                       />
@@ -2732,14 +2732,14 @@ function AdminPageInner() {
                         id="isMandatoryVault"
                         checked={vaultTemplateForm.isMandatory}
                         onChange={(e) => setVaultTemplateForm({ ...vaultTemplateForm, isMandatory: e.target.checked })}
-                        className="w-4 h-4 text-primary-orange bg-gray-900 border-gray-700 rounded focus:ring-primary-orange"
+                        className="w-4 h-4 text-primary-orange bg-bg-card border-line/15 rounded focus:ring-primary-orange"
                       />
-                      <label htmlFor="isMandatoryVault" className="text-sm text-gray-300">
+                      <label htmlFor="isMandatoryVault" className="text-sm text-fg-secondary">
                         Mandatory Document
                       </label>
                     </div>
                     {selectedFolderPath && (
-                      <div className="text-sm text-gray-400">
+                      <div className="text-sm text-fg-muted">
                         Creating in: <span className="text-primary-orange">{selectedFolderPath}</span>
                       </div>
                     )}
@@ -2763,7 +2763,7 @@ function AdminPageInner() {
                             isMandatory: false,
                           })
                         }}
-                        className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                        className="px-4 py-2 bg-bg-hover text-white rounded-lg hover:bg-gray-600 transition-colors"
                       >
                         Cancel
                       </button>
@@ -2855,15 +2855,15 @@ function KPIsTab() {
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-6">
+      <div className="bg-bg-card border border-line/10 rounded-2xl p-6">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Category Filter */}
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-400 mb-2">Category</label>
+            <label className="block text-sm font-medium text-fg-muted mb-2">Category</label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-4 py-2 bg-primary-dark border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+              className="w-full px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
             >
               {categories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
@@ -2872,34 +2872,34 @@ function KPIsTab() {
           </div>
           {/* Search */}
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-400 mb-2">Search</label>
+            <label className="block text-sm font-medium text-fg-muted mb-2">Search</label>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search KPIs, formulas, descriptions..."
-              className="w-full px-4 py-2 bg-primary-dark border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange"
+              className="w-full px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-primary-orange"
             />
           </div>
         </div>
       </div>
 
       {/* KPI Table */}
-      <div className="bg-primary-dark-card border border-gray-800 rounded-2xl overflow-hidden">
+      <div className="bg-bg-card border border-line/10 rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-800">
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">Category</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">KPI</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">Formula</th>
-                <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">Description</th>
+              <tr className="border-b border-line/10">
+                <th className="px-6 py-4 text-left text-sm font-medium text-fg-muted">Category</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-fg-muted">KPI</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-fg-muted">Formula</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-fg-muted">Description</th>
               </tr>
             </thead>
             <tbody>
               {filteredKPIs.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={4} className="px-6 py-8 text-center text-fg-muted">
                     No KPIs found matching your filters.
                   </td>
                 </tr>
@@ -2907,20 +2907,20 @@ function KPIsTab() {
                 filteredKPIs.map((kpi, index) => (
                   <tr
                     key={index}
-                    className="border-b border-gray-800/50 hover:bg-gray-900/30 transition-colors"
+                    className="border-b border-line/10/50 hover:bg-bg-card/30 transition-colors"
                   >
-                    <td className="px-6 py-4 text-sm text-gray-300">{kpi.category}</td>
+                    <td className="px-6 py-4 text-sm text-fg-secondary">{kpi.category}</td>
                     <td className="px-6 py-4 text-sm text-white font-medium">{kpi.kpi}</td>
-                    <td className="px-6 py-4 text-sm text-gray-400">{kpi.formula || '-'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-400">{kpi.description || '-'}</td>
+                    <td className="px-6 py-4 text-sm text-fg-muted">{kpi.formula || '-'}</td>
+                    <td className="px-6 py-4 text-sm text-fg-muted">{kpi.description || '-'}</td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
-        <div className="px-6 py-4 border-t border-gray-800 bg-gray-900/20">
-          <p className="text-sm text-gray-400">
+        <div className="px-6 py-4 border-t border-line/10 bg-bg-card/20">
+          <p className="text-sm text-fg-muted">
             Showing {filteredKPIs.length} of {KPI_DATA.length} KPIs
           </p>
         </div>
@@ -3168,15 +3168,15 @@ function TrackingSystemTab() {
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="bg-primary-dark-card border border-gray-800 rounded-2xl p-6">
+      <div className="bg-bg-card border border-line/10 rounded-2xl p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Category Filter */}
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">Category</label>
+            <label className="block text-sm font-medium text-fg-muted mb-2">Category</label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-4 py-2 bg-primary-dark border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+              className="w-full px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
             >
               {categories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
@@ -3185,11 +3185,11 @@ function TrackingSystemTab() {
           </div>
           {/* KPI Filter */}
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">KPI</label>
+            <label className="block text-sm font-medium text-fg-muted mb-2">KPI</label>
             <select
               value={selectedKPI}
               onChange={(e) => setSelectedKPI(e.target.value)}
-              className="w-full px-4 py-2 bg-primary-dark border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+              className="w-full px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
             >
               {kpis.map(kpi => (
                 <option key={kpi} value={kpi}>{kpi}</option>
@@ -3198,11 +3198,11 @@ function TrackingSystemTab() {
           </div>
           {/* Company Filter */}
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">Company</label>
+            <label className="block text-sm font-medium text-fg-muted mb-2">Company</label>
             <select
               value={selectedCompany}
               onChange={(e) => setSelectedCompany(e.target.value)}
-              className="w-full px-4 py-2 bg-primary-dark border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+              className="w-full px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
             >
               <option value="All">All Companies</option>
               {companies.map(company => (
@@ -3212,11 +3212,11 @@ function TrackingSystemTab() {
           </div>
           {/* Date Range */}
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">Date Range</label>
+            <label className="block text-sm font-medium text-fg-muted mb-2">Date Range</label>
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value as '7d' | '30d' | '90d' | 'all')}
-              className="w-full px-4 py-2 bg-primary-dark border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+              className="w-full px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
             >
               <option value="7d">Last 7 days</option>
               <option value="30d">Last 30 days</option>
@@ -3236,7 +3236,7 @@ function TrackingSystemTab() {
               onClick={() => setChatMode(!chatMode)}
               className={`px-4 py-2 text-sm rounded-lg transition-colors ${chatMode
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                : 'bg-bg-hover text-fg-secondary hover:bg-gray-600'
                 }`}
             >
               {chatMode ? '📊 Summary' : '💬 Chat'}
@@ -3326,54 +3326,54 @@ function TrackingSystemTab() {
       </div>
 
       {/* Aggregations Table */}
-      <div className="bg-primary-dark-card border border-gray-800 rounded-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-800">
+      <div className="bg-bg-card border border-line/10 rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-line/10">
           <h2 className="text-xl font-light text-white">KPI Tracking Summary</h2>
-          <p className="text-sm text-gray-400 mt-1">Aggregated metrics across all tracked KPIs</p>
+          <p className="text-sm text-fg-muted mt-1">Aggregated metrics across all tracked KPIs</p>
         </div>
         {isLoading ? (
           <div className="p-8 text-center">
             <div className="w-8 h-8 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-400">Loading tracking data...</p>
+            <p className="text-fg-muted">Loading tracking data...</p>
           </div>
         ) : aggregations.length === 0 ? (
           <div className="p-8 text-center">
-            <p className="text-gray-400">No tracking data found for the selected filters.</p>
-            <p className="text-sm text-gray-500 mt-2">Tracking data will appear here as users interact with the system.</p>
+            <p className="text-fg-muted">No tracking data found for the selected filters.</p>
+            <p className="text-sm text-fg-muted mt-2">Tracking data will appear here as users interact with the system.</p>
           </div>
         ) : (
           <>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-800">
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">Category</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">KPI</th>
-                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-400">Total Records</th>
-                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-400">Avg Value</th>
-                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-400">Min</th>
-                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-400">Max</th>
-                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-400">Users</th>
-                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-400">Companies</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">Last Recorded</th>
-                    <th className="px-6 py-4 text-center text-sm font-medium text-gray-400">Actions</th>
+                  <tr className="border-b border-line/10">
+                    <th className="px-6 py-4 text-left text-sm font-medium text-fg-muted">Category</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-fg-muted">KPI</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-fg-muted">Total Records</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-fg-muted">Avg Value</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-fg-muted">Min</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-fg-muted">Max</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-fg-muted">Users</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-fg-muted">Companies</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-fg-muted">Last Recorded</th>
+                    <th className="px-6 py-4 text-center text-sm font-medium text-fg-muted">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {aggregations.map((agg, index) => (
                     <tr
                       key={index}
-                      className="border-b border-gray-800/50 hover:bg-gray-900/30 transition-colors"
+                      className="border-b border-line/10/50 hover:bg-bg-card/30 transition-colors"
                     >
-                      <td className="px-6 py-4 text-sm text-gray-300">{agg.category}</td>
+                      <td className="px-6 py-4 text-sm text-fg-secondary">{agg.category}</td>
                       <td className="px-6 py-4 text-sm text-white font-medium">{agg.kpi_name}</td>
-                      <td className="px-6 py-4 text-sm text-gray-400 text-right">{agg.total_count}</td>
-                      <td className="px-6 py-4 text-sm text-gray-400 text-right">{agg.average_value.toFixed(2)}</td>
-                      <td className="px-6 py-4 text-sm text-gray-400 text-right">{agg.min_value}</td>
-                      <td className="px-6 py-4 text-sm text-gray-400 text-right">{agg.max_value}</td>
-                      <td className="px-6 py-4 text-sm text-gray-400 text-right">{agg.user_count || 0}</td>
-                      <td className="px-6 py-4 text-sm text-gray-400 text-right">{agg.company_count || 0}</td>
-                      <td className="px-6 py-4 text-sm text-gray-400">
+                      <td className="px-6 py-4 text-sm text-fg-muted text-right">{agg.total_count}</td>
+                      <td className="px-6 py-4 text-sm text-fg-muted text-right">{agg.average_value.toFixed(2)}</td>
+                      <td className="px-6 py-4 text-sm text-fg-muted text-right">{agg.min_value}</td>
+                      <td className="px-6 py-4 text-sm text-fg-muted text-right">{agg.max_value}</td>
+                      <td className="px-6 py-4 text-sm text-fg-muted text-right">{agg.user_count || 0}</td>
+                      <td className="px-6 py-4 text-sm text-fg-muted text-right">{agg.company_count || 0}</td>
+                      <td className="px-6 py-4 text-sm text-fg-muted">
                         {new Date(agg.last_recorded).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 text-center">
@@ -3389,8 +3389,8 @@ function TrackingSystemTab() {
                 </tbody>
               </table>
             </div>
-            <div className="px-6 py-4 border-t border-gray-800 bg-gray-900/20">
-              <p className="text-sm text-gray-400">
+            <div className="px-6 py-4 border-t border-line/10 bg-bg-card/20">
+              <p className="text-sm text-fg-muted">
                 Showing {aggregations.length} tracked KPI{aggregations.length !== 1 ? 's' : ''}
               </p>
             </div>
@@ -3400,18 +3400,18 @@ function TrackingSystemTab() {
 
       {/* Detailed Metrics Modal */}
       {selectedKPIDetail && (
-        <div className="bg-primary-dark-card border border-gray-800 rounded-2xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+        <div className="bg-bg-card border border-line/10 rounded-2xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-line/10 flex items-center justify-between">
             <div>
               <h2 className="text-xl font-light text-white">Detailed Metrics: {selectedKPIDetail}</h2>
-              <p className="text-sm text-gray-400 mt-1">Individual tracking records</p>
+              <p className="text-sm text-fg-muted mt-1">Individual tracking records</p>
             </div>
             <button
               onClick={() => {
                 setSelectedKPIDetail(null)
                 setMetrics([])
               }}
-              className="text-gray-400 hover:text-white transition-colors"
+              className="text-fg-muted hover:text-white transition-colors"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -3422,43 +3422,43 @@ function TrackingSystemTab() {
           {isLoadingMetrics ? (
             <div className="p-8 text-center">
               <div className="w-8 h-8 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-gray-400">Loading metrics...</p>
+              <p className="text-fg-muted">Loading metrics...</p>
             </div>
           ) : metrics.length === 0 ? (
             <div className="p-8 text-center">
-              <p className="text-gray-400">No detailed metrics found.</p>
+              <p className="text-fg-muted">No detailed metrics found.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-800">
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">Date</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">Company</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">User</th>
-                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-400">Value</th>
-                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-400">Data</th>
+                  <tr className="border-b border-line/10">
+                    <th className="px-6 py-4 text-left text-sm font-medium text-fg-muted">Date</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-fg-muted">Company</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-fg-muted">User</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-fg-muted">Value</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-fg-muted">Data</th>
                   </tr>
                 </thead>
                 <tbody>
                   {metrics.map((metric, index) => (
                     <tr
                       key={index}
-                      className="border-b border-gray-800/50 hover:bg-gray-900/30 transition-colors"
+                      className="border-b border-line/10/50 hover:bg-bg-card/30 transition-colors"
                     >
-                      <td className="px-6 py-4 text-sm text-gray-400">
+                      <td className="px-6 py-4 text-sm text-fg-muted">
                         {new Date(metric.recorded_at).toLocaleString()}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-300">
+                      <td className="px-6 py-4 text-sm text-fg-secondary">
                         {metric.companies?.name || (metric.company_id ? metric.company_id.substring(0, 8) + '...' : 'N/A')}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-300">
+                      <td className="px-6 py-4 text-sm text-fg-secondary">
                         {metric.user_id ? metric.user_id.substring(0, 8) + '...' : 'N/A'}
                       </td>
                       <td className="px-6 py-4 text-sm text-white font-medium text-right">
                         {metric.metric_value}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-400">
+                      <td className="px-6 py-4 text-sm text-fg-muted">
                         {metric.metric_data ? JSON.stringify(metric.metric_data).substring(0, 50) + '...' : '-'}
                       </td>
                     </tr>
@@ -3472,8 +3472,8 @@ function TrackingSystemTab() {
 
       {/* AI Explanation / Chat Section */}
       {((!chatMode && (aiExplanation || explanationError || isGeneratingExplanation)) || chatMode) && (
-        <div className="bg-primary-dark-card border border-gray-800 rounded-2xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+        <div className="bg-bg-card border border-line/10 rounded-2xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-line/10 flex items-center justify-between">
             <div>
               <h2 className="text-xl font-light text-white flex items-center gap-2">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -3483,7 +3483,7 @@ function TrackingSystemTab() {
                 </svg>
                 {chatMode ? 'Chat with KPI Data' : 'AI Explanation'}
               </h2>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-sm text-fg-muted mt-1">
                 {chatMode ? 'Ask questions about your KPI tracking data' : 'Simple analysis of your KPI tracking data'}
               </p>
             </div>
@@ -3497,7 +3497,7 @@ function TrackingSystemTab() {
                   setExplanationError(null)
                 }
               }}
-              className="text-gray-400 hover:text-white transition-colors"
+              className="text-fg-muted hover:text-white transition-colors"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -3511,9 +3511,9 @@ function TrackingSystemTab() {
                 {/* Chat History */}
                 <div className="space-y-4 max-h-96 overflow-y-auto">
                   {chatHistory.length === 0 ? (
-                    <div className="text-center py-8 text-gray-400">
+                    <div className="text-center py-8 text-fg-muted">
                       <p>Start a conversation about your KPI data</p>
-                      <p className="text-sm text-gray-500 mt-2">Try asking: "What does the Addictiveness KPI mean?" or "Show me trends in Tracker Usage"</p>
+                      <p className="text-sm text-fg-muted mt-2">Try asking: "What does the Addictiveness KPI mean?" or "Show me trends in Tracker Usage"</p>
                     </div>
                   ) : (
                     chatHistory.map((msg, index) => (
@@ -3524,7 +3524,7 @@ function TrackingSystemTab() {
                         <div
                           className={`max-w-[80%] rounded-lg p-4 ${msg.role === 'user'
                             ? 'bg-blue-600 text-white'
-                            : 'bg-gray-800 text-gray-300'
+                            : 'bg-bg-elevated text-fg-secondary'
                             }`}
                         >
                           <div className="whitespace-pre-wrap">
@@ -3536,7 +3536,7 @@ function TrackingSystemTab() {
                   )}
                   {isGeneratingChat && (
                     <div className="flex justify-start">
-                      <div className="bg-gray-800 text-gray-300 rounded-lg p-4">
+                      <div className="bg-bg-elevated text-fg-secondary rounded-lg p-4">
                         <div className="flex items-center gap-2">
                           <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
                           <span>Thinking...</span>
@@ -3559,7 +3559,7 @@ function TrackingSystemTab() {
                       }
                     }}
                     placeholder="Ask a question about your KPI data..."
-                    className="flex-1 px-4 py-2 bg-primary-dark border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                    className="flex-1 px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-blue-500"
                     disabled={isGeneratingChat || aggregations.length === 0}
                   />
                   <button
@@ -3574,8 +3574,8 @@ function TrackingSystemTab() {
             ) : isGeneratingExplanation ? (
               <div className="text-center py-8">
                 <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-gray-400">AI is analyzing your KPI data...</p>
-                <p className="text-sm text-gray-500 mt-2">This may take a few moments</p>
+                <p className="text-fg-muted">AI is analyzing your KPI data...</p>
+                <p className="text-sm text-fg-muted mt-2">This may take a few moments</p>
               </div>
             ) : explanationError ? (
               <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
@@ -3587,13 +3587,13 @@ function TrackingSystemTab() {
                   </svg>
                   <div>
                     <h3 className="text-red-400 font-medium mb-1">Error Generating Explanation</h3>
-                    <p className="text-gray-300 text-sm">{explanationError}</p>
+                    <p className="text-fg-secondary text-sm">{explanationError}</p>
                   </div>
                 </div>
               </div>
             ) : aiExplanation ? (
               <div className="prose prose-invert max-w-none">
-                <div className="text-gray-300 whitespace-pre-wrap leading-relaxed">
+                <div className="text-fg-secondary whitespace-pre-wrap leading-relaxed">
                   {aiExplanation.split('\n').map((paragraph, index) => {
                     // Check if this is a header (starts with # or is all caps)
                     if (paragraph.trim().startsWith('#') || (paragraph.trim().length > 0 && paragraph.trim().length < 50 && paragraph === paragraph.toUpperCase())) {
@@ -3606,7 +3606,7 @@ function TrackingSystemTab() {
                     // Check if this is a bullet point or numbered list
                     if (paragraph.trim().startsWith('-') || paragraph.trim().match(/^\d+\./)) {
                       return (
-                        <div key={index} className="ml-4 mb-2 text-gray-300">
+                        <div key={index} className="ml-4 mb-2 text-fg-secondary">
                           {renderWithLaTeX(paragraph.trim())}
                         </div>
                       )
@@ -3614,7 +3614,7 @@ function TrackingSystemTab() {
                     // Regular paragraph
                     if (paragraph.trim().length > 0) {
                       return (
-                        <p key={index} className="mb-4 text-gray-300">
+                        <p key={index} className="mb-4 text-fg-secondary">
                           {renderWithLaTeX(paragraph.trim())}
                         </p>
                       )

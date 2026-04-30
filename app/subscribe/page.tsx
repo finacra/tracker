@@ -382,7 +382,7 @@ function SubscribePageInner() {
         <div className="relative z-10 px-4 sm:px-6 pt-4 flex items-center justify-between">
           <Link
             href={backToDataRoomHref}
-            className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors font-light text-sm"
+            className="inline-flex items-center gap-2 text-fg-muted hover:text-white transition-colors font-light text-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -391,7 +391,7 @@ function SubscribePageInner() {
           </Link>
           <button
             onClick={handleSignOut}
-            className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors font-light text-sm"
+            className="inline-flex items-center gap-2 text-fg-muted hover:text-white transition-colors font-light text-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -403,17 +403,17 @@ function SubscribePageInner() {
         <div className="relative z-10 container mx-auto px-4 py-12">
           {/* Trial Banner */}
           <div className="max-w-2xl mx-auto mb-8">
-            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 text-center">
+            <div className="bg-bg-elevated/50 border border-line/15 rounded-xl p-6 text-center">
               <div className="flex items-center justify-center gap-2 mb-3">
-                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-fg-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span className="text-xl font-light text-white">Trial Active</span>
               </div>
-              <p className="text-gray-300 mb-2 font-light">
-                You have <span className="text-gray-300 font-light">{trialDaysRemaining} days</span> remaining in your trial.
+              <p className="text-fg-secondary mb-2 font-light">
+                You have <span className="text-fg-secondary font-light">{trialDaysRemaining} days</span> remaining in your trial.
               </p>
-              <p className="text-gray-400 text-sm font-light">
+              <p className="text-fg-muted text-sm font-light">
                 Your trial is active. You can upgrade anytime to continue uninterrupted after it ends.
               </p>
             </div>
@@ -424,7 +424,7 @@ function SubscribePageInner() {
             <h1 className="text-4xl md:text-5xl font-light mb-4 text-white">
               Upgrade Your Plan
             </h1>
-            <p className="text-gray-400 font-light">
+            <p className="text-fg-muted font-light">
               Choose a plan to unlock unlimited access
             </p>
           </div>
@@ -454,8 +454,8 @@ function SubscribePageInner() {
               onClick={() => setSelectedBillingCycle(cycle.value)}
               className={`px-4 py-2 rounded-lg font-light transition-all whitespace-nowrap ${
                 selectedBillingCycle === cycle.value
-                  ? 'bg-gray-700 text-white'
-                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  ? 'bg-bg-hover text-white'
+                  : 'bg-bg-elevated text-fg-secondary hover:bg-bg-hover'
               }`}
             >
               {cycle.label}
@@ -474,16 +474,16 @@ function SubscribePageInner() {
             return (
               <div
                 key={tier.id}
-                className={`relative rounded-xl border p-8 transition-all bg-[#1a1a1a] ${
+                className={`relative rounded-xl border p-8 transition-all bg-bg-card ${
                   tier.popular
-                    ? 'border-gray-600 md:scale-105'
-                    : 'border-gray-800 hover:border-gray-700'
+                    ? 'border-line/30 md:scale-105'
+                    : 'border-line/10 hover:border-line/15'
                 }`}
               >
                 {/* Popular Badge */}
                 {tier.popular && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-gray-700 text-white px-4 py-1 rounded-full text-sm font-light">
+                    <span className="bg-bg-hover text-white px-4 py-1 rounded-full text-sm font-light">
                       Most Popular
                     </span>
                   </div>
@@ -492,7 +492,7 @@ function SubscribePageInner() {
                 {/* Tier Header */}
                 <div className="mb-6">
                   <h3 className="text-2xl font-light mb-2 text-white">{tier.name}</h3>
-                  <p className="text-gray-400 text-sm mb-4 font-light">{tier.description}</p>
+                  <p className="text-fg-muted text-sm mb-4 font-light">{tier.description}</p>
 
                   {/* Price - Hidden for Enterprise */}
                   {tier.id !== 'enterprise' && (
@@ -502,14 +502,14 @@ function SubscribePageInner() {
                         {formatPrice(selectedPricing.price)}
                       </span>
                       {selectedBillingCycle !== 'monthly' && (
-                        <span className="text-gray-500 text-sm">
+                        <span className="text-fg-muted text-sm">
                           /{selectedBillingCycle === 'quarterly' ? 'quarter' : selectedBillingCycle === 'half-yearly' ? '6 months' : 'year'}
                         </span>
                       )}
                     </div>
                     {selectedBillingCycle !== 'monthly' && (
                       <div className="mt-2">
-                        <span className="text-gray-400 text-sm">
+                        <span className="text-fg-muted text-sm">
                           {formatPrice(selectedPricing.effectiveMonthly)}/month
                         </span>
                         {selectedPricing.savings && (
@@ -521,7 +521,7 @@ function SubscribePageInner() {
                     )}
                     {selectedPricing.discount > 0 && (
                       <div className="mt-1">
-                        <span className="text-gray-400 text-sm font-light">
+                        <span className="text-fg-muted text-sm font-light">
                           {selectedPricing.discount}% discount
                         </span>
                       </div>
@@ -532,14 +532,14 @@ function SubscribePageInner() {
                   {/* Enterprise Custom Message */}
                   {tier.id === 'enterprise' && (
                     <div className="mb-4">
-                      <p className="text-gray-300 text-lg font-light">
+                      <p className="text-fg-secondary text-lg font-light">
                         Contact us for custom pricing
                       </p>
                     </div>
                   )}
 
                   {/* Company/User Limits */}
-                  <div className="text-xs text-gray-500 space-y-1 mb-4 border-t border-gray-800 pt-3">
+                  <div className="text-xs text-fg-muted space-y-1 mb-4 border-t border-line/10 pt-3">
                     <div>📁 {tier.limits.companies === 'unlimited' ? 'Unlimited' : `Up to ${tier.limits.companies}`} companies</div>
                     <div>👥 {tier.limits.users === 'unlimited' ? 'Unlimited' : `Up to ${tier.limits.users}`} team members</div>
                   </div>
@@ -551,8 +551,8 @@ function SubscribePageInner() {
                     href="/contact"
                     className={`w-full py-3 px-6 rounded-lg font-light transition-all mb-6 text-center block ${
                       tier.popular
-                        ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                        : 'bg-transparent border border-gray-700 text-gray-300 hover:border-gray-600 hover:text-white'
+                        ? 'bg-bg-hover hover:bg-gray-600 text-white'
+                        : 'bg-transparent border border-line/15 text-fg-secondary hover:border-line/30 hover:text-white'
                     }`}
                   >
                     Contact Us
@@ -567,15 +567,15 @@ function SubscribePageInner() {
                   }
                   className={`w-full py-3 px-6 rounded-lg font-light transition-all mb-6 ${
                     tier.popular
-                      ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                      : 'bg-transparent border border-gray-700 text-gray-300 hover:border-gray-600 hover:text-white'
+                      ? 'bg-bg-hover hover:bg-gray-600 text-white'
+                      : 'bg-transparent border border-line/15 text-fg-secondary hover:border-line/30 hover:text-white'
                   }`}
                 />
                 )}
 
                 {/* Features */}
                 <div className="space-y-3">
-                  <div className="text-sm font-light text-gray-400 mb-3">Features:</div>
+                  <div className="text-sm font-light text-fg-muted mb-3">Features:</div>
                   {tier.features.slice(0, 5).map((feature, index) => (
                     <div key={index} className="flex items-start gap-2">
                       <svg
@@ -591,11 +591,11 @@ function SubscribePageInner() {
                           d="M5 13l4 4L19 7"
                         />
                       </svg>
-                      <span className="text-gray-300 text-sm font-light">{feature}</span>
+                      <span className="text-fg-secondary text-sm font-light">{feature}</span>
                     </div>
                   ))}
                   {tier.features.length > 5 && (
-                    <div className="text-gray-500 text-sm">
+                    <div className="text-fg-muted text-sm">
                       +{tier.features.length - 5} more features
                     </div>
                   )}
@@ -616,7 +616,7 @@ function SubscribePageInner() {
       <div className="relative z-10 px-4 sm:px-6 pt-4 flex items-center justify-between">
         <Link
           href={backToDataRoomHref}
-          className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors font-light text-sm"
+          className="inline-flex items-center gap-2 text-fg-muted hover:text-white transition-colors font-light text-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -625,7 +625,7 @@ function SubscribePageInner() {
         </Link>
         <button
           onClick={handleSignOut}
-          className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors font-light text-sm"
+          className="inline-flex items-center gap-2 text-fg-muted hover:text-white transition-colors font-light text-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -641,11 +641,11 @@ function SubscribePageInner() {
               Choose Your Plan
             </h1>
           {companyName && (
-            <p className="text-gray-400 text-lg mb-2">
+            <p className="text-fg-muted text-lg mb-2">
               Subscribe to manage <span className="text-white font-medium">{companyName}</span>
             </p>
           )}
-          <p className="text-gray-500 text-sm">
+          <p className="text-fg-muted text-sm">
             Starter & Professional: Each company needs its own subscription. Enterprise: One subscription covers all companies (up to 100).
           </p>
         </div>
@@ -677,14 +677,14 @@ function SubscribePageInner() {
 
         {!anyAccessLoading && accessibleCompanies.length > 0 && (
           <div className="max-w-2xl mx-auto mb-8">
-            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-6">
+            <div className="bg-bg-card border border-line/10 rounded-xl p-6">
               <div className="flex items-center gap-2 mb-4">
                 <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <h2 className="text-lg font-light text-white">Companies You Can Still Access</h2>
               </div>
-              <p className="text-gray-400 text-sm font-light mb-4">
+              <p className="text-fg-muted text-sm font-light mb-4">
                 Your current company may need a subscription, but these companies still have valid access.
               </p>
               <div className="space-y-2">
@@ -692,10 +692,10 @@ function SubscribePageInner() {
                   <button
                     key={company.id}
                     onClick={() => router.push(`/data-room?company_id=${company.id}`)}
-                    className="w-full text-left px-4 py-3 bg-gray-900 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors text-sm font-light flex items-center justify-between group"
+                    className="w-full text-left px-4 py-3 bg-bg-card rounded-lg text-fg-secondary hover:bg-bg-elevated transition-colors text-sm font-light flex items-center justify-between group"
                   >
                     <span className="truncate flex-1">{company.name}</span>
-                    <svg className="w-4 h-4 text-gray-500 group-hover:text-white transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-fg-muted group-hover:text-white transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
@@ -708,13 +708,13 @@ function SubscribePageInner() {
         {/* Company Selector for Starter/Professional */}
         {!anyAccessLoading && userCompanies.length > 0 && (
           <div className="max-w-2xl mx-auto mb-6">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-fg-secondary mb-2">
               Select Company (for Starter/Professional plans):
             </label>
             <select
               value={selectedCompanyForSubscription || ''}
               onChange={(e) => setSelectedCompanyForSubscription(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+              className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
             >
               {userCompanies.map((company) => (
                 <option key={company.id} value={company.id}>
@@ -723,7 +723,7 @@ function SubscribePageInner() {
               ))}
             </select>
             {selectedCompanyForSubscription && (
-              <p className="text-gray-500 text-xs mt-2">
+              <p className="text-fg-muted text-xs mt-2">
                 Starter/Professional subscriptions are for this company only. Enterprise covers all companies.
               </p>
             )}
@@ -733,15 +733,15 @@ function SubscribePageInner() {
         {/* Pay Later / Trial Option - Show if no company subscription, company is eligible, and user has no companies or company selected */}
         {!anyAccessLoading && (!companyHasActiveSubscription && companyTrialEligible && !isCheckingTrialEligibility && (selectedCompanyForSubscription || companyId || currentCompanyCount === 0)) && (
           <div className="max-w-2xl mx-auto mb-12">
-            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 text-center">
+            <div className="bg-bg-elevated/50 border border-line/15 rounded-xl p-6 text-center">
               <div className="flex items-center justify-center gap-2 mb-3">
-                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-fg-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span className="text-xl font-light text-white">Not ready to commit?</span>
               </div>
-              <p className="text-gray-400 mb-2 font-light">
-                Start with a <span className="text-gray-300 font-light">15-day free trial</span> — verify with ₹2 payment (refunded within 24 hours).
+              <p className="text-fg-muted mb-2 font-light">
+                Start with a <span className="text-fg-secondary font-light">15-day free trial</span> — verify with ₹2 payment (refunded within 24 hours).
                 {currentCompanyCount === 0 ? (
                   <> You'll be able to create your first company after starting the trial.</>
                 ) : selectedCompanyForSubscription ? (
@@ -750,14 +750,14 @@ function SubscribePageInner() {
                   <> After the trial, you can choose any plan (Starter, Professional, or Enterprise) when subscribing.</>
                 )}
               </p>
-              <p className="text-gray-500 text-xs mb-4 font-light">
+              <p className="text-fg-muted text-xs mb-4 font-light">
                 A ₹2 verification charge will be made to verify your payment method. This amount will be automatically refunded within 24 hours.
               </p>
               <div className="flex items-center justify-center">
                 <button
                   onClick={handleStartTrial}
                   disabled={isStartingTrial || isCheckingCompanySubscription || isCheckingTrialEligibility}
-                  className="bg-gray-700 text-white px-8 py-3 rounded-lg font-light hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  className="bg-bg-hover text-white px-8 py-3 rounded-lg font-light hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                   {isStartingTrial ? 'Starting...' : 'Start 15-Day Trial'}
                 </button>
@@ -772,7 +772,7 @@ function SubscribePageInner() {
               <p className="text-red-400 font-medium">
                 Free trial is not available
               </p>
-              <p className="text-gray-400 text-sm mt-2">
+              <p className="text-fg-muted text-sm mt-2">
                 {trialEligibilityReason === 'enterprise_trial_used'
                   ? 'This account has already used its Enterprise trial, so a company-level Starter or Professional trial is no longer available.'
                   : 'This company has already used its free trial. Please subscribe to continue.'}
@@ -790,7 +790,7 @@ function SubscribePageInner() {
               <p className="text-red-400 font-medium">
                 Company already has an active subscription or trial
               </p>
-              <p className="text-gray-400 text-sm mt-2">
+              <p className="text-fg-muted text-sm mt-2">
                 {selectedCompanyForSubscription && (
                   <>The selected company already has an active subscription or trial. You can upgrade your plan or wait for the current subscription to expire.</>
                 )}
@@ -805,9 +805,9 @@ function SubscribePageInner() {
         {!anyAccessLoading && (
           <>
             <div className="flex items-center gap-4 max-w-4xl mx-auto mb-12">
-              <div className="flex-1 h-px bg-gray-800"></div>
-              <span className="text-gray-500 text-sm font-medium">OR SUBSCRIBE NOW</span>
-              <div className="flex-1 h-px bg-gray-800"></div>
+              <div className="flex-1 h-px bg-bg-elevated"></div>
+              <span className="text-fg-muted text-sm font-medium">OR SUBSCRIBE NOW</span>
+              <div className="flex-1 h-px bg-bg-elevated"></div>
             </div>
 
             {renderPricingContent()}
@@ -817,7 +817,7 @@ function SubscribePageInner() {
                 <button
                   onClick={handleStartTrial}
                   disabled={isStartingTrial}
-                  className="text-gray-500 hover:text-gray-400 text-sm underline transition-colors disabled:opacity-50"
+                  className="text-fg-muted hover:text-fg-muted text-sm underline transition-colors disabled:opacity-50"
                 >
                   Skip for now and start free trial (₹2 verification required)
                 </button>

@@ -78,7 +78,7 @@ function SubscriptionRequiredInner() {
         <div className="max-w-lg w-full space-y-6">
           {/* Active Companies Section - Prominent at top */}
           {accessibleCompanies.length > 0 && (
-            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-6">
+            <div className="bg-bg-card border border-line/10 rounded-xl p-6">
               <div className="flex items-center gap-2 mb-4">
                 <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -107,12 +107,12 @@ function SubscriptionRequiredInner() {
                     <button
                       key={c.id}
                       onClick={() => router.push(`/data-room?company_id=${c.id}`)}
-                      className="w-full text-left px-4 py-3 bg-gray-900 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors text-sm font-light flex items-center justify-between group"
+                      className="w-full text-left px-4 py-3 bg-bg-card rounded-lg text-fg-secondary hover:bg-bg-elevated transition-colors text-sm font-light flex items-center justify-between group"
                     >
                       <span className="truncate flex-1">{c.name}</span>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {getStatusBadge()}
-                        <svg className="w-4 h-4 text-gray-500 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-fg-muted group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                       </div>
@@ -125,9 +125,9 @@ function SubscriptionRequiredInner() {
 
           {/* Icon */}
           <div className="flex justify-center">
-            <div className="w-20 h-20 bg-gray-800 border border-gray-700 rounded-xl flex items-center justify-center">
+            <div className="w-20 h-20 bg-bg-elevated border border-line/15 rounded-xl flex items-center justify-center">
               <svg
-                className="w-10 h-10 text-gray-400"
+                className="w-10 h-10 text-fg-muted"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -143,22 +143,22 @@ function SubscriptionRequiredInner() {
           </div>
           
           {/* Main Card */}
-          <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-8 text-center">
+          <div className="bg-bg-card border border-line/10 rounded-xl p-8 text-center">
             <h1 className="text-2xl font-light text-white mb-3">
               Subscription Required
             </h1>
             
             {selectedExpiredCompany && expiredCompanies.length > 0 ? (
-              <p className="text-gray-400 mb-6 font-light">
+              <p className="text-fg-muted mb-6 font-light">
                 Your trial for <span className="text-white font-light">{expiredCompanies.find(c => c.id === selectedExpiredCompany)?.name || 'this company'}</span> has expired. 
                 Subscribe to continue accessing this company.
               </p>
             ) : expiredCompanies.length > 0 ? (
-              <p className="text-gray-400 mb-6 font-light">
+              <p className="text-fg-muted mb-6 font-light">
                 Your trial has expired. Subscribe to continue accessing your companies.
               </p>
             ) : (
-              <p className="text-gray-400 mb-6 font-light">
+              <p className="text-fg-muted mb-6 font-light">
                 Your trial has expired. Subscribe to continue accessing the Data Room.
               </p>
             )}
@@ -166,7 +166,7 @@ function SubscriptionRequiredInner() {
             {/* Expired Companies Selection - Show if multiple expired companies */}
             {expiredCompanies.length > 1 && (
               <div className="mb-6 text-left">
-                <p className="text-sm text-gray-500 mb-3 font-light">
+                <p className="text-sm text-fg-muted mb-3 font-light">
                   Select company to subscribe:
                 </p>
                 <div className="space-y-2">
@@ -176,17 +176,17 @@ function SubscriptionRequiredInner() {
                       onClick={() => setSelectedExpiredCompany(c.id)}
                       className={`w-full text-left px-4 py-3 rounded-lg text-sm font-light transition-colors flex items-center gap-3 ${
                         selectedExpiredCompany === c.id
-                          ? 'bg-gray-700 text-white border border-gray-600'
-                          : 'bg-gray-900 text-gray-300 hover:bg-gray-800 border border-gray-800'
+                          ? 'bg-bg-hover text-white border border-line/30'
+                          : 'bg-bg-card text-fg-secondary hover:bg-bg-elevated border border-line/10'
                       }`}
                     >
                       <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
                         selectedExpiredCompany === c.id
                           ? 'border-white bg-white'
-                          : 'border-gray-500'
+                          : 'border-line/40'
                       }`}>
                         {selectedExpiredCompany === c.id && (
-                          <div className="w-2 h-2 rounded-full bg-gray-900"></div>
+                          <div className="w-2 h-2 rounded-full bg-bg-card"></div>
                         )}
                       </div>
                       <span className="truncate flex-1">{c.name}</span>
@@ -201,7 +201,7 @@ function SubscriptionRequiredInner() {
               {selectedExpiredCompany && expiredCompanies.length > 0 && (
                 <button
                   onClick={() => router.push(`/subscribe?company_id=${selectedExpiredCompany}`)}
-                  className="w-full bg-gray-700 text-white py-3 px-6 rounded-lg font-light hover:bg-gray-600 transition-colors"
+                  className="w-full bg-bg-hover text-white py-3 px-6 rounded-lg font-light hover:bg-gray-600 transition-colors"
                 >
                   Subscribe to {expiredCompanies.find(c => c.id === selectedExpiredCompany)?.name || 'Selected Company'}
                 </button>
@@ -209,17 +209,17 @@ function SubscriptionRequiredInner() {
               
               <button
                 onClick={() => router.push('/pricing')}
-                className="w-full bg-transparent border border-gray-700 text-gray-300 py-3 px-6 rounded-lg font-light hover:border-gray-600 hover:text-white transition-colors"
+                className="w-full bg-transparent border border-line/15 text-fg-secondary py-3 px-6 rounded-lg font-light hover:border-line/30 hover:text-white transition-colors"
               >
                 View All Plans
               </button>
             </div>
             
             {/* Create New Company */}
-            <div className="mt-6 pt-6 border-t border-gray-800">
+            <div className="mt-6 pt-6 border-t border-line/10">
               <button
                 onClick={() => router.push('/onboarding')}
-                className="text-gray-400 hover:text-white text-sm font-light transition-colors"
+                className="text-fg-muted hover:text-white text-sm font-light transition-colors"
               >
                 + Create a New Company
               </button>
@@ -228,9 +228,9 @@ function SubscriptionRequiredInner() {
           
           {/* Help Text */}
           <div className="mt-6 text-center">
-            <p className="text-gray-500 text-sm font-light">
+            <p className="text-fg-muted text-sm font-light">
               Need help? Contact{' '}
-              <a href="mailto:info@finacra.com" className="text-gray-400 hover:text-white transition-colors">
+              <a href="mailto:info@finacra.com" className="text-fg-muted hover:text-white transition-colors">
                 info@finacra.com
               </a>
             </p>

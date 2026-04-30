@@ -111,7 +111,7 @@ export default function RequirementMobileCardView({
                           }
                           setSelectedRequirements(() => newSelected)
                         }}
-                        className="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-800 text-white focus:ring-white/40 focus:ring-2 cursor-pointer"
+                        className="mt-1 w-4 h-4 rounded border-line/30 bg-bg-elevated text-white focus:ring-white/40 focus:ring-2 cursor-pointer"
                       />
                     )}
                     {(req.isCritical || req.status === 'overdue') && (
@@ -138,14 +138,14 @@ export default function RequirementMobileCardView({
                           <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${formFreq === 'monthly' ? 'bg-blue-500/20 text-blue-400' :
                               formFreq === 'quarterly' ? 'bg-purple-500/20 text-purple-400' :
                                 formFreq === 'annual' ? 'bg-green-500/20 text-green-400' :
-                                  'bg-gray-500/20 text-gray-400'
+                                  'bg-gray-500/20 text-fg-muted'
                             }`}>
                             {formFreq.toUpperCase()}
                           </span>
                         )}
                       </div>
                       {req.description && (
-                        <div className="text-gray-400 text-xs break-words mt-1">{req.description}</div>
+                        <div className="text-fg-muted text-xs break-words mt-1">{req.description}</div>
                       )}
                       {(formFreq || authority || legalSections.length > 0) && (
                         <button
@@ -177,7 +177,7 @@ export default function RequirementMobileCardView({
                                 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30'
                                 : req.status === 'upcoming'
                                   ? 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30'
-                                  : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
+                                  : 'bg-bg-elevated text-fg-muted border-line/15 hover:bg-bg-hover'
                           }`}
                         style={{
                           appearance: 'none',
@@ -203,7 +203,7 @@ export default function RequirementMobileCardView({
                                 ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
                                 : req.status === 'upcoming'
                                   ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                                  : 'bg-gray-800 text-gray-400 border border-gray-700'
+                                  : 'bg-bg-elevated text-fg-muted border border-line/15'
                           }`}
                       >
                         {req.status === 'completed'
@@ -222,7 +222,7 @@ export default function RequirementMobileCardView({
                           complianceType === 'annual' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
                             complianceType === 'monthly' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
                               complianceType === 'quarterly' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' :
-                                'bg-gray-500/20 text-white border border-gray-500/30'
+                                'bg-gray-500/20 text-white border border-line/40/30'
                         }`} title={
                           complianceType === 'one-time' ? 'One-time: happens once, no recurring' :
                             complianceType === 'annual' ? 'Annual: recurs every year' :
@@ -242,7 +242,7 @@ export default function RequirementMobileCardView({
                     <svg
                       width="14"
                       height="14"
-                      className="flex-shrink-0 text-gray-400"
+                      className="flex-shrink-0 text-fg-muted"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -260,7 +260,7 @@ export default function RequirementMobileCardView({
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {daysDelayed !== null && (
                       <div>
-                        <span className="text-gray-400">Delayed:</span>
+                        <span className="text-fg-muted">Delayed:</span>
                         <span className="text-red-400 font-medium ml-1">
                           {daysDelayed} {daysDelayed === 1 ? 'day' : 'days'}
                         </span>
@@ -268,13 +268,13 @@ export default function RequirementMobileCardView({
                     )}
                     {req.penalty && (
                       <div>
-                        <span className="text-gray-400">Penalty:</span>
+                        <span className="text-fg-muted">Penalty:</span>
                         <span className="text-red-400 ml-1 break-words">{req.penalty}</span>
                       </div>
                     )}
                     {calculatedPenalty !== '-' && (
                       <div className="col-span-2">
-                        <span className="text-gray-400">Calculated Penalty:</span>
+                        <span className="text-fg-muted">Calculated Penalty:</span>
                         <span className="text-red-400 font-semibold ml-1">
                           {calculatedPenalty}
                         </span>
@@ -286,7 +286,7 @@ export default function RequirementMobileCardView({
                   {(req.filed_on || req.filed_by || req.status_reason) && (
                     <div className="pt-2 border-t border-white/10 space-y-1.5">
                       {req.filed_on && (
-                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                        <div className="flex items-center gap-1.5 text-xs text-fg-muted">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <circle cx="12" cy="12" r="10" />
                             <polyline points="12 6 12 12 16 14" />
@@ -295,7 +295,7 @@ export default function RequirementMobileCardView({
                         </div>
                       )}
                       {req.filed_by && (
-                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                        <div className="flex items-center gap-1.5 text-xs text-fg-muted">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                             <circle cx="12" cy="7" r="4" />
@@ -304,7 +304,7 @@ export default function RequirementMobileCardView({
                         </div>
                       )}
                       {req.status_reason && (
-                        <div className="flex items-start gap-1.5 text-xs text-gray-400">
+                        <div className="flex items-start gap-1.5 text-xs text-fg-muted">
                           <svg width="12" height="12" className="mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <circle cx="12" cy="12" r="10" />
                             <line x1="12" y1="16" x2="12" y2="12" />

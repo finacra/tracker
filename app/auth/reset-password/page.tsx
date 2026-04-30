@@ -101,7 +101,7 @@ function ResetPasswordPageInner() {
   return (
     <div className="min-h-screen bg-primary-dark flex flex-col relative overflow-hidden">
       {/* Top Navigation Bar */}
-      <nav className="relative z-10 w-full px-6 py-6 border-b border-gray-800">
+      <nav className="relative z-10 w-full px-6 py-6 border-b border-line/10">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img
@@ -113,13 +113,13 @@ function ResetPasswordPageInner() {
           <div className="flex items-center gap-8">
             <Link 
               href="/home"
-              className="text-sm font-light transition-colors text-gray-400 hover:text-white"
+              className="text-sm font-light transition-colors text-fg-muted hover:text-white"
             >
               Home
             </Link>
             <Link 
               href="/login"
-              className="text-sm font-light transition-colors text-gray-400 hover:text-white"
+              className="text-sm font-light transition-colors text-fg-muted hover:text-white"
             >
               Sign In
             </Link>
@@ -135,21 +135,21 @@ function ResetPasswordPageInner() {
             <h1 className="text-4xl md:text-5xl font-light text-white mb-3 text-center tracking-tight">
               Reset Password
             </h1>
-            <p className="text-gray-400 mb-12 text-center font-light">
+            <p className="text-fg-muted mb-12 text-center font-light">
               Enter your new password
             </p>
 
             {/* Reset Password Form */}
-            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-10 w-full">
+            <div className="bg-bg-card border border-line/10 rounded-xl p-10 w-full">
               {isVerifying ? (
                 <div className="text-center py-8">
                   <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-sm text-gray-400 font-light">Verifying reset link...</p>
+                  <p className="text-sm text-fg-muted font-light">Verifying reset link...</p>
                 </div>
               ) : (
                 <form onSubmit={handleResetPassword} className="space-y-4">
                 <div>
-                  <label htmlFor="password" className="block text-sm font-light text-gray-300 mb-2">
+                  <label htmlFor="password" className="block text-sm font-light text-fg-secondary mb-2">
                     New Password
                   </label>
                   <div className="relative">
@@ -159,7 +159,7 @@ function ResetPasswordPageInner() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="w-full px-4 py-3 pr-12 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors font-light"
+                      className="w-full px-4 py-3 pr-12 bg-bg-card border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
                       placeholder="Enter new password (min. 6 characters)"
                       disabled={isLoading || isVerifying}
                       minLength={6}
@@ -167,7 +167,7 @@ function ResetPasswordPageInner() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-white transition-colors"
                       tabIndex={-1}
                     >
                       {showPassword ? (
@@ -185,7 +185,7 @@ function ResetPasswordPageInner() {
                 </div>
 
                 <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-light text-gray-300 mb-2">
+                  <label htmlFor="confirmPassword" className="block text-sm font-light text-fg-secondary mb-2">
                     Confirm Password
                   </label>
                   <div className="relative">
@@ -195,7 +195,7 @@ function ResetPasswordPageInner() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
-                      className="w-full px-4 py-3 pr-12 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors font-light"
+                      className="w-full px-4 py-3 pr-12 bg-bg-card border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
                       placeholder="Confirm new password"
                       disabled={isLoading || isVerifying}
                       minLength={6}
@@ -203,7 +203,7 @@ function ResetPasswordPageInner() {
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-white transition-colors"
                       tabIndex={-1}
                     >
                       {showConfirmPassword ? (
@@ -249,7 +249,7 @@ function ResetPasswordPageInner() {
               <div className="mt-6 text-center">
                 <Link
                   href="/login"
-                  className="text-sm text-gray-400 hover:text-white transition-colors font-light"
+                  className="text-sm text-fg-muted hover:text-white transition-colors font-light"
                 >
                   ← Back to Sign In
                 </Link>

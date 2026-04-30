@@ -127,14 +127,14 @@ export default function EmailPreferencesPage() {
           {/* Notification Types */}
           <div className="p-6 border-b border-gray-100">
             <h2 className="text-lg font-semibold text-gray-900 mb-1">Email Notifications</h2>
-            <p className="text-sm text-gray-500 mb-6">Choose which emails you want to receive</p>
+            <p className="text-sm text-fg-muted mb-6">Choose which emails you want to receive</p>
 
             <div className="space-y-4">
               {/* All emails toggle */}
               <label className="flex items-center justify-between p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
                 <div>
                   <div className="font-medium text-gray-900">Unsubscribe from all emails</div>
-                  <div className="text-sm text-gray-500">Stop receiving all notification emails</div>
+                  <div className="text-sm text-fg-muted">Stop receiving all notification emails</div>
                 </div>
                 <input
                   type="checkbox"
@@ -149,7 +149,7 @@ export default function EmailPreferencesPage() {
                 <label className="flex items-center justify-between p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition">
                   <div>
                     <div className="font-medium text-gray-900">Status change notifications</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-fg-muted">
                       Get notified when compliance items are updated
                     </div>
                   </div>
@@ -165,7 +165,7 @@ export default function EmailPreferencesPage() {
                 <label className="flex items-center justify-between p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition">
                   <div>
                     <div className="font-medium text-gray-900">Compliance reminders</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-fg-muted">
                       Receive reminders for upcoming and overdue compliances
                     </div>
                   </div>
@@ -181,7 +181,7 @@ export default function EmailPreferencesPage() {
                 <label className="flex items-center justify-between p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition">
                   <div>
                     <div className="font-medium text-gray-900">Team updates</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-fg-muted">
                       Get notified about team invitations and member changes
                     </div>
                   </div>
@@ -199,7 +199,7 @@ export default function EmailPreferencesPage() {
           {/* Digest Frequency */}
           <div className="p-6 border-b border-gray-100">
             <h2 className="text-lg font-semibold text-gray-900 mb-1">Digest Frequency</h2>
-            <p className="text-sm text-gray-500 mb-6">
+            <p className="text-sm text-fg-muted mb-6">
               How often would you like to receive reminder digests?
             </p>
 
@@ -220,7 +220,7 @@ export default function EmailPreferencesPage() {
                   }`}
                 >
                   <div className="font-medium text-gray-900">{option.label}</div>
-                  <div className="text-xs text-gray-500 mt-1">{option.desc}</div>
+                  <div className="text-xs text-fg-muted mt-1">{option.desc}</div>
                 </button>
               ))}
             </div>

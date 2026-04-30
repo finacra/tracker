@@ -220,7 +220,7 @@ export default function ComplianceIntakeForm({ companyId, financialYear, initial
     <div className="max-w-2xl mx-auto p-6">
       <div className="mb-6">
         <h3 className="text-xl font-light text-white">Tell us about your business</h3>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-sm text-fg-muted mt-1">
           {initial.hasPrefill
             ? 'We pre-filled what you already shared during onboarding — confirm or update below.'
             : 'We need a few details to show only the compliances that apply to you. Takes 2 minutes.'}
@@ -330,14 +330,14 @@ export default function ComplianceIntakeForm({ companyId, financialYear, initial
       <div className="mt-8 flex items-center justify-between">
         <button
           onClick={() => onComplete([])}
-          className="text-sm text-gray-400 hover:text-white"
+          className="text-sm text-fg-muted hover:text-white"
         >
           Skip for now
         </button>
         <button
           onClick={handleSubmit}
           disabled={saving}
-          className="px-6 py-2.5 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-200 disabled:opacity-50"
+          className="px-6 py-2.5 bg-white text-black rounded-lg text-sm font-medium hover:bg-bg-elevated disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save & generate tracker'}
         </button>
@@ -354,20 +354,20 @@ function Question({ label, value, onChange, hint }: {
 }) {
   return (
     <div>
-      <p className="text-sm text-gray-200">{label}</p>
-      {hint && <p className="text-[10px] text-gray-500 mt-0.5">{hint}</p>}
+      <p className="text-sm text-fg-secondary">{label}</p>
+      {hint && <p className="text-[10px] text-fg-muted mt-0.5">{hint}</p>}
       <div className="flex gap-2 mt-2">
         <button
           type="button"
           onClick={() => onChange(true)}
-          className={`px-4 py-1.5 rounded text-sm transition-colors ${value === true ? 'bg-white text-black' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+          className={`px-4 py-1.5 rounded text-sm transition-colors ${value === true ? 'bg-white text-black' : 'bg-bg-elevated text-fg-muted hover:text-white'}`}
         >
           Yes
         </button>
         <button
           type="button"
           onClick={() => onChange(false)}
-          className={`px-4 py-1.5 rounded text-sm transition-colors ${value === false ? 'bg-white text-black' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+          className={`px-4 py-1.5 rounded text-sm transition-colors ${value === false ? 'bg-white text-black' : 'bg-bg-elevated text-fg-muted hover:text-white'}`}
         >
           No
         </button>
@@ -385,14 +385,14 @@ function AmountField({ label, value, onChange, placeholder, hint }: {
 }) {
   return (
     <div>
-      <label className="text-sm text-gray-200">{label}</label>
-      {hint && <p className="text-[10px] text-gray-500 mt-0.5">{hint}</p>}
+      <label className="text-sm text-fg-secondary">{label}</label>
+      {hint && <p className="text-[10px] text-fg-muted mt-0.5">{hint}</p>}
       <input
         type="number"
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="mt-2 w-full max-w-xs px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-gray-500"
+        className="mt-2 w-full max-w-xs px-3 py-2 bg-bg-card border border-line/15 rounded-lg text-white text-sm focus:outline-none focus:border-line/40"
       />
     </div>
   )

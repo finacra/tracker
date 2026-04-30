@@ -24,7 +24,7 @@ export default function DataRoomError({
         </div>
 
         <h1 className="text-2xl font-light text-white mb-2">Failed to load Dashboard</h1>
-        <p className="text-gray-400 text-sm font-light mb-8 leading-relaxed">
+        <p className="text-fg-muted text-sm font-light mb-8 leading-relaxed">
           We couldn't load your data room. This is usually a temporary issue — please try refreshing the page.
         </p>
 
@@ -37,14 +37,14 @@ export default function DataRoomError({
           </button>
           <Link
             href="/"
-            className="px-6 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-gray-300 text-sm font-medium transition-colors"
+            className="px-6 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-fg-secondary text-sm font-medium transition-colors"
           >
             Go to Home
           </Link>
         </div>
 
         {error.digest && (
-          <p className="mt-6 text-gray-600 text-xs font-mono">Error ID: {error.digest}</p>
+          <p className="mt-6 text-fg-muted/60 text-xs font-mono">Error ID: {error.digest}</p>
         )}
       </div>
     </div>

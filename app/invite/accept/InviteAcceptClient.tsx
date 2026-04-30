@@ -149,19 +149,19 @@ export default function InviteAcceptClient(props: { token?: string }) {
 
   return (
     <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-8">
+      <div className="w-full max-w-md bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-8">
         <h1 className="text-2xl font-light text-white mb-2">Accept invitation</h1>
-        <p className="text-sm text-gray-400 mb-6">{message}</p>
+        <p className="text-sm text-fg-muted mb-6">{message}</p>
 
         {status === 'loading' && (
-          <div className="flex items-center gap-3 text-gray-300">
+          <div className="flex items-center gap-3 text-fg-secondary">
             <div className="w-4 h-4 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
             <span>Loading invitation…</span>
           </div>
         )}
 
         {status === 'checking' && (
-          <div className="flex items-center gap-3 text-gray-300">
+          <div className="flex items-center gap-3 text-fg-secondary">
             <div className="w-4 h-4 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
             <span>Processing…</span>
           </div>
@@ -170,41 +170,41 @@ export default function InviteAcceptClient(props: { token?: string }) {
         {status === 'signup' && (
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Email</label>
+              <label className="block text-sm text-fg-muted mb-2">Email</label>
               <input
                 type="email"
                 value={inviteEmail}
                 disabled
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white disabled:opacity-50"
+                className="w-full bg-bg-card border border-line/15 rounded-lg px-4 py-2.5 text-white disabled:opacity-50"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Full Name (optional)</label>
+              <label className="block text-sm text-fg-muted mb-2">Full Name (optional)</label>
               <input
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-primary-orange focus:outline-none"
+                className="w-full bg-bg-card border border-line/15 rounded-lg px-4 py-2.5 text-white focus:border-primary-orange focus:outline-none"
                 placeholder="John Doe"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Password</label>
+              <label className="block text-sm text-fg-muted mb-2">Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 pr-10 text-white focus:border-primary-orange focus:outline-none"
+                  className="w-full bg-bg-card border border-line/15 rounded-lg px-4 py-2.5 pr-10 text-white focus:border-primary-orange focus:outline-none"
                   placeholder="At least 6 characters"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-white"
                 >
                   {showPassword ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -221,12 +221,12 @@ export default function InviteAcceptClient(props: { token?: string }) {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Confirm Password</label>
+              <label className="block text-sm text-fg-muted mb-2">Confirm Password</label>
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:border-primary-orange focus:outline-none"
+                className="w-full bg-bg-card border border-line/15 rounded-lg px-4 py-2.5 text-white focus:border-primary-orange focus:outline-none"
                 placeholder="Confirm your password"
                 required
               />
@@ -250,7 +250,7 @@ export default function InviteAcceptClient(props: { token?: string }) {
 
         {status === 'login' && (
           <div className="space-y-4">
-            <p className="text-sm text-gray-300">
+            <p className="text-sm text-fg-secondary">
               An account with <strong className="text-white">{inviteEmail}</strong> already exists.
             </p>
             <Link

@@ -199,19 +199,19 @@ export default function OnboardingPage() {
   if (!hasActiveAccess && currentCompanyCount === 0) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
-        <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-8 max-w-md text-center">
-          <div className="w-16 h-16 bg-gray-800/50 border border-gray-700 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-bg-card border border-line/10 rounded-xl p-8 max-w-md text-center">
+          <div className="w-16 h-16 bg-bg-elevated/50 border border-line/15 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-8 h-8 text-fg-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
           <h1 className="text-2xl font-light text-white mb-4">Subscription Required</h1>
-          <p className="text-gray-400 mb-6 font-light">
+          <p className="text-fg-muted mb-6 font-light">
             You need an active subscription or trial to create companies. Start with a free 15-day trial!
           </p>
           <button
             onClick={() => router.push('/subscribe')}
-            className="w-full border border-gray-700 text-gray-300 px-6 py-3 rounded-lg font-light hover:border-gray-600 hover:text-white transition-colors"
+            className="w-full border border-line/15 text-fg-secondary px-6 py-3 rounded-lg font-light hover:border-line/30 hover:text-white transition-colors"
           >
             Choose a Plan
           </button>
@@ -224,29 +224,29 @@ export default function OnboardingPage() {
   if (hasActiveAccess && !canCreateCompany) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
-        <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-8 max-w-md text-center">
+        <div className="bg-bg-card border border-line/10 rounded-xl p-8 max-w-md text-center">
           <div className="w-16 h-16 bg-yellow-500/10 border border-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
             <svg className="w-8 h-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
           <h1 className="text-2xl font-light text-white mb-4">Company Limit Reached</h1>
-          <p className="text-gray-400 mb-2 font-light">
+          <p className="text-fg-muted mb-2 font-light">
             You've created <span className="text-white font-light">{currentCompanyCount}</span> of <span className="text-white font-light">{companyLimit}</span> companies allowed on your plan.
           </p>
-          <p className="text-gray-500 text-sm mb-6 font-light">
+          <p className="text-fg-muted text-sm mb-6 font-light">
             Upgrade to a higher plan to add more companies.
           </p>
           <div className="flex flex-col gap-3">
             <button
               onClick={() => router.push('/subscribe')}
-              className="w-full border border-gray-700 text-gray-300 px-6 py-3 rounded-lg font-light hover:border-gray-600 hover:text-white transition-colors"
+              className="w-full border border-line/15 text-fg-secondary px-6 py-3 rounded-lg font-light hover:border-line/30 hover:text-white transition-colors"
             >
               Upgrade Plan
             </button>
             <button
               onClick={() => router.push('/data-room')}
-              className="w-full border border-gray-700 text-gray-300 px-6 py-3 rounded-lg font-light hover:border-gray-600 hover:text-white transition-colors"
+              className="w-full border border-line/15 text-fg-secondary px-6 py-3 rounded-lg font-light hover:border-line/30 hover:text-white transition-colors"
             >
               Go to Data Room
             </button>
@@ -1185,7 +1185,7 @@ export default function OnboardingPage() {
         {/* Header */}
         <div className="mb-4 sm:mb-8">
           <div className="flex items-center gap-2 sm:gap-4 mb-3 sm:mb-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-800 border border-gray-700 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-bg-elevated border border-line/15 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
               <svg
                 width="20"
                 height="20"
@@ -1226,7 +1226,7 @@ export default function OnboardingPage() {
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl md:text-3xl font-light text-white">Create New Company</h1>
-              <p className="text-gray-400 text-xs sm:text-sm mt-1 font-light">
+              <p className="text-fg-muted text-xs sm:text-sm mt-1 font-light">
                 Add another company to your account
               </p>
             </div>
@@ -1234,19 +1234,19 @@ export default function OnboardingPage() {
         </div>
 
         {/* Form Card */}
-        <form onSubmit={handleSubmit} className="bg-[#1a1a1a] border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8">
+        <form onSubmit={handleSubmit} className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8">
           <div className="space-y-4 sm:space-y-6">
             {/* Step Indicator */}
             <div className="flex items-center justify-center gap-2 mb-4 sm:mb-6">
-              <div className={`flex items-center gap-2 ${currentStep === 1 ? 'text-white' : 'text-gray-400'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${currentStep === 1 ? 'bg-gray-800 border-gray-600 text-white' : 'bg-gray-900 border-gray-700 text-gray-400'}`}>
+              <div className={`flex items-center gap-2 ${currentStep === 1 ? 'text-white' : 'text-fg-muted'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${currentStep === 1 ? 'bg-bg-elevated border-line/30 text-white' : 'bg-bg-card border-line/15 text-fg-muted'}`}>
                   1
                 </div>
                 <span className="text-xs sm:text-sm font-light">Company Details</span>
               </div>
-              <div className="w-8 sm:w-12 h-0.5 bg-gray-700"></div>
-              <div className={`flex items-center gap-2 ${currentStep === 2 ? 'text-white' : 'text-gray-400'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${currentStep === 2 ? 'bg-gray-800 border-gray-600 text-white' : 'bg-gray-900 border-gray-700 text-gray-400'}`}>
+              <div className="w-8 sm:w-12 h-0.5 bg-bg-hover"></div>
+              <div className={`flex items-center gap-2 ${currentStep === 2 ? 'text-white' : 'text-fg-muted'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${currentStep === 2 ? 'bg-bg-elevated border-line/30 text-white' : 'bg-bg-card border-line/15 text-fg-muted'}`}>
                   2
                 </div>
                 <span className="text-xs sm:text-sm font-light">Documents</span>
@@ -1266,11 +1266,11 @@ export default function OnboardingPage() {
                     Optional for sole proprietorships and partnerships
                     which have no MCA registration. */}
                 <div>
-                  <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
+                  <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">
                     {countryConfig.labels.registrationId}
                     {requiresCIN
                       ? <span className="text-red-500">{' '}*</span>
-                      : <span className="text-gray-500 ml-2 text-[11px]">(not applicable for {formData.companyType.replace('-', ' ')})</span>
+                      : <span className="text-fg-muted ml-2 text-[11px]">(not applicable for {formData.companyType.replace('-', ' ')})</span>
                     }
                   </label>
                   <div className="flex flex-col sm:flex-row gap-2">
@@ -1284,14 +1284,14 @@ export default function OnboardingPage() {
                         : 'Leave blank — not registered with MCA'
                       }
                       disabled={!requiresCIN}
-                      className={`flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light ${!requiresCIN ? 'opacity-40 cursor-not-allowed' : ''}`}
+                      className={`flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light ${!requiresCIN ? 'opacity-40 cursor-not-allowed' : ''}`}
                     />
                     {hasAPISupport && requiresCIN && (
                     <button
                       type="button"
                       onClick={handleCINVerification}
                       disabled={isVerifyingCIN || !formData.cinNumber.trim()}
-                      className="px-4 sm:px-6 py-2 sm:py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap font-light"
+                      className="px-4 sm:px-6 py-2 sm:py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap font-light"
                     >
                       {isVerifyingCIN ? (
                         <>
@@ -1325,7 +1325,7 @@ export default function OnboardingPage() {
 
                   {/* NIC Classification Card — shown when CIN format is valid */}
                   {parsedCIN && (
-                    <div className="mt-3 p-3 sm:p-4 bg-gray-900/80 border border-gray-700 rounded-lg space-y-2">
+                    <div className="mt-3 p-3 sm:p-4 bg-bg-card/80 border border-line/15 rounded-lg space-y-2">
                       <div className="flex items-center gap-2 mb-2">
                         <svg width="14" height="14" className="sm:w-4 sm:h-4 text-emerald-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
@@ -1335,40 +1335,40 @@ export default function OnboardingPage() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs sm:text-sm">
-                        <div className="text-gray-500">Listing Status</div>
-                        <div className="text-gray-200">{parsedCIN.isListed ? 'Listed' : 'Unlisted'}</div>
+                        <div className="text-fg-muted">Listing Status</div>
+                        <div className="text-fg-secondary">{parsedCIN.isListed ? 'Listed' : 'Unlisted'}</div>
 
-                        <div className="text-gray-500">State of Registration</div>
-                        <div className="text-gray-200">{parsedCIN.stateName || parsedCIN.stateCode || '—'}</div>
+                        <div className="text-fg-muted">State of Registration</div>
+                        <div className="text-fg-secondary">{parsedCIN.stateName || parsedCIN.stateCode || '—'}</div>
 
-                        <div className="text-gray-500">Year of Incorporation</div>
-                        <div className="text-gray-200">{parsedCIN.yearOfIncorporation || '—'}</div>
+                        <div className="text-fg-muted">Year of Incorporation</div>
+                        <div className="text-fg-secondary">{parsedCIN.yearOfIncorporation || '—'}</div>
 
-                        <div className="text-gray-500">Company Type</div>
-                        <div className="text-gray-200">{parsedCIN.companyTypeName || parsedCIN.companyTypeCode || '—'}</div>
+                        <div className="text-fg-muted">Company Type</div>
+                        <div className="text-fg-secondary">{parsedCIN.companyTypeName || parsedCIN.companyTypeCode || '—'}</div>
                       </div>
 
                       {parsedCIN.nicDetails && (
                         <>
-                          <div className="border-t border-gray-700/60 my-2"></div>
+                          <div className="border-t border-line/15/60 my-2"></div>
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs sm:text-sm font-medium text-gray-300">Industry Classification (NIC 2008)</span>
+                            <span className="text-xs sm:text-sm font-medium text-fg-secondary">Industry Classification (NIC 2008)</span>
                           </div>
                           <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs sm:text-sm">
-                            <span className="text-gray-500">Section</span>
-                            <span className="text-gray-200">{parsedCIN.nicDetails.section} — {parsedCIN.nicDetails.sectionName}</span>
+                            <span className="text-fg-muted">Section</span>
+                            <span className="text-fg-secondary">{parsedCIN.nicDetails.section} — {parsedCIN.nicDetails.sectionName}</span>
 
-                            <span className="text-gray-500">Division</span>
-                            <span className="text-gray-200">{parsedCIN.nicDetails.divisionCode} — {parsedCIN.nicDetails.divisionName}</span>
+                            <span className="text-fg-muted">Division</span>
+                            <span className="text-fg-secondary">{parsedCIN.nicDetails.divisionCode} — {parsedCIN.nicDetails.divisionName}</span>
 
-                            <span className="text-gray-500">Group</span>
-                            <span className="text-gray-200">{parsedCIN.nicDetails.groupCode} — {parsedCIN.nicDetails.groupName}</span>
+                            <span className="text-fg-muted">Group</span>
+                            <span className="text-fg-secondary">{parsedCIN.nicDetails.groupCode} — {parsedCIN.nicDetails.groupName}</span>
 
-                            <span className="text-gray-500">Class</span>
-                            <span className="text-gray-200">{parsedCIN.nicDetails.classCode} — {parsedCIN.nicDetails.className}</span>
+                            <span className="text-fg-muted">Class</span>
+                            <span className="text-fg-secondary">{parsedCIN.nicDetails.classCode} — {parsedCIN.nicDetails.className}</span>
 
-                            <span className="text-gray-500">Sub-class</span>
-                            <span className="text-gray-200">{parsedCIN.nicDetails.code} — {parsedCIN.nicDetails.description}</span>
+                            <span className="text-fg-muted">Sub-class</span>
+                            <span className="text-fg-secondary">{parsedCIN.nicDetails.code} — {parsedCIN.nicDetails.description}</span>
                           </div>
                         </>
                       )}
@@ -1384,7 +1384,7 @@ export default function OnboardingPage() {
 
             {/* Company Name */}
             <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-xs sm:text-sm font-medium text-fg-secondary mb-2">
                 Company Name <span className="text-red-500">*</span>
               </label>
               <input
@@ -1393,7 +1393,7 @@ export default function OnboardingPage() {
                 value={formData.companyName}
                 onChange={handleInputChange}
                 placeholder="Enter company name"
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
               />
               {errors.companyName && (
                 <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.companyName}</p>
@@ -1402,10 +1402,10 @@ export default function OnboardingPage() {
 
             {/* Company Type */}
             <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-xs sm:text-sm font-medium text-fg-secondary mb-2">
                 Company Type <span className="text-red-500">*</span>
                 {isCINVerified && (
-                  <span className="ml-2 text-[10px] sm:text-xs text-gray-400 flex items-center gap-1">
+                  <span className="ml-2 text-[10px] sm:text-xs text-fg-muted flex items-center gap-1">
                     <svg width="10" height="10" className="sm:w-3 sm:h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="10" />
                       <path d="M12 16v-4" />
@@ -1419,7 +1419,7 @@ export default function OnboardingPage() {
                 name="companyType"
                 value={formData.companyType}
                 onChange={handleInputChange}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none font-light cursor-pointer"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none font-light cursor-pointer"
               >
                 <option value="">Select company type</option>
                 {countryConfig.onboarding.entityTypes.map((entityType) => (
@@ -1435,7 +1435,7 @@ export default function OnboardingPage() {
 
             {/* Tax ID / PAN Number — mandatory per PRD §1.1 */}
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-fg-secondary mb-2">
                   {countryConfig.labels.taxId} <span className="text-red-400 ml-0.5">*</span>
                 </label>
                 <input
@@ -1444,7 +1444,7 @@ export default function OnboardingPage() {
                   value={formData.panNumber}
                   onChange={handleInputChange}
                   placeholder={`Enter ${countryConfig.labels.taxId}`}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.panNumber && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.panNumber}</p>
@@ -1454,10 +1454,10 @@ export default function OnboardingPage() {
             {/* Industries */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs sm:text-sm font-medium text-gray-300">
+                <label className="block text-xs sm:text-sm font-medium text-fg-secondary">
                   Industries <span className="text-red-500">*</span> (Select at least one)
                   {isCINVerified && (
-                    <span className="ml-2 text-[10px] sm:text-xs text-gray-400 flex items-center gap-1">
+                    <span className="ml-2 text-[10px] sm:text-xs text-fg-muted flex items-center gap-1">
                       <svg width="10" height="10" className="sm:w-3 sm:h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="10" />
                         <path d="M12 16v-4" />
@@ -1467,7 +1467,7 @@ export default function OnboardingPage() {
                     </span>
                   )}
                 </label>
-                <label className="flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-900 border border-gray-700 rounded-lg hover:border-gray-600 transition-colors cursor-pointer">
+                <label className="flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-bg-card border border-line/15 rounded-lg hover:border-line/30 transition-colors cursor-pointer">
                   <input
                     type="checkbox"
                     checked={INDUSTRIES.every(industry => formData.industries.includes(industry))}
@@ -1478,24 +1478,24 @@ export default function OnboardingPage() {
                         setFormData(prev => ({ ...prev, industries: [] }))
                       }
                     }}
-                    className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 bg-gray-800 border-gray-600 rounded focus:ring-gray-500 focus:ring-2"
+                    className="w-3 h-3 sm:w-4 sm:h-4 text-fg-muted bg-bg-elevated border-line/30 rounded focus:ring-gray-500 focus:ring-2"
                   />
-                  <span className="text-gray-300 text-[10px] sm:text-xs font-light">Select All</span>
+                  <span className="text-fg-secondary text-[10px] sm:text-xs font-light">Select All</span>
                 </label>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 max-h-48 overflow-y-auto">
                 {INDUSTRIES.map((industry) => (
                   <label
                     key={industry}
-                    className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gray-900 border border-gray-700 rounded-lg transition-colors cursor-pointer hover:border-gray-600"
+                    className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-bg-card border border-line/15 rounded-lg transition-colors cursor-pointer hover:border-line/30"
                   >
                     <input
                       type="checkbox"
                       checked={formData.industries.includes(industry)}
                       onChange={() => handleIndustryChange(industry)}
-                      className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 bg-gray-800 border-gray-600 rounded focus:ring-gray-500 focus:ring-2 flex-shrink-0"
+                      className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-fg-muted bg-bg-elevated border-line/30 rounded focus:ring-gray-500 focus:ring-2 flex-shrink-0"
                     />
-                    <span className="text-gray-300 text-xs sm:text-sm break-words">{industry}</span>
+                    <span className="text-fg-secondary text-xs sm:text-sm break-words">{industry}</span>
                   </label>
                 ))}
               </div>
@@ -1506,10 +1506,10 @@ export default function OnboardingPage() {
 
             {/* Industry Categories */}
             <div>
-              <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2 sm:mb-3">
+              <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2 sm:mb-3">
                 Category of Industry <span className="text-red-500">*</span>
                 {isCINVerified && (
-                  <span className="ml-2 text-[10px] sm:text-xs text-gray-400 flex items-center gap-1">
+                  <span className="ml-2 text-[10px] sm:text-xs text-fg-muted flex items-center gap-1">
                     <svg width="10" height="10" className="sm:w-3 sm:h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="10" />
                       <path d="M12 16v-4" />
@@ -1523,15 +1523,15 @@ export default function OnboardingPage() {
                 {[...countryConfig.onboarding.industryCategories, ...(countryConfig.onboarding.industryCategories.includes('Other') ? [] : ['Other'])].map((category) => (
                   <label
                     key={category}
-                    className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gray-900 border border-gray-700 rounded-lg transition-colors cursor-pointer hover:border-gray-600"
+                    className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-bg-card border border-line/15 rounded-lg transition-colors cursor-pointer hover:border-line/30"
                   >
                     <input
                       type="checkbox"
                       checked={formData.industryCategories.includes(category)}
                       onChange={() => handleIndustryCategoryChange(category)}
-                      className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 bg-gray-800 border-gray-600 rounded focus:ring-gray-500 focus:ring-2 flex-shrink-0"
+                      className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-fg-muted bg-bg-elevated border-line/30 rounded focus:ring-gray-500 focus:ring-2 flex-shrink-0"
                     />
-                    <span className="text-gray-300 text-xs sm:text-sm break-words">{category}</span>
+                    <span className="text-fg-secondary text-xs sm:text-sm break-words">{category}</span>
                   </label>
                 ))}
               </div>
@@ -1542,7 +1542,7 @@ export default function OnboardingPage() {
               {/* Other Industry Category Text Input */}
               {formData.industryCategories.includes('Other') && (
                 <div className="mt-3 sm:mt-4">
-                  <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
+                  <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">
                     Specify Industry Category <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -1551,7 +1551,7 @@ export default function OnboardingPage() {
                     value={formData.otherIndustryCategory}
                     onChange={handleInputChange}
                     placeholder="Enter industry category"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                   />
                   {errors.otherIndustryCategory && (
                     <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.otherIndustryCategory}</p>
@@ -1562,7 +1562,7 @@ export default function OnboardingPage() {
 
             {/* Date of Incorporation */}
             <div>
-              <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
+              <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">
                 Date of Incorporation <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -1586,7 +1586,7 @@ export default function OnboardingPage() {
                       }
                     }
                   }}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors cursor-pointer pr-10 font-light"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors cursor-pointer pr-10 font-light"
                 />
               <input
                 type="date"
@@ -1612,7 +1612,7 @@ export default function OnboardingPage() {
                   style={{ zIndex: 20, pointerEvents: 'auto' }}
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none z-0">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-fg-muted">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                     <line x1="16" y1="2" x2="16" y2="6" />
                     <line x1="8" y1="2" x2="8" y2="6" />
@@ -1627,26 +1627,26 @@ export default function OnboardingPage() {
 
             {/* Year Type */}
             <div>
-              <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
+              <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">
                 Financial Year Type <span className="text-red-500">*</span>
               </label>
               <select
                 name="yearType"
                 value={formData.yearType}
                 onChange={handleInputChange}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
               >
                 <option value="FY">Financial Year (India) - Q1: Apr-Jun, Q2: Jul-Sep, Q3: Oct-Dec, Q4: Jan-Mar</option>
                 <option value="CY">Calendar Year (Gulf/USA) - Q1: Jan-Mar, Q2: Apr-Jun, Q3: Jul-Sep, Q4: Oct-Dec</option>
               </select>
-              <p className="mt-1 text-xs text-gray-400">
+              <p className="mt-1 text-xs text-fg-muted">
                 Select the year type based on your company's jurisdiction. Indian companies use Financial Year (FY).
               </p>
             </div>
 
             {/* Address */}
             <div>
-              <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
+              <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">
                 Address <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -1655,7 +1655,7 @@ export default function OnboardingPage() {
                 onChange={handleInputChange}
                 placeholder="Enter complete address"
                 rows={3}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors resize-y font-light"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors resize-y font-light"
               />
               {errors.address && (
                 <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.address}</p>
@@ -1665,7 +1665,7 @@ export default function OnboardingPage() {
             {/* City, State, PIN Code */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
               <div>
-                <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
+                <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">
                   City <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -1674,14 +1674,14 @@ export default function OnboardingPage() {
                   value={formData.city}
                   onChange={handleInputChange}
                   placeholder="City"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.city && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.city}</p>
                 )}
               </div>
               <div>
-                <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
+                <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">
                   {countryConfig.labels.state || 'State'} <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -1690,14 +1690,14 @@ export default function OnboardingPage() {
                   value={formData.state}
                   onChange={handleInputChange}
                   placeholder="State"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.state && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.state}</p>
                 )}
               </div>
               <div className="sm:col-span-2 md:col-span-1">
-                <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
+                <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">
                   {countryConfig.labels.postalCode} <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -1706,7 +1706,7 @@ export default function OnboardingPage() {
                   value={formData.pinCode}
                   onChange={handleInputChange}
                   placeholder={countryConfig.labels.postalCode}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.pinCode && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.pinCode}</p>
@@ -1717,13 +1717,13 @@ export default function OnboardingPage() {
             {/* Company Stage (Read-only info) */}
             {entityDetection && (
               <div>
-                <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
+                <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">
                   Company Stage
                 </label>
-                <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg">
+                <div className="px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <span className="text-white text-sm sm:text-base">{entityDetection.companyStage}</span>
-                    <span className="text-[10px] sm:text-xs text-gray-400 bg-gray-800 border border-gray-700 px-2 py-0.5 rounded w-fit font-light">
+                    <span className="text-[10px] sm:text-xs text-fg-muted bg-bg-elevated border border-line/15 px-2 py-0.5 rounded w-fit font-light">
                       {entityDetection.confidenceScore} Confidence
                     </span>
                   </div>
@@ -1734,22 +1734,22 @@ export default function OnboardingPage() {
             {/* Phone Number, Email, and Landline */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
               <div>
-                <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
-                  Phone Number <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
+                <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">
+                  Phone Number <span className="text-fg-muted text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
                 </label>
                 <input
                   type="tel"
                   name="phoneNumber"
                   value={formData.phoneNumber}
                   onChange={handleInputChange}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.phoneNumber && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.phoneNumber}</p>
                 )}
               </div>
               <div>
-                <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
+                <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">
                   Email Address
                 </label>
                 <input
@@ -1758,14 +1758,14 @@ export default function OnboardingPage() {
                   value={formData.email}
                   onChange={handleInputChange}
                   placeholder="company@example.com"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.email && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.email}</p>
                 )}
               </div>
               <div className="sm:col-span-2 md:col-span-1">
-                <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
+                <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">
                   Landline
                 </label>
                 <input
@@ -1774,14 +1774,14 @@ export default function OnboardingPage() {
                   value={formData.landline}
                   onChange={handleInputChange}
                   placeholder="Enter landline number"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
               </div>
             </div>
 
             {/* Other Field */}
             <div>
-              <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
+              <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">
                 Other
               </label>
               <input
@@ -1790,21 +1790,21 @@ export default function OnboardingPage() {
                 value={formData.other}
                 onChange={handleInputChange}
                 placeholder="Enter any other information"
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
               />
             </div>
 
             {/* Compliance Profile Section */}
             <div className="space-y-4 pt-2">
-              <div className="border-t border-gray-700/60 pt-4">
+              <div className="border-t border-line/15/60 pt-4">
                 <h4 className="text-white font-medium text-sm mb-1">Compliance Profile</h4>
-                <p className="text-gray-500 text-xs mb-4">These fields help determine which regulatory compliances apply to your company. Fill what you can — you can update later.</p>
+                <p className="text-fg-muted text-xs mb-4">These fields help determine which regulatory compliances apply to your company. Fill what you can — you can update later.</p>
               </div>
 
               {/* Row 1: Employee Count + Annual Turnover */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">Employee Count</label>
+                  <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">Employee Count</label>
                   <input
                     type="number"
                     name="employeeCount"
@@ -1812,12 +1812,12 @@ export default function OnboardingPage() {
                     onChange={handleInputChange}
                     placeholder="e.g. 25"
                     min="0"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                   />
-                  <p className="text-gray-600 text-[10px] mt-1">Determines PF (20+), ESI (10+), POSH (10+), Gratuity (10+)</p>
+                  <p className="text-fg-muted/60 text-[10px] mt-1">Determines PF (20+), ESI (10+), POSH (10+), Gratuity (10+)</p>
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">Annual Turnover (in Lakhs)</label>
+                  <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">Annual Turnover (in Lakhs)</label>
                   <input
                     type="number"
                     name="annualTurnover"
@@ -1826,16 +1826,16 @@ export default function OnboardingPage() {
                     placeholder="e.g. 500 for 5 Crore"
                     min="0"
                     step="0.01"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                   />
-                  <p className="text-gray-600 text-[10px] mt-1">Determines Tax Audit (100L+), E-Invoicing (500L+), GST Audit (500L+)</p>
+                  <p className="text-fg-muted/60 text-[10px] mt-1">Determines Tax Audit (100L+), E-Invoicing (500L+), GST Audit (500L+)</p>
                 </div>
               </div>
 
               {/* Row 2: Net Worth + GST */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">Net Worth (in Crores)</label>
+                  <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">Net Worth (in Crores)</label>
                   <input
                     type="number"
                     name="netWorth"
@@ -1844,12 +1844,12 @@ export default function OnboardingPage() {
                     placeholder="e.g. 10"
                     min="0"
                     step="0.01"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                   />
-                  <p className="text-gray-600 text-[10px] mt-1">Determines CSR (500Cr+), CARO thresholds</p>
+                  <p className="text-fg-muted/60 text-[10px] mt-1">Determines CSR (500Cr+), CARO thresholds</p>
                 </div>
                 <div>
-                  <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">GSTINs</label>
+                  <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">GSTINs</label>
 
                   <div className="flex items-center gap-3 mb-2">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -1865,9 +1865,9 @@ export default function OnboardingPage() {
                             : [],
                           gstNumber: e.target.checked ? prev.gstNumber : '',
                         }))}
-                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 bg-gray-800 border-gray-600 rounded focus:ring-gray-500"
+                        className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-fg-muted bg-bg-elevated border-line/30 rounded focus:ring-gray-500"
                       />
-                      <span className="text-gray-400 text-xs">GST Registered</span>
+                      <span className="text-fg-muted text-xs">GST Registered</span>
                     </label>
 
                     {formData.isGstRegistered && formData.gstRegistrations.length === 0 && formData.companyName && (
@@ -1906,7 +1906,7 @@ export default function OnboardingPage() {
                           }
                           setIsLookingUpGST(false)
                         }}
-                        className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-gray-300 text-xs hover:bg-gray-700 hover:text-white transition-colors whitespace-nowrap disabled:opacity-50"
+                        className="px-3 py-2 bg-bg-elevated border border-line/30 rounded-lg text-fg-secondary text-xs hover:bg-bg-hover hover:text-white transition-colors whitespace-nowrap disabled:opacity-50"
                       >
                         {isLookingUpGST ? (
                           <span className="flex items-center gap-1.5">
@@ -1951,9 +1951,9 @@ export default function OnboardingPage() {
                               }}
                               placeholder="22AAAAA0000A1Z5"
                               maxLength={15}
-                              className="flex-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors uppercase"
+                              className="flex-1 px-3 py-2 bg-bg-card border border-line/15 rounded-lg text-white text-sm font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors uppercase"
                             />
-                            <div className="w-40 px-3 py-2 bg-gray-900/50 border border-gray-800 rounded-lg text-gray-400 text-xs flex items-center justify-between">
+                            <div className="w-40 px-3 py-2 bg-bg-card/50 border border-line/10 rounded-lg text-fg-muted text-xs flex items-center justify-between">
                               <span className="truncate">{reg.state || '—'}</span>
                               {reg.state && (
                                 <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${isWithin ? 'bg-emerald-900/40 text-emerald-300' : 'bg-amber-900/40 text-amber-300'}`}>
@@ -1971,7 +1971,7 @@ export default function OnboardingPage() {
                                   gstNumber: next[0]?.gstin || '',
                                 }
                               })}
-                              className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                              className="p-2 text-fg-muted hover:text-red-400 transition-colors"
                               title="Remove"
                               aria-label={`Remove GSTIN row ${idx + 1}`}
                             >
@@ -1986,7 +1986,7 @@ export default function OnboardingPage() {
                           ...prev,
                           gstRegistrations: [...prev.gstRegistrations, { gstin: '', state: '' }],
                         }))}
-                        className="text-xs text-gray-400 hover:text-white transition-colors"
+                        className="text-xs text-fg-muted hover:text-white transition-colors"
                       >
                         + Add another GSTIN
                       </button>
@@ -1998,12 +1998,12 @@ export default function OnboardingPage() {
               {/* Row 3: MSME + Category */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">MSME Status</label>
+                  <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">MSME Status</label>
                   <select
                     name="isMsme"
                     value={formData.isMsme}
                     onChange={handleInputChange}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none font-light cursor-pointer"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none font-light cursor-pointer"
                   >
                     <option value="">Not sure / Not applicable</option>
                     <option value="yes">Yes — MSME Registered</option>
@@ -2012,12 +2012,12 @@ export default function OnboardingPage() {
                 </div>
                 {formData.isMsme === 'yes' && (
                   <div>
-                    <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">MSME Category</label>
+                    <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">MSME Category</label>
                     <select
                       name="msmeCategory"
                       value={formData.msmeCategory}
                       onChange={handleInputChange}
-                      className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none font-light cursor-pointer"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none font-light cursor-pointer"
                     >
                       <option value="">Select category</option>
                       <option value="micro">Micro</option>
@@ -2030,23 +2030,23 @@ export default function OnboardingPage() {
 
               {/* Row 4: Boolean flags */}
               <div className="flex flex-wrap gap-3 sm:gap-4">
-                <label className="flex items-center gap-2 p-2.5 sm:p-3 bg-gray-900 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600 transition-colors">
+                <label className="flex items-center gap-2 p-2.5 sm:p-3 bg-bg-card border border-line/15 rounded-lg cursor-pointer hover:border-line/30 transition-colors">
                   <input
                     type="checkbox"
                     checked={formData.hasImportsExports}
                     onChange={(e) => setFormData(prev => ({ ...prev, hasImportsExports: e.target.checked }))}
-                    className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 bg-gray-800 border-gray-600 rounded focus:ring-gray-500"
+                    className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-fg-muted bg-bg-elevated border-line/30 rounded focus:ring-gray-500"
                   />
-                  <span className="text-gray-300 text-xs sm:text-sm font-light">Has Imports / Exports</span>
+                  <span className="text-fg-secondary text-xs sm:text-sm font-light">Has Imports / Exports</span>
                 </label>
-                <label className="flex items-center gap-2 p-2.5 sm:p-3 bg-gray-900 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600 transition-colors">
+                <label className="flex items-center gap-2 p-2.5 sm:p-3 bg-bg-card border border-line/15 rounded-lg cursor-pointer hover:border-line/30 transition-colors">
                   <input
                     type="checkbox"
                     checked={formData.isStartupDpiit}
                     onChange={(e) => setFormData(prev => ({ ...prev, isStartupDpiit: e.target.checked }))}
-                    className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 bg-gray-800 border-gray-600 rounded focus:ring-gray-500"
+                    className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-fg-muted bg-bg-elevated border-line/30 rounded focus:ring-gray-500"
                   />
-                  <span className="text-gray-300 text-xs sm:text-sm font-light">DPIIT-Recognized Startup</span>
+                  <span className="text-fg-secondary text-xs sm:text-sm font-light">DPIIT-Recognized Startup</span>
                 </label>
               </div>
             </div>
@@ -2054,13 +2054,13 @@ export default function OnboardingPage() {
             {/* Directors Section */}
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
-                <label className="block text-xs sm:text-sm font-light text-gray-300">
+                <label className="block text-xs sm:text-sm font-light text-fg-secondary">
                   Directors
                 </label>
                 <button
                   type="button"
                   onClick={() => setShowAddDirector(!showAddDirector)}
-                  className="px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-xs sm:text-sm flex items-center justify-center gap-2 w-full sm:w-auto font-light"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors text-xs sm:text-sm flex items-center justify-center gap-2 w-full sm:w-auto font-light"
                 >
                   <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="12" y1="5" x2="12" y2="19" />
@@ -2073,8 +2073,8 @@ export default function OnboardingPage() {
 
               {/* Add Director by DIN/Director ID */}
               {showAddDirector && countryConfig.labels.directorId && (
-                <div className="mb-4 p-3 sm:p-4 bg-gray-900 border border-gray-700 rounded-lg">
-                  <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
+                <div className="mb-4 p-3 sm:p-4 bg-bg-card border border-line/15 rounded-lg">
+                  <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">
                     {countryConfig.labels.directorId}
                   </label>
                   <div className="flex flex-col sm:flex-row gap-2">
@@ -2086,13 +2086,13 @@ export default function OnboardingPage() {
                         setErrors((prev) => ({ ...prev, newDirectorDIN: '' }))
                       }}
                       placeholder={`Enter ${countryConfig.labels.directorId}`}
-                      className="flex-1 px-3 sm:px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                      className="flex-1 px-3 sm:px-4 py-2 bg-bg-elevated border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                     />
                     <button
                       type="button"
                       onClick={handleAddDirectorByDIN}
                       disabled={!newDirectorDIN.trim()}
-                      className="px-3 sm:px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-light"
+                      className="px-3 sm:px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-light"
                     >
                       {hasAPISupport ? 'Verify & Add' : 'Add'}
                     </button>
@@ -2102,7 +2102,7 @@ export default function OnboardingPage() {
                         setShowAddDirector(false)
                         setNewDirectorDIN('')
                       }}
-                      className="px-3 sm:px-4 py-2 bg-gray-800 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors text-sm sm:text-base"
+                      className="px-3 sm:px-4 py-2 bg-bg-elevated border border-line/15 text-fg-secondary rounded-lg hover:bg-bg-hover transition-colors text-sm sm:text-base"
                     >
                       Cancel
                     </button>
@@ -2127,10 +2127,10 @@ export default function OnboardingPage() {
                   {directors.map((director) => (
                     <div
                       key={director.id}
-                      className={`p-3 sm:p-4 bg-gray-900 border rounded-lg ${
+                      className={`p-3 sm:p-4 bg-bg-card border rounded-lg ${
                         director.verified
                           ? 'border-green-500/50 bg-green-500/5'
-                          : 'border-gray-700'
+                          : 'border-line/15'
                       }`}
                     >
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2 sm:mb-3">
@@ -2154,35 +2154,35 @@ export default function OnboardingPage() {
                               </span>
                             )}
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-400">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-xs sm:text-sm text-fg-muted">
                             {director.din && (
                               <div className="break-words">
-                                <span className="text-gray-500">DIN:</span> {director.din}
+                                <span className="text-fg-muted">DIN:</span> {director.din}
                               </div>
                             )}
                             {director.designation && (
                               <div className="break-words">
-                                <span className="text-gray-500">Designation:</span> {director.designation}
+                                <span className="text-fg-muted">Designation:</span> {director.designation}
                               </div>
                             )}
                             {director.dob && (
                               <div className="break-words">
-                                <span className="text-gray-500">DOB:</span> {formatDateForDisplay(director.dob)}
+                                <span className="text-fg-muted">DOB:</span> {formatDateForDisplay(director.dob)}
                               </div>
                             )}
                             {director.pan && (
                               <div className="break-words">
-                                <span className="text-gray-500">PAN:</span> {director.pan}
+                                <span className="text-fg-muted">PAN:</span> {director.pan}
                               </div>
                             )}
                             {director.email && (
                               <div className="break-words">
-                                <span className="text-gray-500">Email:</span> {director.email}
+                                <span className="text-fg-muted">Email:</span> {director.email}
                               </div>
                             )}
                             {director.mobile && (
                               <div className="break-words">
-                                <span className="text-gray-500">Mobile:</span> {director.mobile}
+                                <span className="text-fg-muted">Mobile:</span> {director.mobile}
                               </div>
                             )}
                           </div>
@@ -2193,7 +2193,7 @@ export default function OnboardingPage() {
                               type="button"
                               onClick={() => handleDINVerification(director.id, director.din)}
                               disabled={isVerifyingDIN === director.id}
-                              className="px-2 sm:px-3 py-1 sm:py-1.5 border border-gray-700 text-gray-300 rounded text-xs sm:text-sm hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 font-light"
+                              className="px-2 sm:px-3 py-1 sm:py-1.5 border border-line/15 text-fg-secondary rounded text-xs sm:text-sm hover:border-line/30 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 font-light"
                             >
                               {isVerifyingDIN === director.id ? (
                                 <>
@@ -2230,7 +2230,7 @@ export default function OnboardingPage() {
                   ))}
                 </div>
               ) : (
-                <div className="p-4 sm:p-6 bg-gray-900 border border-gray-700 rounded-lg text-center text-gray-400">
+                <div className="p-4 sm:p-6 bg-bg-card border border-line/15 rounded-lg text-center text-fg-muted">
                   <p className="text-sm sm:text-base">No directors added yet.</p>
                   <p className="text-xs sm:text-sm mt-1">Verify CIN to auto-add directors or add manually using DIN.</p>
                 </div>
@@ -2239,10 +2239,10 @@ export default function OnboardingPage() {
 
             {/* Ex-Directors Section */}
             <div>
-              <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2">
-                Ex-Directors / Former Directors <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
+              <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2">
+                Ex-Directors / Former Directors <span className="text-fg-muted text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
                 {isCINVerified && exDirectors && (
-                  <span className="ml-2 text-[10px] sm:text-xs text-gray-400 flex items-center gap-1">
+                  <span className="ml-2 text-[10px] sm:text-xs text-fg-muted flex items-center gap-1">
                     <svg width="10" height="10" className="sm:w-3 sm:h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="10" />
                       <path d="M12 16v-4" />
@@ -2257,9 +2257,9 @@ export default function OnboardingPage() {
                 onChange={(e) => setExDirectors(e.target.value)}
                 placeholder="Enter ex-director names separated by commas or new lines (e.g., John Doe, Jane Smith or one per line)"
                 rows={4}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors resize-y font-light"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors resize-y font-light"
               />
-              <p className="mt-1 text-[10px] sm:text-xs text-gray-500">
+              <p className="mt-1 text-[10px] sm:text-xs text-fg-muted">
                 You can enter multiple names separated by commas or one per line. This information will be stored for reference.
               </p>
             </div>
@@ -2269,13 +2269,13 @@ export default function OnboardingPage() {
               <>
                 {/* Document Uploads - Step 2 */}
             <div>
-              <label className="block text-xs sm:text-sm font-light text-gray-300 mb-2 sm:mb-3">
-                Required Documents <span className="text-gray-500 text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
+              <label className="block text-xs sm:text-sm font-light text-fg-secondary mb-2 sm:mb-3">
+                Required Documents <span className="text-fg-muted text-[10px] sm:text-xs font-normal ml-1">(Optional)</span>
               </label>
               <div className="space-y-3 sm:space-y-4">
                 {countryConfig.onboarding.documentTypes.map((docType) => (
                   <div key={docType}>
-                    <label className="block text-xs sm:text-sm text-gray-400 mb-1.5 sm:mb-2 font-light">
+                    <label className="block text-xs sm:text-sm text-fg-muted mb-1.5 sm:mb-2 font-light">
                       {docType}
                     </label>
                     <div className="flex items-center gap-2 sm:gap-4">
@@ -2289,10 +2289,10 @@ export default function OnboardingPage() {
                           className="hidden"
                         />
                         <div
-                          className={`px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border rounded-lg transition-colors flex items-center justify-between ${
+                          className={`px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border rounded-lg transition-colors flex items-center justify-between ${
                             formData.documents[docType]
-                              ? 'border-gray-600 text-white'
-                              : 'border-gray-700 text-gray-400 hover:border-gray-600'
+                              ? 'border-line/30 text-white'
+                              : 'border-line/15 text-fg-muted hover:border-line/30'
                           }`}
                         >
                           <span className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
@@ -2358,7 +2358,7 @@ export default function OnboardingPage() {
                             <svg
                               width="16"
                               height="16"
-                              className="sm:w-5 sm:h-5 flex-shrink-0 text-gray-500"
+                              className="sm:w-5 sm:h-5 flex-shrink-0 text-fg-muted"
                               viewBox="0 0 24 24"
                               fill="none"
                             >
@@ -2389,13 +2389,13 @@ export default function OnboardingPage() {
             )}
 
             {/* Submit Buttons */}
-            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-4 pt-4 sm:pt-6 border-t border-gray-800">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-4 pt-4 sm:pt-6 border-t border-line/10">
               {currentStep === 1 ? (
                 <>
                   <button
                     type="button"
                     onClick={() => router.back()}
-                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-sm sm:text-base"
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors text-sm sm:text-base"
                   >
                     Cancel
                   </button>
@@ -2443,7 +2443,7 @@ export default function OnboardingPage() {
                         setCurrentStep(2)
                       }
                     }}
-                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors flex items-center justify-center gap-2 text-sm sm:text-base font-light"
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors flex items-center justify-center gap-2 text-sm sm:text-base font-light"
                   >
                     Update and Next
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2456,21 +2456,21 @@ export default function OnboardingPage() {
                   <button
                     type="button"
                     onClick={() => setCurrentStep(1)}
-                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-sm sm:text-base"
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors text-sm sm:text-base"
                   >
                     Back
                   </button>
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-sm sm:text-base"
+                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors text-sm sm:text-base"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base font-light min-w-[260px]"
+                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base font-light min-w-[260px]"
                 title={isSubmitting ? submitStatusMessage : undefined}
               >
                 {isSubmitting ? (
