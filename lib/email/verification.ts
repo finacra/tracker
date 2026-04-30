@@ -56,7 +56,52 @@ export async function sendVerificationEmail(
 }
 
 /**
- * Verify email using token.
+ * Look up a verification token WITHOUT consuming it.
+ *
+ * Used by the verify-email GET endpoint to inspect what kind of flow
+ * is needed (regular email-verify vs. Google-only-no-password linking)
+ * before deciding whether to consume the token. The link-password
+ * POST endpoint re-validates the same token to complete linking, so
+ * the GET must not delete it on the way through.
+ */
+export async function peekVerificationToken(token: string): Promise<{
+  success: boolean
+  userId?: string
+  email?: string
+  error?: string
+}> {
+  try {
+    const result = await prisma.$queryRaw<Array<{
+      user_id: string
+      email: string
+      expires_at: Date
+    }>>`
+      SELECT user_id, email, expires_at
+      FROM public.email_verification_tokens
+      WHERE token = ${token}
+      LIMIT 1
+    `
+    if (!result || result.length === 0) {
+      return { success: false, error: 'Invalid or already-used verification token' }
+    }
+    const r = result[0]
+    if (new Date(r.expires_at) < new Date()) {
+      // Drop expired row so the table doesn't accumulate dead tokens.
+      await prisma.$executeRaw`
+        DELETE FROM public.email_verification_tokens
+        WHERE token = ${token}
+      `
+      return { success: false, error: 'Verification link has expired. Please request a new one.' }
+    }
+    return { success: true, userId: r.user_id, email: r.email }
+  } catch (error) {
+    console.error('[Email Verification] peek error:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to verify token' }
+  }
+}
+
+/**
+ * Verify email using token (consuming).
  *
  * Single-use semantics: the token row is DELETED on successful
  * verification rather than marked with a `verified_at` timestamp.
