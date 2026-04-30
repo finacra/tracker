@@ -56,7 +56,16 @@ export async function sendVerificationEmail(
 }
 
 /**
- * Verify email using token
+ * Verify email using token.
+ *
+ * Single-use semantics: the token row is DELETED on successful
+ * verification rather than marked with a `verified_at` timestamp.
+ * The Prisma schema for EmailVerificationToken doesn't include a
+ * `verified_at` column, and earlier code that referenced it crashed
+ * with `column "verified_at" does not exist` on production. Delete-
+ * after-use achieves the same single-use guarantee — the second
+ * attempt fails with "Invalid verification token" because the row
+ * is gone — without requiring a schema change.
  */
 export async function verifyEmailToken(token: string): Promise<{
   success: boolean
@@ -70,34 +79,34 @@ export async function verifyEmailToken(token: string): Promise<{
       user_id: string
       email: string
       expires_at: Date
-      verified_at: Date | null
     }>>`
-      SELECT user_id, email, expires_at, verified_at
+      SELECT user_id, email, expires_at
       FROM public.email_verification_tokens
       WHERE token = ${token}
       LIMIT 1
     `
 
     if (!result || result.length === 0) {
-      return { success: false, error: 'Invalid verification token' }
+      return { success: false, error: 'Invalid or already-used verification token' }
     }
 
     const tokenRecord = result[0]
 
-    // Check if already verified
-    if (tokenRecord.verified_at) {
-      return { success: false, error: 'This verification link has already been used' }
-    }
-
     // Check if expired
     if (new Date(tokenRecord.expires_at) < new Date()) {
+      // Drop the expired row so the table doesn't accumulate dead tokens.
+      await prisma.$executeRaw`
+        DELETE FROM public.email_verification_tokens
+        WHERE token = ${token}
+      `
       return { success: false, error: 'Verification link has expired. Please request a new one.' }
     }
 
-    // Mark token as verified
+    // Single-use: delete the token now so it can't be replayed. Keep
+    // this BEFORE the user update so a partial success on the first
+    // call still invalidates the token for the second.
     await prisma.$executeRaw`
-      UPDATE public.email_verification_tokens
-      SET verified_at = NOW()
+      DELETE FROM public.email_verification_tokens
       WHERE token = ${token}
     `
 
