@@ -23,17 +23,43 @@ export interface MagicalIntakePayload {
   gstResult: GSTLookupResult | null
 }
 
+export interface UnregisteredIntakePayload {
+  entityType: 'sole-proprietorship' | 'partnership'
+  firmName: string
+  /** State the firm operates in. Optional; helps Perplexity disambiguate. */
+  state: string
+  /** Raw Perplexity response (companyData shape — same fields as CIN flow). */
+  companyData: any | null
+}
+
 interface MagicalIntakeProps {
   onComplete: (payload: MagicalIntakePayload) => void
+  /**
+   * Called for sole-prop / partnership users after the name-search flow.
+   * Parent prefills the form with whatever Perplexity returned and sets
+   * companyType to the picked entityType.
+   */
+  onUnregisteredComplete: (payload: UnregisteredIntakePayload) => void
+  /**
+   * Called only when the user wants the truly-empty manual form (no AI
+   * help). Both the top-right "Skip" pill and the "Skip — fill blank"
+   * link inside the name-search flow route here.
+   */
   onSkip: () => void
 }
 
 type Phase =
+  // CIN / LLPIN registered-entity flow:
   | 'cin'              // collecting CIN
   | 'cin-verifying'    // calling MCA
   | 'cin-verified'     // CIN locked, waiting for PAN
   | 'revealing'        // PAN auto-fired, prefill in flight
   | 'done'             // about to call onComplete
+  // Sole-prop / partnership name-search flow:
+  | 'name-entry'       // collecting firm name + entity type
+  | 'name-searching'   // calling Perplexity
+  | 'name-verified'    // result shown, awaiting confirm
+  | 'name-done'        // about to call onUnregisteredComplete
 
 /**
  * The "magic moment" entrypoint to onboarding.
@@ -52,12 +78,19 @@ type Phase =
  * Visual: single-column ~520px wide, mono inputs (Geist Mono) for IDs,
  * staged fade-ins, ✨ accent on the success row.
  */
-export default function MagicalIntake({ onComplete, onSkip }: MagicalIntakeProps) {
+export default function MagicalIntake({ onComplete, onUnregisteredComplete, onSkip }: MagicalIntakeProps) {
   const [phase, setPhase] = useState<Phase>('cin')
   const [cinValue, setCinValue] = useState('')
   const [panValue, setPanValue] = useState('')
   const [companyName, setCompanyName] = useState('')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  // Name-search (sole-prop / partnership) state.
+  const [entityType, setEntityType] = useState<'sole-proprietorship' | 'partnership' | null>(null)
+  const [firmName, setFirmName] = useState('')
+  const [firmState, setFirmState] = useState('')
+  const [foundFirm, setFoundFirm] = useState<{ name: string; data: any } | null>(null)
+
   // Cache the CIN response so the PAN step doesn't refetch.
   const cinPayloadRef = useRef<{
     parsed: ParsedCIN
@@ -71,6 +104,7 @@ export default function MagicalIntake({ onComplete, onSkip }: MagicalIntakeProps
   const panFormatted = panValue.toUpperCase().trim()
   const cinValid = CIN_PATTERN.test(cinFormatted) || LLPIN_PATTERN.test(cinFormatted)
   const panValid = PAN_PATTERN.test(panFormatted)
+  const nameSearchValid = !!entityType && firmName.trim().length >= 3
 
   // Auto-fire PAN cross-lookup once the user types a valid 10-char PAN.
   useEffect(() => {
@@ -162,6 +196,209 @@ export default function MagicalIntake({ onComplete, onSkip }: MagicalIntakeProps
         gstResult,
       })
     }, 350)
+  }
+
+  // ── Name-search flow (sole-prop / partnership) ────────────────────────
+  // For unregistered firms there's no MCA record. We hit Perplexity with
+  // the firm name (and optional state hint) and pull whatever public
+  // signal exists — MSME/Udyam record, GST registration, partnership-
+  // deed mentions, etc. Best-effort prefill; the form is still editable.
+  const handleNameSearch = async () => {
+    if (!nameSearchValid) {
+      setErrorMsg('Pick an entity type and enter the firm name.')
+      return
+    }
+    setErrorMsg(null)
+    setPhase('name-searching')
+
+    // Pass state as a disambiguation hint by appending it to the name.
+    // The /api/lookup-company endpoint accepts companyName only, so we
+    // squeeze the hint into that field rather than changing the API
+    // contract (which would ripple into the legacy CIN flow).
+    const hint = firmState.trim() ? `${firmName.trim()}, ${firmState.trim()}` : firmName.trim()
+    const aiResult = await lookupCompanyByPerplexity({ companyName: hint })
+
+    let companyData: any | null = null
+    if (aiResult.success) {
+      companyData = aiResult.data?.data?.data?.companyData || null
+    }
+
+    if (!companyData?.company) {
+      // No reliable match — let the user proceed manually with what they typed.
+      setFoundFirm({ name: firmName.trim(), data: null })
+    } else {
+      setFoundFirm({ name: companyData.company, data: companyData })
+    }
+    setPhase('name-verified')
+  }
+
+  const handleNameConfirm = () => {
+    if (!entityType) return
+    setPhase('name-done')
+    setTimeout(() => {
+      onUnregisteredComplete({
+        entityType,
+        firmName: foundFirm?.name || firmName.trim(),
+        state: firmState.trim(),
+        companyData: foundFirm?.data || null,
+      })
+    }, 250)
+  }
+
+  // ── Render — name-search variant ──────────────────────────────────────
+  if (phase === 'name-entry' || phase === 'name-searching' || phase === 'name-verified' || phase === 'name-done') {
+    return (
+      <div className="min-h-screen bg-bg-base relative flex items-start justify-center pt-20 sm:pt-32 px-4">
+        <div className="w-full max-w-[520px]">
+          {/* Skip pill top-right (truly empty form) */}
+          <div className="flex justify-end mb-6">
+            <Button variant="ghost" size="sm" onClick={onSkip}>
+              Skip — fill blank
+            </Button>
+          </div>
+
+          <div className="mb-8 text-center">
+            <h1 className="font-sans text-3xl sm:text-4xl font-medium text-fg-primary tracking-tight mb-2">
+              Find your firm
+            </h1>
+            <p className="text-sm text-fg-muted">
+              We'll search public records and pre-fill what we can.
+            </p>
+          </div>
+
+          {/* Entity type segmented control */}
+          <div className="space-y-2 mb-5">
+            <span className="text-xs font-medium text-fg-secondary uppercase tracking-wider">
+              Entity type
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              {(['sole-proprietorship', 'partnership'] as const).map((t) => {
+                const active = entityType === t
+                const label = t === 'sole-proprietorship' ? 'Sole Proprietorship' : 'Partnership'
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setEntityType(t)}
+                    disabled={phase !== 'name-entry'}
+                    className={`px-3 py-2.5 rounded-token-md border text-sm transition-colors duration-token ease-token ${
+                      active
+                        ? 'bg-bg-card text-fg-primary border-accent-brand/60 ring-2 ring-accent-brand/25'
+                        : 'bg-bg-card text-fg-secondary border-line/15 hover:border-line/30 hover:text-fg-primary'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Firm name */}
+          <div className="space-y-2 mb-5">
+            <label htmlFor="magical-firm-name" className="text-xs font-medium text-fg-secondary uppercase tracking-wider">
+              Firm name
+            </label>
+            <input
+              id="magical-firm-name"
+              type="text"
+              value={firmName}
+              onChange={(e) => { setFirmName(e.target.value); setErrorMsg(null) }}
+              placeholder={entityType === 'partnership' ? 'e.g. Sharma & Associates' : 'e.g. Sharma Trading Co.'}
+              autoFocus
+              disabled={phase !== 'name-entry'}
+              autoComplete="off"
+              className="w-full text-base text-fg-primary bg-bg-card border border-line/10 rounded-token-md px-4 py-3 outline-none focus:border-accent-brand focus:ring-2 focus:ring-accent-brand/30 transition-colors duration-token ease-token disabled:opacity-70"
+            />
+          </div>
+
+          {/* State (optional) */}
+          <div className="space-y-2 mb-5">
+            <label htmlFor="magical-firm-state" className="text-xs font-medium text-fg-secondary uppercase tracking-wider">
+              State <span className="lowercase tracking-normal text-fg-muted/80">(optional — improves accuracy)</span>
+            </label>
+            <input
+              id="magical-firm-state"
+              type="text"
+              value={firmState}
+              onChange={(e) => setFirmState(e.target.value)}
+              placeholder="e.g. Telangana"
+              disabled={phase !== 'name-entry'}
+              autoComplete="off"
+              className="w-full text-base text-fg-primary bg-bg-card border border-line/10 rounded-token-md px-4 py-3 outline-none focus:border-accent-brand focus:ring-2 focus:ring-accent-brand/30 transition-colors duration-token ease-token disabled:opacity-70"
+            />
+          </div>
+
+          {/* Verify / search button */}
+          {(phase === 'name-entry' || phase === 'name-searching') && nameSearchValid && (
+            <div className="pt-2 animate-fadeIn">
+              <Button
+                size="lg"
+                onClick={handleNameSearch}
+                loading={phase === 'name-searching'}
+                iconRight={
+                  phase === 'name-entry' ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12h14" /><path d="M13 5l7 7-7 7" />
+                    </svg>
+                  ) : null
+                }
+              >
+                {phase === 'name-searching' ? 'Searching public records…' : 'Find my firm'}
+              </Button>
+            </div>
+          )}
+
+          {errorMsg && (
+            <p className="text-sm text-accent-danger pt-1">{errorMsg}</p>
+          )}
+
+          {/* Result + confirm */}
+          {(phase === 'name-verified' || phase === 'name-done') && (
+            <div className="mt-2 p-4 rounded-token-md bg-bg-card border border-line/15 animate-fadeIn">
+              {foundFirm?.data ? (
+                <>
+                  <p className="text-xs text-fg-muted uppercase tracking-wider mb-1">Found</p>
+                  <p className="text-base font-medium text-fg-primary mb-3">{foundFirm.name}</p>
+                  {foundFirm.data.registeredaddress && (
+                    <p className="text-xs text-fg-muted leading-relaxed">{foundFirm.data.registeredaddress}</p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-fg-muted uppercase tracking-wider mb-1">No public record</p>
+                  <p className="text-sm text-fg-secondary">
+                    We couldn't find a confident match for <span className="font-medium text-fg-primary">{firmName.trim()}</span>. You can still continue and fill the form manually.
+                  </p>
+                </>
+              )}
+              <div className="flex items-center gap-2 mt-4">
+                <Button size="sm" onClick={handleNameConfirm} loading={phase === 'name-done'}>
+                  {foundFirm?.data ? 'Yes, that\'s us' : 'Continue manually'}
+                </Button>
+                {foundFirm?.data && phase === 'name-verified' && (
+                  <Button variant="ghost" size="sm" onClick={() => { setFoundFirm(null); setPhase('name-entry') }}>
+                    Not us — try again
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Back to CIN flow */}
+          <div className="mt-12 text-center text-xs text-fg-muted">
+            Have a CIN or LLPIN?{' '}
+            <button
+              type="button"
+              onClick={() => { setPhase('cin'); setErrorMsg(null) }}
+              className="underline hover:text-fg-secondary transition-colors duration-token ease-token"
+            >
+              Go back
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -311,15 +548,15 @@ export default function MagicalIntake({ onComplete, onSkip }: MagicalIntakeProps
           </div>
         )}
 
-        {/* Help */}
+        {/* Help — sole-prop / partnership go to the name-search flow */}
         <div className="mt-12 text-center text-xs text-fg-muted">
           Don't have a CIN or LLPIN (sole-proprietorship / partnership)?{' '}
           <button
             type="button"
-            onClick={onSkip}
+            onClick={() => { setPhase('name-entry'); setErrorMsg(null) }}
             className="underline hover:text-fg-secondary transition-colors duration-token ease-token"
           >
-            Continue manually
+            Find by name
           </button>
         </div>
       </div>

@@ -22,7 +22,7 @@ import CountrySelector from '@/components/features/CountrySelector'
 import { ManualVerificationNotice } from '@/components/features/ManualVerificationNotice'
 import { useRotatingLoadingMessage } from '@/hooks/useRotatingLoadingMessage'
 import { CREATE_COMPANY_LOADING_MESSAGES } from '@/lib/ui/loading-messages'
-import MagicalIntake, { type MagicalIntakePayload } from './MagicalIntake'
+import MagicalIntake, { type MagicalIntakePayload, type UnregisteredIntakePayload } from './MagicalIntake'
 
 interface Director {
   id: string
@@ -615,6 +615,59 @@ export default function OnboardingPage() {
     setShowMagicalIntake(false)
   }
 
+  /**
+   * Sole-prop / partnership variant. No CIN, no MCA — Perplexity searched
+   * by firm name + optional state hint. Fills whatever was found,
+   * pre-sets companyType so the legacy form's `requiresCIN` flag flips
+   * the CIN field off automatically.
+   */
+  const handleUnregisteredIntakeComplete = (payload: UnregisteredIntakePayload) => {
+    const cd = payload.companyData
+    const address = cd?.registeredaddress || cd?.mcamdscompanyaddress || ''
+    const phone = cd?.mobileNumber || cd?.phoneNumber || cd?.contactNumber || ''
+    const { city, state, pinCode } = parseAddress(address)
+    // Honor the user-typed state hint over a parsed-out one.
+    const finalState = payload.state || state || ''
+
+    setFormData((prev) => ({
+      ...prev,
+      companyName: cd?.company || payload.firmName || prev.companyName,
+      companyType: payload.entityType,
+      address: address || prev.address,
+      city: city || prev.city,
+      state: finalState || prev.state,
+      pinCode: pinCode || prev.pinCode,
+      phoneNumber: phone || prev.phoneNumber,
+      email: cd?.emailAddress || prev.email,
+      panNumber: cd?.pan || prev.panNumber,
+    }))
+
+    // No CIN to verify; mark verified anyway so the existing CIN-verify
+    // button doesn't try to re-fetch on a non-existent CIN.
+    setIsCINVerified(true)
+
+    const filledCount = [
+      cd?.company,
+      cd?.registeredaddress,
+      cd?.emailAddress,
+      cd?.pan,
+    ].filter(Boolean).length
+
+    if (filledCount > 0) {
+      showToast(
+        `✨ Pre-filled ${filledCount} field${filledCount === 1 ? '' : 's'} from public records`,
+        'success',
+      )
+    } else {
+      showToast(
+        'Couldn\'t find public records — fill the form manually',
+        'info',
+      )
+    }
+
+    setShowMagicalIntake(false)
+  }
+
   const handleDINVerification = async (directorId: string, din: string) => {
     if (!din.trim()) {
       return
@@ -1179,6 +1232,7 @@ export default function OnboardingPage() {
     return (
       <MagicalIntake
         onComplete={handleMagicalIntakeComplete}
+        onUnregisteredComplete={handleUnregisteredIntakeComplete}
         onSkip={() => setShowMagicalIntake(false)}
       />
     )
