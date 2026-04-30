@@ -283,7 +283,7 @@ function LoginPageInner() {
               <button
                 onClick={handleGoogleSignIn}
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-3 px-6 py-4 border border-line/15 rounded-lg hover:border-line/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white hover:bg-bg-elevated group"
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-token-md transition-colors duration-token ease-token disabled:opacity-50 disabled:cursor-not-allowed bg-white hover:bg-zinc-100 border border-zinc-200 hover:border-zinc-300"
               >
                 {isLoading ? (
                   <div className="w-5 h-5 border-2 border-line/30 border-t-transparent rounded-full animate-spin"></div>
@@ -308,7 +308,7 @@ function LoginPageInner() {
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                       />
                     </svg>
-                    <span className="text-fg-secondary font-light text-base group-hover:text-fg-primary">
+                    <span className="text-zinc-900 font-medium text-base">
                       Continue with Google
                     </span>
                   </>
@@ -470,10 +470,10 @@ function LoginPageInner() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full px-6 py-3 bg-white text-fg-primary rounded-lg hover:bg-bg-elevated transition-all disabled:opacity-50 disabled:cursor-not-allowed font-light"
+                  className="w-full px-6 py-3 bg-accent-brand text-white rounded-token-md hover:opacity-90 active:opacity-80 shadow-sm shadow-accent-brand/20 transition-opacity duration-token ease-token disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                 >
                   {isLoading ? (
-                    <div className="w-5 h-5 border-2 border-line/30 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin mx-auto"></div>
                   ) : (
                     isSignUp ? 'Sign Up' : 'Sign In'
                   )}
