@@ -5,7 +5,13 @@ import { verifyCIN, lookupCompanyByPerplexity, lookupGST, type GSTLookupResult }
 import { parseCIN, type ParsedCIN } from '@/utils/cin-parser'
 import Button from '@/components/ui/Button'
 
+// Accept either a 21-char CIN (regular companies) OR a 7-char LLPIN
+// (limited-liability partnerships). LLPINs come in two MCA formats:
+//   - "AAA-1234" (3 letters + dash + 4 digits)
+//   - "AAA1234"  (some MCA records strip the dash)
+// Both are normalised to upper-case before matching.
 const CIN_PATTERN = /^[LU]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$/
+const LLPIN_PATTERN = /^[A-Z]{3}-?\d{4}$/
 const PAN_PATTERN = /^[A-Z]{5}\d{4}[A-Z]$/
 
 export interface MagicalIntakePayload {
@@ -63,7 +69,7 @@ export default function MagicalIntake({ onComplete, onSkip }: MagicalIntakeProps
 
   const cinFormatted = cinValue.toUpperCase().trim()
   const panFormatted = panValue.toUpperCase().trim()
-  const cinValid = CIN_PATTERN.test(cinFormatted)
+  const cinValid = CIN_PATTERN.test(cinFormatted) || LLPIN_PATTERN.test(cinFormatted)
   const panValid = PAN_PATTERN.test(panFormatted)
 
   // Auto-fire PAN cross-lookup once the user types a valid 10-char PAN.
@@ -78,7 +84,7 @@ export default function MagicalIntake({ onComplete, onSkip }: MagicalIntakeProps
 
   const handleVerifyCIN = async () => {
     if (!cinValid) {
-      setErrorMsg('Check the CIN format and try again.')
+      setErrorMsg('Check the CIN / LLPIN format and try again.')
       return
     }
     setErrorMsg(null)
@@ -108,14 +114,18 @@ export default function MagicalIntake({ onComplete, onSkip }: MagicalIntakeProps
 
     // Last-resort: parsed CIN structure only — still let the user proceed
     // because the form has manual fields. Mirrors the existing handler.
-    if (!companyData?.company && !parsed.isValid) {
-      setErrorMsg('We could not find this CIN. Double-check it or skip and fill manually.')
+    // Note: LLPINs don't go through parseCIN successfully (different
+    // structure), so we accept them when companyData has anything useful
+    // OR when the structure parses. If neither, fail gracefully.
+    const isLlpin = LLPIN_PATTERN.test(cinFormatted)
+    if (!companyData?.company && !parsed.isValid && !isLlpin) {
+      setErrorMsg('We could not find this ID. Double-check it or skip and fill manually.')
       setPhase('cin')
       return
     }
 
     cinPayloadRef.current = { parsed, companyData, directorData }
-    setCompanyName(companyData?.company || `CIN ${cinFormatted} (manual review needed)`)
+    setCompanyName(companyData?.company || `${isLlpin ? 'LLPIN' : 'CIN'} ${cinFormatted} (manual review needed)`)
     setPhase('cin-verified')
   }
 
@@ -180,7 +190,7 @@ export default function MagicalIntake({ onComplete, onSkip }: MagicalIntakeProps
             htmlFor="magical-cin"
             className="text-xs font-medium text-fg-secondary uppercase tracking-wider"
           >
-            Company CIN
+            Company CIN or LLPIN
           </label>
           <div className="relative">
             <input
@@ -191,7 +201,7 @@ export default function MagicalIntake({ onComplete, onSkip }: MagicalIntakeProps
                 setCinValue(e.target.value)
                 setErrorMsg(null)
               }}
-              placeholder="L17110MH1973PLC019786"
+              placeholder="L17110MH1973PLC019786 or AAA-1234"
               maxLength={21}
               autoFocus
               disabled={phase !== 'cin' && phase !== 'cin-verifying'}
@@ -303,7 +313,7 @@ export default function MagicalIntake({ onComplete, onSkip }: MagicalIntakeProps
 
         {/* Help */}
         <div className="mt-12 text-center text-xs text-fg-muted">
-          Don't have a CIN (sole-proprietorship / partnership)?{' '}
+          Don't have a CIN or LLPIN (sole-proprietorship / partnership)?{' '}
           <button
             type="button"
             onClick={onSkip}
