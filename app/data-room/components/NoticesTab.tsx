@@ -145,7 +145,7 @@ export default function NoticesTab({
             <select
               value={noticesFilter}
               onChange={(e) => setNoticesFilter(e.target.value as any)}
-              className="px-4 py-2 bg-black border border-white/20 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-white/40"
+              className="px-4 py-2 bg-black border border-line/20 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-line/40"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
@@ -156,7 +156,7 @@ export default function NoticesTab({
             <select
               value={noticesTypeFilter}
               onChange={(e) => setNoticesTypeFilter(e.target.value)}
-              className="px-4 py-2 bg-black border border-white/20 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-white/40"
+              className="px-4 py-2 bg-black border border-line/20 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-line/40"
             >
               <option value="all">All Types</option>
               {complianceCategories.map((category) => (
@@ -165,7 +165,7 @@ export default function NoticesTab({
             </select>
             <button
               onClick={() => setIsAddNoticeModalOpen(true)}
-              className="px-4 py-2 bg-white text-black rounded-lg hover:bg-bg-hover transition-colors flex items-center gap-2 text-sm"
+              className="px-4 py-2 bg-accent-brand text-white rounded-lg hover:bg-bg-hover transition-colors flex items-center gap-2 text-sm"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 5v14M5 12h14" />
@@ -177,7 +177,7 @@ export default function NoticesTab({
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-black border border-white/10 rounded-xl p-4">
+          <div className="bg-bg-card border border-line/10 rounded-xl p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2">
@@ -192,7 +192,7 @@ export default function NoticesTab({
               </div>
             </div>
           </div>
-          <div className="bg-black border border-white/10 rounded-xl p-4">
+          <div className="bg-bg-card border border-line/10 rounded-xl p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EAB308" strokeWidth="2">
@@ -206,7 +206,7 @@ export default function NoticesTab({
               </div>
             </div>
           </div>
-          <div className="bg-black border border-white/10 rounded-xl p-4">
+          <div className="bg-bg-card border border-line/10 rounded-xl p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2">
@@ -220,7 +220,7 @@ export default function NoticesTab({
               </div>
             </div>
           </div>
-          <div className="bg-black border border-white/10 rounded-xl p-4">
+          <div className="bg-bg-card border border-line/10 rounded-xl p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A855F7" strokeWidth="2">
@@ -245,7 +245,7 @@ export default function NoticesTab({
               <div
                 key={notice.id}
                 onClick={() => setSelectedNotice(notice)}
-                className={`bg-black border rounded-xl p-4 cursor-pointer transition-all hover:border-white/40/50 ${selectedNotice?.id === notice.id ? 'border-white/40' : 'border-white/10'
+                className={`bg-black border rounded-xl p-4 cursor-pointer transition-all hover:border-line/40 ${selectedNotice?.id === notice.id ? 'border-line/40' : 'border-line/10'
                   }`}
               >
                 <div className="flex items-start justify-between gap-3 mb-2">
@@ -285,9 +285,9 @@ export default function NoticesTab({
               const authority = getAuthorityForCategory(selectedNotice.type || '')
 
               return (
-                <div className="bg-black border border-white/10 rounded-2xl overflow-hidden">
+                <div className="bg-bg-card border border-line/10 rounded-2xl overflow-hidden">
                   {/* Detail Header */}
-                  <div className="bg-black p-6 border-b border-white/10">
+                  <div className="bg-black p-6 border-b border-line/10">
                     <div className="flex items-start justify-between gap-4 mb-4">
                       <div className="flex items-center gap-3">
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${selectedNotice.type === 'Income Tax' ? 'bg-blue-500/20' :
@@ -382,7 +382,7 @@ export default function NoticesTab({
                     {/* Description */}
                     <div>
                       <h4 className="text-fg-muted text-sm font-medium mb-2">Notice Description</h4>
-                      <p className="text-fg-primary text-sm leading-relaxed bg-black border border-white/10 p-4 rounded-lg">
+                      <p className="text-fg-primary text-sm leading-relaxed bg-bg-card border border-line/10 p-4 rounded-lg">
                         {selectedNotice.description}
                       </p>
                     </div>
@@ -429,14 +429,14 @@ export default function NoticesTab({
 
                     {/* Response Section (only for pending notices) */}
                     {selectedNotice.status === 'pending' && (
-                      <div className="border-t border-white/10 pt-6">
+                      <div className="border-t border-line/10 pt-6">
                         <h4 className="text-fg-muted text-sm font-medium mb-3">Submit Response</h4>
                         <textarea
                           value={noticeResponse}
                           onChange={(e) => setNoticeResponse(e.target.value)}
                           placeholder="Enter your response or remarks..."
                           rows={4}
-                          className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors resize-none"
+                          className="w-full px-4 py-3 bg-black border border-line/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors resize-none"
                         />
                         <div className="flex items-center justify-between mt-4">
                           <button className="px-4 py-2 bg-bg-elevated text-fg-secondary rounded-lg hover:bg-bg-hover transition-colors flex items-center gap-2 text-sm">
@@ -454,7 +454,7 @@ export default function NoticesTab({
                               setIsSubmittingResponse(false)
                             }}
                             disabled={isSubmittingResponse || !noticeResponse.trim()}
-                            className="px-6 py-2 bg-white text-black rounded-lg hover:bg-bg-hover transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-6 py-2 bg-accent-brand text-white rounded-lg hover:bg-bg-hover transition-colors flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {isSubmittingResponse ? (
                               <>
@@ -477,7 +477,7 @@ export default function NoticesTab({
 
                     {/* Actions for responded/resolved notices */}
                     {selectedNotice.status !== 'pending' && (
-                      <div className="border-t border-white/10 pt-6 flex items-center gap-3">
+                      <div className="border-t border-line/10 pt-6 flex items-center gap-3">
                         <button className="px-4 py-2 bg-bg-elevated text-fg-secondary rounded-lg hover:bg-bg-hover transition-colors flex items-center gap-2 text-sm">
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -508,7 +508,7 @@ export default function NoticesTab({
                 </div>
               )
             })() : (
-              <div className="bg-black border border-white/10 rounded-2xl h-full flex flex-col items-center justify-center py-20">
+              <div className="bg-bg-card border border-line/10 rounded-2xl h-full flex flex-col items-center justify-center py-20">
                 <div className="w-20 h-20 bg-bg-elevated rounded-full flex items-center justify-center mb-6">
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="1.5">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -528,9 +528,9 @@ export default function NoticesTab({
       {/* Add Notice Modal */}
       {isAddNoticeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-black border border-white/10 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
-            <div className="sticky top-0 bg-black border-b border-white/10 p-6 flex items-center justify-between z-10">
+            <div className="sticky top-0 bg-black border-b border-line/10 p-6 flex items-center justify-between z-10">
               <div>
                 <h2 className="text-2xl font-light text-fg-primary mb-1">Add New Notice</h2>
                 <p className="text-fg-muted text-sm">Enter the details of the government notice received</p>
@@ -572,7 +572,7 @@ export default function NoticesTab({
                   <select
                     value={newNoticeForm.type}
                     onChange={(e) => setNewNoticeForm({ ...newNoticeForm, type: e.target.value })}
-                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                    className="w-full px-4 py-3 bg-black border border-line/20 rounded-lg text-fg-primary focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors"
                   >
                     {/* Country-aware notice types based on compliance categories */}
                     {countryConfig?.compliance?.defaultCategories?.map((category: string) => (
@@ -598,7 +598,7 @@ export default function NoticesTab({
                     value={newNoticeForm.subType}
                     onChange={(e) => setNewNoticeForm({ ...newNoticeForm, subType: e.target.value })}
                     placeholder="e.g., Scrutiny Notice, Show Cause Notice"
-                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                    className="w-full px-4 py-3 bg-black border border-line/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors"
                   />
                 </div>
               </div>
@@ -614,7 +614,7 @@ export default function NoticesTab({
                     value={newNoticeForm.section}
                     onChange={(e) => setNewNoticeForm({ ...newNoticeForm, section: e.target.value })}
                     placeholder="e.g., Section 143(2), Section 73"
-                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                    className="w-full px-4 py-3 bg-black border border-line/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors"
                   />
                 </div>
 
@@ -625,7 +625,7 @@ export default function NoticesTab({
                   <select
                     value={newNoticeForm.priority}
                     onChange={(e) => setNewNoticeForm({ ...newNoticeForm, priority: e.target.value as any })}
-                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                    className="w-full px-4 py-3 bg-black border border-line/20 rounded-lg text-fg-primary focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors"
                   >
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
@@ -645,7 +645,7 @@ export default function NoticesTab({
                   value={newNoticeForm.subject}
                   onChange={(e) => setNewNoticeForm({ ...newNoticeForm, subject: e.target.value })}
                   placeholder="Enter the notice subject/title"
-                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors"
                 />
               </div>
 
@@ -660,7 +660,7 @@ export default function NoticesTab({
                     value={newNoticeForm.issuedBy}
                     onChange={(e) => setNewNoticeForm({ ...newNoticeForm, issuedBy: e.target.value })}
                     placeholder="e.g., Income Tax Department"
-                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                    className="w-full px-4 py-3 bg-black border border-line/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors"
                   />
                 </div>
 
@@ -684,7 +684,7 @@ export default function NoticesTab({
                         }
                       }}
                       placeholder="Select date"
-                      className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors cursor-pointer pr-10"
+                      className="w-full px-4 py-3 bg-black border border-line/20 rounded-lg text-fg-primary focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors cursor-pointer pr-10"
                     />
                     <input
                       type="date"
@@ -725,7 +725,7 @@ export default function NoticesTab({
                         }
                       }}
                       placeholder="Select date"
-                      className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors cursor-pointer pr-10"
+                      className="w-full px-4 py-3 bg-black border border-line/20 rounded-lg text-fg-primary focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors cursor-pointer pr-10"
                     />
                     <input
                       type="date"
@@ -757,7 +757,7 @@ export default function NoticesTab({
                   onChange={(e) => setNewNoticeForm({ ...newNoticeForm, description: e.target.value })}
                   placeholder="Enter the full notice description and requirements..."
                   rows={5}
-                  className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors resize-none"
+                  className="w-full px-4 py-3 bg-black border border-line/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors resize-none"
                 />
               </div>
 
@@ -812,7 +812,7 @@ export default function NoticesTab({
                         }
                       }}
                       placeholder="Enter document name and press Enter"
-                      className="flex-1 px-4 py-2 bg-black border border-white/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                      className="flex-1 px-4 py-2 bg-black border border-line/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors"
                     />
                     <button
                       onClick={() => {
@@ -824,7 +824,7 @@ export default function NoticesTab({
                           setNewDocument('')
                         }
                       }}
-                      className="px-4 py-2 bg-white text-black rounded-lg hover:bg-bg-hover transition-colors flex items-center gap-2"
+                      className="px-4 py-2 bg-accent-brand text-white rounded-lg hover:bg-bg-hover transition-colors flex items-center gap-2"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M12 5v14M5 12h14" />
@@ -836,7 +836,7 @@ export default function NoticesTab({
               </div>
 
               {/* Form Actions */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-line/10">
                 <button
                   onClick={() => {
                     setIsAddNoticeModalOpen(false)
@@ -919,7 +919,7 @@ export default function NoticesTab({
                     setIsSubmittingNotice(false)
                   }}
                   disabled={isSubmittingNotice}
-                  className="px-6 py-2.5 bg-white text-black rounded-lg hover:bg-bg-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-6 py-2.5 bg-accent-brand text-white rounded-lg hover:bg-bg-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {isSubmittingNotice ? (
                     <>

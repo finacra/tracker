@@ -85,7 +85,7 @@ export default function GSTTab({
                   onChange={(e) => setGstCredentials({ ...gstCredentials, gstin: e.target.value.toUpperCase() })}
                   placeholder="Enter your 15-digit GSTIN"
                   maxLength={15}
-                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors font-mono tracking-wider"
+                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors font-mono tracking-wider"
                 />
                 <p className="mt-1 text-xs text-fg-muted">Example: 27AQOPD9471C3ZM</p>
               </div>
@@ -99,7 +99,7 @@ export default function GSTTab({
                   value={gstCredentials.gstUsername}
                   onChange={(e) => setGstCredentials({ ...gstCredentials, gstUsername: e.target.value })}
                   placeholder="Enter your GST portal username"
-                  className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                  className="w-full px-4 py-3 bg-black border border-line/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors"
                 />
               </div>
 
@@ -215,7 +215,7 @@ export default function GSTTab({
                   onChange={(e) => setGstOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="Enter 6-digit OTP"
                   maxLength={6}
-                  className="w-full px-4 py-4 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-center text-2xl font-mono tracking-[0.5em] placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                  className="w-full px-4 py-4 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-center text-2xl font-mono tracking-[0.5em] placeholder:text-fg-muted focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors"
                 />
                 <p className="mt-2 text-center text-xs text-fg-muted">
                   OTP expires in <span className="text-fg-primary">5:00</span> minutes
@@ -341,7 +341,7 @@ export default function GSTTab({
                 <select
                   value={selectedGstPeriod}
                   onChange={(e) => setSelectedGstPeriod(e.target.value)}
-                  className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-white/40"
+                  className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-line/40"
                 >
                   <option value="012026">January 2026</option>
                   <option value="122025">December 2025</option>
@@ -378,7 +378,7 @@ export default function GSTTab({
                 key={tab.id}
                 onClick={() => setGstActiveSection(tab.id as any)}
                 className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap ${gstActiveSection === tab.id
-                    ? 'bg-white text-black'
+                    ? 'bg-accent-brand text-white'
                     : 'bg-bg-elevated text-fg-muted hover:text-fg-primary hover:bg-bg-hover'
                   }`}
               >
@@ -702,7 +702,7 @@ export default function GSTTab({
                   </div>
                 </div>
 
-                <div className="bg-white/5 border border-white/40/30 rounded-xl p-6">
+                <div className="bg-bg-hover border border-line/40/30 rounded-xl p-6">
                   <h4 className="text-fg-muted text-sm mb-4">Tax Paid</h4>
                   <p className="text-3xl font-light text-fg-primary mb-2">₹{gstData.gstr3b.taxPaid.toLocaleString('en-IN')}</p>
                   <div className="text-xs text-fg-muted space-y-1">

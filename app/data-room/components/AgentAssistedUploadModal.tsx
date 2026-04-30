@@ -312,7 +312,7 @@ export default function AgentAssistedUploadModal({
               />
               <label
                 htmlFor="agent-upload-input"
-                className="inline-block px-6 py-3 bg-white text-black rounded-lg text-sm font-medium hover:bg-bg-elevated cursor-pointer"
+                className="inline-block px-6 py-3 bg-accent-brand text-white rounded-lg text-sm font-medium hover:bg-bg-elevated cursor-pointer"
               >
                 Choose file
               </label>
@@ -519,7 +519,7 @@ export default function AgentAssistedUploadModal({
             </button>
             <button
               onClick={handleSave}
-              className="px-6 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-bg-elevated disabled:opacity-50"
+              className="px-6 py-2 bg-accent-brand text-white rounded-lg text-sm font-medium hover:bg-bg-elevated disabled:opacity-50"
               disabled={!form.fileName.trim() || !form.documentName.trim() || !form.folderId}
             >
               Save document

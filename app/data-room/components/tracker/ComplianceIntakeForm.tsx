@@ -337,7 +337,7 @@ export default function ComplianceIntakeForm({ companyId, financialYear, initial
         <button
           onClick={handleSubmit}
           disabled={saving}
-          className="px-6 py-2.5 bg-white text-black rounded-lg text-sm font-medium hover:bg-bg-elevated disabled:opacity-50"
+          className="px-6 py-2.5 bg-accent-brand text-white rounded-lg text-sm font-medium hover:bg-bg-elevated disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save & generate tracker'}
         </button>
@@ -360,14 +360,14 @@ function Question({ label, value, onChange, hint }: {
         <button
           type="button"
           onClick={() => onChange(true)}
-          className={`px-4 py-1.5 rounded text-sm transition-colors ${value === true ? 'bg-white text-black' : 'bg-bg-elevated text-fg-muted hover:text-fg-primary'}`}
+          className={`px-4 py-1.5 rounded text-sm transition-colors ${value === true ? 'bg-accent-brand text-white' : 'bg-bg-elevated text-fg-muted hover:text-fg-primary'}`}
         >
           Yes
         </button>
         <button
           type="button"
           onClick={() => onChange(false)}
-          className={`px-4 py-1.5 rounded text-sm transition-colors ${value === false ? 'bg-white text-black' : 'bg-bg-elevated text-fg-muted hover:text-fg-primary'}`}
+          className={`px-4 py-1.5 rounded text-sm transition-colors ${value === false ? 'bg-accent-brand text-white' : 'bg-bg-elevated text-fg-muted hover:text-fg-primary'}`}
         >
           No
         </button>

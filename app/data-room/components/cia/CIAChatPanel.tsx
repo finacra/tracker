@@ -143,9 +143,9 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
             : 'inset-y-0 right-0 w-full sm:w-[520px]'
         } ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
-        <div className="flex-1 flex flex-col bg-bg-base border-l border-white/10 shadow-2xl">
+        <div className="flex-1 flex flex-col bg-bg-base border-l border-line/10 shadow-2xl">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-line/5">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -166,7 +166,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
                 onClick={() => setIsFullscreen(v => !v)}
                 title={isFullscreen ? 'Collapse to side panel' : 'Expand to fullscreen'}
                 aria-label={isFullscreen ? 'Collapse chat' : 'Expand chat'}
-                className="w-7 h-7 rounded-md hover:bg-white/10 flex items-center justify-center text-fg-muted hover:text-fg-primary transition-colors"
+                className="w-7 h-7 rounded-md hover:bg-bg-hover flex items-center justify-center text-fg-muted hover:text-fg-primary transition-colors"
               >
                 {isFullscreen ? (
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -181,7 +181,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
               <button
                 onClick={onClose}
                 aria-label="Close chat"
-                className="w-7 h-7 rounded-md hover:bg-white/10 flex items-center justify-center text-fg-muted hover:text-fg-primary transition-colors"
+                className="w-7 h-7 rounded-md hover:bg-bg-hover flex items-center justify-center text-fg-muted hover:text-fg-primary transition-colors"
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                   <path d="M3 3l8 8M11 3l-8 8" />

@@ -370,13 +370,13 @@ export default function AgentAssistedBulkUploadModal({
               <div className="flex items-center justify-center gap-3">
                 <label
                   htmlFor="bulk-agent-upload-files"
-                  className="inline-block px-5 py-2.5 bg-white text-black rounded-lg text-sm font-medium hover:bg-bg-elevated cursor-pointer"
+                  className="inline-block px-5 py-2.5 bg-accent-brand text-white rounded-lg text-sm font-medium hover:bg-bg-elevated cursor-pointer"
                 >
                   Choose files
                 </label>
                 <label
                   htmlFor="bulk-agent-upload-folder"
-                  className="inline-block px-5 py-2.5 border border-white/20 text-fg-primary rounded-lg text-sm font-medium hover:bg-white/5 cursor-pointer"
+                  className="inline-block px-5 py-2.5 border border-line/20 text-fg-primary rounded-lg text-sm font-medium hover:bg-bg-hover cursor-pointer"
                   title="Pick a whole directory — we'll walk it recursively"
                 >
                   Choose folder
@@ -425,13 +425,13 @@ export default function AgentAssistedBulkUploadModal({
                     />
                     <label
                       htmlFor="bulk-agent-add-files"
-                      className="text-[11px] px-2.5 py-1 border border-white/15 text-fg-secondary rounded hover:bg-white/5 cursor-pointer"
+                      className="text-[11px] px-2.5 py-1 border border-line/15 text-fg-secondary rounded hover:bg-bg-hover cursor-pointer"
                     >
                       + Add files
                     </label>
                     <label
                       htmlFor="bulk-agent-add-folder"
-                      className="text-[11px] px-2.5 py-1 border border-white/15 text-fg-secondary rounded hover:bg-white/5 cursor-pointer"
+                      className="text-[11px] px-2.5 py-1 border border-line/15 text-fg-secondary rounded hover:bg-bg-hover cursor-pointer"
                     >
                       + Add folder
                     </label>
@@ -548,7 +548,7 @@ export default function AgentAssistedBulkUploadModal({
             </button>
             <button
               onClick={handleSaveAll}
-              className="px-6 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-bg-elevated disabled:opacity-50"
+              className="px-6 py-2 bg-accent-brand text-white rounded-lg text-sm font-medium hover:bg-bg-elevated disabled:opacity-50"
               disabled={totals.readySelected === 0}
             >
               Save {totals.readySelected} document{totals.readySelected === 1 ? '' : 's'}
@@ -560,7 +560,7 @@ export default function AgentAssistedBulkUploadModal({
           <div className="p-6 border-t border-line/10 flex items-center justify-end">
             <button
               onClick={handleClose}
-              className="px-6 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-bg-elevated"
+              className="px-6 py-2 bg-accent-brand text-white rounded-lg text-sm font-medium hover:bg-bg-elevated"
             >
               Close
             </button>

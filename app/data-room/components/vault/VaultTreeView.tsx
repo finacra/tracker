@@ -390,7 +390,7 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
           {selected.size > 0 && (
             <button
               onClick={clearSelection}
-              className="text-[11px] px-2.5 py-1 border border-white/10 text-fg-muted rounded hover:text-fg-primary hover:border-white/20"
+              className="text-[11px] px-2.5 py-1 border border-line/10 text-fg-muted rounded hover:text-fg-primary hover:border-line/20"
             >
               Clear
             </button>
@@ -398,7 +398,7 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
           {canEdit && (
             <button
               onClick={() => handleCreateFolder(null)}
-              className="text-[11px] px-2.5 py-1 border border-white/10 text-fg-secondary rounded hover:text-fg-primary hover:border-white/20"
+              className="text-[11px] px-2.5 py-1 border border-line/10 text-fg-secondary rounded hover:text-fg-primary hover:border-line/20"
             >
               + New folder
             </button>
@@ -532,7 +532,7 @@ function FolderNode({
 
   const depthPadding = depth === 0 ? '' : `pl-${Math.min(depth * 4, 16)}`
   const bgColor = depth === 0 ? 'bg-bg-card/40' : 'bg-bg-card/20'
-  const borderColor = depth === 0 ? 'border-white/10' : 'border-white/5'
+  const borderColor = depth === 0 ? 'border-line/10' : 'border-line/5'
 
   return (
     <div className={`border ${borderColor} rounded-lg ${bgColor} overflow-hidden`} style={{ marginLeft: depth > 0 ? `${depth * 16}px` : 0 }}>
@@ -595,7 +595,7 @@ function FolderNode({
 
       {/* Expanded contents */}
       {isExpanded && (
-        <div className="border-t border-white/5">
+        <div className="border-t border-line/5">
           {docs.length > 0 && (
             <div className="divide-y divide-white/[0.03]">
               {docs.map(doc => (
@@ -819,41 +819,41 @@ function DocActionsMenu({
         <>
           <div className="fixed inset-0 z-40" onClick={onClose} />
           <div
-            className="fixed z-50 w-44 bg-bg-card border border-white/10 rounded-lg shadow-2xl py-1 text-xs"
+            className="fixed z-50 w-44 bg-bg-card border border-line/10 rounded-lg shadow-2xl py-1 text-xs"
             style={{ top: coords.top, right: coords.right }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => { onClose(); openDocumentInTab(companyId, doc.id) }}
-              className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-white/5"
+              className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-bg-hover"
             >
               View document
             </button>
-            <div className="h-px bg-white/5 my-1" />
+            <div className="h-px bg-bg-hover my-1" />
             {onUploadNewVersion && (
               <button
                 onClick={() => { onClose(); onUploadNewVersion(doc) }}
-                className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-white/5"
+                className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-bg-hover"
               >
                 Upload new version
               </button>
             )}
             <button
               onClick={() => { onClose(); onShowVersions(doc) }}
-              className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-white/5"
+              className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-bg-hover"
             >
               Version history
             </button>
-            <div className="h-px bg-white/5 my-1" />
+            <div className="h-px bg-bg-hover my-1" />
             <button
               onClick={() => { onClose(); onRename(doc) }}
-              className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-white/5"
+              className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-bg-hover"
             >
               Rename
             </button>
             <button
               onClick={() => { onClose(); onMove(doc) }}
-              className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-white/5"
+              className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-bg-hover"
             >
               Move to…
             </button>
@@ -914,13 +914,13 @@ function FolderActionsMenu({
         <>
           <div className="fixed inset-0 z-40" onClick={onClose} />
           <div
-            className="fixed z-50 w-44 bg-bg-card border border-white/10 rounded-lg shadow-2xl py-1 text-xs"
+            className="fixed z-50 w-44 bg-bg-card border border-line/10 rounded-lg shadow-2xl py-1 text-xs"
             style={{ top: coords.top, right: coords.right }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => { onClose(); onCreateSubfolder(folder.id) }}
-              className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-white/5"
+              className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-bg-hover"
             >
               + New sub-folder
             </button>
@@ -928,7 +928,7 @@ function FolderActionsMenu({
               <>
                 <button
                   onClick={() => { onClose(); onRenameFolder(folder) }}
-                  className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-white/5"
+                  className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-bg-hover"
                 >
                   Rename
                 </button>
@@ -980,7 +980,7 @@ function IngestChip({ ingest, onReview }: { ingest: IngestStatus | null; onRevie
   if (status === 'pending') {
     return (
       <span
-        className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-fg-muted flex-shrink-0"
+        className="text-[10px] px-1.5 py-0.5 rounded bg-bg-hover text-fg-muted flex-shrink-0"
         title="Queued for AI extraction"
       >
         Queued

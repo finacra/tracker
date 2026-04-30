@@ -933,7 +933,7 @@ function BulkUploadPage() {
             {validation && (
               <span className={`px-3 py-1 rounded text-xs font-medium ${
                 validation.valid
-                  ? 'bg-white/20 text-fg-primary'
+                  ? 'bg-bg-hover text-fg-primary'
                   : 'bg-red-500 text-white'
               }`}>
                 {nonEmptyRowCount} rows • {validation.valid ? 'Ready to upload' : `${validation.errors.length} errors`}
@@ -941,10 +941,10 @@ function BulkUploadPage() {
             )}
             {/* Auto-save indicator */}
             {lastSaved && (
-              <span className="px-3 py-1 rounded text-xs font-medium bg-white/10 text-fg-primary/80 flex items-center gap-1.5">
+              <span className="px-3 py-1 rounded text-xs font-medium bg-bg-hover text-fg-primary/80 flex items-center gap-1.5">
                 {isSaving ? (
                   <>
-                    <div className="w-3 h-3 border-2 border-white/50 border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-3 h-3 border-2 border-line/50 border-t-transparent rounded-full animate-spin"></div>
                     Saving...
                   </>
                 ) : (
@@ -961,14 +961,14 @@ function BulkUploadPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={downloadCSVTemplate}
-              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-fg-primary text-sm rounded transition-colors flex items-center gap-2"
+              className="px-3 py-1.5 bg-bg-hover hover:bg-bg-hover text-fg-primary text-sm rounded transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
               Template
             </button>
-            <label className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-fg-primary text-sm rounded transition-colors cursor-pointer flex items-center gap-2">
+            <label className="px-3 py-1.5 bg-bg-hover hover:bg-bg-hover text-fg-primary text-sm rounded transition-colors cursor-pointer flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
@@ -986,7 +986,7 @@ function BulkUploadPage() {
                 <select
                   value={resolveMode}
                   onChange={(e) => setResolveMode(e.target.value as 'auto' | 'custom')}
-                  className="px-3 py-2 bg-white/10 hover:bg-white/20 text-fg-primary text-sm rounded border border-white/20 focus:outline-none focus:border-white/40 transition-colors"
+                  className="px-3 py-2 bg-bg-hover hover:bg-bg-hover text-fg-primary text-sm rounded border border-line/20 focus:outline-none focus:border-line/40 transition-colors"
                 >
                   <option value="auto">Auto Resolve</option>
                   <option value="custom">Custom Resolver</option>
@@ -1033,7 +1033,7 @@ function BulkUploadPage() {
               className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 shadow-md ${
                 validation?.valid && nonEmptyRowCount > 0 && !isUploading
                   ? 'bg-white text-[#217346] hover:bg-bg-elevated hover:shadow-lg'
-                  : 'bg-white/30 text-fg-primary/50 cursor-not-allowed'
+                  : 'bg-bg-hover text-fg-primary/50 cursor-not-allowed'
               }`}
             >
               {isUploading ? (

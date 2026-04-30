@@ -57,8 +57,8 @@ function ConversationItem({
       onMouseLeave={() => setShowDelete(false)}
       className={`w-full text-left px-3 py-2 rounded-lg text-sm truncate transition-all duration-150 group relative ${
         isActive
-          ? 'bg-white/10 text-fg-primary'
-          : 'text-fg-muted hover:bg-white/5 hover:text-fg-secondary'
+          ? 'bg-bg-hover text-fg-primary'
+          : 'text-fg-muted hover:bg-bg-hover hover:text-fg-secondary'
       }`}
     >
       <span className="truncate block pr-5">{displayName}</span>
@@ -82,12 +82,12 @@ function ConversationItem({
 
 export default function CIASidebar({ conversations, activeId, onSelect, onNew, onDelete }: Props) {
   return (
-    <div className="w-[160px] flex-shrink-0 border-r border-white/5 flex flex-col h-full">
+    <div className="w-[160px] flex-shrink-0 border-r border-line/5 flex flex-col h-full">
       {/* New Chat button */}
       <div className="p-2">
         <button
           onClick={onNew}
-          className="w-full flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-fg-secondary bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all"
+          className="w-full flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-fg-secondary bg-bg-hover hover:bg-bg-hover border border-line/10 hover:border-line/20 transition-all"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
             <path d="M6 2v8M2 6h8" />
