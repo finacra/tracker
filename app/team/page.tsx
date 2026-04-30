@@ -413,7 +413,7 @@ export default function TeamPage() {
                       max="365"
                       value={extendDays}
                       onChange={(e) => setExtendDays(parseInt(e.target.value) || 15)}
-                      className="w-16 px-2 py-1.5 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm text-center focus:outline-none focus:border-primary-orange"
+                      className="w-16 px-2 py-1.5 bg-bg-card border border-line/15 rounded-lg text-white text-sm text-center focus:outline-none focus:border-primary-orange"
                     />
                     <button
                       onClick={handleExtendTrial}
@@ -441,15 +441,15 @@ export default function TeamPage() {
 
           {/* No Subscription Warning - Superadmin Only */}
           {isSuperadmin && currentCompany && !subscription && !isLoading && (
-            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
+            <div className="bg-bg-elevated/50 border border-line/15 rounded-xl p-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gray-700 rounded-lg flex items-center justify-center">
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-10 h-10 bg-bg-hover rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-fg-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <div className="text-sm text-gray-400">
+                  <div className="text-sm text-fg-muted">
                     No active subscription or trial for this company owner
                   </div>
                 </div>
@@ -462,7 +462,7 @@ export default function TeamPage() {
                     max="365"
                     value={extendDays}
                     onChange={(e) => setExtendDays(parseInt(e.target.value) || 15)}
-                    className="w-16 px-2 py-1.5 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm text-center focus:outline-none focus:border-primary-orange"
+                    className="w-16 px-2 py-1.5 bg-bg-card border border-line/15 rounded-lg text-white text-sm text-center focus:outline-none focus:border-primary-orange"
                     placeholder="Days"
                   />
                   <button
@@ -479,7 +479,7 @@ export default function TeamPage() {
 
           {/* Invite Team Member - Only show if user can manage */}
           {(canManage || isSuperadmin) && (
-            <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8">
+            <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8">
               <div className="flex items-center gap-2 sm:gap-3 mb-2">
                 <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary-orange rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg
@@ -501,45 +501,45 @@ export default function TeamPage() {
                 </div>
                 <h2 className="text-lg sm:text-xl font-light text-white">Invite Team Member</h2>
               </div>
-              <p className="text-gray-400 text-xs sm:text-sm mb-4 sm:mb-6 ml-0 sm:ml-11">
+              <p className="text-fg-muted text-xs sm:text-sm mb-4 sm:mb-6 ml-0 sm:ml-11">
                 Invite a teammate by email. They can accept even if they don’t have an account yet.
               </p>
 
               <div className="space-y-3 sm:space-y-4">
                 {/* Email Address */}
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-fg-secondary mb-2">
                     Email Address *
                   </label>
                   <input
                     type="email"
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     placeholder="colleague@example.com"
                   />
                 </div>
 
                 {/* Name (Optional) */}
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-xs sm:text-sm font-medium text-fg-secondary mb-2">
                     Name (Optional)
                   </label>
                   <input
                     type="text"
                     value={inviteName}
                     onChange={(e) => setInviteName(e.target.value)}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     placeholder="John Doe"
                   />
                 </div>
 
                 {/* Role */}
                 <div className="relative">
-                  <label className="block text-xs sm:text-sm font-medium text-gray-300 mb-2">Role</label>
+                  <label className="block text-xs sm:text-sm font-medium text-fg-secondary mb-2">Role</label>
                   <button
                     onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm sm:text-base text-left flex items-center justify-between focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base text-left flex items-center justify-between focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                   >
                     <span className="truncate">{roles.find((r) => r.value === inviteRole)?.label}</span>
                     <svg
@@ -563,7 +563,7 @@ export default function TeamPage() {
                         className="fixed inset-0 z-10"
                         onClick={() => setIsRoleDropdownOpen(false)}
                       />
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-20 overflow-hidden">
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-bg-card border border-line/15 rounded-lg shadow-2xl z-20 overflow-hidden">
                         {roles.map((role) => (
                           <button
                             key={role.value}
@@ -571,10 +571,10 @@ export default function TeamPage() {
                               setInviteRole(role.value)
                               setIsRoleDropdownOpen(false)
                             }}
-                            className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-gray-800 transition-colors flex items-center justify-between text-sm sm:text-base ${
+                            className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-bg-elevated transition-colors flex items-center justify-between text-sm sm:text-base ${
                               inviteRole === role.value
                                 ? 'bg-primary-orange/20 text-white'
-                                : 'text-gray-300'
+                                : 'text-fg-secondary'
                             }`}
                           >
                             <span className="break-words">{role.label}</span>
@@ -636,7 +636,7 @@ export default function TeamPage() {
           )}
 
           {/* Team Members */}
-          <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8">
+          <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8">
             <div className="flex items-center gap-2 sm:gap-3 mb-2">
               <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary-orange rounded-lg flex items-center justify-center flex-shrink-0">
                 <svg
@@ -660,22 +660,22 @@ export default function TeamPage() {
                 Team Members ({teamMembers.length})
               </h2>
             </div>
-            <p className="text-gray-400 text-xs sm:text-sm mb-4 sm:mb-6 ml-0 sm:ml-11">
+            <p className="text-fg-muted text-xs sm:text-sm mb-4 sm:mb-6 ml-0 sm:ml-11">
               People who have access to this company.
             </p>
 
             {isLoading ? (
               <div className="py-8 sm:py-12 flex flex-col items-center justify-center">
                 <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mb-3 sm:mb-4"></div>
-                <p className="text-gray-400 text-sm sm:text-base">Loading team members...</p>
+                <p className="text-fg-muted text-sm sm:text-base">Loading team members...</p>
               </div>
             ) : teamMembers.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 sm:py-12">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 border-2 border-gray-700 rounded-full flex items-center justify-center mb-3 sm:mb-4">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 border-2 border-line/15 rounded-full flex items-center justify-center mb-3 sm:mb-4">
                   <svg
                     width="24"
                     height="24"
-                    className="sm:w-8 sm:h-8 text-gray-600"
+                    className="sm:w-8 sm:h-8 text-fg-muted/60"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -687,14 +687,14 @@ export default function TeamPage() {
                     <circle cx="9" cy="7" r="4" />
                   </svg>
                 </div>
-                <p className="text-gray-500 text-sm sm:text-base">No team members found</p>
+                <p className="text-fg-muted text-sm sm:text-base">No team members found</p>
               </div>
             ) : (
               <div className="space-y-3 sm:space-y-4">
                 {teamMembers.map((member) => (
                   <div
                     key={member.id}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-gray-900 rounded-lg border border-gray-800"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-bg-card rounded-lg border border-line/10"
                   >
                     <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
                       <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
@@ -715,8 +715,8 @@ export default function TeamPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="text-white font-medium text-sm sm:text-base break-words">{member.user_name}</div>
-                        <div className="text-gray-400 text-xs sm:text-sm break-words">{member.user_email}</div>
-                        <div className="text-gray-500 text-[10px] sm:text-xs mt-1">
+                        <div className="text-fg-muted text-xs sm:text-sm break-words">{member.user_email}</div>
+                        <div className="text-fg-muted text-[10px] sm:text-xs mt-1">
                           Joined {formatDate(member.created_at)}
                         </div>
                       </div>
@@ -726,14 +726,14 @@ export default function TeamPage() {
                         <select
                           value={member.role}
                           onChange={(e) => handleRoleChange(member.id, e.target.value as 'viewer' | 'editor' | 'admin')}
-                          className="px-2 sm:px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-[10px] sm:text-xs font-medium border border-gray-700 hover:border-primary-orange transition-colors cursor-pointer"
+                          className="px-2 sm:px-3 py-1 bg-bg-elevated text-fg-secondary rounded-full text-[10px] sm:text-xs font-medium border border-line/15 hover:border-primary-orange transition-colors cursor-pointer"
                         >
                           <option value="viewer">VIEWER</option>
                           <option value="editor">EDITOR</option>
                           <option value="admin">ADMIN</option>
                         </select>
                       ) : (
-                        <span className="px-2 sm:px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-[10px] sm:text-xs font-medium">
+                        <span className="px-2 sm:px-3 py-1 bg-bg-elevated text-fg-secondary rounded-full text-[10px] sm:text-xs font-medium">
                           {getRoleDisplayName(member.role)}
                         </span>
                       )}

@@ -86,12 +86,12 @@ function OwnerExpiredPageInner() {
           </div>
 
           {/* Card */}
-          <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-8 text-center">
+          <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-8 text-center">
             <h1 className="text-2xl font-bold text-white mb-4">
               Subscription Expired
             </h1>
             
-            <p className="text-gray-400 mb-6">
+            <p className="text-fg-muted mb-6">
               The subscription for{' '}
               <span className="text-white font-semibold">
                 {ownerInfo?.companyName || 'this company'}
@@ -100,7 +100,7 @@ function OwnerExpiredPageInner() {
             </p>
 
             {/* Info Box */}
-            <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 mb-6">
+            <div className="bg-bg-card border border-line/15 rounded-xl p-4 mb-6">
               <div className="flex items-center gap-3 text-left">
                 <div className="w-10 h-10 bg-primary-orange/20 rounded-full flex items-center justify-center flex-shrink-0">
                   <svg className="w-5 h-5 text-primary-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,7 +108,7 @@ function OwnerExpiredPageInner() {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider">Company Owner</p>
+                  <p className="text-xs text-fg-muted uppercase tracking-wider">Company Owner</p>
                   <p className="text-white text-sm font-medium">
                     Contact your administrator
                   </p>
@@ -116,7 +116,7 @@ function OwnerExpiredPageInner() {
               </div>
             </div>
 
-            <p className="text-gray-500 text-sm mb-6">
+            <p className="text-fg-muted text-sm mb-6">
               Once the subscription is renewed, you'll automatically regain access to the data room.
             </p>
 
@@ -128,7 +128,7 @@ function OwnerExpiredPageInner() {
                   // This allows user to select a different company with valid subscription
                   router.push('/data-room')
                 }}
-                className="w-full bg-gray-800 text-gray-300 px-6 py-3 rounded-lg font-medium hover:bg-gray-700 transition-colors"
+                className="w-full bg-bg-elevated text-fg-secondary px-6 py-3 rounded-lg font-medium hover:bg-bg-hover transition-colors"
               >
                 Select Another Company
               </button>
@@ -137,7 +137,7 @@ function OwnerExpiredPageInner() {
 
           {/* Footer */}
           <div className="text-center mt-8">
-            <p className="text-gray-600 text-sm">
+            <p className="text-fg-muted/60 text-sm">
               Need help? Contact{' '}
               <a href="mailto:info@finacra.com" className="text-primary-orange hover:underline">
                 info@finacra.com

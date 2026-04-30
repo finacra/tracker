@@ -259,10 +259,10 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
   if (state === 'upload') {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-        <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-2xl mx-4 p-6">
+        <div className="bg-bg-card border border-line/15 rounded-xl w-full max-w-2xl mx-4 p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-white">Bulk Upload Compliance Templates</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <button onClick={onClose} className="text-fg-muted hover:text-white">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -272,7 +272,7 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
           <div className="space-y-4">
             {/* Download Template Button */}
             <div className="text-center">
-              <p className="text-gray-300 mb-3">
+              <p className="text-fg-secondary mb-3">
                 First, download the CSV template with examples:
               </p>
               <button
@@ -286,7 +286,7 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
               </button>
             </div>
 
-            <div className="border-t border-gray-700 my-6"></div>
+            <div className="border-t border-line/15 my-6"></div>
 
             {/* Upload Zone */}
             <div
@@ -296,7 +296,7 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
               className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors cursor-pointer ${
                 dragOver
                   ? 'border-primary-orange bg-primary-orange/10'
-                  : 'border-gray-600 hover:border-gray-500'
+                  : 'border-line/30 hover:border-line/40'
               }`}
               onClick={() => fileInputRef.current?.click()}
             >
@@ -307,13 +307,13 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
                 onChange={handleFileInput}
                 className="hidden"
               />
-              <svg className="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-12 h-12 mx-auto mb-4 text-fg-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
-              <p className="text-gray-300 mb-2">
+              <p className="text-fg-secondary mb-2">
                 Drag and drop your filled CSV file here
               </p>
-              <p className="text-gray-500 text-sm">
+              <p className="text-fg-muted text-sm">
                 or click to browse
               </p>
             </div>
@@ -327,9 +327,9 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
   if (state === 'editing') {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-        <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-[95vw] max-h-[95vh] mx-4 flex flex-col">
+        <div className="bg-bg-card border border-line/15 rounded-xl w-full max-w-[95vw] max-h-[95vh] mx-4 flex flex-col">
           {/* Header */}
-          <div className="flex justify-between items-center p-4 border-b border-gray-700">
+          <div className="flex justify-between items-center p-4 border-b border-line/15">
             <div className="flex items-center gap-4">
               <h2 className="text-xl font-semibold text-white">Edit Templates</h2>
               {validation && (
@@ -345,14 +345,14 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
                     }
                   </span>
                   {!validation.valid && (
-                    <span className="text-gray-400 text-sm">
+                    <span className="text-fg-muted text-sm">
                       ({validation.errors.length} errors to fix)
                     </span>
                   )}
                 </div>
               )}
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <button onClick={onClose} className="text-fg-muted hover:text-white">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -360,21 +360,21 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
           </div>
 
           {/* Toolbar */}
-          <div className="flex items-center gap-2 p-3 border-b border-gray-700 bg-gray-800/50">
+          <div className="flex items-center gap-2 p-3 border-b border-line/15 bg-bg-elevated/50">
             <button
               onClick={addRow}
-              className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded transition-colors"
+              className="px-3 py-1.5 bg-bg-hover hover:bg-gray-600 text-white text-sm rounded transition-colors"
             >
               + Add Row
             </button>
             <button
               onClick={removeSelectedRows}
-              className="px-3 py-1.5 bg-gray-700 hover:bg-red-600 text-white text-sm rounded transition-colors"
+              className="px-3 py-1.5 bg-bg-hover hover:bg-red-600 text-white text-sm rounded transition-colors"
             >
               Remove Selected
             </button>
             <div className="flex-1"></div>
-            <span className="text-gray-400 text-sm">
+            <span className="text-fg-muted text-sm">
               {data.length} templates • Paste from Excel supported
             </span>
           </div>
@@ -412,7 +412,7 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
 
           {/* Error List */}
           {validation && !validation.valid && (
-            <div className="p-4 border-t border-gray-700 max-h-32 overflow-y-auto bg-red-900/20">
+            <div className="p-4 border-t border-line/15 max-h-32 overflow-y-auto bg-red-900/20">
               <h3 className="text-red-400 font-medium mb-2">Validation Errors:</h3>
               <ul className="text-sm text-red-300 space-y-1">
                 {validation.errors.slice(0, 10).map((error, idx) => (
@@ -430,10 +430,10 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
           )}
 
           {/* Footer */}
-          <div className="flex justify-between items-center p-4 border-t border-gray-700">
+          <div className="flex justify-between items-center p-4 border-t border-line/15">
             <button
               onClick={() => setState('upload')}
-              className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+              className="px-4 py-2 text-fg-muted hover:text-white transition-colors"
             >
               ← Back to Upload
             </button>
@@ -443,7 +443,7 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
               className={`px-6 py-2 rounded-lg font-medium transition-colors ${
                 validation?.valid
                   ? 'bg-primary-orange hover:bg-primary-orange/90 text-white'
-                  : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                  : 'bg-bg-hover text-fg-muted cursor-not-allowed'
               }`}
             >
               Upload {validation?.validRows || 0} Templates
@@ -458,10 +458,10 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
   if (state === 'uploading') {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-        <div className="bg-gray-900 border border-gray-700 rounded-xl p-8 text-center">
+        <div className="bg-bg-card border border-line/15 rounded-xl p-8 text-center">
           <div className="animate-spin w-12 h-12 border-4 border-primary-orange border-t-transparent rounded-full mx-auto mb-4"></div>
           <p className="text-white text-lg">Uploading templates...</p>
-          <p className="text-gray-400 text-sm mt-2">This may take a moment</p>
+          <p className="text-fg-muted text-sm mt-2">This may take a moment</p>
         </div>
       </div>
     )
@@ -471,14 +471,14 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
   if (state === 'success') {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-        <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-md mx-4 p-6 text-center">
+        <div className="bg-bg-card border border-line/15 rounded-xl w-full max-w-md mx-4 p-6 text-center">
           <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
           <h2 className="text-xl font-semibold text-white mb-2">Upload Successful!</h2>
-          <p className="text-gray-300 mb-4">
+          <p className="text-fg-secondary mb-4">
             {uploadResult?.created || 0} compliance templates have been created.
           </p>
           {uploadResult?.errors && uploadResult.errors.length > 0 && (
@@ -506,14 +506,14 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
   if (state === 'error') {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-        <div className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-md mx-4 p-6 text-center">
+        <div className="bg-bg-card border border-line/15 rounded-xl w-full max-w-md mx-4 p-6 text-center">
           <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
           <h2 className="text-xl font-semibold text-white mb-2">Upload Failed</h2>
-          <p className="text-gray-300 mb-4">
+          <p className="text-fg-secondary mb-4">
             {uploadResult?.created || 0} templates were created before the error.
           </p>
           {uploadResult?.errors && uploadResult.errors.length > 0 && (
@@ -529,7 +529,7 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
           <div className="flex gap-3 justify-center">
             <button
               onClick={() => setState('editing')}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+              className="px-4 py-2 bg-bg-hover hover:bg-gray-600 text-white rounded-lg transition-colors"
             >
               Back to Editor
             </button>

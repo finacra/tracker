@@ -114,7 +114,7 @@ export default function ReviewIngestModal({ companyId, documentId, onClose, onLi
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[10px] uppercase tracking-wider text-yellow-400">Review pending</span>
               {agent?.confidence != null && (
-                <span className="text-[10px] text-gray-500">
+                <span className="text-[10px] text-fg-muted">
                   · agent confidence {Math.round(agent.confidence * 100)}%
                 </span>
               )}
@@ -123,9 +123,9 @@ export default function ReviewIngestModal({ companyId, documentId, onClose, onLi
               {fileName || 'Document'}
             </h2>
             {agent && (agent.documentType || agent.periodFY || agent.periodKey) && (
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-fg-muted mt-1">
                 Agent suggests:{' '}
-                <span className="text-gray-200">
+                <span className="text-fg-secondary">
                   {agent.documentType || '—'}
                   {agent.periodFY ? ` · FY ${agent.periodFY}` : agent.periodKey ? ` · ${agent.periodKey}` : ''}
                 </span>
@@ -134,7 +134,7 @@ export default function ReviewIngestModal({ companyId, documentId, onClose, onLi
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-white transition-colors flex-shrink-0"
+            className="text-fg-muted hover:text-white transition-colors flex-shrink-0"
             aria-label="Close"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -146,8 +146,8 @@ export default function ReviewIngestModal({ companyId, documentId, onClose, onLi
 
         {/* Reasoning (collapsible if long) */}
         {agent?.reasoning && (
-          <div className="px-6 py-3 border-b border-white/5 text-[12px] text-gray-400 bg-white/[0.02]">
-            <span className="text-gray-500">Reasoning: </span>
+          <div className="px-6 py-3 border-b border-white/5 text-[12px] text-fg-muted bg-white/[0.02]">
+            <span className="text-fg-muted">Reasoning: </span>
             {agent.reasoning}
           </div>
         )}
@@ -159,16 +159,16 @@ export default function ReviewIngestModal({ companyId, documentId, onClose, onLi
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Filter requirements…"
-            className="w-full px-3 py-2 bg-black border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-white/30"
+            className="w-full px-3 py-2 bg-black border border-white/10 rounded-lg text-sm text-white placeholder:text-fg-muted focus:outline-none focus:border-white/30"
           />
         </div>
 
         {/* Candidate list */}
         <div className="flex-1 overflow-y-auto px-2 py-2">
           {loading ? (
-            <div className="px-4 py-6 text-sm text-gray-500">Loading candidates…</div>
+            <div className="px-4 py-6 text-sm text-fg-muted">Loading candidates…</div>
           ) : filtered.length === 0 ? (
-            <div className="px-4 py-6 text-sm text-gray-500">
+            <div className="px-4 py-6 text-sm text-fg-muted">
               {search ? 'No matches.' : 'No candidate requirements found for this company.'}
             </div>
           ) : (
@@ -178,8 +178,8 @@ export default function ReviewIngestModal({ companyId, documentId, onClose, onLi
                 const scoreColor =
                   c.matchScore >= 0.9 ? 'text-green-400' :
                   c.matchScore >= 0.6 ? 'text-blue-400' :
-                  c.matchScore >= 0.4 ? 'text-gray-400' :
-                  'text-gray-600'
+                  c.matchScore >= 0.4 ? 'text-fg-muted' :
+                  'text-fg-muted/60'
                 return (
                   <li key={c.id}>
                     <button
@@ -195,7 +195,7 @@ export default function ReviewIngestModal({ companyId, documentId, onClose, onLi
                           <div className="text-sm text-white truncate" title={c.requirement}>
                             {c.requirement}
                           </div>
-                          <div className="text-[11px] text-gray-500 flex items-center gap-2 mt-0.5">
+                          <div className="text-[11px] text-fg-muted flex items-center gap-2 mt-0.5">
                             {c.category && <span>{c.category}</span>}
                             {c.periodKey && <span>· {c.periodLabel || c.periodKey}</span>}
                             {c.dueDate && <span>· due {c.dueDate}</span>}
@@ -218,20 +218,20 @@ export default function ReviewIngestModal({ companyId, documentId, onClose, onLi
 
         {/* Footer */}
         <div className="px-6 py-3 border-t border-white/10 flex items-center justify-between gap-3">
-          <span className="text-[11px] text-gray-500">
+          <span className="text-[11px] text-fg-muted">
             {pickedId ? 'Press Save to link this document.' : 'Pick a requirement to link this document to.'}
           </span>
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-300 hover:bg-white/5"
+              className="px-3 py-1.5 text-xs rounded-lg border border-white/10 text-fg-secondary hover:bg-white/5"
             >
               Cancel
             </button>
             <button
               onClick={onSave}
               disabled={!pickedId || linking}
-              className="px-4 py-1.5 text-xs rounded-lg bg-white text-black hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-4 py-1.5 text-xs rounded-lg bg-white text-black hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {linking ? 'Linking…' : 'Link'}
             </button>

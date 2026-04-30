@@ -47,14 +47,14 @@ export default function TrackerCalendarView({
   const startingDayOfWeek = firstDay.getDay()
 
   return (
-    <div className="bg-primary-dark-card border border-gray-800 rounded-xl sm:rounded-2xl p-3 sm:p-6">
+    <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl p-3 sm:p-6">
       {/* Calendar Header with Navigation - Stack on Mobile */}
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex-1">
           <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-4">
             <button
               onClick={() => setCalendarYear(calendarYear - 1)}
-              className="p-1.5 sm:p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
+              className="p-1.5 sm:p-2 hover:bg-bg-elevated rounded-lg transition-colors text-fg-muted hover:text-white"
               title="Previous Year"
             >
               <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -71,7 +71,7 @@ export default function TrackerCalendarView({
                   setCalendarMonth(calendarMonth - 1)
                 }
               }}
-              className="p-1.5 sm:p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
+              className="p-1.5 sm:p-2 hover:bg-bg-elevated rounded-lg transition-colors text-fg-muted hover:text-white"
               title="Previous Month"
             >
               <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -90,7 +90,7 @@ export default function TrackerCalendarView({
                   setCalendarMonth(calendarMonth + 1)
                 }
               }}
-              className="p-1.5 sm:p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
+              className="p-1.5 sm:p-2 hover:bg-bg-elevated rounded-lg transition-colors text-fg-muted hover:text-white"
               title="Next Month"
             >
               <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -99,7 +99,7 @@ export default function TrackerCalendarView({
             </button>
             <button
               onClick={() => setCalendarYear(calendarYear + 1)}
-              className="p-1.5 sm:p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 hover:text-white"
+              className="p-1.5 sm:p-2 hover:bg-bg-elevated rounded-lg transition-colors text-fg-muted hover:text-white"
               title="Next Year"
             >
               <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -109,7 +109,7 @@ export default function TrackerCalendarView({
             </button>
           </div>
           {selectedTrackerFY && (
-            <p className="text-gray-400 text-xs sm:text-sm mt-2 text-center sm:text-left">{selectedTrackerFY}</p>
+            <p className="text-fg-muted text-xs sm:text-sm mt-2 text-center sm:text-left">{selectedTrackerFY}</p>
           )}
         </div>
       </div>
@@ -117,7 +117,7 @@ export default function TrackerCalendarView({
       <div className="grid grid-cols-7 gap-1 sm:gap-2">
         {/* Day headers */}
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-          <div key={day} className="text-center text-[10px] sm:text-xs font-medium text-gray-400 py-1 sm:py-2">
+          <div key={day} className="text-center text-[10px] sm:text-xs font-medium text-fg-muted py-1 sm:py-2">
             {day}
           </div>
         ))}
@@ -135,10 +135,10 @@ export default function TrackerCalendarView({
           return (
             <div
               key={day}
-              className={`min-h-[60px] sm:min-h-[120px] border border-gray-700 rounded sm:rounded-lg p-1 sm:p-2 bg-gray-900/50 ${isToday ? 'ring-1 sm:ring-2 ring-white/40' : ''
+              className={`min-h-[60px] sm:min-h-[120px] border border-line/15 rounded sm:rounded-lg p-1 sm:p-2 bg-bg-card/50 ${isToday ? 'ring-1 sm:ring-2 ring-white/40' : ''
                 }`}
             >
-              <div className={`text-xs sm:text-sm mb-1 sm:mb-2 font-medium ${isToday ? 'text-white font-bold' : 'text-gray-300'}`}>
+              <div className={`text-xs sm:text-sm mb-1 sm:mb-2 font-medium ${isToday ? 'text-white font-bold' : 'text-fg-secondary'}`}>
                 {day}
               </div>
               <div className="space-y-1 sm:space-y-1.5 overflow-y-auto max-h-[45px] sm:max-h-[90px]">
@@ -162,17 +162,17 @@ export default function TrackerCalendarView({
                       title={`${req.category} - ${req.requirement}\n${req.description || ''}\nStatus: ${req.status}\nPenalty: ${req.penalty}\nCalculated: ${calculatedPenalty}`}
                     >
                       <div className="font-semibold truncate">{req.requirement}</div>
-                      <div className="text-[8px] sm:text-[10px] text-gray-400 truncate mt-0.5 hidden sm:block">{req.category}</div>
+                      <div className="text-[8px] sm:text-[10px] text-fg-muted truncate mt-0.5 hidden sm:block">{req.category}</div>
                       <div className="flex items-center gap-0.5 sm:gap-1 mt-0.5 sm:mt-1">
                         <span className={`px-1 sm:px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-medium ${req.status === 'completed' ? 'bg-green-500/30 text-green-300' :
                             req.status === 'overdue' ? 'bg-red-500/30 text-red-300' :
                               req.status === 'pending' ? 'bg-yellow-500/30 text-yellow-300' :
-                                'bg-gray-700 text-gray-300'
+                                'bg-bg-hover text-fg-secondary'
                           }`}>
                           {req.status === 'completed' ? '✓' : req.status === 'overdue' ? '!' : req.status === 'pending' ? '⏳' : '○'}
                         </span>
                         {req.compliance_type && (
-                          <span className="text-[8px] sm:text-[10px] text-gray-400 hidden sm:inline">
+                          <span className="text-[8px] sm:text-[10px] text-fg-muted hidden sm:inline">
                             {req.compliance_type.charAt(0).toUpperCase()}
                           </span>
                         )}

@@ -93,7 +93,7 @@ function VerifyEmailContent() {
   return (
     <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
       <div className="max-w-md w-full">
-        <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-8">
+        <div className="bg-bg-card border border-line/10 rounded-xl p-8">
           {success ? (
             <>
               <div className="flex items-center justify-center mb-6">
@@ -116,7 +116,7 @@ function VerifyEmailContent() {
               <h1 className="text-2xl font-bold text-white text-center mb-4">
                 Email Verified!
               </h1>
-              <p className="text-gray-400 text-center mb-6">
+              <p className="text-fg-muted text-center mb-6">
                 {email
                   ? `Your email ${email} has been successfully verified.`
                   : 'Your email has been successfully verified.'}
@@ -152,7 +152,7 @@ function VerifyEmailContent() {
               <h1 className="text-2xl font-bold text-white text-center mb-4">
                 {isVerifying ? 'Verifying Email...' : 'Verify Your Email'}
               </h1>
-              <p className="text-gray-400 text-center mb-6">
+              <p className="text-fg-muted text-center mb-6">
                 {isVerifying
                   ? 'Please wait while we verify your email address...'
                   : "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account."}
@@ -174,7 +174,7 @@ function VerifyEmailContent() {
                 <button
                   onClick={handleResend}
                   disabled={isResending}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg font-medium transition-colors"
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-bg-hover disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg font-medium transition-colors"
                 >
                   {isResending ? 'Sending...' : 'Resend Verification Email'}
                 </button>
@@ -192,7 +192,7 @@ export default function VerifyEmailPage() {
     <Suspense fallback={
       <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
         <div className="max-w-md w-full">
-          <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-8">
+          <div className="bg-bg-card border border-line/10 rounded-xl p-8">
             <div className="flex items-center justify-center mb-6">
               <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center">
                 <svg

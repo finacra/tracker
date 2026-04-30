@@ -102,37 +102,37 @@ export default function TransactionHistory() {
     <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-4">
-          <div className="text-sm text-gray-400 mb-1">Total Transactions</div>
+        <div className="bg-bg-card border border-line/10 rounded-xl p-4">
+          <div className="text-sm text-fg-muted mb-1">Total Transactions</div>
           <div className="text-2xl font-light text-white">{stats.total}</div>
         </div>
-        <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-4">
-          <div className="text-sm text-gray-400 mb-1">Completed</div>
+        <div className="bg-bg-card border border-line/10 rounded-xl p-4">
+          <div className="text-sm text-fg-muted mb-1">Completed</div>
           <div className="text-2xl font-light text-green-400">{stats.completed}</div>
         </div>
-        <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-4">
-          <div className="text-sm text-gray-400 mb-1">Pending</div>
+        <div className="bg-bg-card border border-line/10 rounded-xl p-4">
+          <div className="text-sm text-fg-muted mb-1">Pending</div>
           <div className="text-2xl font-light text-yellow-400">{stats.pending}</div>
         </div>
-        <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-4">
-          <div className="text-sm text-gray-400 mb-1">Failed</div>
+        <div className="bg-bg-card border border-line/10 rounded-xl p-4">
+          <div className="text-sm text-fg-muted mb-1">Failed</div>
           <div className="text-2xl font-light text-red-400">{stats.failed}</div>
         </div>
-        <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-4">
-          <div className="text-sm text-gray-400 mb-1">Total Revenue</div>
+        <div className="bg-bg-card border border-line/10 rounded-xl p-4">
+          <div className="text-sm text-fg-muted mb-1">Total Revenue</div>
           <div className="text-2xl font-light text-primary-orange">{formatCurrency(stats.totalRevenue)}</div>
         </div>
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-4">
+      <div className="bg-bg-card border border-line/10 rounded-xl p-4">
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
           <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-300">Filter:</label>
+            <label className="text-sm font-medium text-fg-secondary">Filter:</label>
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as any)}
-              className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+              className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
             >
               <option value="all">All Status</option>
               <option value="completed">Completed</option>
@@ -142,18 +142,18 @@ export default function TransactionHistory() {
           </div>
 
           <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-300">Sort by:</label>
+            <label className="text-sm font-medium text-fg-secondary">Sort by:</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+              className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
             >
               <option value="date">Date</option>
               <option value="amount">Amount</option>
             </select>
             <button
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white hover:bg-gray-800 transition-colors"
+              className="px-3 py-2 bg-bg-card border border-line/15 rounded-lg text-white hover:bg-bg-elevated transition-colors"
               title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
             >
               {sortOrder === 'asc' ? '↑' : '↓'}
@@ -166,47 +166,47 @@ export default function TransactionHistory() {
               placeholder="Search by Order ID, Payment ID, Email, Company..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+              className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
             />
           </div>
         </div>
       </div>
 
       {/* Transactions Table */}
-      <div className="bg-primary-dark-card border border-gray-800 rounded-xl shadow-2xl overflow-hidden">
-        <div className="p-6 border-b border-gray-800">
+      <div className="bg-bg-card border border-line/10 rounded-xl shadow-2xl overflow-hidden">
+        <div className="p-6 border-b border-line/10">
           <h2 className="text-2xl font-light text-white">Transaction History</h2>
         </div>
         {isLoading ? (
           <div className="p-12 flex flex-col items-center justify-center">
             <div className="w-10 h-10 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-gray-400">Loading transactions...</p>
+            <p className="text-fg-muted">Loading transactions...</p>
           </div>
         ) : filteredPayments.length === 0 ? (
-          <div className="p-12 text-center text-gray-400">
+          <div className="p-12 text-center text-fg-muted">
             No transactions found.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-900 border-b border-gray-800">
+              <thead className="bg-bg-card border-b border-line/10">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Date</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">User</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Company</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Order ID</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Payment ID</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Amount</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Tier</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Billing</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase">Method</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Date</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">User</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Company</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Order ID</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Payment ID</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Amount</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Tier</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Billing</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase">Method</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredPayments.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-gray-900/50 transition-colors border-t border-gray-800">
-                    <td className="px-6 py-4 text-gray-300 text-sm">
+                  <tr key={payment.id} className="hover:bg-bg-card/50 transition-colors border-t border-line/10">
+                    <td className="px-6 py-4 text-fg-secondary text-sm">
                       {formatDate(payment.createdAt)}
                     </td>
                     <td className="px-6 py-4 text-white text-sm">
@@ -214,21 +214,21 @@ export default function TransactionHistory() {
                         {payment.userEmail || payment.userId.substring(0, 8) + '...'}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-300 text-sm">
+                    <td className="px-6 py-4 text-fg-secondary text-sm">
                       {payment.companyName || '-'}
                     </td>
-                    <td className="px-6 py-4 text-gray-300 text-sm font-mono text-xs">
+                    <td className="px-6 py-4 text-fg-secondary text-sm font-mono text-xs">
                       <div className="max-w-[150px] truncate" title={payment.providerOrderId}>
                         {payment.providerOrderId}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-300 text-sm font-mono text-xs">
+                    <td className="px-6 py-4 text-fg-secondary text-sm font-mono text-xs">
                       {payment.providerPaymentId ? (
                         <div className="max-w-[150px] truncate" title={payment.providerPaymentId}>
                           {payment.providerPaymentId}
                         </div>
                       ) : (
-                        <span className="text-gray-500">-</span>
+                        <span className="text-fg-muted">-</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-white font-medium">
@@ -240,7 +240,7 @@ export default function TransactionHistory() {
                           {payment.tier}
                         </span>
                       ) : (
-                        <span className="text-gray-500 text-sm">-</span>
+                        <span className="text-fg-muted text-sm">-</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
@@ -249,7 +249,7 @@ export default function TransactionHistory() {
                           {payment.billingCycle}
                         </span>
                       ) : (
-                        <span className="text-gray-500 text-sm">-</span>
+                        <span className="text-fg-muted text-sm">-</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
@@ -267,7 +267,7 @@ export default function TransactionHistory() {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-gray-300 text-sm">
+                    <td className="px-6 py-4 text-fg-secondary text-sm">
                       {payment.paymentMethod || '-'}
                     </td>
                   </tr>

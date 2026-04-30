@@ -30,13 +30,13 @@ export default function AuthCodeErrorPage() {
         <h1 className="text-4xl font-light text-white mb-4">
           Authentication Error
         </h1>
-        <p className="text-gray-400 mb-8 font-light">
+        <p className="text-fg-muted mb-8 font-light">
           There was an error during authentication. Please try signing in again.
         </p>
         
         <button
           onClick={() => router.push('/')}
-          className="px-8 py-4 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors font-light"
+          className="px-8 py-4 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors font-light"
         >
           Return to Sign In
         </button>

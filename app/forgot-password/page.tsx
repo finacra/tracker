@@ -59,7 +59,7 @@ function ForgotPasswordPageInner() {
           </Link>
           <Link
             href="/login"
-            className="text-sm font-light transition-colors text-gray-300 hover:text-white"
+            className="text-sm font-light transition-colors text-fg-secondary hover:text-white"
           >
             Back to Login
           </Link>
@@ -74,15 +74,15 @@ function ForgotPasswordPageInner() {
             <h1 className="text-4xl md:text-5xl font-light text-white mb-3 text-center tracking-tight">
               Forgot Password
             </h1>
-            <p className="text-gray-400 mb-12 text-center font-light">
+            <p className="text-fg-muted mb-12 text-center font-light">
               Enter your email address and we'll send you a link to reset your password
             </p>
 
             {/* Form */}
-            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-10 w-full">
+            <div className="bg-bg-card border border-line/10 rounded-xl p-10 w-full">
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="email" className="block text-sm font-light text-gray-300 mb-2">
+                  <label htmlFor="email" className="block text-sm font-light text-fg-secondary mb-2">
                     Email
                   </label>
                   <input
@@ -91,7 +91,7 @@ function ForgotPasswordPageInner() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors font-light"
+                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
                     placeholder="your.email@example.com"
                     disabled={isLoading}
                   />
@@ -126,7 +126,7 @@ function ForgotPasswordPageInner() {
               <div className="mt-6 text-center">
                 <Link
                   href="/login"
-                  className="text-sm text-gray-400 hover:text-white transition-colors font-light"
+                  className="text-sm text-fg-muted hover:text-white transition-colors font-light"
                 >
                   ← Back to Login
                 </Link>

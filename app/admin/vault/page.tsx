@@ -405,7 +405,7 @@ export default function VaultManagementPage() {
       return (
         <div key={folder.path}>
           <div
-            className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-gray-800 transition-colors ${
+            className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-bg-elevated transition-colors ${
               isSelected ? 'bg-primary-orange/20 border border-primary-orange/50' : ''
             }`}
             style={{ paddingLeft: `${level * 20 + 8}px` }}
@@ -417,7 +417,7 @@ export default function VaultManagementPage() {
                   e.stopPropagation()
                   toggleFolderExpansion(folder.path)
                 }}
-                className="w-4 h-4 flex items-center justify-center text-gray-400 hover:text-white"
+                className="w-4 h-4 flex items-center justify-center text-fg-muted hover:text-white"
               >
                 {isExpanded ? '▼' : '▶'}
               </button>
@@ -435,7 +435,7 @@ export default function VaultManagementPage() {
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
             </svg>
             <span className="flex-1 text-sm text-white">{folder.name}</span>
-            <span className="text-xs text-gray-500">({folder.documentCount})</span>
+            <span className="text-xs text-fg-muted">({folder.documentCount})</span>
             <div className="flex items-center gap-1">
               <button
                 onClick={(e) => {
@@ -443,7 +443,7 @@ export default function VaultManagementPage() {
                   setEditingFolder(folder)
                   setFolderForm({ name: folder.name, description: '' })
                 }}
-                className="p-1 text-gray-400 hover:text-primary-orange transition-colors"
+                className="p-1 text-fg-muted hover:text-primary-orange transition-colors"
                 title="Edit folder"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -456,7 +456,7 @@ export default function VaultManagementPage() {
                   e.stopPropagation()
                   handleDeleteFolder(folder.path)
                 }}
-                className="p-1 text-gray-400 hover:text-red-400 transition-colors"
+                className="p-1 text-fg-muted hover:text-red-400 transition-colors"
                 title="Delete folder"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -535,13 +535,13 @@ export default function VaultManagementPage() {
       <div className="container mx-auto px-4 py-8 relative z-10">
         <div className="mb-6">
           <h1 className="text-3xl font-light text-white mb-2">Compliance Vault</h1>
-          <p className="text-gray-400">Manage global folder structure and document templates for all companies</p>
+          <p className="text-fg-muted">Manage global folder structure and document templates for all companies</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Folder Tree Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-4">
+            <div className="bg-bg-card border border-line/10 rounded-xl p-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-white">Folders</h2>
                 <button
@@ -559,7 +559,7 @@ export default function VaultManagementPage() {
               {/* Root level button */}
               <button
                 onClick={() => setSelectedFolderPath(null)}
-                className={`w-full flex items-center gap-2 p-2 rounded-lg hover:bg-gray-800 transition-colors mb-2 ${
+                className={`w-full flex items-center gap-2 p-2 rounded-lg hover:bg-bg-elevated transition-colors mb-2 ${
                   selectedFolderPath === null ? 'bg-primary-orange/20 border border-primary-orange/50' : ''
                 }`}
               >
@@ -586,14 +586,14 @@ export default function VaultManagementPage() {
 
           {/* Document Templates List */}
           <div className="lg:col-span-2">
-            <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6">
+            <div className="bg-bg-card border border-line/10 rounded-xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-lg font-semibold text-white">
                     {currentFolderName} Documents
                   </h2>
                   {breadcrumb.length > 0 && (
-                    <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
+                    <div className="flex items-center gap-2 mt-2 text-sm text-fg-muted">
                       {breadcrumb.map((crumb, idx) => (
                         <span key={crumb.path}>
                           {idx > 0 && <span className="mx-1">/</span>}
@@ -635,21 +635,21 @@ export default function VaultManagementPage() {
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2"
-                    className="text-gray-600 mx-auto mb-4"
+                    className="text-fg-muted/60 mx-auto mb-4"
                   >
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                     <polyline points="14 2 14 8 20 8" />
                     <line x1="16" y1="13" x2="8" y2="13" />
                     <line x1="16" y1="17" x2="8" y2="17" />
                   </svg>
-                  <p className="text-gray-400">No document templates in this folder</p>
+                  <p className="text-fg-muted">No document templates in this folder</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {templates.map(template => (
                     <div
                       key={template.id || template.document_name}
-                      className="flex items-center gap-4 p-4 bg-gray-900/50 rounded-lg border border-gray-800 hover:border-gray-700 transition-colors"
+                      className="flex items-center gap-4 p-4 bg-bg-card/50 rounded-lg border border-line/10 hover:border-line/15 transition-colors"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2">
@@ -664,9 +664,9 @@ export default function VaultManagementPage() {
                           )}
                         </div>
                         {template.description && (
-                          <p className="text-sm text-gray-400 truncate mb-2">{template.description}</p>
+                          <p className="text-sm text-fg-muted truncate mb-2">{template.description}</p>
                         )}
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                        <div className="flex items-center gap-4 text-xs text-fg-muted">
                           {template.category && (
                             <span className="px-2 py-0.5 bg-primary-orange/20 text-primary-orange rounded">
                               {template.category}
@@ -686,7 +686,7 @@ export default function VaultManagementPage() {
                               isMandatory: template.is_mandatory,
                             })
                           }}
-                          className="p-2 text-gray-400 hover:text-primary-orange transition-colors"
+                          className="p-2 text-fg-muted hover:text-primary-orange transition-colors"
                           title="Edit"
                         >
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -696,7 +696,7 @@ export default function VaultManagementPage() {
                         </button>
                         <button
                           onClick={() => template.id && handleDeleteTemplate(template.id)}
-                          className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                          className="p-2 text-fg-muted hover:text-red-400 transition-colors"
                           title="Delete"
                         >
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -717,33 +717,33 @@ export default function VaultManagementPage() {
       {/* Create/Edit Folder Modal */}
       {(showCreateFolderModal || editingFolder) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6 w-full max-w-md">
+          <div className="bg-bg-card border border-line/10 rounded-xl p-6 w-full max-w-md">
             <h2 className="text-xl font-semibold text-white mb-4">
               {editingFolder ? 'Edit Folder' : 'Create New Folder'}
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Folder Name</label>
+                <label className="block text-sm font-medium text-fg-secondary mb-2">Folder Name</label>
                 <input
                   type="text"
                   value={folderForm.name}
                   onChange={(e) => setFolderForm({ ...folderForm, name: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                  className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
                   placeholder="Enter folder name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Description (Optional)</label>
+                <label className="block text-sm font-medium text-fg-secondary mb-2">Description (Optional)</label>
                 <textarea
                   value={folderForm.description}
                   onChange={(e) => setFolderForm({ ...folderForm, description: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                  className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
                   placeholder="Enter folder description"
                   rows={3}
                 />
               </div>
               {selectedFolderPath && !editingFolder && (
-                <div className="text-sm text-gray-400">
+                <div className="text-sm text-fg-muted">
                   Creating in: <span className="text-primary-orange">{selectedFolderPath}</span>
                 </div>
               )}
@@ -761,7 +761,7 @@ export default function VaultManagementPage() {
                     setEditingFolder(null)
                     setFolderForm({ name: '', description: '' })
                   }}
-                  className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  className="px-4 py-2 bg-bg-hover text-white rounded-lg hover:bg-gray-600 transition-colors"
                 >
                   Cancel
                 </button>
@@ -774,30 +774,30 @@ export default function VaultManagementPage() {
       {/* Create/Edit Document Template Modal */}
       {(showCreateTemplateModal || editingTemplate) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-primary-dark-card border border-gray-800 rounded-xl p-6 w-full max-w-md">
+          <div className="bg-bg-card border border-line/10 rounded-xl p-6 w-full max-w-md">
             <h2 className="text-xl font-semibold text-white mb-4">
               {editingTemplate ? 'Edit Document Template' : 'Create New Document Template'}
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Document Name</label>
+                <label className="block text-sm font-medium text-fg-secondary mb-2">Document Name</label>
                 <input
                   type="text"
                   value={templateForm.name}
                   onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                  className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
                   placeholder="e.g., GSTR-3B Filed Copy"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Frequency</label>
+                <label className="block text-sm font-medium text-fg-secondary mb-2">Frequency</label>
                   <select
                   value={templateForm.frequency}
                   onChange={(e) => {
                     const value = e.target.value as 'one-time' | 'monthly' | 'quarterly' | 'yearly'
                     setTemplateForm({ ...templateForm, frequency: value })
                   }}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                  className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
                 >
                   <option value="one-time">One-Time</option>
                   <option value="monthly">Monthly</option>
@@ -806,21 +806,21 @@ export default function VaultManagementPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Category (Optional)</label>
+                <label className="block text-sm font-medium text-fg-secondary mb-2">Category (Optional)</label>
                 <input
                   type="text"
                   value={templateForm.category}
                   onChange={(e) => setTemplateForm({ ...templateForm, category: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                  className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
                   placeholder="e.g., GST, Income Tax"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Description (Optional)</label>
+                <label className="block text-sm font-medium text-fg-secondary mb-2">Description (Optional)</label>
                 <textarea
                   value={templateForm.description}
                   onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                  className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
                   placeholder="Enter document description"
                   rows={3}
                 />
@@ -831,14 +831,14 @@ export default function VaultManagementPage() {
                   id="isMandatory"
                   checked={templateForm.isMandatory}
                   onChange={(e) => setTemplateForm({ ...templateForm, isMandatory: e.target.checked })}
-                  className="w-4 h-4 text-primary-orange bg-gray-900 border-gray-700 rounded focus:ring-primary-orange"
+                  className="w-4 h-4 text-primary-orange bg-bg-card border-line/15 rounded focus:ring-primary-orange"
                 />
-                <label htmlFor="isMandatory" className="text-sm text-gray-300">
+                <label htmlFor="isMandatory" className="text-sm text-fg-secondary">
                   Mandatory Document
                 </label>
               </div>
               {selectedFolderPath && (
-                <div className="text-sm text-gray-400">
+                <div className="text-sm text-fg-muted">
                   Creating in: <span className="text-primary-orange">{selectedFolderPath}</span>
                 </div>
               )}
@@ -862,7 +862,7 @@ export default function VaultManagementPage() {
                       isMandatory: false,
                     })
                   }}
-                  className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  className="px-4 py-2 bg-bg-hover text-white rounded-lg hover:bg-gray-600 transition-colors"
                 >
                   Cancel
                 </button>

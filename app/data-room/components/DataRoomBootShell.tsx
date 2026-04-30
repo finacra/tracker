@@ -125,15 +125,15 @@ function TrackerSectionShell({ shellCategories }: { shellCategories: string[] })
               className="h-9 px-3 sm:px-4 rounded-lg border border-white/10 bg-white/[0.03] flex items-center gap-2"
             >
               <div className="w-3 h-3 rounded bg-white/10 animate-pulse" />
-              <span className="text-xs sm:text-sm text-gray-500">{label}</span>
+              <span className="text-xs sm:text-sm text-fg-muted">{label}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Country line */}
-      <div className="text-sm text-gray-500 mb-4">
-        <span className="text-gray-600">Country:</span> India
+      <div className="text-sm text-fg-muted mb-4">
+        <span className="text-fg-muted/60">Country:</span> India
       </div>
 
       {/* Compliance Intelligence panel slot — matches the real panel's
@@ -147,7 +147,7 @@ function TrackerSectionShell({ shellCategories }: { shellCategories: string[] })
             key={label}
             className="h-10 px-3 rounded-lg border border-white/10 bg-white/[0.03] flex items-center gap-2"
           >
-            <span className="text-sm text-gray-500">{label}</span>
+            <span className="text-sm text-fg-muted">{label}</span>
             <div className="w-3 h-3 rounded bg-white/10 animate-pulse" />
           </div>
         ))}
@@ -155,7 +155,7 @@ function TrackerSectionShell({ shellCategories }: { shellCategories: string[] })
 
       {/* Search bar */}
       <div className="h-12 mb-4 rounded-lg border border-white/10 bg-white/[0.03] flex items-center px-4">
-        <span className="text-sm text-gray-600">Search requirements, categories, descriptions…</span>
+        <span className="text-sm text-fg-muted/60">Search requirements, categories, descriptions…</span>
       </div>
 
       {/* Status pills strip */}
@@ -165,7 +165,7 @@ function TrackerSectionShell({ shellCategories }: { shellCategories: string[] })
             key={label}
             className="h-8 px-3 rounded-lg border border-white/10 bg-white/[0.03] flex items-center gap-2 flex-shrink-0"
           >
-            <span className="text-xs text-gray-500">{label}</span>
+            <span className="text-xs text-fg-muted">{label}</span>
             <div className="w-5 h-3 rounded-full bg-white/5 animate-pulse" />
           </div>
         ))}

@@ -27,8 +27,8 @@ export default function EmbeddedPricing() {
             onClick={() => setSelectedBillingCycle(cycle.value)}
             className={`px-4 py-2 rounded-lg font-light text-sm transition-all whitespace-nowrap ${
               selectedBillingCycle === cycle.value
-                ? 'bg-gray-800 text-white border border-gray-700'
-                : 'bg-transparent text-gray-400 border border-gray-800 hover:border-gray-700 hover:text-gray-300'
+                ? 'bg-bg-elevated text-white border border-line/15'
+                : 'bg-transparent text-fg-muted border border-line/10 hover:border-line/15 hover:text-fg-secondary'
             }`}
           >
             {cycle.label}
@@ -47,12 +47,12 @@ export default function EmbeddedPricing() {
           return (
             <div
               key={tier.id}
-              className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-10 flex flex-col h-full"
+              className="bg-bg-card border border-line/10 rounded-xl p-10 flex flex-col h-full"
             >
               {/* Tier Header */}
               <div className="mb-6">
                 <h3 className="text-3xl font-light text-white mb-4">{tier.name}</h3>
-                <p className="text-gray-400 mb-6 font-light text-lg">{tier.description}</p>
+                <p className="text-fg-muted mb-6 font-light text-lg">{tier.description}</p>
                 
                 {/* Price - Only show for non-enterprise plans */}
                 {/* Use min-height to ensure consistent spacing */}
@@ -64,18 +64,18 @@ export default function EmbeddedPricing() {
                           {formatPrice(selectedPricing.price)}
                         </span>
                         {selectedBillingCycle !== 'monthly' && (
-                          <span className="text-gray-500 text-sm font-light">
+                          <span className="text-fg-muted text-sm font-light">
                             /{selectedBillingCycle === 'quarterly' ? 'quarter' : selectedBillingCycle === 'half-yearly' ? '6 months' : 'year'}
                           </span>
                         )}
                       </div>
                       {selectedBillingCycle !== 'monthly' && (
                         <div className="mt-2">
-                          <span className="text-gray-400 text-sm font-light">
+                          <span className="text-fg-muted text-sm font-light">
                             {formatPrice(selectedPricing.effectiveMonthly)}/month
                           </span>
                           {selectedPricing.savings && (
-                            <span className="ml-2 text-gray-500 text-sm font-light">
+                            <span className="ml-2 text-fg-muted text-sm font-light">
                               Save {formatPrice(selectedPricing.savings)}
                             </span>
                           )}
@@ -83,7 +83,7 @@ export default function EmbeddedPricing() {
                       )}
                       {selectedPricing.discount > 0 && (
                         <div className="mt-1">
-                          <span className="text-gray-500 text-sm font-light">
+                          <span className="text-fg-muted text-sm font-light">
                             {selectedPricing.discount}% discount
                           </span>
                         </div>
@@ -91,7 +91,7 @@ export default function EmbeddedPricing() {
                     </>
                   ) : (
                     <div className="flex items-center" style={{ minHeight: '120px' }}>
-                      <p className="text-gray-400 text-sm font-light">
+                      <p className="text-fg-muted text-sm font-light">
                         Custom pricing discussed on call
                       </p>
                     </div>
@@ -100,58 +100,58 @@ export default function EmbeddedPricing() {
               </div>
 
               {/* Features */}
-              <ul className="space-y-4 text-gray-300 mb-8 font-light flex-grow">
+              <ul className="space-y-4 text-fg-secondary mb-8 font-light flex-grow">
                 {tier.id === 'starter' ? (
                   <>
                     <li className="flex items-start">
-                      <span className="text-gray-500 mr-3">•</span>
+                      <span className="text-fg-muted mr-3">•</span>
                       <span>Limited reports</span>
                     </li>
                     <li className="flex items-start">
-                      <span className="text-gray-500 mr-3">•</span>
+                      <span className="text-fg-muted mr-3">•</span>
                       <span>Up to 3 team members</span>
                     </li>
                     <li className="flex items-start">
-                      <span className="text-gray-500 mr-3">•</span>
+                      <span className="text-fg-muted mr-3">•</span>
                       <span>Compliance tracking access</span>
                     </li>
                     <li className="flex items-start">
-                      <span className="text-gray-500 mr-3">•</span>
+                      <span className="text-fg-muted mr-3">•</span>
                       <span>Basic CIN/DIN verification</span>
                     </li>
                     <li className="flex items-start">
-                      <span className="text-gray-500 mr-3">•</span>
+                      <span className="text-fg-muted mr-3">•</span>
                       <span>Document storage (10GB)</span>
                     </li>
                     <li className="flex items-start">
-                      <span className="text-gray-500 mr-3">•</span>
+                      <span className="text-fg-muted mr-3">•</span>
                       <span>Email support</span>
                     </li>
                   </>
                 ) : (
                   <>
                     <li className="flex items-start">
-                      <span className="text-gray-500 mr-3">•</span>
+                      <span className="text-fg-muted mr-3">•</span>
                       <span>Custom pricing</span>
                     </li>
                     <li className="flex items-start">
-                      <span className="text-gray-500 mr-3">•</span>
+                      <span className="text-fg-muted mr-3">•</span>
                       <span>Multiple company access (up to 100)</span>
                     </li>
                     <li className="flex items-start">
-                      <span className="text-gray-500 mr-3">•</span>
+                      <span className="text-fg-muted mr-3">•</span>
                       <span>Advanced reporting (coming soon)</span>
                     </li>
                     <li className="flex items-start">
-                      <span className="text-gray-500 mr-3">•</span>
+                      <span className="text-fg-muted mr-3">•</span>
                       <span>Large teams & structured permissions</span>
                     </li>
                     <li className="flex items-start">
-                      <span className="text-gray-500 mr-3">•</span>
+                      <span className="text-fg-muted mr-3">•</span>
                       <span>24/7 priority support</span>
                     </li>
                     <li className="flex items-start">
-                      <span className="text-gray-500 mr-3">•</span>
+                      <span className="text-fg-muted mr-3">•</span>
                       <span>Dedicated account manager</span>
                     </li>
                   </>
@@ -163,14 +163,14 @@ export default function EmbeddedPricing() {
                 {tier.id === 'enterprise' ? (
                   <Link
                     href="/contact?plan=enterprise&source=pricing"
-                    className="block w-full px-6 py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-center font-light"
+                    className="block w-full px-6 py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors text-center font-light"
                   >
                     Contact Sales Team
                   </Link>
                 ) : (
                   <Link
                     href={`/pricing?plan=${tier.id}&billing=${selectedBillingCycle}`}
-                    className="block w-full px-6 py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-center font-light"
+                    className="block w-full px-6 py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors text-center font-light"
                   >
                     Get Started
                   </Link>

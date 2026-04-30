@@ -64,7 +64,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
 
   const getSubscriptionStatus = (sub: UserSubscription | null): { label: string; color: string; isActive: boolean; isTrial: boolean; isPaid: boolean } => {
     if (!sub) {
-      return { label: 'No Subscription', color: 'bg-gray-800 text-gray-400 border-gray-700', isActive: false, isTrial: false, isPaid: false }
+      return { label: 'No Subscription', color: 'bg-bg-elevated text-fg-muted border-line/15', isActive: false, isTrial: false, isPaid: false }
     }
 
     const now = new Date()
@@ -86,7 +86,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
     const colors: { [key: string]: string } = {
       'admin': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
       'editor': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-      'viewer': 'bg-gray-700 text-gray-300 border-gray-600',
+      'viewer': 'bg-bg-hover text-fg-secondary border-line/30',
       'superadmin': 'bg-red-500/20 text-red-400 border-red-500/30',
     }
     return colors[role] || colors['viewer']
@@ -138,9 +138,9 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
 
   if (isLoading) {
     return (
-      <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl p-12 flex flex-col items-center justify-center">
+      <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-12 flex flex-col items-center justify-center">
         <div className="w-10 h-10 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-gray-400">Loading all users...</p>
+        <p className="text-fg-muted">Loading all users...</p>
       </div>
     )
   }
@@ -173,13 +173,13 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-light text-white mb-1">All Users</h2>
-          <p className="text-gray-400 text-sm">View all users in the system with their companies and subscription status</p>
+          <p className="text-fg-muted text-sm">View all users in the system with their companies and subscription status</p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
           {/* Search */}
           <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
@@ -187,7 +187,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
               placeholder="Search by email, ID or company..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange w-72"
+              className="pl-10 pr-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange w-72"
             />
           </div>
 
@@ -195,7 +195,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as any)}
-            className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange"
+            className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange"
           >
             <option value="all">All Users</option>
             <option value="owners">Company Owners</option>
@@ -207,7 +207,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
           {/* Refresh */}
           <button
             onClick={loadAllUsers}
-            className="p-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-400 hover:text-white hover:border-gray-600 transition-colors"
+            className="p-2 bg-bg-elevated border border-line/15 rounded-lg text-fg-muted hover:text-white hover:border-line/30 transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -218,10 +218,10 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
+        <div className="bg-bg-card/50 border border-line/10 rounded-xl p-4">
           <div className="text-2xl font-bold text-white">{users.length}</div>
-          <div className="text-xs text-gray-400">Total Users</div>
-          <div className="text-[10px] text-gray-500 mt-1">All registered users</div>
+          <div className="text-xs text-fg-muted">Total Users</div>
+          <div className="text-[10px] text-fg-muted mt-1">All registered users</div>
         </div>
         <div className="bg-primary-orange/10 border border-primary-orange/30 rounded-xl p-4">
           <div className="text-2xl font-bold text-primary-orange">{totalOwners}</div>
@@ -251,49 +251,49 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
 
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-4 text-xs">
-        <span className="text-gray-400">Status Legend:</span>
+        <span className="text-fg-muted">Status Legend:</span>
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-green-400"></span>
-          <span className="text-gray-300">Paid Subscriber</span>
+          <span className="text-fg-secondary">Paid Subscriber</span>
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
-          <span className="text-gray-300">Active Trial</span>
+          <span className="text-fg-secondary">Active Trial</span>
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-red-400"></span>
-          <span className="text-gray-300">Expired</span>
+          <span className="text-fg-secondary">Expired</span>
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-gray-500"></span>
-          <span className="text-gray-300">No Subscription</span>
+          <span className="text-fg-secondary">No Subscription</span>
         </span>
       </div>
 
       {/* Users List */}
-      <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl overflow-hidden">
         {filteredUsers.length === 0 ? (
-          <div className="px-6 py-12 text-center text-gray-400">
+          <div className="px-6 py-12 text-center text-fg-muted">
             No users found matching your criteria.
           </div>
         ) : (
-          <div className="divide-y divide-gray-800">
+          <div className="divide-y divide-line/10">
             {filteredUsers.map((user) => {
               const status = getSubscriptionStatus(user.subscription)
               const isExpanded = expandedUser === user.id
               
               return (
-                <div key={user.id} className="bg-primary-dark-card">
+                <div key={user.id} className="bg-bg-card">
                   {/* User Row */}
                   <div 
-                    className={`px-6 py-4 hover:bg-gray-900/50 transition-colors cursor-pointer ${isExpanded ? 'bg-gray-900/30' : ''}`}
+                    className={`px-6 py-4 hover:bg-bg-card/50 transition-colors cursor-pointer ${isExpanded ? 'bg-bg-card/30' : ''}`}
                     onClick={() => setExpandedUser(isExpanded ? null : user.id)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         {/* Expand Icon */}
                         <svg 
-                          className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} 
+                          className={`w-5 h-5 text-fg-muted transition-transform ${isExpanded ? 'rotate-90' : ''}`} 
                           fill="none" 
                           stroke="currentColor" 
                           viewBox="0 0 24 24"
@@ -302,8 +302,8 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
                         </svg>
                         
                         {/* User Info */}
-                        <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
-                          <span className="text-gray-300 text-sm font-bold">
+                        <div className="w-10 h-10 bg-bg-hover rounded-full flex items-center justify-center">
+                          <span className="text-fg-secondary text-sm font-bold">
                             {user.email.includes('@') ? user.email.charAt(0).toUpperCase() : 'U'}
                           </span>
                         </div>
@@ -311,7 +311,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
                           <div className="text-white font-medium">
                             {user.email.includes('@') ? user.email : `User ${user.id.substring(0, 8)}...`}
                           </div>
-                          <div className="text-gray-500 text-xs flex items-center gap-2">
+                          <div className="text-fg-muted text-xs flex items-center gap-2">
                             {user.companies_owned.length > 0 && (
                               <span className="flex items-center gap-1">
                                 <span className="w-2 h-2 bg-primary-orange rounded-full"></span>
@@ -325,7 +325,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
                               </span>
                             )}
                             {user.companies_owned.length === 0 && user.team_memberships.length === 0 && (
-                              <span className="text-gray-600">No company associations</span>
+                              <span className="text-fg-muted/60">No company associations</span>
                             )}
                           </div>
                         </div>
@@ -342,7 +342,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
                             Team Member
                           </span>
                         ) : (
-                          <span className="px-2 py-1 rounded text-xs font-medium bg-gray-800 text-gray-500 border border-gray-700">
+                          <span className="px-2 py-1 rounded text-xs font-medium bg-bg-elevated text-fg-muted border border-line/15">
                             User
                           </span>
                         )}
@@ -353,7 +353,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
                         </span>
                         
                         {/* Last Sign In */}
-                        <div className="text-gray-500 text-xs w-28 text-right hidden md:block">
+                        <div className="text-fg-muted text-xs w-28 text-right hidden md:block">
                           {user.last_sign_in_at ? formatDate(user.last_sign_in_at) : 'Never'}
                         </div>
                       </div>
@@ -362,23 +362,23 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
 
                   {/* Expanded Details */}
                   {isExpanded && (
-                    <div className="bg-gray-900/20 border-t border-gray-800/50 px-6 py-4">
+                    <div className="bg-bg-card/20 border-t border-line/10/50 px-6 py-4">
                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* User Info */}
                         <div className="space-y-4">
                           <div>
-                            <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">User Information</h4>
+                            <h4 className="text-xs font-medium text-fg-muted uppercase tracking-wider mb-2">User Information</h4>
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
-                                <span className="text-gray-500">User ID:</span>
+                                <span className="text-fg-muted">User ID:</span>
                                 <span className="text-white font-mono text-xs">{user.id.substring(0, 16)}...</span>
                               </div>
                               <div className="flex justify-between">
-                                <span className="text-gray-500">Created:</span>
+                                <span className="text-fg-muted">Created:</span>
                                 <span className="text-white">{formatDate(user.created_at)}</span>
                               </div>
                               <div className="flex justify-between">
-                                <span className="text-gray-500">Last Sign In:</span>
+                                <span className="text-fg-muted">Last Sign In:</span>
                                 <span className="text-white">{formatDateTime(user.last_sign_in_at)}</span>
                               </div>
                             </div>
@@ -388,17 +388,17 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
                         {/* Companies Owned */}
                         <div className="space-y-4">
                           <div>
-                            <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
+                            <h4 className="text-xs font-medium text-fg-muted uppercase tracking-wider mb-2">
                               Companies Owned ({user.companies_owned.length})
                             </h4>
                             {user.companies_owned.length === 0 ? (
-                              <p className="text-sm text-gray-500">No companies owned</p>
+                              <p className="text-sm text-fg-muted">No companies owned</p>
                             ) : (
                               <div className="space-y-2">
                                 {user.companies_owned.map(company => (
                                   <div 
                                     key={company.id} 
-                                    className="flex items-center gap-2 p-2 bg-gray-800/30 rounded-lg overflow-hidden"
+                                    className="flex items-center gap-2 p-2 bg-bg-elevated/30 rounded-lg overflow-hidden"
                                   >
                                     <div className="w-6 h-6 bg-primary-orange/20 rounded flex-shrink-0 flex items-center justify-center">
                                       <svg className="w-3 h-3 text-primary-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -407,7 +407,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
                                     </div>
                                     <div className="flex-1 min-w-0 overflow-hidden">
                                       <div className="text-white text-sm font-medium truncate">{company.name}</div>
-                                      <div className="text-gray-500 text-xs">{company.type}</div>
+                                      <div className="text-fg-muted text-xs">{company.type}</div>
                                     </div>
                                   </div>
                                 ))}
@@ -417,17 +417,17 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
 
                           {/* Team Memberships */}
                           <div>
-                            <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">
+                            <h4 className="text-xs font-medium text-fg-muted uppercase tracking-wider mb-2">
                               Team Memberships ({user.team_memberships.length})
                             </h4>
                             {user.team_memberships.length === 0 ? (
-                              <p className="text-sm text-gray-500">Not a team member in any company</p>
+                              <p className="text-sm text-fg-muted">Not a team member in any company</p>
                             ) : (
                               <div className="space-y-2">
                                 {user.team_memberships.map((membership, idx) => (
                                   <div 
                                     key={idx} 
-                                    className="flex items-center gap-2 p-2 bg-gray-800/30 rounded-lg"
+                                    className="flex items-center gap-2 p-2 bg-bg-elevated/30 rounded-lg"
                                   >
                                     <div className="w-6 h-6 bg-blue-500/20 rounded flex-shrink-0 flex items-center justify-center">
                                       <svg className="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -447,47 +447,47 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
 
                         {/* Subscription Details */}
                         <div>
-                          <h4 className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Subscription Details</h4>
+                          <h4 className="text-xs font-medium text-fg-muted uppercase tracking-wider mb-2">Subscription Details</h4>
                           {user.subscription ? (
-                            <div className="p-4 bg-gray-800/30 rounded-lg space-y-3">
+                            <div className="p-4 bg-bg-elevated/30 rounded-lg space-y-3">
                               <div className="flex items-center justify-between">
-                                <span className="text-gray-500 text-sm">Status:</span>
+                                <span className="text-fg-muted text-sm">Status:</span>
                                 <span className={`px-2 py-1 rounded text-xs font-medium border ${status.color}`}>
                                   {status.label}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between">
-                                <span className="text-gray-500 text-sm">Plan:</span>
+                                <span className="text-fg-muted text-sm">Plan:</span>
                                 <span className="text-white text-sm font-medium">
                                   {user.subscription.tier.charAt(0).toUpperCase() + user.subscription.tier.slice(1)}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between">
-                                <span className="text-gray-500 text-sm">Billing Cycle:</span>
+                                <span className="text-fg-muted text-sm">Billing Cycle:</span>
                                 <span className="text-white text-sm">
                                   {user.subscription.billing_cycle.charAt(0).toUpperCase() + user.subscription.billing_cycle.slice(1)}
                                 </span>
                               </div>
                               {user.subscription.amount > 0 && (
                                 <div className="flex items-center justify-between">
-                                  <span className="text-gray-500 text-sm">Amount:</span>
+                                  <span className="text-fg-muted text-sm">Amount:</span>
                                   <span className="text-white text-sm">
                                     {user.subscription.currency === 'INR' ? '₹' : '$'}{user.subscription.amount.toLocaleString()}
                                   </span>
                                 </div>
                               )}
                               <div className="flex items-center justify-between">
-                                <span className="text-gray-500 text-sm">Is Trial:</span>
+                                <span className="text-fg-muted text-sm">Is Trial:</span>
                                 <span className="text-white text-sm">{user.subscription.is_trial ? 'Yes' : 'No'}</span>
                               </div>
                               {user.subscription.is_trial && user.subscription.trial_started_at && (
                                 <div className="flex items-center justify-between">
-                                  <span className="text-gray-500 text-sm">Trial Started:</span>
+                                  <span className="text-fg-muted text-sm">Trial Started:</span>
                                   <span className="text-white text-sm">{formatDate(user.subscription.trial_started_at)}</span>
                                 </div>
                               )}
                               <div className="flex items-center justify-between">
-                                <span className="text-gray-500 text-sm">
+                                <span className="text-fg-muted text-sm">
                                   {user.subscription.is_trial ? 'Trial Ends:' : 'Expires:'}
                                 </span>
                                 <span className={`text-sm font-medium ${
@@ -497,19 +497,19 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
                                 </span>
                               </div>
                               <div className="flex items-center justify-between">
-                                <span className="text-gray-500 text-sm">Created:</span>
+                                <span className="text-fg-muted text-sm">Created:</span>
                                 <span className="text-white text-sm">{formatDate(user.subscription.created_at)}</span>
                               </div>
                             </div>
                           ) : (
-                            <div className="p-4 bg-gray-800/30 rounded-lg text-center">
-                              <div className="w-12 h-12 mx-auto bg-gray-700/50 rounded-full flex items-center justify-center mb-3">
-                                <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="p-4 bg-bg-elevated/30 rounded-lg text-center">
+                              <div className="w-12 h-12 mx-auto bg-bg-hover/50 rounded-full flex items-center justify-center mb-3">
+                                <svg className="w-6 h-6 text-fg-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                                 </svg>
                               </div>
-                              <p className="text-gray-400 text-sm">No subscription</p>
-                              <p className="text-gray-500 text-xs mt-1">
+                              <p className="text-fg-muted text-sm">No subscription</p>
+                              <p className="text-fg-muted text-xs mt-1">
                                 {user.team_memberships.length > 0 
                                   ? 'Access through team membership only'
                                   : 'User has no active plan'

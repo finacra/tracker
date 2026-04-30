@@ -350,7 +350,7 @@ function ManageCompanyPageInner() {
       <div className="relative z-10 container mx-auto px-4 py-8 sm:py-12 max-w-4xl">
         <div className="mb-10">
           <div className="flex items-center gap-4 mb-2">
-            <div className="w-12 h-12 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center">
+            <div className="w-12 h-12 bg-bg-elevated border border-line/15 rounded-lg flex items-center justify-center">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
@@ -358,39 +358,39 @@ function ManageCompanyPageInner() {
             </div>
             <div>
               <h1 className="text-3xl font-light text-white">Manage Company</h1>
-              <p className="text-gray-400 text-sm font-light mt-1">Edit your company profile and compliance details</p>
+              <p className="text-fg-muted text-sm font-light mt-1">Edit your company profile and compliance details</p>
             </div>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-6 sm:p-10">
+        <form onSubmit={handleSubmit} className="bg-bg-card border border-line/10 rounded-xl p-6 sm:p-10">
           <div className="space-y-6">
             {/* Basic Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">Company Name</label>
+                <label className="block text-xs text-fg-muted uppercase tracking-wider font-light mb-2">Company Name</label>
                 <input
                   type="text"
                   name="companyName"
                   value={formData.companyName}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">
+                <label className="block text-xs text-fg-muted uppercase tracking-wider font-light mb-2">
                   {countryConfig.labels.registrationId} (ReadOnly)
                 </label>
                 <input
                   type="text"
                   value={formData.cinNumber}
                   readOnly
-                  className="w-full px-4 py-3 bg-gray-900/50 border border-gray-800 rounded-lg text-gray-500 cursor-not-allowed font-light"
+                  className="w-full px-4 py-3 bg-bg-card/50 border border-line/10 rounded-lg text-fg-muted cursor-not-allowed font-light"
                 />
 
                 {/* NIC Classification Card */}
                 {cinParsed && (
-                  <div className="mt-3 p-3 sm:p-4 bg-gray-900/80 border border-gray-700 rounded-lg space-y-2">
+                  <div className="mt-3 p-3 sm:p-4 bg-bg-card/80 border border-line/15 rounded-lg space-y-2">
                     <div className="flex items-center gap-2 mb-2">
                       <svg width="14" height="14" className="sm:w-4 sm:h-4 text-emerald-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
@@ -400,40 +400,40 @@ function ManageCompanyPageInner() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs sm:text-sm">
-                      <div className="text-gray-500">Listing Status</div>
-                      <div className="text-gray-200">{cinParsed.isListed ? 'Listed' : 'Unlisted'}</div>
+                      <div className="text-fg-muted">Listing Status</div>
+                      <div className="text-fg-secondary">{cinParsed.isListed ? 'Listed' : 'Unlisted'}</div>
 
-                      <div className="text-gray-500">State of Registration</div>
-                      <div className="text-gray-200">{cinParsed.stateName || cinParsed.stateCode || '—'}</div>
+                      <div className="text-fg-muted">State of Registration</div>
+                      <div className="text-fg-secondary">{cinParsed.stateName || cinParsed.stateCode || '—'}</div>
 
-                      <div className="text-gray-500">Year of Incorporation</div>
-                      <div className="text-gray-200">{cinParsed.yearOfIncorporation || '—'}</div>
+                      <div className="text-fg-muted">Year of Incorporation</div>
+                      <div className="text-fg-secondary">{cinParsed.yearOfIncorporation || '—'}</div>
 
-                      <div className="text-gray-500">Company Type</div>
-                      <div className="text-gray-200">{cinParsed.companyTypeName || cinParsed.companyTypeCode || '—'}</div>
+                      <div className="text-fg-muted">Company Type</div>
+                      <div className="text-fg-secondary">{cinParsed.companyTypeName || cinParsed.companyTypeCode || '—'}</div>
                     </div>
 
                     {cinParsed.nicDetails && (
                       <>
-                        <div className="border-t border-gray-700/60 my-2"></div>
+                        <div className="border-t border-line/15/60 my-2"></div>
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs sm:text-sm font-medium text-gray-300">Industry Classification (NIC 2008)</span>
+                          <span className="text-xs sm:text-sm font-medium text-fg-secondary">Industry Classification (NIC 2008)</span>
                         </div>
                         <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs sm:text-sm">
-                          <span className="text-gray-500">Section</span>
-                          <span className="text-gray-200">{cinParsed.nicDetails.section} — {cinParsed.nicDetails.sectionName}</span>
+                          <span className="text-fg-muted">Section</span>
+                          <span className="text-fg-secondary">{cinParsed.nicDetails.section} — {cinParsed.nicDetails.sectionName}</span>
 
-                          <span className="text-gray-500">Division</span>
-                          <span className="text-gray-200">{cinParsed.nicDetails.divisionCode} — {cinParsed.nicDetails.divisionName}</span>
+                          <span className="text-fg-muted">Division</span>
+                          <span className="text-fg-secondary">{cinParsed.nicDetails.divisionCode} — {cinParsed.nicDetails.divisionName}</span>
 
-                          <span className="text-gray-500">Group</span>
-                          <span className="text-gray-200">{cinParsed.nicDetails.groupCode} — {cinParsed.nicDetails.groupName}</span>
+                          <span className="text-fg-muted">Group</span>
+                          <span className="text-fg-secondary">{cinParsed.nicDetails.groupCode} — {cinParsed.nicDetails.groupName}</span>
 
-                          <span className="text-gray-500">Class</span>
-                          <span className="text-gray-200">{cinParsed.nicDetails.classCode} — {cinParsed.nicDetails.className}</span>
+                          <span className="text-fg-muted">Class</span>
+                          <span className="text-fg-secondary">{cinParsed.nicDetails.classCode} — {cinParsed.nicDetails.className}</span>
 
-                          <span className="text-gray-500">Sub-class</span>
-                          <span className="text-gray-200">{cinParsed.nicDetails.code} — {cinParsed.nicDetails.description}</span>
+                          <span className="text-fg-muted">Sub-class</span>
+                          <span className="text-fg-secondary">{cinParsed.nicDetails.code} — {cinParsed.nicDetails.description}</span>
                         </div>
                       </>
                     )}
@@ -454,7 +454,7 @@ function ManageCompanyPageInner() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">
+                <label className="block text-xs text-fg-muted uppercase tracking-wider font-light mb-2">
                   {countryConfig.labels.taxId}
                   {countryCode === 'IN' && <span className="text-red-400 ml-1">*</span>}
                 </label>
@@ -464,60 +464,60 @@ function ManageCompanyPageInner() {
                   value={formData.panNumber}
                   onChange={handleInputChange}
                   required={countryCode === 'IN'}
-                  className={`w-full px-4 py-3 bg-gray-900 border rounded-lg text-white font-light focus:outline-none focus:ring-1 transition-colors ${
+                  className={`w-full px-4 py-3 bg-bg-card border rounded-lg text-white font-light focus:outline-none focus:ring-1 transition-colors ${
                     !formData.panNumber.trim() && countryCode === 'IN'
                       ? 'border-amber-500/60 focus:border-amber-400 focus:ring-amber-400'
-                      : 'border-gray-700 focus:border-gray-600 focus:ring-gray-600'
+                      : 'border-line/15 focus:border-line/30 focus:ring-gray-600'
                   }`}
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">Phone Number</label>
+                <label className="block text-xs text-fg-muted uppercase tracking-wider font-light mb-2">Phone Number</label>
                 <input
                   type="tel"
                   name="phoneNumber"
                   value={formData.phoneNumber}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                 />
               </div>
             </div>
 
             {/* Address Info */}
             <div>
-              <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">Address</label>
+              <label className="block text-xs text-fg-muted uppercase tracking-wider font-light mb-2">Address</label>
               <textarea
                 name="address"
                 value={formData.address}
                 onChange={handleInputChange}
                 rows={3}
-                className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">City</label>
+                <label className="block text-xs text-fg-muted uppercase tracking-wider font-light mb-2">City</label>
                 <input
                   type="text"
                   name="city"
                   value={formData.city}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">State</label>
+                <label className="block text-xs text-fg-muted uppercase tracking-wider font-light mb-2">State</label>
                 <input
                   type="text"
                   name="state"
                   value={formData.state}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">
+                <label className="block text-xs text-fg-muted uppercase tracking-wider font-light mb-2">
                   {countryConfig.labels.postalCode}
                 </label>
                 <input
@@ -525,27 +525,27 @@ function ManageCompanyPageInner() {
                   name="pinCode"
                   value={formData.pinCode}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                 />
               </div>
             </div>
 
             {/* Industry Categories */}
             <div>
-              <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-3">Category of Industry</label>
+              <label className="block text-xs text-fg-muted uppercase tracking-wider font-light mb-3">Category of Industry</label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {INDUSTRY_CATEGORIES.map((category) => (
                   <label
                     key={category}
-                    className="flex items-center gap-3 p-3 bg-gray-900 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600 transition-colors"
+                    className="flex items-center gap-3 p-3 bg-bg-card border border-line/15 rounded-lg cursor-pointer hover:border-line/30 transition-colors"
                   >
                     <input
                       type="checkbox"
                       checked={formData.industryCategories.includes(category)}
                       onChange={() => handleIndustryCategoryChange(category)}
-                      className="w-4 h-4 text-gray-400 bg-gray-800 border-gray-600 rounded focus:ring-gray-500 focus:ring-2"
+                      className="w-4 h-4 text-fg-muted bg-bg-elevated border-line/30 rounded focus:ring-gray-500 focus:ring-2"
                     />
-                    <span className="text-gray-300 text-sm font-light">{category}</span>
+                    <span className="text-fg-secondary text-sm font-light">{category}</span>
                   </label>
                 ))}
               </div>
@@ -553,16 +553,16 @@ function ManageCompanyPageInner() {
 
             {/* ── Compliance Profile (for Rules Engine) ── */}
             {countryCode === 'IN' && (
-              <div className="border border-gray-700/50 rounded-xl p-5 bg-gray-900/30 space-y-5">
+              <div className="border border-line/15/50 rounded-xl p-5 bg-bg-card/30 space-y-5">
                 <div>
                   <h4 className="text-white font-medium text-sm mb-1">Compliance Profile</h4>
-                  <p className="text-gray-500 text-xs">These fields help determine which regulatory compliances apply to your company. The more you fill, the more accurate the compliance tracker becomes.</p>
+                  <p className="text-fg-muted text-xs">These fields help determine which regulatory compliances apply to your company. The more you fill, the more accurate the compliance tracker becomes.</p>
                 </div>
 
                 {/* Row 1: Employee Count + Annual Turnover */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">Employee Count</label>
+                    <label className="block text-xs text-fg-muted uppercase tracking-wider font-light mb-2">Employee Count</label>
                     <input
                       type="number"
                       name="employeeCount"
@@ -570,12 +570,12 @@ function ManageCompanyPageInner() {
                       onChange={handleInputChange}
                       placeholder="e.g. 25"
                       min="0"
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                     />
-                    <p className="text-gray-600 text-[10px] mt-1">Determines PF (20+), ESI (10+), POSH (10+), Gratuity (10+)</p>
+                    <p className="text-fg-muted/60 text-[10px] mt-1">Determines PF (20+), ESI (10+), POSH (10+), Gratuity (10+)</p>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">Annual Turnover (in Lakhs ₹)</label>
+                    <label className="block text-xs text-fg-muted uppercase tracking-wider font-light mb-2">Annual Turnover (in Lakhs ₹)</label>
                     <input
                       type="number"
                       name="annualTurnover"
@@ -584,16 +584,16 @@ function ManageCompanyPageInner() {
                       placeholder="e.g. 500 for ₹5 Crore"
                       min="0"
                       step="0.01"
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                     />
-                    <p className="text-gray-600 text-[10px] mt-1">Determines Tax Audit (100L+), E-Invoicing (500L+), GST Audit (500L+)</p>
+                    <p className="text-fg-muted/60 text-[10px] mt-1">Determines Tax Audit (100L+), E-Invoicing (500L+), GST Audit (500L+)</p>
                   </div>
                 </div>
 
                 {/* Row 2: Net Worth + GST */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">Net Worth (in Crores ₹)</label>
+                    <label className="block text-xs text-fg-muted uppercase tracking-wider font-light mb-2">Net Worth (in Crores ₹)</label>
                     <input
                       type="number"
                       name="netWorth"
@@ -602,12 +602,12 @@ function ManageCompanyPageInner() {
                       placeholder="e.g. 10"
                       min="0"
                       step="0.01"
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                     />
-                    <p className="text-gray-600 text-[10px] mt-1">Determines CSR (500Cr+), CARO thresholds</p>
+                    <p className="text-fg-muted/60 text-[10px] mt-1">Determines CSR (500Cr+), CARO thresholds</p>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">GSTINs</label>
+                    <label className="block text-xs text-fg-muted uppercase tracking-wider font-light mb-2">GSTINs</label>
 
                     <div className="flex items-center gap-3 mb-2">
                       <label className="flex items-center gap-2 cursor-pointer">
@@ -622,9 +622,9 @@ function ManageCompanyPageInner() {
                               : [],
                             gstNumber: e.target.checked ? prev.gstNumber : '',
                           }))}
-                          className="w-4 h-4 text-blue-500 bg-gray-800 border-gray-600 rounded focus:ring-gray-500"
+                          className="w-4 h-4 text-blue-500 bg-bg-elevated border-line/30 rounded focus:ring-gray-500"
                         />
-                        <span className="text-gray-400 text-xs">GST Registered</span>
+                        <span className="text-fg-muted text-xs">GST Registered</span>
                       </label>
                     </div>
 
@@ -657,9 +657,9 @@ function ManageCompanyPageInner() {
                                 }}
                                 placeholder="22AAAAA0000A1Z5"
                                 maxLength={15}
-                                className="flex-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors uppercase"
+                                className="flex-1 px-3 py-2 bg-bg-card border border-line/15 rounded-lg text-white text-sm font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors uppercase"
                               />
-                              <div className="w-40 px-3 py-2 bg-gray-900/50 border border-gray-800 rounded-lg text-gray-400 text-xs flex items-center justify-between">
+                              <div className="w-40 px-3 py-2 bg-bg-card/50 border border-line/10 rounded-lg text-fg-muted text-xs flex items-center justify-between">
                                 <span className="truncate">{reg.state || '—'}</span>
                                 {reg.state && (
                                   <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${isWithin ? 'bg-emerald-900/40 text-emerald-300' : 'bg-amber-900/40 text-amber-300'}`}>
@@ -677,7 +677,7 @@ function ManageCompanyPageInner() {
                                     gstNumber: next[0]?.gstin || '',
                                   }
                                 })}
-                                className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                                className="p-2 text-fg-muted hover:text-red-400 transition-colors"
                                 title="Remove"
                                 aria-label={`Remove GSTIN row ${idx + 1}`}
                               >
@@ -692,7 +692,7 @@ function ManageCompanyPageInner() {
                             ...prev,
                             gstRegistrations: [...prev.gstRegistrations, { gstin: '', state: '' }],
                           }))}
-                          className="text-xs text-gray-400 hover:text-white transition-colors"
+                          className="text-xs text-fg-muted hover:text-white transition-colors"
                         >
                           + Add another GSTIN
                         </button>
@@ -704,12 +704,12 @@ function ManageCompanyPageInner() {
                 {/* Row 3: MSME + Category */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">MSME Status</label>
+                    <label className="block text-xs text-fg-muted uppercase tracking-wider font-light mb-2">MSME Status</label>
                     <select
                       name="isMsme"
                       value={formData.isMsme}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                     >
                       <option value="">Not sure / Not applicable</option>
                       <option value="yes">Yes — MSME Registered</option>
@@ -718,12 +718,12 @@ function ManageCompanyPageInner() {
                   </div>
                   {formData.isMsme === 'yes' && (
                     <div>
-                      <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">MSME Category</label>
+                      <label className="block text-xs text-fg-muted uppercase tracking-wider font-light mb-2">MSME Category</label>
                       <select
                         name="msmeCategory"
                         value={formData.msmeCategory}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                        className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                       >
                         <option value="">Select category</option>
                         <option value="micro">Micro</option>
@@ -736,23 +736,23 @@ function ManageCompanyPageInner() {
 
                 {/* Row 4: Boolean flags */}
                 <div className="flex flex-wrap gap-4">
-                  <label className="flex items-center gap-2 p-3 bg-gray-900 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600 transition-colors">
+                  <label className="flex items-center gap-2 p-3 bg-bg-card border border-line/15 rounded-lg cursor-pointer hover:border-line/30 transition-colors">
                     <input
                       type="checkbox"
                       checked={formData.hasImportsExports}
                       onChange={(e) => setFormData(prev => ({ ...prev, hasImportsExports: e.target.checked }))}
-                      className="w-4 h-4 text-blue-500 bg-gray-800 border-gray-600 rounded focus:ring-gray-500"
+                      className="w-4 h-4 text-blue-500 bg-bg-elevated border-line/30 rounded focus:ring-gray-500"
                     />
-                    <span className="text-gray-300 text-sm font-light">Has Imports / Exports</span>
+                    <span className="text-fg-secondary text-sm font-light">Has Imports / Exports</span>
                   </label>
-                  <label className="flex items-center gap-2 p-3 bg-gray-900 border border-gray-700 rounded-lg cursor-pointer hover:border-gray-600 transition-colors">
+                  <label className="flex items-center gap-2 p-3 bg-bg-card border border-line/15 rounded-lg cursor-pointer hover:border-line/30 transition-colors">
                     <input
                       type="checkbox"
                       checked={formData.isStartupDpiit}
                       onChange={(e) => setFormData(prev => ({ ...prev, isStartupDpiit: e.target.checked }))}
-                      className="w-4 h-4 text-blue-500 bg-gray-800 border-gray-600 rounded focus:ring-gray-500"
+                      className="w-4 h-4 text-blue-500 bg-bg-elevated border-line/30 rounded focus:ring-gray-500"
                     />
-                    <span className="text-gray-300 text-sm font-light">DPIIT-Recognized Startup</span>
+                    <span className="text-fg-secondary text-sm font-light">DPIIT-Recognized Startup</span>
                   </label>
                 </div>
               </div>
@@ -761,11 +761,11 @@ function ManageCompanyPageInner() {
             {/* Directors Section */}
             <div>
               <div className="flex items-center justify-between mb-4">
-                <label className="block text-xs text-gray-500 uppercase tracking-wider font-light">Directors</label>
+                <label className="block text-xs text-fg-muted uppercase tracking-wider font-light">Directors</label>
                 <button
                   type="button"
                   onClick={() => setShowAddDirector(!showAddDirector)}
-                  className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-sm flex items-center gap-2 font-light"
+                  className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors text-sm flex items-center gap-2 font-light"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="12" y1="5" x2="12" y2="19" />
@@ -777,7 +777,7 @@ function ManageCompanyPageInner() {
 
               {/* Add Director by DIN - Only show for India */}
               {showAddDirector && countryCode === 'IN' && (
-                <div className="mb-4 p-4 bg-gray-900 border border-gray-700 rounded-lg">
+                <div className="mb-4 p-4 bg-bg-card border border-line/15 rounded-lg">
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -787,13 +787,13 @@ function ManageCompanyPageInner() {
                         setErrors((prev) => ({ ...prev, newDirectorDIN: '' }))
                       }}
                       placeholder={`Enter ${countryConfig.labels.directorId} number`}
-                      className="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors"
+                      className="flex-1 px-4 py-2 bg-bg-elevated border border-line/15 rounded-lg text-white text-sm placeholder:text-fg-muted font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                     />
                     <button
                       type="button"
                       onClick={handleAddDirectorByDIN}
                       disabled={!newDirectorDIN.trim() || isVerifyingDIN !== null}
-                      className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-light"
+                      className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-light"
                     >
                       {isVerifyingDIN ? 'Verifying...' : 'Verify & Add'}
                     </button>
@@ -803,7 +803,7 @@ function ManageCompanyPageInner() {
                         setShowAddDirector(false)
                         setNewDirectorDIN('')
                       }}
-                      className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors text-sm font-light"
+                      className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors text-sm font-light"
                     >
                       Cancel
                     </button>
@@ -820,9 +820,9 @@ function ManageCompanyPageInner() {
                   {directors.map((director) => (
                     <div
                       key={director.id}
-                      className={`p-4 bg-gray-900/50 border rounded-lg ${director.verified
+                      className={`p-4 bg-bg-card/50 border rounded-lg ${director.verified
                           ? 'border-green-500/30 bg-green-500/5'
-                          : 'border-gray-800'
+                          : 'border-line/10'
                         }`}
                     >
                       <div className="flex items-start justify-between gap-3 mb-2">
@@ -841,24 +841,24 @@ function ManageCompanyPageInner() {
                               </span>
                             )}
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-400 font-light">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-fg-muted font-light">
                             {director.din && (
-                              <div><span className="text-gray-500">{countryConfig.labels.directorId}:</span> {director.din}</div>
+                              <div><span className="text-fg-muted">{countryConfig.labels.directorId}:</span> {director.din}</div>
                             )}
                             {director.designation && (
-                              <div><span className="text-gray-500">Designation:</span> {director.designation}</div>
+                              <div><span className="text-fg-muted">Designation:</span> {director.designation}</div>
                             )}
                             {director.dob && (
-                              <div><span className="text-gray-500">DOB:</span> {formatDateForDisplay(director.dob)}</div>
+                              <div><span className="text-fg-muted">DOB:</span> {formatDateForDisplay(director.dob)}</div>
                             )}
                             {director.pan && (
-                              <div><span className="text-gray-500">{countryConfig.labels.taxId}:</span> {director.pan}</div>
+                              <div><span className="text-fg-muted">{countryConfig.labels.taxId}:</span> {director.pan}</div>
                             )}
                             {director.email && (
-                              <div><span className="text-gray-500">Email:</span> {director.email}</div>
+                              <div><span className="text-fg-muted">Email:</span> {director.email}</div>
                             )}
                             {director.mobile && (
-                              <div><span className="text-gray-500">Mobile:</span> {director.mobile}</div>
+                              <div><span className="text-fg-muted">Mobile:</span> {director.mobile}</div>
                             )}
                           </div>
                         </div>
@@ -868,7 +868,7 @@ function ManageCompanyPageInner() {
                               type="button"
                               onClick={() => handleDINVerification(director.id, director.din)}
                               disabled={isVerifyingDIN === director.id}
-                              className="px-3 py-1.5 border border-gray-700 text-gray-300 rounded text-xs hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-light"
+                              className="px-3 py-1.5 border border-line/15 text-fg-secondary rounded text-xs hover:border-line/30 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-light"
                             >
                               {isVerifyingDIN === director.id ? (
                                 <span className="flex items-center gap-1">
@@ -881,7 +881,7 @@ function ManageCompanyPageInner() {
                           <button
                             type="button"
                             onClick={() => handleRemoveDirector(director.id)}
-                            className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                            className="p-1.5 text-fg-muted hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <path d="M18 6L6 18M6 6L18 18" />
@@ -896,7 +896,7 @@ function ManageCompanyPageInner() {
                   ))}
                 </div>
               ) : (
-                <div className="p-6 bg-gray-900/50 border border-gray-800 rounded-lg text-center text-gray-400">
+                <div className="p-6 bg-bg-card/50 border border-line/10 rounded-lg text-center text-fg-muted">
                   <p className="text-sm font-light">No directors added yet.</p>
                   {countryCode === 'IN' ? (
                     <p className="text-xs mt-1 font-light">Add directors manually using {countryConfig.labels.directorId} verification.</p>
@@ -909,34 +909,34 @@ function ManageCompanyPageInner() {
 
             {/* Ex-Directors Section */}
             <div>
-              <label className="block text-xs text-gray-500 uppercase tracking-wider font-light mb-2">
-                Ex-Directors / Former Directors <span className="text-gray-500 text-xs font-light ml-1 normal-case">(Optional)</span>
+              <label className="block text-xs text-fg-muted uppercase tracking-wider font-light mb-2">
+                Ex-Directors / Former Directors <span className="text-fg-muted text-xs font-light ml-1 normal-case">(Optional)</span>
               </label>
               <textarea
                 value={exDirectors}
                 onChange={(e) => setExDirectors(e.target.value)}
                 placeholder="Enter ex-director names separated by commas or new lines"
                 rows={4}
-                className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 font-light focus:outline-none focus:border-gray-600 focus:ring-1 focus:ring-gray-600 transition-colors resize-y"
+                className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm placeholder:text-fg-muted font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors resize-y"
               />
-              <p className="mt-1 text-xs text-gray-500 font-light">
+              <p className="mt-1 text-xs text-fg-muted font-light">
                 You can enter multiple names separated by commas or one per line.
               </p>
             </div>
 
             {/* Submit Buttons */}
-            <div className="flex justify-end gap-4 pt-6 border-t border-gray-800">
+            <div className="flex justify-end gap-4 pt-6 border-t border-line/10">
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="px-6 py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors font-light"
+                className="px-6 py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors font-light"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-6 py-3 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-light"
+                className="px-6 py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-light"
               >
                 {isSubmitting ? (
                   <>

@@ -194,18 +194,18 @@ export default function RequirementFormModal({
 
   const inputClass =
     'w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors'
-  const labelClass = 'block text-sm font-medium text-gray-300 mb-2'
+  const labelClass = 'block text-sm font-medium text-fg-secondary mb-2'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center justify-between">
             <h3 className="text-2xl font-light text-white">
               {isEdit ? 'Edit Compliance Requirement' : 'Create Compliance Requirement'}
             </h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+            <button onClick={onClose} className="text-fg-muted hover:text-white transition-colors">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
@@ -239,7 +239,7 @@ export default function RequirementFormModal({
                 ) : null
               })()}
             </select>
-            <p className="text-xs text-gray-400 mt-1">Categories are specific to {countryConfig.name}</p>
+            <p className="text-xs text-fg-muted mt-1">Categories are specific to {countryConfig.name}</p>
           </div>
 
           {/* ── Requirement Name ─────────────────────────────────────────────── */}
@@ -312,7 +312,7 @@ export default function RequirementFormModal({
               onChange={(e) => setRequirementForm((prev) => ({ ...prev, due_date: e.target.value }))}
               className={inputClass}
             />
-            <p className="text-xs text-gray-400 mt-1">Format: {countryConfig.dateFormat}</p>
+            <p className="text-xs text-fg-muted mt-1">Format: {countryConfig.dateFormat}</p>
           </div>
 
           {/* ── Financial Year ────────────────────────────────────────────────── */}
@@ -338,7 +338,7 @@ export default function RequirementFormModal({
               className={inputClass}
               placeholder={`e.g., Late fee ${countryConfig.currency.symbol}200/day or Interest @ 1%/month`}
             />
-            <p className="text-xs text-gray-400 mt-1">Human-readable description. For calculated penalties, use the Penalty Calculator below.</p>
+            <p className="text-xs text-fg-muted mt-1">Human-readable description. For calculated penalties, use the Penalty Calculator below.</p>
           </div>
 
           {/* ── Penalty Calculator (structured config) ───────────────────────── */}
@@ -348,7 +348,7 @@ export default function RequirementFormModal({
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
               </svg>
               <span className="text-sm font-medium text-white">Penalty Calculator</span>
-              <span className="text-xs text-gray-400">(optional — enables automatic penalty calculation)</span>
+              <span className="text-xs text-fg-muted">(optional — enables automatic penalty calculation)</span>
             </div>
 
             <div>
@@ -458,7 +458,7 @@ export default function RequirementFormModal({
               <div>
                 <label className={labelClass}>
                   Base Amount ({countryConfig.currency.symbol})
-                  <span className="text-gray-500 font-normal ml-2">(optional — needed if penalty involves % / interest)</span>
+                  <span className="text-fg-muted font-normal ml-2">(optional — needed if penalty involves % / interest)</span>
                 </label>
                 <input
                   type="number"
@@ -472,7 +472,7 @@ export default function RequirementFormModal({
                   min="0"
                   step="0.01"
                 />
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-fg-muted mt-1">
                   If the penalty type above is set, this is calculated automatically. Enter manually if calculator shows &quot;Needs amount&quot;.
                 </p>
               </div>
@@ -574,9 +574,9 @@ export default function RequirementFormModal({
               id="is_critical"
               checked={requirementForm.is_critical}
               onChange={(e) => setRequirementForm((prev) => ({ ...prev, is_critical: e.target.checked }))}
-              className="w-4 h-4 text-white bg-gray-900 border-gray-700 rounded focus:ring-white/40"
+              className="w-4 h-4 text-white bg-bg-card border-line/15 rounded focus:ring-white/40"
             />
-            <label htmlFor="is_critical" className="text-sm font-medium text-gray-300">
+            <label htmlFor="is_critical" className="text-sm font-medium text-fg-secondary">
               Mark as Critical
             </label>
           </div>
@@ -585,13 +585,13 @@ export default function RequirementFormModal({
           <div className="flex items-center gap-3 pt-2">
             <button
               onClick={handleSubmit}
-              className="flex-1 bg-white text-black px-6 py-3 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              className="flex-1 bg-white text-black px-6 py-3 rounded-lg hover:bg-bg-elevated transition-colors font-medium"
             >
               {isEdit ? 'Update' : 'Create'}
             </button>
             <button
               onClick={onClose}
-              className="px-6 py-3 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors font-medium"
+              className="px-6 py-3 bg-bg-elevated text-fg-secondary rounded-lg hover:bg-bg-hover transition-colors font-medium"
             >
               Cancel
             </button>

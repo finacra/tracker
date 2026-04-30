@@ -55,13 +55,13 @@ export function ConfirmDialog({
 
         <div className="text-center">
           <h3 id="confirm-dialog-title" className="text-white font-medium text-lg mb-2">{title}</h3>
-          <p className="text-gray-400 text-sm font-light leading-relaxed">{message}</p>
+          <p className="text-fg-muted text-sm font-light leading-relaxed">{message}</p>
         </div>
 
         <div className="flex gap-3 mt-2">
           <button
             onClick={onCancel}
-            className="flex-1 px-4 py-2.5 rounded-xl border border-white/10 text-gray-300 hover:bg-white/5 transition-colors text-sm font-medium"
+            className="flex-1 px-4 py-2.5 rounded-xl border border-white/10 text-fg-secondary hover:bg-white/5 transition-colors text-sm font-medium"
           >
             {cancelLabel}
           </button>

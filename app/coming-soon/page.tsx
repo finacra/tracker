@@ -13,16 +13,16 @@ export default function ComingSoonPage() {
             <h1 className="text-5xl sm:text-6xl md:text-7xl font-light text-white mb-4">
               Coming Soon
             </h1>
-            <p className="text-xl sm:text-2xl text-gray-400 font-light mb-8">
+            <p className="text-xl sm:text-2xl text-fg-muted font-light mb-8">
               We're working on something amazing
             </p>
-            <p className="text-base sm:text-lg text-gray-500 font-light mb-12 leading-relaxed">
+            <p className="text-base sm:text-lg text-fg-muted font-light mb-12 leading-relaxed">
               Our compliance marketplace will be available soon. Stay tuned for updates!
             </p>
           </div>
           <Link
             href="/home"
-            className="inline-block px-8 py-3 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors font-light text-sm sm:text-base"
+            className="inline-block px-8 py-3 bg-white text-black rounded-lg hover:bg-bg-elevated transition-colors font-light text-sm sm:text-base"
           >
             Back to Home
           </Link>

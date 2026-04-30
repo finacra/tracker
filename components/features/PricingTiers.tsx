@@ -51,7 +51,7 @@ export default function PricingTiers() {
         <h2 className="text-4xl md:text-5xl font-light mb-4 text-white">
           Choose Your Plan
         </h2>
-        <p className="text-gray-400 text-lg mb-8 font-light">
+        <p className="text-fg-muted text-lg mb-8 font-light">
           Select the perfect plan for your business needs
         </p>
 
@@ -63,8 +63,8 @@ export default function PricingTiers() {
               onClick={() => updateBillingCycle(cycle.value)}
               className={`px-4 py-2 rounded-lg font-light transition-all whitespace-nowrap ${
                 selectedBillingCycle === cycle.value
-                  ? 'bg-gray-700 text-white'
-                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  ? 'bg-bg-hover text-white'
+                  : 'bg-bg-elevated text-fg-secondary hover:bg-bg-hover'
               }`}
             >
               {cycle.label}
@@ -89,12 +89,12 @@ export default function PricingTiers() {
               ref={(el) => {
                 planRefs.current[tier.id] = el
               }}
-              className={`relative rounded-xl border p-8 transition-all bg-[#1a1a1a] flex flex-col h-full min-h-0 ${
+              className={`relative rounded-xl border p-8 transition-all bg-bg-card flex flex-col h-full min-h-0 ${
                 tier.popular
-                  ? 'border-gray-600'
+                  ? 'border-line/30'
                   : isSelectedPlan
-                  ? 'border-gray-600'
-                  : 'border-gray-800 hover:border-gray-700'
+                  ? 'border-line/30'
+                  : 'border-line/10 hover:border-line/15'
               }`}
               style={{
                 zIndex: (tier.popular || isSelectedPlan || hoveredTier === tier.id) ? 10 : 1,
@@ -105,7 +105,7 @@ export default function PricingTiers() {
               {/* Popular Badge */}
               {tier.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-gray-700 text-white px-4 py-1 rounded-full text-sm font-light">
+                  <span className="bg-bg-hover text-white px-4 py-1 rounded-full text-sm font-light">
                     Most Popular
                   </span>
                 </div>
@@ -125,15 +125,15 @@ export default function PricingTiers() {
                     </span>
                   )}
                 </div>
-                <p className="text-gray-400 text-sm mb-2 font-light">{tier.description}</p>
+                <p className="text-fg-muted text-sm mb-2 font-light">{tier.description}</p>
                 {/* Ensure consistent height for description text */}
                 <div className="min-h-[40px] mb-4">
                 {tier.id === 'enterprise' ? (
-                    <p className="text-gray-500 text-xs">
+                    <p className="text-fg-muted text-xs">
                     One subscription covers all your companies (up to 100 companies)
                   </p>
                 ) : (
-                    <p className="text-gray-500 text-xs">
+                    <p className="text-fg-muted text-xs">
                     Subscription is per company. Each company needs its own subscription.
                   </p>
                 )}
@@ -149,14 +149,14 @@ export default function PricingTiers() {
                       {formatPrice(selectedPricing.price)}
                     </span>
                     {selectedBillingCycle !== 'monthly' && (
-                      <span className="text-gray-500 text-sm">
+                      <span className="text-fg-muted text-sm">
                         /{selectedBillingCycle === 'quarterly' ? 'quarter' : selectedBillingCycle === 'half-yearly' ? '6 months' : 'year'}
                       </span>
                     )}
                   </div>
                   {selectedBillingCycle !== 'monthly' && (
                     <div className="mt-2">
-                      <span className="text-gray-400 text-sm">
+                      <span className="text-fg-muted text-sm">
                         {formatPrice(selectedPricing.effectiveMonthly)}/month
                       </span>
                       {selectedPricing.savings && (
@@ -168,7 +168,7 @@ export default function PricingTiers() {
                   )}
                   {selectedPricing.discount > 0 && (
                     <div className="mt-1">
-                      <span className="text-gray-400 text-sm font-light">
+                      <span className="text-fg-muted text-sm font-light">
                         {selectedPricing.discount}% discount
                       </span>
                         </div>
@@ -176,7 +176,7 @@ export default function PricingTiers() {
                     </>
                   ) : (
                     <div className="flex items-center" style={{ minHeight: '120px' }}>
-                      <p className="text-gray-400 text-sm font-light">
+                      <p className="text-fg-muted text-sm font-light">
                         Custom pricing discussed on call
                       </p>
                     </div>
@@ -186,7 +186,7 @@ export default function PricingTiers() {
 
               {/* Features */}
               <div className="space-y-3 flex-grow mb-6">
-                <div className="text-sm font-light text-gray-400 mb-3">Features:</div>
+                <div className="text-sm font-light text-fg-muted mb-3">Features:</div>
                 {tier.features.map((feature, index) => (
                   <div key={index} className="flex items-start gap-2">
                     <svg
@@ -202,14 +202,14 @@ export default function PricingTiers() {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    <span className="text-gray-300 text-sm font-light">{feature}</span>
+                    <span className="text-fg-secondary text-sm font-light">{feature}</span>
                   </div>
                 ))}
               </div>
 
               {/* Limits Info - Fixed height to ensure consistency */}
-              <div className="mb-6 pt-6 border-t border-gray-700 min-h-[140px]">
-                <div className="text-xs text-gray-500 space-y-1">
+              <div className="mb-6 pt-6 border-t border-line/15 min-h-[140px]">
+                <div className="text-xs text-fg-muted space-y-1">
                   {tier.id === 'enterprise' ? (
                     <>
                       <div>Companies: Up to 100 companies per subscription</div>
@@ -236,8 +236,8 @@ export default function PricingTiers() {
                     href="/contact?plan=enterprise&source=pricing"
                     className={`block w-full py-3 px-6 rounded-lg font-light transition-all text-center ${
                       tier.popular
-                        ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                        : 'bg-transparent border border-gray-700 text-gray-300 hover:border-gray-600 hover:text-white'
+                        ? 'bg-bg-hover hover:bg-gray-600 text-white'
+                        : 'bg-transparent border border-line/15 text-fg-secondary hover:border-line/30 hover:text-white'
                     }`}
                   >
                     Contact Sales Team
@@ -249,8 +249,8 @@ export default function PricingTiers() {
                     price={selectedPricing.price}
                     className={`w-full py-3 px-6 rounded-lg font-light transition-all ${
                       tier.popular
-                        ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                        : 'bg-transparent border border-gray-700 text-gray-300 hover:border-gray-600 hover:text-white'
+                        ? 'bg-bg-hover hover:bg-gray-600 text-white'
+                        : 'bg-transparent border border-line/15 text-fg-secondary hover:border-line/30 hover:text-white'
                     }`}
                   />
                 )}
@@ -266,8 +266,8 @@ export default function PricingTiers() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-gray-700">
-                <th className="text-left p-4 text-gray-400 font-light">Feature</th>
+              <tr className="border-b border-line/15">
+                <th className="text-left p-4 text-fg-muted font-light">Feature</th>
                 {PRICING_TIERS.map((tier) => (
                   <th key={tier.id} className="text-center p-4 font-light text-white">
                     {tier.name}
@@ -276,22 +276,22 @@ export default function PricingTiers() {
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-gray-800">
-                <td className="p-4 text-gray-300 font-light">Subscription Model</td>
+              <tr className="border-b border-line/10">
+                <td className="p-4 text-fg-secondary font-light">Subscription Model</td>
                 {PRICING_TIERS.map((tier) => (
-                  <td key={tier.id} className="p-4 text-center text-gray-400">
+                  <td key={tier.id} className="p-4 text-center text-fg-muted">
                     {tier.id === 'enterprise' ? (
-                      <span className="text-gray-400 font-light">User-First</span>
+                      <span className="text-fg-muted font-light">User-First</span>
                     ) : (
-                      <span className="text-gray-400 font-light">Company-First</span>
+                      <span className="text-fg-muted font-light">Company-First</span>
                     )}
                   </td>
                 ))}
               </tr>
-              <tr className="border-b border-gray-800">
-                <td className="p-4 text-gray-300 font-light">Companies Coverage</td>
+              <tr className="border-b border-line/10">
+                <td className="p-4 text-fg-secondary font-light">Companies Coverage</td>
                 {PRICING_TIERS.map((tier) => (
-                  <td key={tier.id} className="p-4 text-center text-gray-400 font-light">
+                  <td key={tier.id} className="p-4 text-center text-fg-muted font-light">
                     {tier.id === 'enterprise' ? (
                       'Up to 100 per subscription'
                     ) : (
@@ -300,24 +300,24 @@ export default function PricingTiers() {
                   </td>
                 ))}
               </tr>
-              <tr className="border-b border-gray-800">
-                <td className="p-4 text-gray-300 font-light">Storage</td>
+              <tr className="border-b border-line/10">
+                <td className="p-4 text-fg-secondary font-light">Storage</td>
                 {PRICING_TIERS.map((tier) => (
-                  <td key={tier.id} className="p-4 text-center text-gray-400 font-light">
+                  <td key={tier.id} className="p-4 text-center text-fg-muted font-light">
                     {tier.limits.storage}
                   </td>
                 ))}
               </tr>
-              <tr className="border-b border-gray-800">
-                <td className="p-4 text-gray-300 font-light">Team Members per Company</td>
+              <tr className="border-b border-line/10">
+                <td className="p-4 text-fg-secondary font-light">Team Members per Company</td>
                 {PRICING_TIERS.map((tier) => (
-                  <td key={tier.id} className="p-4 text-center text-gray-400 font-light">
+                  <td key={tier.id} className="p-4 text-center text-fg-muted font-light">
                     {tier.limits.users === 'unlimited' ? 'Unlimited' : tier.limits.users}
                   </td>
                 ))}
               </tr>
-              <tr className="border-b border-gray-800">
-                <td className="p-4 text-gray-300 font-light">Invited Members Access</td>
+              <tr className="border-b border-line/10">
+                <td className="p-4 text-fg-secondary font-light">Invited Members Access</td>
                 {PRICING_TIERS.map((tier) => (
                   <td key={tier.id} className="p-4 text-center">
                     <svg
@@ -333,12 +333,12 @@ export default function PricingTiers() {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    <span className="text-xs text-gray-500 mt-1 block">Free</span>
+                    <span className="text-xs text-fg-muted mt-1 block">Free</span>
                   </td>
                 ))}
               </tr>
-              <tr className="border-b border-gray-800">
-                <td className="p-4 text-gray-300 font-light">API Access</td>
+              <tr className="border-b border-line/10">
+                <td className="p-4 text-fg-secondary font-light">API Access</td>
                 {PRICING_TIERS.map((tier) => (
                   <td key={tier.id} className="p-4 text-center">
                     {tier.limits.apiAccess ? (
@@ -357,7 +357,7 @@ export default function PricingTiers() {
                       </svg>
                     ) : (
                       <svg
-                        className="w-5 h-5 text-gray-600 mx-auto"
+                        className="w-5 h-5 text-fg-muted/60 mx-auto"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -373,26 +373,26 @@ export default function PricingTiers() {
                   </td>
                 ))}
               </tr>
-              <tr className="border-b border-gray-800">
-                <td className="p-4 text-gray-300 font-light">Support</td>
+              <tr className="border-b border-line/10">
+                <td className="p-4 text-fg-secondary font-light">Support</td>
                 {PRICING_TIERS.map((tier) => (
-                  <td key={tier.id} className="p-4 text-center text-gray-400 capitalize font-light">
+                  <td key={tier.id} className="p-4 text-center text-fg-muted capitalize font-light">
                     {tier.limits.support}
                   </td>
                 ))}
               </tr>
-              <tr className="border-b border-gray-800">
-                <td className="p-4 text-gray-300 font-light">CIN/DIN Verification</td>
+              <tr className="border-b border-line/10">
+                <td className="p-4 text-fg-secondary font-light">CIN/DIN Verification</td>
                 {PRICING_TIERS.map((tier) => (
-                  <td key={tier.id} className="p-4 text-center text-gray-400 font-light">
+                  <td key={tier.id} className="p-4 text-center text-fg-muted font-light">
                     {tier.id === 'starter' ? 'Basic' : 'Premium'}
                   </td>
                 ))}
               </tr>
               <tr>
-                <td className="p-4 text-gray-300 font-light">Compliance Tracking</td>
+                <td className="p-4 text-fg-secondary font-light">Compliance Tracking</td>
                 {PRICING_TIERS.map((tier) => (
-                  <td key={tier.id} className="p-4 text-center text-gray-400 font-light">
+                  <td key={tier.id} className="p-4 text-center text-fg-muted font-light">
                     {tier.id === 'starter' ? 'Standard' : 'Advanced + Automation'}
                   </td>
                 ))}
@@ -404,37 +404,37 @@ export default function PricingTiers() {
 
       {/* Subscription Model Explanation */}
       <div className="mt-16 max-w-4xl mx-auto">
-        <div className="bg-[#1a1a1a] rounded-xl p-8 border border-gray-800">
+        <div className="bg-bg-card rounded-xl p-8 border border-line/10">
           <h3 className="text-2xl font-light mb-6 text-center text-white">Understanding Our Subscription Models</h3>
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-gray-900/50 rounded-lg p-6 border border-gray-700">
+            <div className="bg-bg-card/50 rounded-lg p-6 border border-line/15">
               <div className="flex items-center gap-2 mb-3">
-                <span className="bg-gray-800 text-gray-400 px-3 py-1 rounded text-sm font-light">
+                <span className="bg-bg-elevated text-fg-muted px-3 py-1 rounded text-sm font-light">
                   Company-First
                 </span>
-                <span className="text-gray-400 text-sm font-light">Starter</span>
+                <span className="text-fg-muted text-sm font-light">Starter</span>
               </div>
-              <p className="text-gray-300 text-sm mb-3 font-light">
+              <p className="text-fg-secondary text-sm mb-3 font-light">
                 Each company requires its own subscription. Perfect if you manage multiple independent companies or want to subscribe per company.
               </p>
-              <ul className="text-gray-400 text-xs space-y-1 list-disc list-inside font-light">
+              <ul className="text-fg-muted text-xs space-y-1 list-disc list-inside font-light">
                 <li>Subscribe separately for each company</li>
                 <li>Pay only for companies you actively use</li>
                 <li>Each company has its own subscription period</li>
                 <li>Ideal for agencies or multi-company management</li>
               </ul>
             </div>
-            <div className="bg-gray-900/50 rounded-lg p-6 border border-gray-700">
+            <div className="bg-bg-card/50 rounded-lg p-6 border border-line/15">
               <div className="flex items-center gap-2 mb-3">
-                <span className="bg-gray-800 text-gray-400 px-3 py-1 rounded text-sm font-light">
+                <span className="bg-bg-elevated text-fg-muted px-3 py-1 rounded text-sm font-light">
                   User-First
                 </span>
-                <span className="text-gray-400 text-sm font-light">Enterprise</span>
+                <span className="text-fg-muted text-sm font-light">Enterprise</span>
               </div>
-              <p className="text-gray-300 text-sm mb-3 font-light">
+              <p className="text-fg-secondary text-sm mb-3 font-light">
                 One subscription covers all your companies (up to 100). Perfect for organizations managing multiple companies under one account.
               </p>
-              <ul className="text-gray-400 text-xs space-y-1 list-disc list-inside font-light">
+              <ul className="text-fg-muted text-xs space-y-1 list-disc list-inside font-light">
                 <li>One subscription for all companies</li>
                 <li>Manage up to 100 companies</li>
                 <li>Unlimited users per company</li>
@@ -442,8 +442,8 @@ export default function PricingTiers() {
               </ul>
             </div>
           </div>
-          <div className="mt-6 pt-6 border-t border-gray-700">
-            <p className="text-center text-gray-400 text-sm font-light">
+          <div className="mt-6 pt-6 border-t border-line/15">
+            <p className="text-center text-fg-muted text-sm font-light">
               <span className="text-green-400 font-light">✓ Free Access:</span> Invited team members get free access to companies in both models, as long as the company owner has an active subscription.
             </p>
           </div>
@@ -454,40 +454,40 @@ export default function PricingTiers() {
       <div className="mt-16">
         <h3 className="text-2xl font-light text-center mb-8 text-white">Frequently Asked Questions</h3>
         <div className="max-w-3xl mx-auto space-y-4">
-          <div className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
+          <div className="bg-bg-card rounded-lg p-6 border border-line/10">
             <h4 className="font-light mb-2 text-white">What's the difference between Company-First and User-First?</h4>
-            <p className="text-gray-400 text-sm font-light">
+            <p className="text-fg-muted text-sm font-light">
               <strong className="font-light">Company-First (Starter):</strong> Each company needs its own subscription. You subscribe per company, so if you have 3 companies, you'll need 3 subscriptions.<br/><br/>
               <strong className="font-light">User-First (Enterprise):</strong> One subscription covers all your companies (up to 100). You pay once and can manage all your companies under that subscription.
             </p>
           </div>
-          <div className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
+          <div className="bg-bg-card rounded-lg p-6 border border-line/10">
             <h4 className="font-light mb-2 text-white">Do invited team members need their own subscription?</h4>
-            <p className="text-gray-400 text-sm font-light">
+            <p className="text-fg-muted text-sm font-light">
               No! Invited team members get free access to companies in both subscription models. As long as the company owner has an active subscription, all invited members can access that company at no additional cost.
             </p>
           </div>
-          <div className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
+          <div className="bg-bg-card rounded-lg p-6 border border-line/10">
             <h4 className="font-light mb-2 text-white">Can I change my plan later?</h4>
-            <p className="text-gray-400 text-sm font-light">
+            <p className="text-fg-muted text-sm font-light">
               Yes, you can upgrade or downgrade your plan at any time. Changes will be prorated. For Company-First plans, you can upgrade individual companies. For Enterprise, you can upgrade your user subscription.
             </p>
           </div>
-          <div className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
+          <div className="bg-bg-card rounded-lg p-6 border border-line/10">
             <h4 className="font-light mb-2 text-white">What payment methods do you accept?</h4>
-            <p className="text-gray-400 text-sm font-light">
+            <p className="text-fg-muted text-sm font-light">
               We accept all major credit cards, debit cards, UPI, and bank transfers through our secure payment gateway.
             </p>
           </div>
-          <div className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
+          <div className="bg-bg-card rounded-lg p-6 border border-line/10">
             <h4 className="font-light mb-2 text-white">Is there a free trial?</h4>
-            <p className="text-gray-400 text-sm font-light">
+            <p className="text-fg-muted text-sm font-light">
               Yes! We offer a 15-day free trial for all plans. No credit card required. For Company-First plans, you can start a trial for each company. For Enterprise, one trial covers all your companies.
             </p>
           </div>
-          <div className="bg-[#1a1a1a] rounded-lg p-6 border border-gray-800">
+          <div className="bg-bg-card rounded-lg p-6 border border-line/10">
             <h4 className="font-light mb-2 text-white">What happens if I exceed my plan limits?</h4>
-            <p className="text-gray-400 text-sm font-light">
+            <p className="text-fg-muted text-sm font-light">
               We'll notify you when you're approaching your limits. For Company-First plans, you can subscribe for additional companies. For Enterprise, you can upgrade to a higher tier or contact us for custom solutions.
             </p>
           </div>

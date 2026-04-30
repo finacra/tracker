@@ -450,11 +450,11 @@ export default function ComplianceIntelligencePanel({
         <div className="px-4 py-2.5 border-b border-amber-500/15 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-[10px] uppercase tracking-[0.2em] text-amber-400/80 font-medium">Step 1 of 2</span>
-            <span className="text-xs text-gray-300">Tell us about your business</span>
+            <span className="text-xs text-fg-secondary">Tell us about your business</span>
           </div>
           <button
             onClick={() => setViewState('idle')}
-            className="text-xs text-gray-500 hover:text-white"
+            className="text-xs text-fg-muted hover:text-white"
           >
             Cancel
           </button>
@@ -522,34 +522,34 @@ export default function ComplianceIntelligencePanel({
             : 'maintenance'
 
     return (
-      <div className="border border-gray-700/50 rounded-xl p-4 sm:p-6 bg-gradient-to-br from-blue-500/5 to-purple-500/5">
+      <div className="border border-line/15/50 rounded-xl p-4 sm:p-6 bg-gradient-to-br from-blue-500/5 to-purple-500/5">
         {/* Step indicator strip — single source of truth for "what's next" */}
         <div className="mb-3 flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] font-medium">
           {phase === 'loading' && (
             <>
-              <span className="text-gray-500 inline-flex items-center gap-2">
+              <span className="text-fg-muted inline-flex items-center gap-2">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-500 animate-pulse" />
                 Checking
               </span>
-              <span className="text-gray-600">— Determining what's next for your tracker…</span>
+              <span className="text-fg-muted/60">— Determining what's next for your tracker…</span>
             </>
           )}
           {phase === 'intake' && (
             <>
               <span className="text-amber-400">● Step 1 of 2</span>
-              <span className="text-gray-600">— Business intake required before we can generate accurate rules</span>
+              <span className="text-fg-muted/60">— Business intake required before we can generate accurate rules</span>
             </>
           )}
           {phase === 'first-generate' && (
             <>
               <span className="text-blue-400">● Step 2 of 2</span>
-              <span className="text-gray-600">— Generate your initial compliance ruleset</span>
+              <span className="text-fg-muted/60">— Generate your initial compliance ruleset</span>
             </>
           )}
           {phase === 'maintenance' && (
             <>
               <span className="text-emerald-400">● Up to date</span>
-              <span className="text-gray-600">— Re-evaluate any time facts change</span>
+              <span className="text-fg-muted/60">— Re-evaluate any time facts change</span>
             </>
           )}
         </div>
@@ -561,7 +561,7 @@ export default function ComplianceIntelligencePanel({
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-white font-semibold text-sm sm:text-base">Compliance Intelligence</h3>
-            <p className="text-gray-400 text-xs sm:text-sm mt-1">
+            <p className="text-fg-muted text-xs sm:text-sm mt-1">
               Evaluates <span className="text-white font-medium">{companyName}</span> against 60+ Indian regulatory rules based on company type, state, industry, employee count, and turnover. Then uses AI to find any specialized compliances the rules engine may miss.
             </p>
 
@@ -600,7 +600,7 @@ export default function ComplianceIntelligencePanel({
 
             {/* Validation results summary */}
             {validationStats && (
-              <div className="mt-3 p-3 rounded-lg bg-gray-900/50 border border-gray-700/50">
+              <div className="mt-3 p-3 rounded-lg bg-bg-card/50 border border-line/15/50">
                 <div className="flex items-center gap-2 mb-2">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-400">
                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round" />
@@ -648,7 +648,7 @@ export default function ComplianceIntelligencePanel({
                           }`}>
                             {v.requirementName}
                           </span>
-                          <span className="text-gray-500 ml-1.5">— {v.reason}</span>
+                          <span className="text-fg-muted ml-1.5">— {v.reason}</span>
                           {v.sourceUrl && (
                             <a href={v.sourceUrl} target="_blank" rel="noopener noreferrer"
                               className="text-blue-400 hover:underline ml-1.5 inline-block">[source]</a>
@@ -668,12 +668,12 @@ export default function ComplianceIntelligencePanel({
                         <span className="flex-shrink-0 mt-0.5 text-blue-400">+</span>
                         <div className="min-w-0">
                           <span className="font-medium text-blue-300">{d.name}</span>
-                          <span className="text-gray-500 ml-1.5">— {d.act} ({d.authority})</span>
-                          <span className="text-gray-600 ml-1.5">{Math.round(d.confidenceScore * 100)}% confidence</span>
+                          <span className="text-fg-muted ml-1.5">— {d.act} ({d.authority})</span>
+                          <span className="text-fg-muted/60 ml-1.5">{Math.round(d.confidenceScore * 100)}% confidence</span>
                         </div>
                       </div>
                     ))}
-                    <p className="text-gray-500 text-[10px] mt-1">Discovered items added as "pending review" — approve them in the review panel above.</p>
+                    <p className="text-fg-muted text-[10px] mt-1">Discovered items added as "pending review" — approve them in the review panel above.</p>
                   </div>
                 )}
               </div>
@@ -698,9 +698,9 @@ export default function ComplianceIntelligencePanel({
               {phase === 'loading' ? (
                 <button
                   disabled
-                  className="px-4 py-2 bg-gray-800 text-gray-500 rounded-lg text-sm font-medium flex items-center gap-2 cursor-wait"
+                  className="px-4 py-2 bg-bg-elevated text-fg-muted rounded-lg text-sm font-medium flex items-center gap-2 cursor-wait"
                 >
-                  <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-line/30 border-t-transparent rounded-full animate-spin" />
                   Checking your business profile…
                 </button>
               ) : phase === 'intake' && financialYear ? (
@@ -717,7 +717,7 @@ export default function ComplianceIntelligencePanel({
                 <button
                   onClick={handleGenerate}
                   disabled={false}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-bg-hover disabled:text-fg-muted text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M13 10V3L4 14h7v7l9-11h-7z" strokeLinecap="round" strokeLinejoin="round" />
@@ -744,7 +744,7 @@ export default function ComplianceIntelligencePanel({
                   <button
                     onClick={() => setShowHistorySelector(!showHistorySelector)}
                     disabled={isGeneratingHistory}
-                    className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                    className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-bg-hover disabled:text-fg-muted text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                   >
                     {isGeneratingHistory ? (
                       <>
@@ -761,11 +761,11 @@ export default function ComplianceIntelligencePanel({
                     )}
                   </button>
                   {showHistorySelector && (
-                    <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-20 min-w-[200px]">
-                      <div className="p-2 border-b border-gray-700">
-                        <p className="text-gray-400 text-[10px] uppercase tracking-wider font-semibold">Generate for previous</p>
+                    <div className="absolute top-full left-0 mt-1 bg-bg-elevated border border-line/15 rounded-lg shadow-xl z-20 min-w-[200px]">
+                      <div className="p-2 border-b border-line/15">
+                        <p className="text-fg-muted text-[10px] uppercase tracking-wider font-semibold">Generate for previous</p>
                         {incorporationDate && (
-                          <p className="text-gray-500 text-[10px] mt-0.5">
+                          <p className="text-fg-muted text-[10px] mt-0.5">
                             Incorporated: {new Date(incorporationDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                           </p>
                         )}
@@ -774,10 +774,10 @@ export default function ComplianceIntelligencePanel({
                         <button
                           key={years}
                           onClick={() => handleGenerateHistory(years)}
-                          className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center justify-between"
+                          className="w-full px-3 py-2 text-left text-sm text-fg-secondary hover:bg-bg-hover hover:text-white transition-colors flex items-center justify-between"
                         >
                           <span>{years} Year{years > 1 ? 's' : ''}</span>
-                          <span className="text-gray-500 text-xs">
+                          <span className="text-fg-muted text-xs">
                             ~{years === 1 ? '12' : years === 2 ? '24' : '36'} months
                           </span>
                         </button>
@@ -785,10 +785,10 @@ export default function ComplianceIntelligencePanel({
                       {maxHistoricalYears > 3 && (
                         <button
                           onClick={() => handleGenerateHistory(maxHistoricalYears)}
-                          className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center justify-between border-t border-gray-700"
+                          className="w-full px-3 py-2 text-left text-sm text-fg-secondary hover:bg-bg-hover hover:text-white transition-colors flex items-center justify-between border-t border-line/15"
                         >
                           <span>Since Incorporation</span>
-                          <span className="text-gray-500 text-xs">
+                          <span className="text-fg-muted text-xs">
                             {maxHistoricalYears} yr{maxHistoricalYears > 1 ? 's' : ''}
                           </span>
                         </button>
@@ -822,10 +822,10 @@ export default function ComplianceIntelligencePanel({
             </div>
           </div>
           <h3 className="text-white font-semibold mb-1">Evaluating Compliance Rules</h3>
-          <p className="text-gray-400 text-sm max-w-md">
+          <p className="text-fg-muted text-sm max-w-md">
             Running deterministic rules engine for <span className="text-white">{companyName}</span>, then validating with AI for specialized industry and state requirements.
           </p>
-          <p className="text-gray-500 text-xs mt-3">Rules engine is instant. AI validation takes 10-20 seconds.</p>
+          <p className="text-fg-muted text-xs mt-3">Rules engine is instant. AI validation takes 10-20 seconds.</p>
         </div>
       </div>
     )
@@ -846,10 +846,10 @@ export default function ComplianceIntelligencePanel({
             </div>
           </div>
           <h3 className="text-white font-semibold mb-1">Validating Compliances</h3>
-          <p className="text-gray-400 text-sm max-w-md">
+          <p className="text-fg-muted text-sm max-w-md">
             AI is reviewing each compliance requirement for <span className="text-white">{companyName}</span> to verify applicability based on thresholds, state, industry, and entity type.
           </p>
-          <p className="text-gray-500 text-xs mt-3">This takes 15-30 seconds.</p>
+          <p className="text-fg-muted text-xs mt-3">This takes 15-30 seconds.</p>
         </div>
       </div>
     )
@@ -870,10 +870,10 @@ export default function ComplianceIntelligencePanel({
           </div>
           <div className="flex-1">
             <h3 className="text-red-400 font-semibold text-sm">Generation Failed</h3>
-            <p className="text-gray-400 text-xs mt-1">{error}</p>
+            <p className="text-fg-muted text-xs mt-1">{error}</p>
             <button
               onClick={handleGenerate}
-              className="mt-3 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-xs font-medium transition-colors"
+              className="mt-3 px-3 py-1.5 bg-bg-elevated hover:bg-bg-hover text-white rounded-lg text-xs font-medium transition-colors"
             >
               Retry
             </button>
@@ -903,7 +903,7 @@ export default function ComplianceIntelligencePanel({
               </svg>
               AI-Discovered Compliance Review
             </h3>
-            <p className="text-gray-400 text-xs mt-1">
+            <p className="text-fg-muted text-xs mt-1">
               {stats && stats.rulesEngineCount > 0 && (
                 <span className="text-emerald-400">{stats.rulesEngineCount} rules auto-applied. </span>
               )}
@@ -912,7 +912,7 @@ export default function ComplianceIntelligencePanel({
           </div>
           <div className="flex items-center gap-2">
             {stats && (
-              <div className="flex items-center gap-3 text-xs text-gray-400 mr-2 hidden sm:flex">
+              <div className="flex items-center gap-3 text-xs text-fg-muted mr-2 hidden sm:flex">
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                   {stats.highConf} high confidence
@@ -926,7 +926,7 @@ export default function ComplianceIntelligencePanel({
             <button
               onClick={handleApproveAll}
               disabled={isApprovingAll || requirements.length === 0}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-bg-hover disabled:text-fg-muted text-white rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-1.5"
             >
               {isApprovingAll ? (
                 <>
@@ -947,16 +947,16 @@ export default function ComplianceIntelligencePanel({
       </div>
 
       {/* Requirements by category */}
-      <div className="divide-y divide-gray-800/50 max-h-[70vh] overflow-y-auto">
+      <div className="divide-y divide-line/10/50 max-h-[70vh] overflow-y-auto">
         {Object.entries(categoryGroups).map(([category, items]) => (
           <div key={category}>
             {/* Category header */}
-            <div className="px-4 py-2.5 bg-gray-900/50 flex items-center gap-2 sticky top-0 z-10">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-400">
+            <div className="px-4 py-2.5 bg-bg-card/50 flex items-center gap-2 sticky top-0 z-10">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-fg-muted">
                 <path d={CATEGORY_ICONS[category] || 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'} strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <span className="text-gray-300 text-xs font-semibold uppercase tracking-wider">{category}</span>
-              <span className="text-gray-500 text-xs">({items.length})</span>
+              <span className="text-fg-secondary text-xs font-semibold uppercase tracking-wider">{category}</span>
+              <span className="text-fg-muted text-xs">({items.length})</span>
             </div>
 
             {/* Items */}
@@ -978,15 +978,15 @@ export default function ComplianceIntelligencePanel({
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="text-white text-sm font-medium leading-tight">{req.requirement}</p>
-                          <p className="text-gray-500 text-xs mt-0.5">
-                            {req.authority && <span className="text-gray-400">{req.authority}</span>}
+                          <p className="text-fg-muted text-xs mt-0.5">
+                            {req.authority && <span className="text-fg-muted">{req.authority}</span>}
                             {req.authority && req.compliance_type && <span className="mx-1.5">·</span>}
                             {req.compliance_type && <span className="capitalize">{req.compliance_type}</span>}
                             <span className="mx-1.5">·</span>
                             {req.due_date ? (
                               <span>Due: {req.due_date}</span>
                             ) : (
-                              <span className="text-gray-600 italic">No due date</span>
+                              <span className="text-fg-muted/60 italic">No due date</span>
                             )}
                           </p>
                         </div>
@@ -995,7 +995,7 @@ export default function ComplianceIntelligencePanel({
                         <div className="flex items-center gap-1 flex-shrink-0">
                           <button
                             onClick={() => setExpandedId(isExpanded ? null : req.id)}
-                            className="p-1.5 text-gray-500 hover:text-gray-300 transition-colors"
+                            className="p-1.5 text-fg-muted hover:text-fg-secondary transition-colors"
                             title="Details"
                           >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1035,37 +1035,37 @@ export default function ComplianceIntelligencePanel({
                         <div className="mt-3 pl-0 space-y-2 text-xs">
                           {req.act && (
                             <div className="flex gap-2">
-                              <span className="text-gray-500 w-20 flex-shrink-0">Act:</span>
-                              <span className="text-gray-300">{req.act}</span>
+                              <span className="text-fg-muted w-20 flex-shrink-0">Act:</span>
+                              <span className="text-fg-secondary">{req.act}</span>
                             </div>
                           )}
                           {req.section && (
                             <div className="flex gap-2">
-                              <span className="text-gray-500 w-20 flex-shrink-0">Section:</span>
-                              <span className="text-gray-300">{req.section}</span>
+                              <span className="text-fg-muted w-20 flex-shrink-0">Section:</span>
+                              <span className="text-fg-secondary">{req.section}</span>
                             </div>
                           )}
                           {req.penalty && (
                             <div className="flex gap-2">
-                              <span className="text-gray-500 w-20 flex-shrink-0">Penalty:</span>
+                              <span className="text-fg-muted w-20 flex-shrink-0">Penalty:</span>
                               <span className="text-red-400/80">{req.penalty}</span>
                             </div>
                           )}
                           {req.applicability_reason && (
                             <div className="flex gap-2">
-                              <span className="text-gray-500 w-20 flex-shrink-0">Why:</span>
-                              <span className="text-gray-300">{req.applicability_reason}</span>
+                              <span className="text-fg-muted w-20 flex-shrink-0">Why:</span>
+                              <span className="text-fg-secondary">{req.applicability_reason}</span>
                             </div>
                           )}
                           {req.due_date_formula && (
                             <div className="flex gap-2">
-                              <span className="text-gray-500 w-20 flex-shrink-0">Schedule:</span>
-                              <span className="text-gray-400 font-mono text-[11px]">{req.due_date_formula}</span>
+                              <span className="text-fg-muted w-20 flex-shrink-0">Schedule:</span>
+                              <span className="text-fg-muted font-mono text-[11px]">{req.due_date_formula}</span>
                             </div>
                           )}
                           {req.source_url && (
                             <div className="flex gap-2">
-                              <span className="text-gray-500 w-20 flex-shrink-0">Source:</span>
+                              <span className="text-fg-muted w-20 flex-shrink-0">Source:</span>
                               <a
                                 href={req.source_url}
                                 target="_blank"
@@ -1078,8 +1078,8 @@ export default function ComplianceIntelligencePanel({
                           )}
                           {req.required_documents.length > 0 && (
                             <div className="flex gap-2">
-                              <span className="text-gray-500 w-20 flex-shrink-0">Docs:</span>
-                              <span className="text-gray-300">{req.required_documents.join(', ')}</span>
+                              <span className="text-fg-muted w-20 flex-shrink-0">Docs:</span>
+                              <span className="text-fg-secondary">{req.required_documents.join(', ')}</span>
                             </div>
                           )}
                         </div>

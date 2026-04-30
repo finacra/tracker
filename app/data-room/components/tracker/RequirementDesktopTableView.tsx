@@ -633,7 +633,7 @@ export default function RequirementDesktopTableView({
                                 value={inputVal}
                                 onChange={e => setBaseAmountInputs(prev => ({ ...prev, [req.id]: e.target.value }))}
                                 placeholder="e.g. 50000"
-                                className="w-24 px-2 py-1 text-xs bg-bg-elevated border border-line/30 rounded text-white placeholder-gray-500 focus:outline-none focus:border-white/40"
+                                className="w-24 px-2 py-1 text-xs bg-bg-elevated border border-line/30 rounded text-white placeholder:text-fg-muted focus:outline-none focus:border-white/40"
                                 onKeyDown={async e => {
                                   if (e.key === 'Enter') {
                                     const amount = parseFloat(inputVal)

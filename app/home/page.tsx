@@ -561,7 +561,7 @@ export default function HomePage() {
                   Virtual CFO
                 </span>
               </h1>
-              <p className="text-sm sm:text-base md:text-lg text-gray-400 mb-6 sm:mb-10 font-light leading-relaxed animate-fade-in" style={{ animationDelay: '0.4s', opacity: 0, animationFillMode: 'forwards' }}>
+              <p className="text-sm sm:text-base md:text-lg text-fg-muted mb-6 sm:mb-10 font-light leading-relaxed animate-fade-in" style={{ animationDelay: '0.4s', opacity: 0, animationFillMode: 'forwards' }}>
                 The Intelligence Layer for the Global Financial Ecosystem
               </p>
               
@@ -577,7 +577,7 @@ export default function HomePage() {
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center md:justify-start animate-fade-in" style={{ animationDelay: '0.6s', opacity: 0, animationFillMode: 'forwards' }}>
                 <Link
                   href="/subscribe"
-                  className="px-5 sm:px-6 py-2.5 sm:py-3 bg-black border border-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors font-light text-xs sm:text-sm flex items-center justify-center gap-2 min-h-[44px]"
+                  className="px-5 sm:px-6 py-2.5 sm:py-3 bg-black border border-line/10 text-white rounded-lg hover:bg-bg-card transition-colors font-light text-xs sm:text-sm flex items-center justify-center gap-2 min-h-[44px]"
                 >
                   Start Trial for free
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="hidden sm:block">
@@ -588,7 +588,7 @@ export default function HomePage() {
                   href="https://order.finacra.com/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-5 sm:px-6 py-2.5 sm:py-3 text-white hover:text-gray-300 transition-colors font-light text-xs sm:text-sm flex items-center justify-center gap-2 min-h-[44px]"
+                  className="px-5 sm:px-6 py-2.5 sm:py-3 text-white hover:text-fg-secondary transition-colors font-light text-xs sm:text-sm flex items-center justify-center gap-2 min-h-[44px]"
                 >
                   Buy Compliance
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="hidden sm:block">
@@ -611,15 +611,15 @@ export default function HomePage() {
       </section>
 
       {/* Positioning Section */}
-      <section className="relative z-10 px-6 py-20 md:py-32 border-t border-gray-800">
+      <section className="relative z-10 px-6 py-20 md:py-32 border-t border-line/10">
         <div className="max-w-4xl mx-auto text-center">
-          <p className="text-sm uppercase tracking-wider text-gray-400 mb-8 font-light">
+          <p className="text-sm uppercase tracking-wider text-fg-muted mb-8 font-light">
             COMPLIANCE FOR THE ENTERPRISE
           </p>
           <h2 className="text-4xl md:text-6xl font-light text-white mb-6">
             Finacra also serves
           </h2>
-          <p className="text-lg text-gray-400 leading-relaxed font-light max-w-2xl mx-auto mb-8 sm:mb-12">
+          <p className="text-lg text-fg-muted leading-relaxed font-light max-w-2xl mx-auto mb-8 sm:mb-12">
             Finacra gives businesses visibility into compliance, documentation, and financial responsibilities without relying entirely on manual tracking or external reminders.
           </p>
           
@@ -653,7 +653,7 @@ export default function HomePage() {
       <section 
         id="products"
         data-animate-section="products"
-        className={`relative z-10 px-4 sm:px-6 pt-8 sm:pt-12 md:pt-16 pb-0 sm:pb-2 md:pb-4 border-t border-gray-800 ${visibleSections.has('products') ? 'section-visible' : 'section-hidden'}`}
+        className={`relative z-10 px-4 sm:px-6 pt-8 sm:pt-12 md:pt-16 pb-0 sm:pb-2 md:pb-4 border-t border-line/10 ${visibleSections.has('products') ? 'section-visible' : 'section-hidden'}`}
       >
         <div className="max-w-7xl mx-auto">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-6 sm:mb-8 md:mb-10 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('products') ? 1 : 0 }}>
@@ -662,7 +662,7 @@ export default function HomePage() {
           <div className="space-y-0">
               {/* Compliance Tracker */}
               <div
-                className={`border-b border-gray-800 pb-4 sm:pb-5 md:pb-6 mb-4 sm:mb-5 md:mb-6 cursor-pointer transition-all duration-300 ${
+                className={`border-b border-line/10 pb-4 sm:pb-5 md:pb-6 mb-4 sm:mb-5 md:mb-6 cursor-pointer transition-all duration-300 ${
                   hoveredProduct && hoveredProduct !== 'compliance' ? 'opacity-30' : 'opacity-100'
                 }`}
                 onMouseEnter={() => {
@@ -678,7 +678,7 @@ export default function HomePage() {
                     <h3 className="text-xl sm:text-2xl font-light text-white mb-2 sm:mb-3">
                       Compliance Tracker
                     </h3>
-                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-3">
+                    <p className="text-sm sm:text-base text-fg-muted leading-relaxed font-light mb-3">
                       Track statutory and regulatory requirements across GST, Income Tax, RoC, payroll, and renewals with structured status management and due-date monitoring.
                     </p>
                     {/* Mobile Graphic - Inline - Only show when active */}
@@ -690,7 +690,7 @@ export default function HomePage() {
                     <Link href="/compliance-tracker">
                       <button 
                         onClick={() => trackButtonClick('Learn More - Compliance Tracker', '/home')}
-                        className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm"
+                        className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-all duration-300 font-light text-sm"
                       >
                         Learn More
                       </button>
@@ -728,7 +728,7 @@ export default function HomePage() {
 
               {/* Document Vault */}
               <div
-                className={`border-b border-gray-800 pb-4 sm:pb-5 md:pb-6 mb-4 sm:mb-5 md:mb-6 cursor-pointer transition-all duration-300 ${
+                className={`border-b border-line/10 pb-4 sm:pb-5 md:pb-6 mb-4 sm:mb-5 md:mb-6 cursor-pointer transition-all duration-300 ${
                   hoveredProduct && hoveredProduct !== 'vault' ? 'opacity-30' : 'opacity-100'
                 }`}
                 onMouseEnter={() => {
@@ -743,7 +743,7 @@ export default function HomePage() {
                     <h3 className="text-xl sm:text-2xl font-light text-white mb-2 sm:mb-3">
                       Document Vault
                     </h3>
-                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-3">
+                    <p className="text-sm sm:text-base text-fg-muted leading-relaxed font-light mb-3">
                       Secure storage and structured organization of financial and legal documents with role-based access.
                     </p>
                     {/* Mobile Graphic - Inline - Only show when active */}
@@ -785,7 +785,7 @@ export default function HomePage() {
 
               {/* Finacra Web Services */}
               <div
-                className={`border-b border-gray-800 pt-2 sm:pt-3 md:pt-4 pb-4 sm:pb-5 md:pb-6 mb-4 sm:mb-5 md:mb-6 cursor-pointer transition-all duration-300 ${
+                className={`border-b border-line/10 pt-2 sm:pt-3 md:pt-4 pb-4 sm:pb-5 md:pb-6 mb-4 sm:mb-5 md:mb-6 cursor-pointer transition-all duration-300 ${
                   hoveredProduct && hoveredProduct !== 'services' ? 'opacity-30' : 'opacity-100'
                 }`}
                 onMouseEnter={() => {
@@ -798,9 +798,9 @@ export default function HomePage() {
                 <div className={`grid ${(clickedProduct === 'services' || hoveredProduct === 'services') ? 'md:grid-cols-2' : ''} gap-4 md:gap-6 lg:gap-8 items-start`}>
                   <div>
                     <h3 className="text-xl sm:text-2xl font-light text-white mb-2 sm:mb-3">
-                      Finacra Web Services <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
+                      Finacra Web Services <span className="text-xs sm:text-sm text-fg-muted font-light">(Coming Soon)</span>
                     </h3>
-                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-3">
+                    <p className="text-sm sm:text-base text-fg-muted leading-relaxed font-light mb-3">
                       Infrastructure layer that supports company onboarding, entity detection, compliance workflows, and administrative control.
                     </p>
                     {/* Mobile Graphic - Inline - Only show when active */}
@@ -810,7 +810,7 @@ export default function HomePage() {
                       </div>
                     )}
                     <Link href="/company-onboarding">
-                      <button className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm">
+                      <button className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-all duration-300 font-light text-sm">
                         Learn More
                       </button>
                     </Link>
@@ -847,7 +847,7 @@ export default function HomePage() {
 
               {/* E-Invoicing */}
               <div
-                className={`border-b border-gray-800 pt-2 sm:pt-3 md:pt-4 pb-4 sm:pb-5 md:pb-6 mb-4 sm:mb-5 md:mb-6 cursor-pointer transition-all duration-300 ${
+                className={`border-b border-line/10 pt-2 sm:pt-3 md:pt-4 pb-4 sm:pb-5 md:pb-6 mb-4 sm:mb-5 md:mb-6 cursor-pointer transition-all duration-300 ${
                   hoveredProduct && hoveredProduct !== 'einvoicing' ? 'opacity-30' : 'opacity-100'
                 }`}
                 onMouseEnter={() => {
@@ -860,9 +860,9 @@ export default function HomePage() {
                 <div className={`grid ${(clickedProduct === 'einvoicing' || hoveredProduct === 'einvoicing') ? 'md:grid-cols-2' : ''} gap-4 md:gap-6 lg:gap-8 items-start`}>
                   <div>
                     <h3 className="text-xl sm:text-2xl font-light text-white mb-2 sm:mb-3">
-                      E-Invoicing <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
+                      E-Invoicing <span className="text-xs sm:text-sm text-fg-muted font-light">(Coming Soon)</span>
                     </h3>
-                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-3">
+                    <p className="text-sm sm:text-base text-fg-muted leading-relaxed font-light mb-3">
                       Automated & structured invoice workflows aligned with regulatory frameworks and documentation requirements.
                     </p>
                     {/* Mobile Graphic - Inline - Only show when active */}
@@ -904,7 +904,7 @@ export default function HomePage() {
 
               {/* Filing & Notices */}
               <div
-                className={`border-b border-gray-800 pt-2 sm:pt-3 md:pt-4 pb-4 sm:pb-5 md:pb-6 mb-4 sm:mb-5 md:mb-6 cursor-pointer transition-all duration-300 ${
+                className={`border-b border-line/10 pt-2 sm:pt-3 md:pt-4 pb-4 sm:pb-5 md:pb-6 mb-4 sm:mb-5 md:mb-6 cursor-pointer transition-all duration-300 ${
                   hoveredProduct && hoveredProduct !== 'filing' ? 'opacity-30' : 'opacity-100'
                 }`}
                 onMouseEnter={() => {
@@ -917,9 +917,9 @@ export default function HomePage() {
                 <div className={`grid ${(clickedProduct === 'filing' || hoveredProduct === 'filing') ? 'md:grid-cols-2' : ''} gap-4 md:gap-6 lg:gap-8 items-start`}>
                   <div>
                     <h3 className="text-xl sm:text-2xl font-light text-white mb-2 sm:mb-3">
-                      Filing & Notices <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
+                      Filing & Notices <span className="text-xs sm:text-sm text-fg-muted font-light">(Coming Soon)</span>
                     </h3>
-                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-3">
+                    <p className="text-sm sm:text-base text-fg-muted leading-relaxed font-light mb-3">
                       Track filings, regulatory notices, and status updates across teams and entities.
                     </p>
                     {/* Mobile Graphic - Inline - Only show when active */}
@@ -974,9 +974,9 @@ export default function HomePage() {
                 <div className={`grid ${(clickedProduct === 'ai' || hoveredProduct === 'ai') ? 'md:grid-cols-2' : ''} gap-4 md:gap-6 lg:gap-8 items-start`}>
                   <div>
                     <h3 className="text-xl sm:text-2xl font-light text-white mb-2 sm:mb-3">
-                      Finacra AI <span className="text-xs sm:text-sm text-gray-500 font-light">(Coming Soon)</span>
+                      Finacra AI <span className="text-xs sm:text-sm text-fg-muted font-light">(Coming Soon)</span>
                     </h3>
-                    <p className="text-sm sm:text-base text-gray-400 leading-relaxed font-light mb-3">
+                    <p className="text-sm sm:text-base text-fg-muted leading-relaxed font-light mb-3">
                       AI-powered document understanding, compliance recommendations, and intelligent search capabilities under development.
                     </p>
                     {/* Mobile Graphic - Inline - Only show when active */}
@@ -1023,13 +1023,13 @@ export default function HomePage() {
       <section
         id="solution"
         data-animate-section="solution"
-        className={`relative z-10 px-4 sm:px-6 pt-8 sm:pt-12 md:pt-24 pb-8 sm:pb-20 md:pb-32 border-t border-gray-800 ${visibleSections.has('solution') ? 'section-visible' : 'section-hidden'}`}
+        className={`relative z-10 px-4 sm:px-6 pt-8 sm:pt-12 md:pt-24 pb-8 sm:pb-20 md:pb-32 border-t border-line/10 ${visibleSections.has('solution') ? 'section-visible' : 'section-hidden'}`}
       >
         <div className="max-w-7xl mx-auto">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-6 sm:mb-8 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('solution') ? 1 : 0 }}>
             The Finacra Solution
           </h2>
-          <p className="text-base sm:text-lg md:text-xl text-gray-400 mb-4 sm:mb-12 md:mb-16 text-center font-light max-w-3xl mx-auto px-4 animate-fade-in-up" style={{ animationDelay: '0.2s', opacity: visibleSections.has('solution') ? 1 : 0 }}>
+          <p className="text-base sm:text-lg md:text-xl text-fg-muted mb-4 sm:mb-12 md:mb-16 text-center font-light max-w-3xl mx-auto px-4 animate-fade-in-up" style={{ animationDelay: '0.2s', opacity: visibleSections.has('solution') ? 1 : 0 }}>
             A centralized system designed to manage:
           </p>
           
@@ -1059,50 +1059,50 @@ export default function HomePage() {
             {/* Companies Card */}
             <div className="w-full flex-shrink-0 md:w-auto">
             <div 
-              className={`bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
+              className={`bg-bg-card border border-line/15/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-line/15/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
               style={{ transitionDelay: visibleSections.has('solution') ? '0.3s' : '0s' }}
             >
               <div className="mb-4 sm:mb-6">
                 <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">
                   Companies
                 </div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Multi-entity management</p>
+                <p className="text-fg-muted font-light text-xs sm:text-sm">Multi-entity management</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Entity Structure</div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
+                  <div className="text-xs text-fg-muted uppercase mb-2 font-light">Entity Structure</div>
                   <div className="text-white text-sm font-light">Manage multiple companies under a unified dashboard with structured hierarchies and relationships.</div>
                 </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Company Profiles</div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
+                  <div className="text-xs text-fg-muted uppercase mb-2 font-light">Company Profiles</div>
                   <div className="text-white text-sm font-light">Auto-fill company details from MCA, track directors, and maintain comprehensive entity records.</div>
                 </div>
               </div>
               <div className="mt-4">
                 <Link href="/company-onboarding">
-                  <button className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm">
+                  <button className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-all duration-300 font-light text-sm">
                     Learn More
                   </button>
                 </Link>
               </div>
               {/* Company Management UI Preview */}
-              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Company List</div>
+                  <div className="text-xs text-fg-muted font-light">Company List</div>
                   <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
                 </div>
                 <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                  <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
                     <div className="text-xs text-white font-light">Acme Corp Pvt Ltd</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">CIN: U12345MH2020PTC123456</div>
+                    <div className="text-[10px] text-fg-muted mt-0.5">CIN: U12345MH2020PTC123456</div>
                   </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                  <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
                     <div className="text-xs text-white font-light">Tech Solutions LLP</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">LLPIN: AAB-1234</div>
+                    <div className="text-[10px] text-fg-muted mt-0.5">LLPIN: AAB-1234</div>
                   </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
+                  <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50 opacity-60">
                     <div className="text-xs text-white font-light">Global Industries Ltd</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">CIN: U67890DL2021PLC789012</div>
+                    <div className="text-[10px] text-fg-muted mt-0.5">CIN: U67890DL2021PLC789012</div>
                   </div>
                   </div>
                 </div>
@@ -1112,54 +1112,54 @@ export default function HomePage() {
             {/* Documents Card */}
             <div className="w-full flex-shrink-0 md:w-auto">
             <div 
-              className={`bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
+              className={`bg-bg-card border border-line/15/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-line/15/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
               style={{ transitionDelay: visibleSections.has('solution') ? '0.4s' : '0s' }}
             >
               <div className="mb-4 sm:mb-6">
                 <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Documents</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Secure storage</p>
+                <p className="text-fg-muted font-light text-xs sm:text-sm">Secure storage</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Document Vault</div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
+                  <div className="text-xs text-fg-muted uppercase mb-2 font-light">Document Vault</div>
                   <div className="text-white text-sm font-light">Organize financial and legal documents with structured folders, categories, and metadata.</div>
                 </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Access Control</div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
+                  <div className="text-xs text-fg-muted uppercase mb-2 font-light">Access Control</div>
                   <div className="text-white text-sm font-light">Role-based permissions ensure secure access with viewer, editor, and admin level controls.</div>
                 </div>
               </div>
               {/* Document Vault UI Preview */}
-              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Document Vault</div>
+                  <div className="text-xs text-fg-muted font-light">Document Vault</div>
                   <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
                 </div>
                 <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                  <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-gray-600 rounded"></div>
                       <div className="flex-1">
                         <div className="text-xs text-white font-light">ITR_2024-25.pdf</div>
-                        <div className="text-[10px] text-gray-500 mt-0.5">Income Tax • 2.3 MB</div>
+                        <div className="text-[10px] text-fg-muted mt-0.5">Income Tax • 2.3 MB</div>
                       </div>
                     </div>
                   </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                  <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-gray-600 rounded"></div>
                       <div className="flex-1">
                         <div className="text-xs text-white font-light">GST_Returns_Q4.pdf</div>
-                        <div className="text-[10px] text-gray-500 mt-0.5">GST • 1.8 MB</div>
+                        <div className="text-[10px] text-fg-muted mt-0.5">GST • 1.8 MB</div>
                       </div>
                     </div>
                   </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
+                  <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50 opacity-60">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-gray-600 rounded"></div>
                       <div className="flex-1">
                         <div className="text-xs text-white font-light">AOC-4_Form.pdf</div>
-                        <div className="text-[10px] text-gray-500 mt-0.5">RoC • 956 KB</div>
+                        <div className="text-[10px] text-fg-muted mt-0.5">RoC • 956 KB</div>
                       </div>
                       </div>
                     </div>
@@ -1171,36 +1171,36 @@ export default function HomePage() {
             {/* Compliance Card */}
             <div className="w-full flex-shrink-0 md:w-auto">
             <div 
-              className={`bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
+              className={`bg-bg-card border border-line/15/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-line/15/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
               style={{ transitionDelay: visibleSections.has('solution') ? '0.5s' : '0s' }}
             >
               <div className="mb-4 sm:mb-6">
                 <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">
                   Compliance
                 </div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Regulatory tracking</p>
+                <p className="text-fg-muted font-light text-xs sm:text-sm">Regulatory tracking</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Due Date Tracking</div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
+                  <div className="text-xs text-fg-muted uppercase mb-2 font-light">Due Date Tracking</div>
                   <div className="text-white text-sm font-light">Monitor upcoming, pending, and overdue compliance tasks across GST, Income Tax, RoC, and more.</div>
                 </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Status Management</div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
+                  <div className="text-xs text-fg-muted uppercase mb-2 font-light">Status Management</div>
                   <div className="text-white text-sm font-light">Track filing status, penalty risks, and compliance health with automated alerts and reminders.</div>
                 </div>
               </div>
               <div className="mt-4">
                 <Link href="/compliance-tracker">
-                  <button className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm">
+                  <button className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-all duration-300 font-light text-sm">
                     Learn More
                   </button>
                 </Link>
               </div>
               {/* Compliance Tracker UI Preview */}
-              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Compliance Tracker</div>
+                  <div className="text-xs text-fg-muted font-light">Compliance Tracker</div>
                   <div className="flex gap-1">
                     <div className="w-1.5 h-1.5 bg-green-500/50 rounded-full"></div>
                     <div className="w-1.5 h-1.5 bg-yellow-500/50 rounded-full"></div>
@@ -1208,21 +1208,21 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                  <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-white font-light">GSTR-3B</div>
                       <div className="px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded text-[10px]">✓</div>
                     </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Due: 20 Jan 2025</div>
+                    <div className="text-[10px] text-fg-muted mt-0.5">Due: 20 Jan 2025</div>
                   </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                  <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-white font-light">TDS Return</div>
                       <div className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-[10px]">⏳</div>
                     </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Due: 31 Jan 2025</div>
+                    <div className="text-[10px] text-fg-muted mt-0.5">Due: 31 Jan 2025</div>
                   </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-red-800/30">
+                  <div className="bg-bg-card rounded px-3 py-2 border border-red-800/30">
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-white font-light">AOC-4 Filing</div>
                       <div className="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px]">!</div>
@@ -1240,49 +1240,49 @@ export default function HomePage() {
           <div className="hidden md:grid md:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto px-4 sm:px-0">
             {/* Companies Card */}
             <div 
-              className={`bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
+              className={`bg-bg-card border border-line/15/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-line/15/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
               style={{ transitionDelay: visibleSections.has('solution') ? '0.3s' : '0s' }}
             >
               <div className="mb-4 sm:mb-6">
                 <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">
                   Companies
                 </div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Multi-entity management</p>
+                <p className="text-fg-muted font-light text-xs sm:text-sm">Multi-entity management</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Entity Structure</div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
+                  <div className="text-xs text-fg-muted uppercase mb-2 font-light">Entity Structure</div>
                   <div className="text-white text-sm font-light">Manage multiple companies under a unified dashboard with structured hierarchies and relationships.</div>
                 </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Company Profiles</div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
+                  <div className="text-xs text-fg-muted uppercase mb-2 font-light">Company Profiles</div>
                   <div className="text-white text-sm font-light">Auto-fill company details from MCA, track directors, and maintain comprehensive entity records.</div>
                 </div>
               </div>
               <div className="mt-4">
                 <Link href="/company-onboarding">
-                  <button className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm">
+                  <button className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-all duration-300 font-light text-sm">
                     Learn More
                   </button>
                 </Link>
               </div>
-              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Company List</div>
+                  <div className="text-xs text-fg-muted font-light">Company List</div>
                   <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
                 </div>
                 <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                  <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
                     <div className="text-xs text-white font-light">Acme Corp Pvt Ltd</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">CIN: U12345MH2020PTC123456</div>
+                    <div className="text-[10px] text-fg-muted mt-0.5">CIN: U12345MH2020PTC123456</div>
                   </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                  <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
                     <div className="text-xs text-white font-light">Tech Solutions LLP</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">LLPIN: AAB-1234</div>
+                    <div className="text-[10px] text-fg-muted mt-0.5">LLPIN: AAB-1234</div>
                   </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
+                  <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50 opacity-60">
                     <div className="text-xs text-white font-light">Global Industries Ltd</div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">CIN: U67890DL2021PLC789012</div>
+                    <div className="text-[10px] text-fg-muted mt-0.5">CIN: U67890DL2021PLC789012</div>
                   </div>
                 </div>
               </div>
@@ -1290,53 +1290,53 @@ export default function HomePage() {
 
             {/* Documents Card */}
             <div 
-              className={`bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
+              className={`bg-bg-card border border-line/15/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-line/15/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
               style={{ transitionDelay: visibleSections.has('solution') ? '0.4s' : '0s' }}
             >
               <div className="mb-4 sm:mb-6">
                 <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Documents</div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Secure storage</p>
+                <p className="text-fg-muted font-light text-xs sm:text-sm">Secure storage</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Document Vault</div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
+                  <div className="text-xs text-fg-muted uppercase mb-2 font-light">Document Vault</div>
                   <div className="text-white text-sm font-light">Organize financial and legal documents with structured folders, categories, and metadata.</div>
                 </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Access Control</div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
+                  <div className="text-xs text-fg-muted uppercase mb-2 font-light">Access Control</div>
                   <div className="text-white text-sm font-light">Role-based permissions ensure secure access with viewer, editor, and admin level controls.</div>
                 </div>
               </div>
-              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Document Vault</div>
+                  <div className="text-xs text-fg-muted font-light">Document Vault</div>
                   <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
                 </div>
                 <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                  <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-gray-600 rounded"></div>
                       <div className="flex-1">
                         <div className="text-xs text-white font-light">ITR_2024-25.pdf</div>
-                        <div className="text-[10px] text-gray-500 mt-0.5">Income Tax • 2.3 MB</div>
+                        <div className="text-[10px] text-fg-muted mt-0.5">Income Tax • 2.3 MB</div>
                       </div>
                     </div>
                   </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                  <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-gray-600 rounded"></div>
                       <div className="flex-1">
                         <div className="text-xs text-white font-light">GST_Returns_Q4.pdf</div>
-                        <div className="text-[10px] text-gray-500 mt-0.5">GST • 1.8 MB</div>
+                        <div className="text-[10px] text-fg-muted mt-0.5">GST • 1.8 MB</div>
                       </div>
                     </div>
                   </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50 opacity-60">
+                  <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50 opacity-60">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-gray-600 rounded"></div>
                       <div className="flex-1">
                         <div className="text-xs text-white font-light">AOC-4_Form.pdf</div>
-                        <div className="text-[10px] text-gray-500 mt-0.5">RoC • 956 KB</div>
+                        <div className="text-[10px] text-fg-muted mt-0.5">RoC • 956 KB</div>
                       </div>
                     </div>
                   </div>
@@ -1346,35 +1346,35 @@ export default function HomePage() {
 
             {/* Compliance Card */}
             <div 
-              className={`bg-[#1a1a1a] border border-gray-700/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-gray-700/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
+              className={`bg-bg-card border border-line/15/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-line/15/50 transition-all duration-300 card-hidden ${visibleSections.has('solution') ? 'card-visible' : ''}`}
               style={{ transitionDelay: visibleSections.has('solution') ? '0.5s' : '0s' }}
             >
               <div className="mb-4 sm:mb-6">
                 <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">
                   Compliance
                 </div>
-                <p className="text-gray-400 font-light text-xs sm:text-sm">Regulatory tracking</p>
+                <p className="text-fg-muted font-light text-xs sm:text-sm">Regulatory tracking</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Due Date Tracking</div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
+                  <div className="text-xs text-fg-muted uppercase mb-2 font-light">Due Date Tracking</div>
                   <div className="text-white text-sm font-light">Monitor upcoming, pending, and overdue compliance tasks across GST, Income Tax, RoC, and more.</div>
                 </div>
-                <div className="bg-[#252525] rounded-lg p-4 border border-gray-800/50">
-                  <div className="text-xs text-gray-500 uppercase mb-2 font-light">Status Management</div>
+                <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
+                  <div className="text-xs text-fg-muted uppercase mb-2 font-light">Status Management</div>
                   <div className="text-white text-sm font-light">Track filing status, penalty risks, and compliance health with automated alerts and reminders.</div>
                 </div>
               </div>
               <div className="mt-4">
                 <Link href="/compliance-tracker">
-                  <button className="px-4 py-2 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm">
+                  <button className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-all duration-300 font-light text-sm">
                     Learn More
                   </button>
                 </Link>
               </div>
-              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-gray-800/30">
+              <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs text-gray-400 font-light">Compliance Tracker</div>
+                  <div className="text-xs text-fg-muted font-light">Compliance Tracker</div>
                   <div className="flex gap-1">
                     <div className="w-1.5 h-1.5 bg-green-500/50 rounded-full"></div>
                     <div className="w-1.5 h-1.5 bg-yellow-500/50 rounded-full"></div>
@@ -1382,21 +1382,21 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                  <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-white font-light">GSTR-3B</div>
                       <div className="px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded text-[10px]">✓</div>
                     </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Due: 20 Jan 2025</div>
+                    <div className="text-[10px] text-fg-muted mt-0.5">Due: 20 Jan 2025</div>
                   </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-gray-800/50">
+                  <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-white font-light">TDS Return</div>
                       <div className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-[10px]">⏳</div>
                     </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">Due: 31 Jan 2025</div>
+                    <div className="text-[10px] text-fg-muted mt-0.5">Due: 31 Jan 2025</div>
                   </div>
-                  <div className="bg-[#1a1a1a] rounded px-3 py-2 border border-red-800/30">
+                  <div className="bg-bg-card rounded px-3 py-2 border border-red-800/30">
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-white font-light">AOC-4 Filing</div>
                       <div className="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px]">!</div>
@@ -1407,7 +1407,7 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-          <p className="text-lg text-gray-400 mt-16 text-center font-light">
+          <p className="text-lg text-fg-muted mt-16 text-center font-light">
             From onboarding to tracking to execution all in one place.
           </p>
         </div>
@@ -1417,7 +1417,7 @@ export default function HomePage() {
       <section
         id="plans"
         data-animate-section="plans"
-        className={`relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32 border-t border-gray-800 ${visibleSections.has('plans') ? 'section-visible' : 'section-hidden'}`}
+        className={`relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32 border-t border-line/10 ${visibleSections.has('plans') ? 'section-visible' : 'section-hidden'}`}
       >
         <div className="max-w-7xl mx-auto">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-8 sm:mb-12 md:mb-16 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('plans') ? 1 : 0 }}>
@@ -1430,13 +1430,13 @@ export default function HomePage() {
       {/* What's Next Section */}
       <section 
         data-animate-section="whats-next"
-        className={`relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32 border-t border-gray-800 ${visibleSections.has('whats-next') ? 'section-visible' : 'section-hidden'}`}
+        className={`relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32 border-t border-line/10 ${visibleSections.has('whats-next') ? 'section-visible' : 'section-hidden'}`}
       >
         <div className="max-w-7xl mx-auto">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-4 sm:mb-6 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('whats-next') ? 1 : 0 }}>
             What's Next??
           </h2>
-          <p className="text-base sm:text-lg md:text-xl text-gray-400 mb-8 sm:mb-12 md:mb-16 text-center font-light px-4 animate-fade-in-up" style={{ animationDelay: '0.2s', opacity: visibleSections.has('whats-next') ? 1 : 0 }}>
+          <p className="text-base sm:text-lg md:text-xl text-fg-muted mb-8 sm:mb-12 md:mb-16 text-center font-light px-4 animate-fade-in-up" style={{ animationDelay: '0.2s', opacity: visibleSections.has('whats-next') ? 1 : 0 }}>
             Finacra is evolving into an intelligent compliance system.
           </p>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto px-4 sm:px-0">
@@ -1450,11 +1450,11 @@ export default function HomePage() {
             ].map((item, index) => (
               <div 
                 key={index}
-                className={`bg-[#1a1a1a] border border-gray-800 rounded-xl p-5 sm:p-6 md:p-8 card-hidden hover:border-gray-700 transition-all duration-300 ${visibleSections.has('whats-next') ? 'card-visible' : ''}`}
+                className={`bg-bg-card border border-line/10 rounded-xl p-5 sm:p-6 md:p-8 card-hidden hover:border-line/15 transition-all duration-300 ${visibleSections.has('whats-next') ? 'card-visible' : ''}`}
                 style={{ transitionDelay: visibleSections.has('whats-next') ? `${0.3 + index * 0.08}s` : '0s' }}
               >
                 <h3 className="text-lg sm:text-xl font-light text-white mb-2 sm:mb-3">{item.title}</h3>
-                <p className="text-gray-400 text-xs sm:text-sm font-light">{item.desc}</p>
+                <p className="text-fg-muted text-xs sm:text-sm font-light">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -1465,7 +1465,7 @@ export default function HomePage() {
       <section
         id="contact"
         data-animate-section="cta"
-        className={`relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32 border-t border-gray-800 ${visibleSections.has('cta') ? 'section-visible' : 'section-hidden'}`}
+        className={`relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32 border-t border-line/10 ${visibleSections.has('cta') ? 'section-visible' : 'section-hidden'}`}
       >
         <div className="max-w-4xl mx-auto text-center px-4">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-8 sm:mb-12 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('cta') ? 1 : 0 }}>
@@ -1474,13 +1474,13 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center animate-fade-in-up" style={{ animationDelay: '0.3s', opacity: visibleSections.has('cta') ? 1 : 0 }}>
             <Link
               href="/subscribe"
-              className="px-6 sm:px-8 py-3 sm:py-4 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm sm:text-base min-h-[44px] flex items-center justify-center"
+              className="px-6 sm:px-8 py-3 sm:py-4 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-all duration-300 font-light text-sm sm:text-base min-h-[44px] flex items-center justify-center"
             >
               Start Trial for free
             </Link>
             <Link
               href="/contact"
-              className="px-6 sm:px-8 py-3 sm:py-4 border border-gray-700 text-gray-300 rounded-lg hover:border-gray-600 hover:text-white transition-all duration-300 font-light text-sm sm:text-base min-h-[44px] flex items-center justify-center"
+              className="px-6 sm:px-8 py-3 sm:py-4 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-all duration-300 font-light text-sm sm:text-base min-h-[44px] flex items-center justify-center"
             >
               Talk to Us
             </Link>
@@ -1491,21 +1491,21 @@ export default function HomePage() {
       {/* Footer */}
       <footer 
         data-animate-section="footer"
-        className={`relative z-10 border-t border-gray-800 px-4 sm:px-6 py-12 sm:py-16 ${visibleSections.has('footer') ? 'section-visible' : 'section-hidden'}`}
+        className={`relative z-10 border-t border-line/10 px-4 sm:px-6 py-12 sm:py-16 ${visibleSections.has('footer') ? 'section-visible' : 'section-hidden'}`}
       >
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-6 sm:gap-8 md:gap-12 mb-6 sm:mb-8 md:mb-12">
             <div>
               <h3 className="text-white text-base sm:text-lg font-light mb-3 sm:mb-4">India</h3>
-              <p className="text-gray-300 text-xs sm:text-sm font-light mb-2">Finnogenius Consulting Private Limited</p>
-              <p className="text-gray-400 text-xs sm:text-sm font-light mb-4">
+              <p className="text-fg-secondary text-xs sm:text-sm font-light mb-2">Finnogenius Consulting Private Limited</p>
+              <p className="text-fg-muted text-xs sm:text-sm font-light mb-4">
                 4th Floor, Downtown Mall,<br />
                 Lakdikapul, Khairatabad,<br />
                 Hyderabad - 500004, India
               </p>
               <h3 className="text-white text-base sm:text-lg font-light mb-3 sm:mb-4 mt-6">USA</h3>
-              <p className="text-gray-300 text-xs sm:text-sm font-light mb-2">RAZR CAPITAL LLC</p>
-              <p className="text-gray-400 text-xs sm:text-sm font-light mb-3">
+              <p className="text-fg-secondary text-xs sm:text-sm font-light mb-2">RAZR CAPITAL LLC</p>
+              <p className="text-fg-muted text-xs sm:text-sm font-light mb-3">
                 2302 Stillbrooke Lane,<br />
                 Princeton, New Jersey, 08540, United States
               </p>
@@ -1514,7 +1514,7 @@ export default function HomePage() {
                   href="https://www.instagram.com/finacra.ai/" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-fg-muted hover:text-white transition-colors"
                   aria-label="Instagram"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -1525,7 +1525,7 @@ export default function HomePage() {
                   href="https://www.linkedin.com/company/finacra/posts/?feedView=all" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-fg-muted hover:text-white transition-colors"
                   aria-label="LinkedIn"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -1536,7 +1536,7 @@ export default function HomePage() {
                   href="https://www.facebook.com/share/178PDtw15R/?mibextid=wwXIfr" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-fg-muted hover:text-white transition-colors"
                   aria-label="Facebook"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -1547,7 +1547,7 @@ export default function HomePage() {
                   href="https://x.com/Finacraco" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-fg-muted hover:text-white transition-colors"
                   aria-label="X (Twitter)"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -1558,49 +1558,49 @@ export default function HomePage() {
             </div>
             <div>
               <h4 className="text-white text-sm sm:text-base font-light mb-3 sm:mb-4">Contact</h4>
-              <p className="text-gray-400 text-xs sm:text-sm font-light mb-2">
+              <p className="text-fg-muted text-xs sm:text-sm font-light mb-2">
                 <a href="mailto:info@finacra.com" className="hover:text-white transition-colors">
                   info@finacra.com
                 </a>
               </p>
-              <p className="text-gray-400 text-xs sm:text-sm font-light mb-2">
+              <p className="text-fg-muted text-xs sm:text-sm font-light mb-2">
                 <a href="tel:+16693097426" className="hover:text-white transition-colors">
                   +1 (669) 309-7426
                 </a>
-                <span className="text-gray-500 ml-1">- Global</span>
+                <span className="text-fg-muted ml-1">- Global</span>
               </p>
-              <p className="text-gray-400 text-xs sm:text-sm font-light">
+              <p className="text-fg-muted text-xs sm:text-sm font-light">
                 <a href="tel:+918790622663" className="hover:text-white transition-colors">
                   +91 8790622663
                 </a>
-                <span className="text-gray-500 ml-1">- India</span>
+                <span className="text-fg-muted ml-1">- India</span>
               </p>
             </div>
             <div>
               <h4 className="text-white text-sm sm:text-base font-light mb-3 sm:mb-4">Quick Links</h4>
               <div className="flex flex-col gap-2">
-                <Link href="/home#plans" className="text-gray-400 text-xs sm:text-sm font-light hover:text-white transition-colors">
+                <Link href="/home#plans" className="text-fg-muted text-xs sm:text-sm font-light hover:text-white transition-colors">
                   Pricing
                 </Link>
-                <Link href="/contact" className="text-gray-400 text-xs sm:text-sm font-light hover:text-white transition-colors">
+                <Link href="/contact" className="text-fg-muted text-xs sm:text-sm font-light hover:text-white transition-colors">
                   Contact Us
                 </Link>
-                <Link href="/home#products" className="text-gray-400 text-xs sm:text-sm font-light hover:text-white transition-colors">
+                <Link href="/home#products" className="text-fg-muted text-xs sm:text-sm font-light hover:text-white transition-colors">
                   Products
                 </Link>
               </div>
             </div>
           </div>
-          <div className="border-t border-gray-800 pt-6 sm:pt-8">
+          <div className="border-t border-line/10 pt-6 sm:pt-8">
             <div className="flex flex-col md:flex-row justify-between items-center gap-3 sm:gap-4">
-              <span className="text-gray-400 text-xs sm:text-sm font-light text-center md:text-left">
+              <span className="text-fg-muted text-xs sm:text-sm font-light text-center md:text-left">
                 © 2026 FinacraAI. All rights reserved.
               </span>
               <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs sm:text-sm">
-                <Link href="/privacy-policy" className="text-gray-400 hover:text-white transition-colors font-light">
+                <Link href="/privacy-policy" className="text-fg-muted hover:text-white transition-colors font-light">
                   Privacy Policy
                 </Link>
-                <Link href="/terms-of-service" className="text-gray-400 hover:text-white transition-colors font-light">
+                <Link href="/terms-of-service" className="text-fg-muted hover:text-white transition-colors font-light">
                   Terms of Service
                 </Link>
               </div>

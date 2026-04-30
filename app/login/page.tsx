@@ -219,19 +219,19 @@ function LoginPageInner() {
           <div className="hidden md:flex items-center gap-8">
             <Link 
               href="/home"
-              className="text-sm font-light transition-colors text-gray-300 hover:text-white"
+              className="text-sm font-light transition-colors text-fg-secondary hover:text-white"
           >
             Home
             </Link>
             <Link 
               href="/privacy-policy"
-              className="text-sm font-light transition-colors text-gray-300 hover:text-white"
+              className="text-sm font-light transition-colors text-fg-secondary hover:text-white"
           >
             Privacy
             </Link>
             <Link 
               href="/terms-of-service"
-              className="text-sm font-light transition-colors text-gray-300 hover:text-white"
+              className="text-sm font-light transition-colors text-fg-secondary hover:text-white"
           >
             Terms
             </Link>
@@ -239,7 +239,7 @@ function LoginPageInner() {
           <div className="md:hidden">
             <Link 
               href="/home"
-              className="text-sm font-light transition-colors text-gray-300 hover:text-white"
+              className="text-sm font-light transition-colors text-fg-secondary hover:text-white"
             >
               Home
             </Link>
@@ -255,12 +255,12 @@ function LoginPageInner() {
             <h1 className="text-4xl md:text-5xl font-light text-white mb-3 text-center tracking-tight">
               Welcome to Finacra
         </h1>
-            <p className="text-gray-400 mb-12 text-center font-light">
+            <p className="text-fg-muted mb-12 text-center font-light">
           Sign in to manage your financial compliance
         </p>
 
         {/* Sign-in Card */}
-            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-10 w-full">
+            <div className="bg-bg-card border border-line/10 rounded-xl p-10 w-full">
           {!isEmailMode ? (
             <>
               {/* Cinematic status banner — only visible during sign-in */}
@@ -283,7 +283,7 @@ function LoginPageInner() {
               <button
                 onClick={handleGoogleSignIn}
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-3 px-6 py-4 border border-gray-700 rounded-lg hover:border-gray-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white hover:bg-gray-50 group"
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 border border-line/15 rounded-lg hover:border-line/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white hover:bg-gray-50 group"
               >
                 {isLoading ? (
                   <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
@@ -318,10 +318,10 @@ function LoginPageInner() {
               {/* Divider */}
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-700"></div>
+                  <div className="w-full border-t border-line/15"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-[#1a1a1a] text-gray-400 font-light">Or</span>
+                  <span className="px-4 bg-bg-card text-fg-muted font-light">Or</span>
                 </div>
               </div>
 
@@ -329,7 +329,7 @@ function LoginPageInner() {
               <button
                 onClick={() => setIsEmailMode(true)}
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-3 px-6 py-4 border border-gray-700 rounded-lg hover:border-gray-600 hover:bg-gray-900/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-white font-light"
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 border border-line/15 rounded-lg hover:border-line/30 hover:bg-bg-card/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-white font-light"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -339,10 +339,10 @@ function LoginPageInner() {
 
               {/* Info Text */}
               <div className="mt-6 text-center">
-                <p className="text-sm text-gray-400 mb-1 font-light">
+                <p className="text-sm text-fg-muted mb-1 font-light">
                   Secure sign-in with your Google account
                 </p>
-                <p className="text-sm text-gray-400 font-light">No password required!</p>
+                <p className="text-sm text-fg-muted font-light">No password required!</p>
               </div>
             </>
           ) : requiresLinking ? (
@@ -353,7 +353,7 @@ function LoginPageInner() {
                   <p className="text-sm text-blue-400 font-light mb-3">
                     This email is already registered with Google. To add a password to your account, we need to verify you own this email address.
                   </p>
-                  <p className="text-sm text-gray-400 font-light">
+                  <p className="text-sm text-fg-muted font-light">
                     We'll send a verification email to <strong className="text-white">{email}</strong>. After you verify your email, you can set a password.
                   </p>
                 </div>
@@ -390,7 +390,7 @@ function LoginPageInner() {
                     setMessage(null)
                     setPassword('')
                   }}
-                  className="w-full px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-all font-light"
+                  className="w-full px-6 py-3 bg-bg-elevated text-white rounded-lg hover:bg-bg-hover transition-all font-light"
                 >
                   Cancel
                 </button>
@@ -401,7 +401,7 @@ function LoginPageInner() {
               {/* Email/Password Form */}
               <form onSubmit={handleEmailAuth} className="space-y-4">
                 <div>
-                  <label htmlFor="email" className="block text-sm font-light text-gray-300 mb-2">
+                  <label htmlFor="email" className="block text-sm font-light text-fg-secondary mb-2">
                     Email
                   </label>
                   <input
@@ -410,14 +410,14 @@ function LoginPageInner() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors font-light"
+                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
                     placeholder="your.email@example.com"
                     disabled={isLoading}
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="password" className="block text-sm font-light text-gray-300 mb-2">
+                  <label htmlFor="password" className="block text-sm font-light text-fg-secondary mb-2">
                     Password
                   </label>
                   <div className="relative">
@@ -427,7 +427,7 @@ function LoginPageInner() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                      className="w-full px-4 py-3 pr-12 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors font-light"
+                      className="w-full px-4 py-3 pr-12 bg-bg-card border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
                     placeholder="Enter your password"
                     disabled={isLoading}
                     minLength={6}
@@ -435,7 +435,7 @@ function LoginPageInner() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-white transition-colors"
                       tabIndex={-1}
                     >
                       {showPassword ? (
@@ -485,7 +485,7 @@ function LoginPageInner() {
                     setError(null)
                     setMessage(null)
                   }}
-                  className="text-sm text-gray-400 hover:text-white transition-colors font-light"
+                  className="text-sm text-fg-muted hover:text-white transition-colors font-light"
                 >
                   {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
                 </button>
@@ -497,7 +497,7 @@ function LoginPageInner() {
                   <button
                     onClick={handlePasswordReset}
                     disabled={isLoading}
-                    className="text-sm text-gray-400 hover:text-white transition-colors font-light disabled:opacity-50"
+                    className="text-sm text-fg-muted hover:text-white transition-colors font-light disabled:opacity-50"
                   >
                     Forgot password?
                   </button>
@@ -505,7 +505,7 @@ function LoginPageInner() {
               )}
 
               {/* Back to Google Sign-in */}
-              <div className="mt-6 pt-6 border-t border-gray-800">
+              <div className="mt-6 pt-6 border-t border-line/10">
                 <button
                   onClick={() => {
                     setIsEmailMode(false)
@@ -515,7 +515,7 @@ function LoginPageInner() {
                     setPassword('')
                     setIsSignUp(false)
                   }}
-                  className="w-full text-sm text-gray-400 hover:text-white transition-colors font-light"
+                  className="w-full text-sm text-fg-muted hover:text-white transition-colors font-light"
                 >
                   ← Back to other sign-in options
                 </button>
@@ -526,18 +526,18 @@ function LoginPageInner() {
 
         {/* Footer */}
         <div className="mt-8 space-y-4">
-              <p className="text-sm text-gray-500 text-center font-light">
+              <p className="text-sm text-fg-muted text-center font-light">
           By signing in, you agree to our{' '}
                 <Link
                   href="/terms-of-service"
-                  className="text-gray-400 hover:text-white transition-colors underline"
+                  className="text-fg-muted hover:text-white transition-colors underline"
           >
             Terms of Service
                 </Link>{' '}
           and{' '}
                 <Link
                   href="/privacy-policy"
-                  className="text-gray-400 hover:text-white transition-colors underline"
+                  className="text-fg-muted hover:text-white transition-colors underline"
           >
             Privacy Policy
                 </Link>
@@ -545,21 +545,21 @@ function LoginPageInner() {
           <div className="flex items-center justify-center gap-4 text-sm">
                 <Link
                   href="/home"
-                  className="text-gray-400 hover:text-white transition-colors font-light"
+                  className="text-fg-muted hover:text-white transition-colors font-light"
             >
               Learn More
                 </Link>
-            <span className="text-gray-600">•</span>
+            <span className="text-fg-muted/60">•</span>
                 <Link
                   href="/privacy-policy"
-                  className="text-gray-400 hover:text-white transition-colors font-light"
+                  className="text-fg-muted hover:text-white transition-colors font-light"
             >
               Privacy
                 </Link>
-            <span className="text-gray-600">•</span>
+            <span className="text-fg-muted/60">•</span>
                 <Link
                   href="/terms-of-service"
-                  className="text-gray-400 hover:text-white transition-colors font-light"
+                  className="text-fg-muted hover:text-white transition-colors font-light"
             >
               Terms
                 </Link>

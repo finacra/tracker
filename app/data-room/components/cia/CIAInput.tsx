@@ -79,7 +79,7 @@ export default function CIAInput({ onSend, onStop, onAttach, isStreaming, disabl
           placeholder="Ask about your compliance, upload documents, or give instructions..."
           disabled={isStreaming || disabled}
           rows={1}
-          className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 resize-none outline-none max-h-[120px] leading-relaxed disabled:opacity-50"
+          className="flex-1 bg-transparent text-sm text-white placeholder:text-fg-muted resize-none outline-none max-h-[120px] leading-relaxed disabled:opacity-50"
         />
 
         {isStreaming ? (

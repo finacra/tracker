@@ -56,20 +56,20 @@ export default function VersionHistoryModal({ isOpen, onClose, companyId, docume
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="w-full max-w-xl bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl max-h-[80vh] overflow-hidden flex flex-col">
-        <div className="p-5 border-b border-gray-800 flex items-start justify-between">
+      <div className="w-full max-w-xl bg-bg-card border border-line/10 rounded-2xl shadow-2xl max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="p-5 border-b border-line/10 flex items-start justify-between">
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold text-white truncate">Version history</h2>
-            <p className="text-xs text-gray-400 mt-0.5 truncate">{documentName}</p>
+            <p className="text-xs text-fg-muted mt-0.5 truncate">{documentName}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-white ml-3">✕</button>
+          <button onClick={onClose} className="p-1.5 text-fg-muted hover:text-white ml-3">✕</button>
         </div>
 
         <div className="p-4 overflow-y-auto flex-1">
           {loading ? (
-            <div className="text-center py-8 text-xs text-gray-400">Loading…</div>
+            <div className="text-center py-8 text-xs text-fg-muted">Loading…</div>
           ) : versions.length === 0 ? (
-            <div className="text-center py-8 text-xs text-gray-400">No versions found.</div>
+            <div className="text-center py-8 text-xs text-fg-muted">No versions found.</div>
           ) : (
             <div className="space-y-2">
               {versions.map((v) => (
@@ -89,16 +89,16 @@ export default function VersionHistoryModal({ isOpen, onClose, companyId, docume
                         <span className={`text-[11px] font-mono px-1.5 py-0.5 rounded ${
                           v.isLatest
                             ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                            : 'bg-gray-800 text-gray-400 border border-gray-700'
+                            : 'bg-bg-elevated text-fg-muted border border-line/15'
                         }`}>
                           v{v.versionNumber}
                         </span>
                         {v.isLatest && <span className="text-[10px] text-emerald-400 font-medium">Current</span>}
                         {v.deletedAt && <span className="text-[10px] text-red-400">Deleted</span>}
                       </div>
-                      <div className="text-xs text-gray-200 mt-1 truncate">{v.fileName || 'Unnamed'}</div>
+                      <div className="text-xs text-fg-secondary mt-1 truncate">{v.fileName || 'Unnamed'}</div>
                       {v.createdAt && (
-                        <div className="text-[10px] text-gray-500 mt-0.5">
+                        <div className="text-[10px] text-fg-muted mt-0.5">
                           {new Date(v.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </div>
                       )}
@@ -110,11 +110,11 @@ export default function VersionHistoryModal({ isOpen, onClose, companyId, docume
           )}
         </div>
 
-        <div className="p-4 border-t border-gray-800 flex items-center justify-between">
-          <button onClick={onClose} className="text-sm text-gray-400 hover:text-white">Close</button>
+        <div className="p-4 border-t border-line/10 flex items-center justify-between">
+          <button onClick={onClose} className="text-sm text-fg-muted hover:text-white">Close</button>
           <button
             onClick={() => { onClose(); onUploadNewVersion() }}
-            className="px-4 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-200"
+            className="px-4 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-bg-elevated"
           >
             Upload new version
           </button>

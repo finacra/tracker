@@ -88,7 +88,7 @@ function ContactPageContent() {
       <div className="relative z-10 px-4 sm:px-6 pt-4">
         <Link
           href="/home"
-          className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors font-light text-sm"
+          className="inline-flex items-center gap-2 text-fg-muted hover:text-white transition-colors font-light text-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -104,19 +104,19 @@ function ContactPageContent() {
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-light text-white mb-4">
               Get in Touch
             </h1>
-            <p className="text-gray-400 text-sm sm:text-base font-light">
+            <p className="text-fg-muted text-sm sm:text-base font-light">
               Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6 sm:gap-8 md:gap-12">
             {/* Left: Contact Form */}
-            <div className="bg-[#1a1a1a] border border-gray-800 rounded-xl p-6 sm:p-8 md:p-10">
+            <div className="bg-bg-card border border-line/10 rounded-xl p-6 sm:p-8 md:p-10">
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Name */}
               <div>
-                <label htmlFor="name" className="block text-sm font-light text-gray-300 mb-2">
-                  Name <span className="text-gray-500">*</span>
+                <label htmlFor="name" className="block text-sm font-light text-fg-secondary mb-2">
+                  Name <span className="text-fg-muted">*</span>
                 </label>
                 <input
                   type="text"
@@ -125,15 +125,15 @@ function ContactPageContent() {
                   required
                   value={formData.name}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors font-light"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
                   placeholder="Your name"
                 />
               </div>
 
               {/* Email */}
               <div>
-                <label htmlFor="email" className="block text-sm font-light text-gray-300 mb-2">
-                  Email <span className="text-gray-500">*</span>
+                <label htmlFor="email" className="block text-sm font-light text-fg-secondary mb-2">
+                  Email <span className="text-fg-muted">*</span>
                 </label>
                 <input
                   type="email"
@@ -142,14 +142,14 @@ function ContactPageContent() {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors font-light"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
                   placeholder="your.email@example.com"
                 />
               </div>
 
               {/* Company */}
               <div>
-                <label htmlFor="company" className="block text-sm font-light text-gray-300 mb-2">
+                <label htmlFor="company" className="block text-sm font-light text-fg-secondary mb-2">
                   Company
                 </label>
                 <input
@@ -158,14 +158,14 @@ function ContactPageContent() {
                   name="company"
                   value={formData.company}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors font-light"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
                   placeholder="Your company name (optional)"
                 />
               </div>
 
               {/* Phone */}
               <div>
-                <label htmlFor="phone" className="block text-sm font-light text-gray-300 mb-2">
+                <label htmlFor="phone" className="block text-sm font-light text-fg-secondary mb-2">
                   Phone
                 </label>
                 <input
@@ -174,15 +174,15 @@ function ContactPageContent() {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors font-light"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
                   placeholder="Your phone number (optional)"
                 />
               </div>
 
               {/* Message */}
               <div>
-                <label htmlFor="message" className="block text-sm font-light text-gray-300 mb-2">
-                  Message <span className="text-gray-500">*</span>
+                <label htmlFor="message" className="block text-sm font-light text-fg-secondary mb-2">
+                  Message <span className="text-fg-muted">*</span>
                 </label>
                 <textarea
                   id="message"
@@ -191,7 +191,7 @@ function ContactPageContent() {
                   rows={6}
                   value={formData.message}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-600 transition-colors font-light resize-none"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light resize-none"
                   placeholder="Tell us how we can help you..."
                 />
               </div>
@@ -201,7 +201,7 @@ function ContactPageContent() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full px-6 py-3 bg-black border border-gray-700 text-white rounded-lg hover:bg-gray-900 hover:border-gray-600 transition-all duration-300 font-light text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] flex items-center justify-center"
+                  className="w-full px-6 py-3 bg-black border border-line/15 text-white rounded-lg hover:bg-bg-card hover:border-line/30 transition-all duration-300 font-light text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] flex items-center justify-center"
                 >
                   {isSubmitting ? (
                     <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
@@ -233,10 +233,10 @@ function ContactPageContent() {
             </div>
 
             {/* Right: Contact Information Card */}
-            <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border border-gray-800 rounded-xl p-6 sm:p-8 md:p-10 shadow-2xl">
+            <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0f0f0f] border border-line/10 rounded-xl p-6 sm:p-8 md:p-10 shadow-2xl">
               <div className="space-y-8">
                 {/* Corporate Header */}
-                <div className="pb-6 border-b border-gray-800">
+                <div className="pb-6 border-b border-line/10">
                   <h2 className="text-2xl sm:text-3xl font-light text-white">Corporate</h2>
                 </div>
 
@@ -244,13 +244,13 @@ function ContactPageContent() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-3 h-3 bg-white rounded-full flex-shrink-0"></div>
-                    <h3 className="text-xs font-light text-gray-400 uppercase tracking-widest">India</h3>
+                    <h3 className="text-xs font-light text-fg-muted uppercase tracking-widest">India</h3>
                   </div>
                   <div className="pl-6 space-y-2">
                     <p className="text-white font-light text-sm sm:text-base font-medium">
                       Finnogenius Consulting Private Limited,
                     </p>
-                    <p className="text-gray-300 font-light leading-relaxed text-sm sm:text-base">
+                    <p className="text-fg-secondary font-light leading-relaxed text-sm sm:text-base">
                       4th Floor, Downtown Mall,<br />
                       Lakdikapul, Khairatabad,<br />
                       Hyderabad - 500004, India
@@ -259,16 +259,16 @@ function ContactPageContent() {
                 </div>
 
                 {/* USA Address */}
-                <div className="space-y-3 pt-6 border-t border-gray-800/50">
+                <div className="space-y-3 pt-6 border-t border-line/10/50">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-3 h-3 bg-white rounded-full flex-shrink-0"></div>
-                    <h3 className="text-xs font-light text-gray-400 uppercase tracking-widest">USA</h3>
+                    <h3 className="text-xs font-light text-fg-muted uppercase tracking-widest">USA</h3>
                   </div>
                   <div className="pl-6 space-y-2">
                     <p className="text-white font-light text-sm sm:text-base font-medium">
                       RAZR CAPITAL LLC,
                     </p>
-                    <p className="text-gray-300 font-light leading-relaxed text-sm sm:text-base">
+                    <p className="text-fg-secondary font-light leading-relaxed text-sm sm:text-base">
                       2302 Stillbrooke Lane,<br />
                       Princeton, New Jersey, 08540, United States
                     </p>
@@ -276,13 +276,13 @@ function ContactPageContent() {
                 </div>
 
                 {/* Email */}
-                <div className="space-y-3 pt-6 border-t border-gray-800">
-                  <h3 className="text-xs font-light text-gray-400 uppercase tracking-widest mb-3">Email</h3>
+                <div className="space-y-3 pt-6 border-t border-line/10">
+                  <h3 className="text-xs font-light text-fg-muted uppercase tracking-widest mb-3">Email</h3>
                   <a
                     href="mailto:info@finacra.com"
-                    className="text-white hover:text-gray-300 transition-colors font-light text-sm sm:text-base flex items-center gap-2 group"
+                    className="text-white hover:text-fg-secondary transition-colors font-light text-sm sm:text-base flex items-center gap-2 group"
                   >
-                    <svg className="w-4 h-4 text-gray-400 group-hover:text-gray-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-fg-muted group-hover:text-fg-secondary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                     info@finacra.com
@@ -290,35 +290,35 @@ function ContactPageContent() {
                 </div>
 
                 {/* Phone */}
-                <div className="space-y-4 pt-6 border-t border-gray-800">
-                  <h3 className="text-xs font-light text-gray-400 uppercase tracking-widest mb-3">Phone Number</h3>
+                <div className="space-y-4 pt-6 border-t border-line/10">
+                  <h3 className="text-xs font-light text-fg-muted uppercase tracking-widest mb-3">Phone Number</h3>
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
-                      <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-fg-muted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                       </svg>
                       <div>
                         <a
                           href="tel:+918790622663"
-                          className="text-white hover:text-gray-300 transition-colors font-light"
+                          className="text-white hover:text-fg-secondary transition-colors font-light"
                         >
                           +91 8790622663
                         </a>
-                        <span className="text-gray-500 font-light ml-2 text-sm">- India</span>
+                        <span className="text-fg-muted font-light ml-2 text-sm">- India</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-fg-muted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                       </svg>
                       <div>
                         <a
                           href="tel:+16693097426"
-                          className="text-white hover:text-gray-300 transition-colors font-light"
+                          className="text-white hover:text-fg-secondary transition-colors font-light"
                         >
                           +1 (669) 309-7426
                         </a>
-                        <span className="text-gray-500 font-light ml-2 text-sm">- Global</span>
+                        <span className="text-fg-muted font-light ml-2 text-sm">- Global</span>
                       </div>
                     </div>
                   </div>
@@ -330,17 +330,17 @@ function ContactPageContent() {
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-gray-800 px-4 sm:px-6 py-8 sm:py-12">
+      <footer className="relative z-10 border-t border-line/10 px-4 sm:px-6 py-8 sm:py-12">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <span className="text-gray-400 text-xs sm:text-sm font-light text-center md:text-left">
+            <span className="text-fg-muted text-xs sm:text-sm font-light text-center md:text-left">
               © 2026 FinacraAI. All rights reserved.
             </span>
             <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs sm:text-sm">
-              <Link href="/privacy-policy" className="text-gray-400 hover:text-white transition-colors font-light">
+              <Link href="/privacy-policy" className="text-fg-muted hover:text-white transition-colors font-light">
                 Privacy Policy
               </Link>
-              <Link href="/terms-of-service" className="text-gray-400 hover:text-white transition-colors font-light">
+              <Link href="/terms-of-service" className="text-fg-muted hover:text-white transition-colors font-light">
                 Terms of Service
               </Link>
             </div>

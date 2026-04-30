@@ -374,7 +374,7 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
     <div className="space-y-3">
       {/* Bulk action bar + top-level "New folder" */}
       <div className="flex items-center justify-between px-1">
-        <div className="text-xs text-gray-400">
+        <div className="text-xs text-fg-muted">
           {folders.length} folder{folders.length === 1 ? '' : 's'} · {documents.length} document{documents.length === 1 ? '' : 's'}
           {selected.size > 0 && <span className="ml-3 text-amber-300">{selected.size} selected</span>}
         </div>
@@ -390,7 +390,7 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
           {selected.size > 0 && (
             <button
               onClick={clearSelection}
-              className="text-[11px] px-2.5 py-1 border border-white/10 text-gray-400 rounded hover:text-white hover:border-white/20"
+              className="text-[11px] px-2.5 py-1 border border-white/10 text-fg-muted rounded hover:text-white hover:border-white/20"
             >
               Clear
             </button>
@@ -398,7 +398,7 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
           {canEdit && (
             <button
               onClick={() => handleCreateFolder(null)}
-              className="text-[11px] px-2.5 py-1 border border-white/10 text-gray-300 rounded hover:text-white hover:border-white/20"
+              className="text-[11px] px-2.5 py-1 border border-white/10 text-fg-secondary rounded hover:text-white hover:border-white/20"
             >
               + New folder
             </button>
@@ -531,7 +531,7 @@ function FolderNode({
   }, [folder.id, docs.length, childrenOf, docsInFolder])
 
   const depthPadding = depth === 0 ? '' : `pl-${Math.min(depth * 4, 16)}`
-  const bgColor = depth === 0 ? 'bg-gray-900/40' : 'bg-gray-900/20'
+  const bgColor = depth === 0 ? 'bg-bg-card/40' : 'bg-bg-card/20'
   const borderColor = depth === 0 ? 'border-white/10' : 'border-white/5'
 
   return (
@@ -540,7 +540,7 @@ function FolderNode({
       <div className="flex items-center gap-2 px-3 py-2.5 hover:bg-white/[0.02] transition-colors">
         <button
           onClick={() => onToggleExpand(folder.id)}
-          className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-gray-500 hover:text-white"
+          className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-fg-muted hover:text-white"
           aria-label={isExpanded ? 'Collapse' : 'Expand'}
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}>
@@ -549,7 +549,7 @@ function FolderNode({
         </button>
 
         {/* Folder icon */}
-        <svg className="w-4 h-4 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 flex-shrink-0 text-fg-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
         </svg>
 
@@ -557,13 +557,13 @@ function FolderNode({
           onClick={() => onToggleExpand(folder.id)}
           className="flex-1 text-left min-w-0 flex items-center gap-2"
         >
-          <span className={`text-sm ${depth === 0 ? 'text-white font-medium' : 'text-gray-200'} truncate`}>
+          <span className={`text-sm ${depth === 0 ? 'text-white font-medium' : 'text-fg-secondary'} truncate`}>
             {folder.name}
           </span>
           {folder.kind === 'user' && (
-            <span className="text-[9px] uppercase tracking-wider text-gray-500 border border-gray-700 px-1 rounded flex-shrink-0">Custom</span>
+            <span className="text-[9px] uppercase tracking-wider text-fg-muted border border-line/15 px-1 rounded flex-shrink-0">Custom</span>
           )}
-          <span className="text-[10px] text-gray-500 flex-shrink-0">
+          <span className="text-[10px] text-fg-muted flex-shrink-0">
             {totalDocs} {totalDocs === 1 ? 'doc' : 'docs'}
           </span>
         </button>
@@ -573,7 +573,7 @@ function FolderNode({
           {canEdit && onUploadToFolder && (
             <button
               onClick={() => onUploadToFolder(folder.id, folder.name)}
-              className="text-[11px] px-2 py-1 text-gray-400 hover:text-white"
+              className="text-[11px] px-2 py-1 text-fg-muted hover:text-white"
               title="Upload to this folder"
             >
               ↑ Upload
@@ -651,7 +651,7 @@ function FolderNode({
           )}
 
           {!hasContents && (
-            <div className="px-6 py-4 text-[11px] text-gray-500 italic">
+            <div className="px-6 py-4 text-[11px] text-fg-muted italic">
               Empty. {canEdit && 'Upload a document or create a sub-folder to get started.'}
             </div>
           )}
@@ -706,10 +706,10 @@ function DocumentRow({
         checked={selected}
         onChange={() => onToggleSelect(doc.id)}
         disabled={!canEdit}
-        className="w-3.5 h-3.5 rounded border-gray-600 bg-transparent text-blue-500 focus:ring-blue-500/30 focus:ring-1 cursor-pointer disabled:cursor-not-allowed"
+        className="w-3.5 h-3.5 rounded border-line/30 bg-transparent text-blue-500 focus:ring-blue-500/30 focus:ring-1 cursor-pointer disabled:cursor-not-allowed"
       />
 
-      <svg className="w-3.5 h-3.5 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="w-3.5 h-3.5 flex-shrink-0 text-fg-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
       </svg>
 
@@ -733,7 +733,7 @@ function DocumentRow({
 
       <IngestChip ingest={ingestStatus} onReview={() => onReview(doc.id)} />
 
-      <span className="text-[10px] text-gray-500 flex-shrink-0">{formatted}</span>
+      <span className="text-[10px] text-fg-muted flex-shrink-0">{formatted}</span>
 
       {canEdit && (
         <DocActionsMenu
@@ -809,7 +809,7 @@ function DocActionsMenu({
       <button
         ref={btnRef}
         onClick={handleToggle}
-        className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white rounded"
+        className="w-6 h-6 flex items-center justify-center text-fg-muted hover:text-white rounded"
         aria-label="Document actions"
         aria-expanded={isOpen}
       >
@@ -819,13 +819,13 @@ function DocActionsMenu({
         <>
           <div className="fixed inset-0 z-40" onClick={onClose} />
           <div
-            className="fixed z-50 w-44 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl py-1 text-xs"
+            className="fixed z-50 w-44 bg-bg-card border border-white/10 rounded-lg shadow-2xl py-1 text-xs"
             style={{ top: coords.top, right: coords.right }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => { onClose(); openDocumentInTab(companyId, doc.id) }}
-              className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
+              className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-white/5"
             >
               View document
             </button>
@@ -833,27 +833,27 @@ function DocActionsMenu({
             {onUploadNewVersion && (
               <button
                 onClick={() => { onClose(); onUploadNewVersion(doc) }}
-                className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
+                className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-white/5"
               >
                 Upload new version
               </button>
             )}
             <button
               onClick={() => { onClose(); onShowVersions(doc) }}
-              className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
+              className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-white/5"
             >
               Version history
             </button>
             <div className="h-px bg-white/5 my-1" />
             <button
               onClick={() => { onClose(); onRename(doc) }}
-              className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
+              className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-white/5"
             >
               Rename
             </button>
             <button
               onClick={() => { onClose(); onMove(doc) }}
-              className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
+              className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-white/5"
             >
               Move to…
             </button>
@@ -904,7 +904,7 @@ function FolderActionsMenu({
       <button
         ref={btnRef}
         onClick={handleToggle}
-        className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white rounded"
+        className="w-6 h-6 flex items-center justify-center text-fg-muted hover:text-white rounded"
         aria-label="Folder actions"
         aria-expanded={isOpen}
       >
@@ -914,13 +914,13 @@ function FolderActionsMenu({
         <>
           <div className="fixed inset-0 z-40" onClick={onClose} />
           <div
-            className="fixed z-50 w-44 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl py-1 text-xs"
+            className="fixed z-50 w-44 bg-bg-card border border-white/10 rounded-lg shadow-2xl py-1 text-xs"
             style={{ top: coords.top, right: coords.right }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => { onClose(); onCreateSubfolder(folder.id) }}
-              className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
+              className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-white/5"
             >
               + New sub-folder
             </button>
@@ -928,7 +928,7 @@ function FolderActionsMenu({
               <>
                 <button
                   onClick={() => { onClose(); onRenameFolder(folder) }}
-                  className="w-full text-left px-3 py-1.5 text-gray-200 hover:bg-white/5"
+                  className="w-full text-left px-3 py-1.5 text-fg-secondary hover:bg-white/5"
                 >
                   Rename
                 </button>
@@ -953,8 +953,8 @@ function VaultLoadingState() {
     messages: DOCUMENTS_VAULT_LOADING_MESSAGES,
   })
   return (
-    <div className="p-6 text-center text-gray-400">
-      <div className="w-6 h-6 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+    <div className="p-6 text-center text-fg-muted">
+      <div className="w-6 h-6 border-2 border-line/30 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
       <span key={message}>{message}</span>
     </div>
   )
@@ -980,7 +980,7 @@ function IngestChip({ ingest, onReview }: { ingest: IngestStatus | null; onRevie
   if (status === 'pending') {
     return (
       <span
-        className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400 flex-shrink-0"
+        className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-fg-muted flex-shrink-0"
         title="Queued for AI extraction"
       >
         Queued

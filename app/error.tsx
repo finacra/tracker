@@ -24,7 +24,7 @@ export default function GlobalError({
         </div>
 
         <h1 className="text-2xl font-light text-white mb-2">Something went wrong</h1>
-        <p className="text-gray-400 text-sm font-light mb-8 leading-relaxed">
+        <p className="text-fg-muted text-sm font-light mb-8 leading-relaxed">
           An unexpected error occurred. Our team has been notified. You can try again or return to the dashboard.
         </p>
 
@@ -37,14 +37,14 @@ export default function GlobalError({
           </button>
           <Link
             href="/data-room"
-            className="px-6 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-gray-300 text-sm font-medium transition-colors"
+            className="px-6 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-fg-secondary text-sm font-medium transition-colors"
           >
             Go to Dashboard
           </Link>
         </div>
 
         {error.digest && (
-          <p className="mt-6 text-gray-600 text-xs font-mono">Error ID: {error.digest}</p>
+          <p className="mt-6 text-fg-muted/60 text-xs font-mono">Error ID: {error.digest}</p>
         )}
       </div>
     </div>
