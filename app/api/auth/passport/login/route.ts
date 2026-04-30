@@ -37,6 +37,58 @@ export async function POST(req: NextRequest) {
     const user = await loginUser()
 
     if (!user) {
+      // Before returning a generic "Invalid email or password", check if
+      // the address belongs to a Google-only account (no password yet).
+      // Without this, a user who signed up with Google then forgot and
+      // tried email/password login would just get "Invalid" with no
+      // clue. Detecting it lets us route them through the linking flow
+      // — same shape register/route.ts returns.
+      try {
+        const normalizedEmail = email.trim().toLowerCase()
+        const existingUser = await prisma.appUser.findFirst({
+          where: {
+            primary_email: { equals: normalizedEmail, mode: 'insensitive' },
+          },
+          include: { authIdentities: true },
+        })
+
+        const hasGoogleAuth = existingUser?.authIdentities?.some(
+          (identity) =>
+            identity.provider === 'passport' &&
+            identity.legacy_auth_id &&
+            identity.legacy_auth_id !== '',
+        )
+        const hasPassword = existingUser && (existingUser as any).password_hash
+
+        if (existingUser && hasGoogleAuth && !hasPassword) {
+          // Auto-fire the linking verification email so the user sees a
+          // single "check your inbox" message rather than having to
+          // click another button on the login page.
+          const { sendVerificationEmail } = await import('@/lib/email/verification')
+          sendVerificationEmail(
+            existingUser.id,
+            existingUser.primary_email,
+            existingUser.full_name,
+          ).catch((err) => {
+            console.error('[Passport Login] Failed to send linking email:', err)
+          })
+
+          return NextResponse.json(
+            {
+              success: false,
+              requiresLinking: true,
+              userId: existingUser.id,
+              message:
+                "This email is registered with Google. We've sent you a verification email — click the link to set a password.",
+            },
+            { status: 200 },
+          )
+        }
+      } catch (lookupErr) {
+        console.error('[Passport Login] Account-linking lookup failed:', lookupErr)
+        // Fall through to generic error — don't leak existence on lookup failure.
+      }
+
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
