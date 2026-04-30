@@ -34,10 +34,24 @@ function VerifyEmailContent() {
           'Accept': 'application/json',
         },
       })
-      
+
       if (response.ok) {
         const data = await response.json()
-        // Update URL to show success
+
+        // If the user authenticated only via Google and has no password,
+        // route them to /auth/link-password where they set one. The API
+        // returns needsPasswordLinking=true and deliberately did NOT
+        // consume the token (per /api/auth/verify-email's peek-first
+        // logic), so the same token can be re-used by the link-password
+        // POST. Without this branch, the user lands on "Email Verified"
+        // → "Continue to Subscription" but never gets to set a password,
+        // and the next login attempt re-fires the linking flow forever.
+        if (data.needsPasswordLinking) {
+          router.replace(`/auth/link-password?token=${encodeURIComponent(verificationToken)}`)
+          return
+        }
+
+        // Regular flow — token was consumed server-side, mark success.
         const url = new URL(window.location.href)
         url.searchParams.set('success', 'true')
         if (data.email) {
