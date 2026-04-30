@@ -537,13 +537,6 @@ export default function OnboardingPage() {
    * until the user fills them — exactly the "below the fold" plan.
    */
   const handleMagicalIntakeComplete = (payload: MagicalIntakePayload) => {
-    // Seed the IDs first so applyParsedCINData / downstream code see them.
-    setFormData((prev) => ({
-      ...prev,
-      cinNumber: payload.cin,
-      panNumber: payload.pan,
-    }))
-
     // Mark CIN as verified so the existing CIN-verify button doesn't ask
     // the user to verify again.
     setIsCINVerified(true)
@@ -559,6 +552,19 @@ export default function OnboardingPage() {
 
     // Apply company prefill via the SAME helper the legacy flow uses.
     applyParsedCINData(payload.parsed, payload.companyData, payload.directorData)
+
+    // Seed cin/pan AFTER applyParsedCINData so this write lands LAST in
+    // the React batch and wins. Putting it first caused the CIN field to
+    // end up empty: applyParsedCINData reads `formData.cinNumber` from a
+    // stale closure, and when companyData.cin was missing (Perplexity
+    // fallback path), it overrode our just-set value with an empty
+    // string. Putting our setter last guarantees the user's typed CIN
+    // is preserved on the form.
+    setFormData((prev) => ({
+      ...prev,
+      cinNumber: payload.cin,
+      panNumber: payload.pan,
+    }))
 
     // Directors — mirror handleCINVerification's mapping so verification
     // status, IDs, and source labels stay consistent with the legacy flow.
