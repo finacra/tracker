@@ -207,7 +207,7 @@ export default function RequirementDesktopTableView({
                     setSelectedRequirements(() => new Set())
                   }
                 }}
-                className="w-4 h-4 rounded border-line/30 bg-bg-elevated text-white focus:ring-white/40 focus:ring-2 cursor-pointer"
+                className="w-4 h-4 rounded border-line/30 bg-bg-elevated text-fg-primary focus:ring-white/40 focus:ring-2 cursor-pointer"
               />
             </th>
           )}
@@ -290,7 +290,7 @@ export default function RequirementDesktopTableView({
                           }
                           setSelectedRequirements(() => newSelected)
                         }}
-                        className="w-4 h-4 rounded border-line/30 bg-bg-elevated text-white focus:ring-white/40 focus:ring-2 cursor-pointer"
+                        className="w-4 h-4 rounded border-line/30 bg-bg-elevated text-fg-primary focus:ring-white/40 focus:ring-2 cursor-pointer"
                       />
                     </td>
                   )}
@@ -315,7 +315,7 @@ export default function RequirementDesktopTableView({
                       )}
                       <div className="min-w-0 flex-1">
                         <div
-                          className="text-white font-medium text-sm leading-snug truncate"
+                          className="text-fg-primary font-medium text-sm leading-snug truncate"
                           title={req.requirement}
                         >
                           {stripPeriodSuffix(req.requirement) || req.requirement}
@@ -398,7 +398,7 @@ export default function RequirementDesktopTableView({
                       const daysDelayed = calculateDelay(req.dueDate, req.status)
                       return (
                         <div className="flex flex-col">
-                          <div className="flex items-center gap-2 text-white">
+                          <div className="flex items-center gap-2 text-fg-primary">
                             <svg
                               width="16"
                               height="16"
@@ -504,7 +504,7 @@ export default function RequirementDesktopTableView({
                                 ? 'bg-green-500/15 text-green-400 border-green-500/30'
                                 : uploadedCount > 0
                                   ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30'
-                                  : 'bg-bg-elevated text-fg-muted border-line/15 hover:border-line/40 hover:text-white'
+                                  : 'bg-bg-elevated text-fg-muted border-line/15 hover:border-line/40 hover:text-fg-primary'
                             }`}
                             title={allDone ? 'All required documents uploaded' : 'Click to upload required documents'}
                           >
@@ -633,7 +633,7 @@ export default function RequirementDesktopTableView({
                                 value={inputVal}
                                 onChange={e => setBaseAmountInputs(prev => ({ ...prev, [req.id]: e.target.value }))}
                                 placeholder="e.g. 50000"
-                                className="w-24 px-2 py-1 text-xs bg-bg-elevated border border-line/30 rounded text-white placeholder:text-fg-muted focus:outline-none focus:border-white/40"
+                                className="w-24 px-2 py-1 text-xs bg-bg-elevated border border-line/30 rounded text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40"
                                 onKeyDown={async e => {
                                   if (e.key === 'Enter') {
                                     const amount = parseFloat(inputVal)
@@ -901,7 +901,7 @@ function AmountInputCell({
 
   if (!canEdit) {
     return (
-      <span className={value != null ? 'text-white text-sm' : 'text-fg-muted/60 text-sm'}>
+      <span className={value != null ? 'text-fg-primary text-sm' : 'text-fg-muted/60 text-sm'}>
         {value != null ? `₹${Number(value).toLocaleString('en-IN')}` : '—'}
       </span>
     )
@@ -939,9 +939,9 @@ function AmountInputCell({
       }}
       className={`w-28 px-2.5 py-1.5 text-sm rounded-md text-right bg-transparent border transition-colors focus:outline-none ${
         focused
-          ? 'border-blue-400/60 bg-bg-card/80 text-white'
+          ? 'border-blue-400/60 bg-bg-card/80 text-fg-primary'
           : value != null
-            ? 'border-white/10 text-white hover:border-white/25'
+            ? 'border-white/10 text-fg-primary hover:border-white/25'
             : 'border-dashed border-white/10 text-fg-muted hover:border-white/25 hover:text-fg-secondary'
       }`}
     />

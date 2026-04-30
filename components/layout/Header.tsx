@@ -115,7 +115,7 @@ export default function Header() {
               {/* Desktop bell */}
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative hidden md:flex p-1.5 sm:p-2 text-fg-muted hover:text-white transition-colors"
+                className="relative hidden md:flex p-1.5 sm:p-2 text-fg-muted hover:text-fg-primary transition-colors"
                 aria-label="Notifications"
               >
                 <svg width="18" height="18" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -123,7 +123,7 @@ export default function Header() {
                   <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
                 {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-bg-hover text-white text-[10px] font-light rounded-full flex items-center justify-center">
+                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-bg-hover text-fg-primary text-[10px] font-light rounded-full flex items-center justify-center">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
@@ -131,7 +131,7 @@ export default function Header() {
               {/* Mobile bell */}
               <button
                 onClick={() => setShowMobileNotifications(true)}
-                className="relative flex md:hidden p-1.5 text-fg-muted hover:text-white transition-colors"
+                className="relative flex md:hidden p-1.5 text-fg-muted hover:text-fg-primary transition-colors"
                 aria-label="Notifications"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -139,7 +139,7 @@ export default function Header() {
                   <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
                 {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-bg-hover text-white text-[10px] font-light rounded-full flex items-center justify-center">
+                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-bg-hover text-fg-primary text-[10px] font-light rounded-full flex items-center justify-center">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
@@ -157,11 +157,11 @@ export default function Header() {
                   <div className="absolute right-0 top-full mt-2 w-80 max-h-96 bg-bg-card border border-line/10 rounded-xl shadow-2xl z-50 overflow-hidden">
                     {/* Header */}
                     <div className="flex items-center justify-between px-4 py-3 border-b border-line/10">
-                      <h3 className="text-white font-light">Notifications</h3>
+                      <h3 className="text-fg-primary font-light">Notifications</h3>
                       {unreadCount > 0 && (
                         <button
                           onClick={handleMarkAllRead}
-                          className="text-xs text-fg-muted hover:text-white transition-colors font-light"
+                          className="text-xs text-fg-muted hover:text-fg-primary transition-colors font-light"
                         >
                           Mark all read
                         </button>
@@ -239,7 +239,7 @@ export default function Header() {
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className={`text-sm font-light ${notification.is_read ? 'text-fg-secondary' : 'text-white'}`}>
+                                <p className={`text-sm font-light ${notification.is_read ? 'text-fg-secondary' : 'text-fg-primary'}`}>
                                   {notification.title}
                                 </p>
                                 <p className="text-xs text-fg-muted mt-0.5 line-clamp-2 font-light">
@@ -272,7 +272,7 @@ export default function Header() {
                             setShowNotifications(false)
                             setShowAllNotifications(true)
                           }}
-                          className="w-full text-center text-sm text-fg-muted hover:text-white transition-colors font-light"
+                          className="w-full text-center text-sm text-fg-muted hover:text-fg-primary transition-colors font-light"
                         >
                           View all in Data Room
                         </button>
@@ -293,14 +293,14 @@ export default function Header() {
                     </div>
                     {/* Drawer header */}
                     <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-                      <h3 className="text-white font-light">Notifications</h3>
+                      <h3 className="text-fg-primary font-light">Notifications</h3>
                       <div className="flex items-center gap-3">
                         {unreadCount > 0 && (
-                          <button onClick={handleMarkAllRead} className="text-xs text-fg-muted hover:text-white transition-colors font-light">
+                          <button onClick={handleMarkAllRead} className="text-xs text-fg-muted hover:text-fg-primary transition-colors font-light">
                             Mark all read
                           </button>
                         )}
-                        <button onClick={() => setShowMobileNotifications(false)} className="text-fg-muted hover:text-white transition-colors" aria-label="Close notifications">
+                        <button onClick={() => setShowMobileNotifications(false)} className="text-fg-muted hover:text-fg-primary transition-colors" aria-label="Close notifications">
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
@@ -344,7 +344,7 @@ export default function Header() {
                                 </svg>
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className={`text-sm font-light ${notification.is_read ? 'text-fg-secondary' : 'text-white'}`}>{notification.title}</p>
+                                <p className={`text-sm font-light ${notification.is_read ? 'text-fg-secondary' : 'text-fg-primary'}`}>{notification.title}</p>
                                 <p className="text-xs text-fg-muted mt-0.5 line-clamp-2 font-light">{notification.message}</p>
                                 <p className="text-[10px] text-fg-muted mt-1 font-light">
                                   {new Date(notification.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
@@ -364,7 +364,7 @@ export default function Header() {
             {/* Hamburger Menu Button (Mobile Only) */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 text-fg-muted hover:text-white transition-colors"
+              className="md:hidden p-2 text-fg-muted hover:text-fg-primary transition-colors"
               aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? (
@@ -421,11 +421,11 @@ export default function Header() {
                   position: 'relative'
                 }}
               >
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-bg-elevated border border-line/15 rounded-full flex items-center justify-center text-white font-light text-xs sm:text-sm pointer-events-none">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-bg-elevated border border-line/15 rounded-full flex items-center justify-center text-fg-primary font-light text-xs sm:text-sm pointer-events-none">
                 {displayInitials}
               </div>
                 <div className="hidden lg:block pointer-events-none">
-                <div className="text-white text-sm font-light">{displayName}</div>
+                <div className="text-fg-primary text-sm font-light">{displayName}</div>
                 <div className="text-fg-muted text-xs font-light">{displayEmail}</div>
               </div>
                 <svg 
@@ -463,7 +463,7 @@ export default function Header() {
                           setShowUserMenu(false)
                           router.push('/settings/email-preferences')
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-fg-secondary hover:text-white hover:bg-bg-card/50 rounded-lg transition-colors text-left font-light"
+                        className="w-full flex items-center gap-3 px-4 py-3 text-fg-secondary hover:text-fg-primary hover:bg-bg-card/50 rounded-lg transition-colors text-left font-light"
                         type="button"
               >
                         <svg 
@@ -487,7 +487,7 @@ export default function Header() {
                           setShowUserMenu(false)
                           await handleSignOut()
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-fg-secondary hover:text-white hover:bg-bg-card/50 rounded-lg transition-colors text-left font-light"
+                        className="w-full flex items-center gap-3 px-4 py-3 text-fg-secondary hover:text-fg-primary hover:bg-bg-card/50 rounded-lg transition-colors text-left font-light"
                         type="button"
                       >
                         <svg 
@@ -547,13 +547,13 @@ export default function Header() {
                       />
                     </svg>
                   </div>
-                  <div className="text-white font-light text-sm">
+                  <div className="text-fg-primary font-light text-sm">
                     Finacra
                   </div>
                 </div>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-2 text-fg-muted hover:text-white transition-colors"
+                  className="p-2 text-fg-muted hover:text-fg-primary transition-colors"
                   aria-label="Close menu"
                 >
                   <svg
@@ -577,7 +577,7 @@ export default function Header() {
                 <a
                   href="/data-room"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 text-white font-light bg-bg-card/50 border border-line/10 rounded-lg"
+                  className="flex items-center gap-3 px-4 py-3 text-fg-primary font-light bg-bg-card/50 border border-line/10 rounded-lg"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -589,7 +589,7 @@ export default function Header() {
                   <a
                     href="/admin"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-fg-muted hover:text-white hover:bg-bg-card/50 rounded-lg transition-colors font-light"
+                    className="flex items-center gap-3 px-4 py-3 text-fg-muted hover:text-fg-primary hover:bg-bg-card/50 rounded-lg transition-colors font-light"
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -600,7 +600,7 @@ export default function Header() {
                 <a
                   href="/team"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 text-fg-muted hover:text-white hover:bg-bg-card/50 rounded-lg transition-colors font-light"
+                  className="flex items-center gap-3 px-4 py-3 text-fg-muted hover:text-fg-primary hover:bg-bg-card/50 rounded-lg transition-colors font-light"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -613,7 +613,7 @@ export default function Header() {
                 <a
                   href="/settings/email-preferences"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 text-fg-muted hover:text-white hover:bg-bg-card/50 rounded-lg transition-colors font-light"
+                  className="flex items-center gap-3 px-4 py-3 text-fg-muted hover:text-fg-primary hover:bg-bg-card/50 rounded-lg transition-colors font-light"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -625,11 +625,11 @@ export default function Header() {
               {/* Mobile Menu Footer - User Info */}
               <div className="border-t border-line/10 p-4">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 bg-bg-elevated border border-line/15 rounded-full flex items-center justify-center text-white font-light text-sm">
+                  <div className="w-10 h-10 bg-bg-elevated border border-line/15 rounded-full flex items-center justify-center text-fg-primary font-light text-sm">
                     {displayInitials}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-white text-sm font-light truncate">{displayName}</div>
+                    <div className="text-fg-primary text-sm font-light truncate">{displayName}</div>
                     <div className="text-fg-muted text-xs truncate font-light">{displayEmail}</div>
                   </div>
                 </div>
@@ -638,7 +638,7 @@ export default function Header() {
                     setIsMobileMenuOpen(false)
                     await handleSignOut()
                   }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-fg-muted hover:text-white hover:bg-bg-card/50 rounded-lg transition-colors font-light"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-fg-muted hover:text-fg-primary hover:bg-bg-card/50 rounded-lg transition-colors font-light"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -659,7 +659,7 @@ export default function Header() {
           <div className="bg-bg-card border border-line/10 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-line/10">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-light text-white">Notification Details</h3>
+                <h3 className="text-xl font-light text-fg-primary">Notification Details</h3>
                 <button
                   onClick={() => {
                     setSelectedNotification(null)
@@ -667,7 +667,7 @@ export default function Header() {
                       router.push('/data-room')
                     }
                   }}
-                  className="text-fg-muted hover:text-white transition-colors"
+                  className="text-fg-muted hover:text-fg-primary transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -706,7 +706,7 @@ export default function Header() {
                   )}
                 </div>
                 <div>
-                  <div className="text-white font-light">{selectedNotification.title}</div>
+                  <div className="text-fg-primary font-light">{selectedNotification.title}</div>
                   <div className="text-fg-muted text-sm capitalize font-light">{selectedNotification.type.replace('_', ' ')}</div>
                 </div>
               </div>
@@ -714,7 +714,7 @@ export default function Header() {
               {/* Full Message */}
               <div>
                 <label className="block text-xs text-fg-muted uppercase tracking-wider font-light mb-2">Message</label>
-                <div className="text-white bg-bg-card/50 border border-line/10 rounded-lg p-4 whitespace-pre-wrap font-light">
+                <div className="text-fg-primary bg-bg-card/50 border border-line/10 rounded-lg p-4 whitespace-pre-wrap font-light">
                   {selectedNotification.message}
                 </div>
               </div>
@@ -734,7 +734,7 @@ export default function Header() {
                         <div>
                           <label className="block text-sm font-medium text-fg-muted mb-2">Details</label>
                           <div className="bg-bg-card rounded-lg p-4">
-                            <p className="text-white text-sm">{selectedNotification.metadata}</p>
+                            <p className="text-fg-primary text-sm">{selectedNotification.metadata}</p>
                           </div>
                         </div>
                       )
@@ -755,7 +755,7 @@ export default function Header() {
                       {Object.entries(metadataObj).map(([key, value]) => (
                         <div key={key} className="flex justify-between items-start gap-4">
                           <span className="text-fg-muted text-sm capitalize flex-shrink-0 font-light">{key.replace(/_/g, ' ')}:</span>
-                          <span className="text-white text-sm text-right break-words font-light">
+                          <span className="text-fg-primary text-sm text-right break-words font-light">
                             {value === null || value === undefined 
                               ? 'N/A'
                               : typeof value === 'object' 
@@ -774,7 +774,7 @@ export default function Header() {
               <div className="flex items-center justify-between pt-4 border-t border-line/10">
                 <div>
                   <div className="text-fg-muted text-xs font-light">Created</div>
-                  <div className="text-white text-sm font-light">
+                  <div className="text-fg-primary text-sm font-light">
                     {new Date(selectedNotification.created_at).toLocaleString('en-GB', {
                       day: 'numeric',
                       month: 'long',
@@ -787,7 +787,7 @@ export default function Header() {
                 {selectedNotification.read_at && (
                   <div>
                     <div className="text-fg-muted text-xs font-light">Read</div>
-                    <div className="text-white text-sm font-light">
+                    <div className="text-fg-primary text-sm font-light">
                       {new Date(selectedNotification.read_at).toLocaleString('en-GB', {
                         day: 'numeric',
                         month: 'long',
@@ -806,7 +806,7 @@ export default function Header() {
                   onClick={() => {
                     setSelectedNotification(null)
                   }}
-                  className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors font-light"
+                  className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors font-light"
                 >
                   Close
                 </button>
@@ -816,7 +816,7 @@ export default function Header() {
                       router.push('/data-room')
                       setSelectedNotification(null)
                     }}
-                    className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors font-light"
+                    className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors font-light"
                   >
                     View in Data Room
                   </button>
@@ -832,12 +832,12 @@ export default function Header() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-bg-card border border-line/10 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             <div className="p-6 border-b border-line/10 flex items-center justify-between">
-              <h3 className="text-xl font-light text-white">All Notifications</h3>
+              <h3 className="text-xl font-light text-fg-primary">All Notifications</h3>
               <div className="flex items-center gap-3">
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllRead}
-                    className="text-sm text-fg-muted hover:text-white transition-colors font-light"
+                    className="text-sm text-fg-muted hover:text-fg-primary transition-colors font-light"
                   >
                     Mark all read
                   </button>
@@ -846,7 +846,7 @@ export default function Header() {
                   onClick={() => {
                     setShowAllNotifications(false)
                   }}
-                  className="text-fg-muted hover:text-white transition-colors"
+                  className="text-fg-muted hover:text-fg-primary transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -913,7 +913,7 @@ export default function Header() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className={`text-base font-light ${notification.is_read ? 'text-fg-secondary' : 'text-white'}`}>
+                            <p className={`text-base font-light ${notification.is_read ? 'text-fg-secondary' : 'text-fg-primary'}`}>
                               {notification.title}
                             </p>
                             {!notification.is_read && (

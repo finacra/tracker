@@ -83,7 +83,7 @@ function SubscriptionRequiredInner() {
                 <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <h2 className="text-lg font-light text-white">Access Your Active Companies</h2>
+                <h2 className="text-lg font-light text-fg-primary">Access Your Active Companies</h2>
               </div>
               <div className="space-y-2">
                 {accessibleCompanies.map((c) => {
@@ -112,7 +112,7 @@ function SubscriptionRequiredInner() {
                       <span className="truncate flex-1">{c.name}</span>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {getStatusBadge()}
-                        <svg className="w-4 h-4 text-fg-muted group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-fg-muted group-hover:text-fg-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                       </div>
@@ -144,13 +144,13 @@ function SubscriptionRequiredInner() {
           
           {/* Main Card */}
           <div className="bg-bg-card border border-line/10 rounded-xl p-8 text-center">
-            <h1 className="text-2xl font-light text-white mb-3">
+            <h1 className="text-2xl font-light text-fg-primary mb-3">
               Subscription Required
             </h1>
             
             {selectedExpiredCompany && expiredCompanies.length > 0 ? (
               <p className="text-fg-muted mb-6 font-light">
-                Your trial for <span className="text-white font-light">{expiredCompanies.find(c => c.id === selectedExpiredCompany)?.name || 'this company'}</span> has expired. 
+                Your trial for <span className="text-fg-primary font-light">{expiredCompanies.find(c => c.id === selectedExpiredCompany)?.name || 'this company'}</span> has expired. 
                 Subscribe to continue accessing this company.
               </p>
             ) : expiredCompanies.length > 0 ? (
@@ -176,7 +176,7 @@ function SubscriptionRequiredInner() {
                       onClick={() => setSelectedExpiredCompany(c.id)}
                       className={`w-full text-left px-4 py-3 rounded-lg text-sm font-light transition-colors flex items-center gap-3 ${
                         selectedExpiredCompany === c.id
-                          ? 'bg-bg-hover text-white border border-line/30'
+                          ? 'bg-bg-hover text-fg-primary border border-line/30'
                           : 'bg-bg-card text-fg-secondary hover:bg-bg-elevated border border-line/10'
                       }`}
                     >
@@ -201,7 +201,7 @@ function SubscriptionRequiredInner() {
               {selectedExpiredCompany && expiredCompanies.length > 0 && (
                 <button
                   onClick={() => router.push(`/subscribe?company_id=${selectedExpiredCompany}`)}
-                  className="w-full bg-bg-hover text-white py-3 px-6 rounded-lg font-light hover:bg-bg-hover transition-colors"
+                  className="w-full bg-bg-hover text-fg-primary py-3 px-6 rounded-lg font-light hover:bg-bg-hover transition-colors"
                 >
                   Subscribe to {expiredCompanies.find(c => c.id === selectedExpiredCompany)?.name || 'Selected Company'}
                 </button>
@@ -209,7 +209,7 @@ function SubscriptionRequiredInner() {
               
               <button
                 onClick={() => router.push('/pricing')}
-                className="w-full bg-transparent border border-line/15 text-fg-secondary py-3 px-6 rounded-lg font-light hover:border-line/30 hover:text-white transition-colors"
+                className="w-full bg-transparent border border-line/15 text-fg-secondary py-3 px-6 rounded-lg font-light hover:border-line/30 hover:text-fg-primary transition-colors"
               >
                 View All Plans
               </button>
@@ -219,7 +219,7 @@ function SubscriptionRequiredInner() {
             <div className="mt-6 pt-6 border-t border-line/10">
               <button
                 onClick={() => router.push('/onboarding')}
-                className="text-fg-muted hover:text-white text-sm font-light transition-colors"
+                className="text-fg-muted hover:text-fg-primary text-sm font-light transition-colors"
               >
                 + Create a New Company
               </button>
@@ -230,7 +230,7 @@ function SubscriptionRequiredInner() {
           <div className="mt-6 text-center">
             <p className="text-fg-muted text-sm font-light">
               Need help? Contact{' '}
-              <a href="mailto:info@finacra.com" className="text-fg-muted hover:text-white transition-colors">
+              <a href="mailto:info@finacra.com" className="text-fg-muted hover:text-fg-primary transition-colors">
                 info@finacra.com
               </a>
             </p>

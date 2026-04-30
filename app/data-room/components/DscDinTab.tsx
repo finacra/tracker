@@ -75,7 +75,7 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">DSC & DIN Management</h2>
+          <h2 className="text-2xl sm:text-3xl font-light text-fg-primary mb-1 sm:mb-2">DSC & DIN Management</h2>
           <p className="text-fg-muted text-sm sm:text-base">Manage Digital Signature Certificates (DSC) and Director Identification Numbers (DIN) for directors.</p>
         </div>
       </div>
@@ -105,11 +105,11 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
                 {/* Director Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 pb-4 border-b border-line/10">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 flex items-center justify-center text-white font-medium text-lg sm:text-xl">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 flex items-center justify-center text-fg-primary font-medium text-lg sm:text-xl">
                       {directorName.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <h3 className="text-lg sm:text-xl font-medium text-white">{directorName}</h3>
+                      <h3 className="text-lg sm:text-xl font-medium text-fg-primary">{directorName}</h3>
                       {director.din && (
                         <p className="text-sm text-fg-muted">DIN: {director.din}</p>
                       )}
@@ -134,7 +134,7 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   {/* DSC Certificate Section */}
                   <div className="space-y-3">
-                    <h4 className="text-base sm:text-lg font-medium text-white flex items-center gap-2">
+                    <h4 className="text-base sm:text-lg font-medium text-fg-primary flex items-center gap-2">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -170,7 +170,7 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
                           <svg className="w-8 h-8 text-fg-muted mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                           </svg>
-                          <p className="mb-1 text-xs sm:text-sm text-white font-medium text-center">
+                          <p className="mb-1 text-xs sm:text-sm text-fg-primary font-medium text-center">
                             Click to upload DSC certificate
                           </p>
                           <p className="text-[10px] sm:text-xs text-fg-muted text-center">
@@ -197,7 +197,7 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
 
                   {/* DIN Certificate Section */}
                   <div className="space-y-3">
-                    <h4 className="text-base sm:text-lg font-medium text-white flex items-center gap-2">
+                    <h4 className="text-base sm:text-lg font-medium text-fg-primary flex items-center gap-2">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
                       </svg>
@@ -232,7 +232,7 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
                           <svg className="w-8 h-8 text-fg-muted mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                           </svg>
-                          <p className="mb-1 text-xs sm:text-sm text-white font-medium text-center">
+                          <p className="mb-1 text-xs sm:text-sm text-fg-primary font-medium text-center">
                             Click to upload DIN certificate
                           </p>
                           <p className="text-[10px] sm:text-xs text-fg-muted text-center">
@@ -270,9 +270,9 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
                           [directorId]: { ...prev[directorId] || getDefaultDirectorData(), hasCredentials: e.target.checked }
                         }))
                       }}
-                      className="w-4 h-4 text-white bg-bg-elevated border-line/30 rounded focus:ring-white/40 focus:ring-2"
+                      className="w-4 h-4 text-fg-primary bg-bg-elevated border-line/30 rounded focus:ring-white/40 focus:ring-2"
                     />
-                    <span className="text-sm sm:text-base text-white font-medium">Store Portal Credentials</span>
+                    <span className="text-sm sm:text-base text-fg-primary font-medium">Store Portal Credentials</span>
                   </label>
 
                   {directorData.hasCredentials && (
@@ -291,7 +291,7 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
                             }))
                           }}
                           placeholder="portal@example.com"
-                          className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-white text-xs sm:text-sm placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                          className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-fg-primary text-xs sm:text-sm placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                         />
                       </div>
                       <div>
@@ -308,7 +308,7 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
                             }))
                           }}
                           placeholder="Enter password"
-                          className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-white text-xs sm:text-sm placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                          className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-fg-primary text-xs sm:text-sm placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                         />
                       </div>
                     </div>
@@ -330,7 +330,7 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
                           [directorId]: { ...prev[directorId] || getDefaultDirectorData(), expiryDate: e.target.value }
                         }))
                       }}
-                      className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-white text-xs sm:text-sm focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                      className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-fg-primary text-xs sm:text-sm focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                     />
                     <p className="text-[10px] sm:text-xs text-fg-muted mt-1">Default: September 30 (yearly)</p>
                   </div>
@@ -348,7 +348,7 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
                             [directorId]: { ...prev[directorId] || getDefaultDirectorData(), reminderEnabled: e.target.checked }
                           }))
                         }}
-                        className="w-4 h-4 text-white bg-bg-elevated border-line/30 rounded focus:ring-white/40 focus:ring-2"
+                        className="w-4 h-4 text-fg-primary bg-bg-elevated border-line/30 rounded focus:ring-white/40 focus:ring-2"
                       />
                       <span className="text-xs sm:text-sm text-fg-secondary">Enable reminder 1 month before expiry</span>
                     </label>

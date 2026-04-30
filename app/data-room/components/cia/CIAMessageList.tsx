@@ -65,7 +65,7 @@ function formatInline(str: string): React.ReactNode {
   while ((match = regex.exec(str)) !== null) {
     if (match.index > lastIdx) parts.push(str.slice(lastIdx, match.index))
     if (match[2]) {
-      parts.push(<strong key={match.index} className="font-semibold text-white">{match[2]}</strong>)
+      parts.push(<strong key={match.index} className="font-semibold text-fg-primary">{match[2]}</strong>)
     } else if (match[3]) {
       parts.push(<code key={match.index} className="px-1.5 py-0.5 rounded text-[12px] font-mono text-blue-300" style={{ background: 'rgba(255,255,255,0.07)' }}>{match[3]}</code>)
     } else if (match[4] && match[5]) {
@@ -222,13 +222,13 @@ function renderMarkdown(text: string) {
       elements.push(<h5 key={i} className="text-[13px] font-semibold text-fg-secondary mt-4 mb-1.5">{formatInline(line.slice(5))}</h5>)
     } else if (line.startsWith('### ')) {
       flushAll()
-      elements.push(<h4 key={i} className="text-[14px] font-semibold text-white mt-5 mb-1.5 flex items-center gap-2">{formatInline(line.slice(4))}</h4>)
+      elements.push(<h4 key={i} className="text-[14px] font-semibold text-fg-primary mt-5 mb-1.5 flex items-center gap-2">{formatInline(line.slice(4))}</h4>)
     } else if (line.startsWith('## ')) {
       flushAll()
-      elements.push(<h3 key={i} className="text-[15px] font-bold text-white mt-5 mb-2 pb-1.5 border-b border-white/[0.06]">{formatInline(line.slice(3))}</h3>)
+      elements.push(<h3 key={i} className="text-[15px] font-bold text-fg-primary mt-5 mb-2 pb-1.5 border-b border-white/[0.06]">{formatInline(line.slice(3))}</h3>)
     } else if (line.startsWith('# ')) {
       flushAll()
-      elements.push(<h2 key={i} className="text-[16px] font-bold text-white mt-5 mb-2">{formatInline(line.slice(2))}</h2>)
+      elements.push(<h2 key={i} className="text-[16px] font-bold text-fg-primary mt-5 mb-2">{formatInline(line.slice(2))}</h2>)
     }
     // Unordered list
     else if (line.match(/^[-*•]\s/)) {

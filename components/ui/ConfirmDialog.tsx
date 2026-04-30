@@ -54,7 +54,7 @@ export function ConfirmDialog({
         </div>
 
         <div className="text-center">
-          <h3 id="confirm-dialog-title" className="text-white font-medium text-lg mb-2">{title}</h3>
+          <h3 id="confirm-dialog-title" className="text-fg-primary font-medium text-lg mb-2">{title}</h3>
           <p className="text-fg-muted text-sm font-light leading-relaxed">{message}</p>
         </div>
 
@@ -67,7 +67,7 @@ export function ConfirmDialog({
           </button>
           <button
             onClick={onConfirm}
-            className={`flex-1 px-4 py-2.5 rounded-xl text-white text-sm font-medium transition-colors ${
+            className={`flex-1 px-4 py-2.5 rounded-xl text-fg-primary text-sm font-medium transition-colors ${
               variant === 'danger'
                 ? 'bg-red-600 hover:bg-red-700'
                 : 'bg-[#1E3A5F] hover:bg-[#1E3A5F]/80'

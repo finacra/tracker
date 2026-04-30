@@ -86,6 +86,14 @@ body {
   overflow-x: hidden;
   background-color: rgb(var(--bg-base));
   color: rgb(var(--fg-primary));
+  /* Force grayscale antialiasing so Chrome on Windows doesn't apply
+   * ClearType subpixel rendering to small text on dark chips. The
+   * blue-on-left / red-on-right subpixel fringes look like a colored
+   * strikethrough through digits like "FY 2026-27" otherwise — same
+   * fix Vercel/Linear/Stripe use. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {

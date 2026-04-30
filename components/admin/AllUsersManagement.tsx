@@ -172,7 +172,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
       {/* Header and Filters */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-light text-white mb-1">All Users</h2>
+          <h2 className="text-2xl font-light text-fg-primary mb-1">All Users</h2>
           <p className="text-fg-muted text-sm">View all users in the system with their companies and subscription status</p>
         </div>
         
@@ -187,7 +187,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
               placeholder="Search by email, ID or company..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange w-72"
+              className="pl-10 pr-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-primary-orange w-72"
             />
           </div>
 
@@ -195,7 +195,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as any)}
-            className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange"
+            className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-primary-orange"
           >
             <option value="all">All Users</option>
             <option value="owners">Company Owners</option>
@@ -207,7 +207,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
           {/* Refresh */}
           <button
             onClick={loadAllUsers}
-            className="p-2 bg-bg-elevated border border-line/15 rounded-lg text-fg-muted hover:text-white hover:border-line/30 transition-colors"
+            className="p-2 bg-bg-elevated border border-line/15 rounded-lg text-fg-muted hover:text-fg-primary hover:border-line/30 transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -219,7 +219,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-bg-card/50 border border-line/10 rounded-xl p-4">
-          <div className="text-2xl font-bold text-white">{users.length}</div>
+          <div className="text-2xl font-bold text-fg-primary">{users.length}</div>
           <div className="text-xs text-fg-muted">Total Users</div>
           <div className="text-[10px] text-fg-muted mt-1">All registered users</div>
         </div>
@@ -308,7 +308,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
                           </span>
                         </div>
                         <div>
-                          <div className="text-white font-medium">
+                          <div className="text-fg-primary font-medium">
                             {user.email.includes('@') ? user.email : `User ${user.id.substring(0, 8)}...`}
                           </div>
                           <div className="text-fg-muted text-xs flex items-center gap-2">
@@ -371,15 +371,15 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span className="text-fg-muted">User ID:</span>
-                                <span className="text-white font-mono text-xs">{user.id.substring(0, 16)}...</span>
+                                <span className="text-fg-primary font-mono text-xs">{user.id.substring(0, 16)}...</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-fg-muted">Created:</span>
-                                <span className="text-white">{formatDate(user.created_at)}</span>
+                                <span className="text-fg-primary">{formatDate(user.created_at)}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-fg-muted">Last Sign In:</span>
-                                <span className="text-white">{formatDateTime(user.last_sign_in_at)}</span>
+                                <span className="text-fg-primary">{formatDateTime(user.last_sign_in_at)}</span>
                               </div>
                             </div>
                           </div>
@@ -406,7 +406,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
                                       </svg>
                                     </div>
                                     <div className="flex-1 min-w-0 overflow-hidden">
-                                      <div className="text-white text-sm font-medium truncate">{company.name}</div>
+                                      <div className="text-fg-primary text-sm font-medium truncate">{company.name}</div>
                                       <div className="text-fg-muted text-xs">{company.type}</div>
                                     </div>
                                   </div>
@@ -434,7 +434,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                                       </svg>
                                     </div>
-                                    <span className="text-white text-sm truncate flex-1 min-w-0">{membership.company_name}</span>
+                                    <span className="text-fg-primary text-sm truncate flex-1 min-w-0">{membership.company_name}</span>
                                     <span className={`px-2 py-0.5 rounded text-xs font-medium border flex-shrink-0 ${getRoleBadge(membership.role)}`}>
                                       {membership.role}
                                     </span>
@@ -458,32 +458,32 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
                               </div>
                               <div className="flex items-center justify-between">
                                 <span className="text-fg-muted text-sm">Plan:</span>
-                                <span className="text-white text-sm font-medium">
+                                <span className="text-fg-primary text-sm font-medium">
                                   {user.subscription.tier.charAt(0).toUpperCase() + user.subscription.tier.slice(1)}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between">
                                 <span className="text-fg-muted text-sm">Billing Cycle:</span>
-                                <span className="text-white text-sm">
+                                <span className="text-fg-primary text-sm">
                                   {user.subscription.billing_cycle.charAt(0).toUpperCase() + user.subscription.billing_cycle.slice(1)}
                                 </span>
                               </div>
                               {user.subscription.amount > 0 && (
                                 <div className="flex items-center justify-between">
                                   <span className="text-fg-muted text-sm">Amount:</span>
-                                  <span className="text-white text-sm">
+                                  <span className="text-fg-primary text-sm">
                                     {user.subscription.currency === 'INR' ? '₹' : '$'}{user.subscription.amount.toLocaleString()}
                                   </span>
                                 </div>
                               )}
                               <div className="flex items-center justify-between">
                                 <span className="text-fg-muted text-sm">Is Trial:</span>
-                                <span className="text-white text-sm">{user.subscription.is_trial ? 'Yes' : 'No'}</span>
+                                <span className="text-fg-primary text-sm">{user.subscription.is_trial ? 'Yes' : 'No'}</span>
                               </div>
                               {user.subscription.is_trial && user.subscription.trial_started_at && (
                                 <div className="flex items-center justify-between">
                                   <span className="text-fg-muted text-sm">Trial Started:</span>
-                                  <span className="text-white text-sm">{formatDate(user.subscription.trial_started_at)}</span>
+                                  <span className="text-fg-primary text-sm">{formatDate(user.subscription.trial_started_at)}</span>
                                 </div>
                               )}
                               <div className="flex items-center justify-between">
@@ -498,7 +498,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
                               </div>
                               <div className="flex items-center justify-between">
                                 <span className="text-fg-muted text-sm">Created:</span>
-                                <span className="text-white text-sm">{formatDate(user.subscription.created_at)}</span>
+                                <span className="text-fg-primary text-sm">{formatDate(user.subscription.created_at)}</span>
                               </div>
                             </div>
                           ) : (

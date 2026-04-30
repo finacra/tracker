@@ -24,7 +24,7 @@ export default function PricingPage() {
       <div className="min-h-screen bg-primary-dark relative overflow-hidden">
         <SubtleCircuitBackground />
         <div className="relative z-10 flex items-center justify-center min-h-screen">
-          <div className="text-white">Loading...</div>
+          <div className="text-fg-primary">Loading...</div>
         </div>
       </div>
     }>

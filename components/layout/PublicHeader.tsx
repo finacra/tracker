@@ -98,7 +98,7 @@ export default function PublicHeader() {
             <div className="flex items-center gap-1">
               <Link 
                 href="/home#products" 
-                className="text-fg-secondary hover:text-white transition-colors font-light text-sm py-2"
+                className="text-fg-secondary hover:text-fg-primary transition-colors font-light text-sm py-2"
                 onClick={(e) => {
                   // Prevent dropdown from opening when clicking Products link
                   e.stopPropagation()
@@ -112,7 +112,7 @@ export default function PublicHeader() {
                   e.stopPropagation()
                   setShowProductsDropdown(!showProductsDropdown)
                 }}
-                className="text-fg-secondary hover:text-white transition-colors font-light py-2 cursor-pointer"
+                className="text-fg-secondary hover:text-fg-primary transition-colors font-light py-2 cursor-pointer"
                 aria-label="Toggle products menu"
                 aria-expanded={showProductsDropdown}
               >
@@ -142,7 +142,7 @@ export default function PublicHeader() {
                   <a
                     href="/compliance-tracker"
                     data-menu-item="compliance-tracker"
-                    className="block w-full px-4 py-3 text-fg-secondary hover:text-white hover:bg-bg-card/50 transition-colors font-light text-sm cursor-pointer text-left no-underline"
+                    className="block w-full px-4 py-3 text-fg-secondary hover:text-fg-primary hover:bg-bg-card/50 transition-colors font-light text-sm cursor-pointer text-left no-underline"
                     onClick={(e) => {
                       e.preventDefault()
                       setShowProductsDropdown(false)
@@ -157,7 +157,7 @@ export default function PublicHeader() {
                     href="/company-onboarding"
                     data-menu-item="company-onboarding"
                     id="company-onboarding-link"
-                    className="block w-full px-4 py-3 text-fg-secondary hover:text-white hover:bg-bg-card/50 transition-colors font-light text-sm cursor-pointer text-left no-underline"
+                    className="block w-full px-4 py-3 text-fg-secondary hover:text-fg-primary hover:bg-bg-card/50 transition-colors font-light text-sm cursor-pointer text-left no-underline"
                     onClick={(e) => {
                       e.preventDefault()
                       setShowProductsDropdown(false)
@@ -175,22 +175,22 @@ export default function PublicHeader() {
           
           <Link 
             href="/home#solution" 
-            className="text-fg-secondary hover:text-white transition-colors font-light text-sm"
+            className="text-fg-secondary hover:text-fg-primary transition-colors font-light text-sm"
             onClick={(e) => handleAnchorClick(e, '#solution')}
           >
             Features
           </Link>
           <Link 
             href="/home#plans" 
-            className="text-fg-secondary hover:text-white transition-colors font-light text-sm"
+            className="text-fg-secondary hover:text-fg-primary transition-colors font-light text-sm"
             onClick={(e) => handleAnchorClick(e, '#plans')}
           >
             Plans
           </Link>
-          <Link href="/customers" className="text-fg-secondary hover:text-white transition-colors font-light text-sm">
+          <Link href="/customers" className="text-fg-secondary hover:text-fg-primary transition-colors font-light text-sm">
             Customers
           </Link>
-          <Link href="/contact" className="text-fg-secondary hover:text-white transition-colors font-light text-sm">
+          <Link href="/contact" className="text-fg-secondary hover:text-fg-primary transition-colors font-light text-sm">
             Contact Us
           </Link>
         </div>
@@ -199,7 +199,7 @@ export default function PublicHeader() {
             <Link
               href="/data-room"
               onClick={() => trackButtonClick('Go to Dashboard', pathname)}
-              className="px-3 sm:px-4 py-2 bg-black border border-line/10 text-white rounded-lg hover:bg-bg-card transition-colors font-light text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2"
+              className="px-3 sm:px-4 py-2 bg-black border border-line/10 text-fg-primary rounded-lg hover:bg-bg-card transition-colors font-light text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2"
             >
               <span>Go to Dashboard</span>
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -211,7 +211,7 @@ export default function PublicHeader() {
               <Link
                 href="/subscribe"
                 onClick={() => trackButtonClick('Start Trial for free', pathname)}
-                className="px-3 sm:px-4 py-2 bg-black border border-line/10 text-white rounded-lg hover:bg-bg-card transition-colors font-light text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2"
+                className="px-3 sm:px-4 py-2 bg-black border border-line/10 text-fg-primary rounded-lg hover:bg-bg-card transition-colors font-light text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2"
               >
                 <span className="hidden sm:inline">Start Trial for free</span>
                 <span className="sm:hidden">Trial</span>
@@ -222,7 +222,7 @@ export default function PublicHeader() {
               <Link
                 href="/login"
                 onClick={() => trackLinkClick('Log In', '/login')}
-                className="text-fg-secondary hover:text-white transition-colors font-light text-xs sm:text-sm"
+                className="text-fg-secondary hover:text-fg-primary transition-colors font-light text-xs sm:text-sm"
               >
                 Log In
               </Link>

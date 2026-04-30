@@ -104,7 +104,7 @@ export default function TransactionHistory() {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-bg-card border border-line/10 rounded-xl p-4">
           <div className="text-sm text-fg-muted mb-1">Total Transactions</div>
-          <div className="text-2xl font-light text-white">{stats.total}</div>
+          <div className="text-2xl font-light text-fg-primary">{stats.total}</div>
         </div>
         <div className="bg-bg-card border border-line/10 rounded-xl p-4">
           <div className="text-sm text-fg-muted mb-1">Completed</div>
@@ -132,7 +132,7 @@ export default function TransactionHistory() {
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as any)}
-              className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+              className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
             >
               <option value="all">All Status</option>
               <option value="completed">Completed</option>
@@ -146,14 +146,14 @@ export default function TransactionHistory() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+              className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
             >
               <option value="date">Date</option>
               <option value="amount">Amount</option>
             </select>
             <button
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="px-3 py-2 bg-bg-card border border-line/15 rounded-lg text-white hover:bg-bg-elevated transition-colors"
+              className="px-3 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary hover:bg-bg-elevated transition-colors"
               title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
             >
               {sortOrder === 'asc' ? '↑' : '↓'}
@@ -166,7 +166,7 @@ export default function TransactionHistory() {
               placeholder="Search by Order ID, Payment ID, Email, Company..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+              className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
             />
           </div>
         </div>
@@ -175,7 +175,7 @@ export default function TransactionHistory() {
       {/* Transactions Table */}
       <div className="bg-bg-card border border-line/10 rounded-xl shadow-2xl overflow-hidden">
         <div className="p-6 border-b border-line/10">
-          <h2 className="text-2xl font-light text-white">Transaction History</h2>
+          <h2 className="text-2xl font-light text-fg-primary">Transaction History</h2>
         </div>
         {isLoading ? (
           <div className="p-12 flex flex-col items-center justify-center">
@@ -209,7 +209,7 @@ export default function TransactionHistory() {
                     <td className="px-6 py-4 text-fg-secondary text-sm">
                       {formatDate(payment.createdAt)}
                     </td>
-                    <td className="px-6 py-4 text-white text-sm">
+                    <td className="px-6 py-4 text-fg-primary text-sm">
                       <div className="max-w-[200px] truncate" title={payment.userEmail}>
                         {payment.userEmail || payment.userId.substring(0, 8) + '...'}
                       </div>
@@ -231,7 +231,7 @@ export default function TransactionHistory() {
                         <span className="text-fg-muted">-</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-white font-medium">
+                    <td className="px-6 py-4 text-fg-primary font-medium">
                       {formatCurrency(payment.amountPaid || payment.amount || 0, payment.currency)}
                     </td>
                     <td className="px-6 py-4">

@@ -1093,13 +1093,13 @@ export default function DocumentsTab({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">Compliance Vault</h2>
+          <h2 className="text-2xl sm:text-3xl font-light text-fg-primary mb-1 sm:mb-2">Compliance Vault</h2>
           <p className="text-fg-muted text-sm sm:text-base">Manage document categories and specific compliance folders.</p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
           <button
             onClick={() => setIsExportModalOpen(true)}
-            className="bg-black border border-white/20 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-white/40/50 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
+            className="bg-black border border-white/20 text-fg-primary px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-white/40/50 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
           >
             <svg
               width="16"
@@ -1121,7 +1121,7 @@ export default function DocumentsTab({
           </button>
           <button
             onClick={() => setIsSendModalOpen(true)}
-            className="bg-black border border-white/20 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-white/40/50 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
+            className="bg-black border border-white/20 text-fg-primary px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-white/40/50 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
           >
             <svg
               width="16"
@@ -1145,7 +1145,7 @@ export default function DocumentsTab({
               setAgentUploadDefaultFolderId(null)
               setIsAgentBulkOpen(true)
             }}
-            className="bg-black border border-white/20 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-white/40/50 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
+            className="bg-black border border-white/20 text-fg-primary px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:border-white/40/50 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base"
           >
             <svg
               width="16"
@@ -1212,12 +1212,12 @@ export default function DocumentsTab({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search documents by name, type, folder, or period..."
-            className="w-full pl-9 sm:pl-12 pr-4 py-2.5 sm:py-3 bg-black border border-white/20 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+            className="w-full pl-9 sm:pl-12 pr-4 py-2.5 sm:py-3 bg-black border border-white/20 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 text-fg-muted hover:text-white transition-colors"
+              className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 text-fg-muted hover:text-fg-primary transition-colors"
             >
               <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1232,7 +1232,7 @@ export default function DocumentsTab({
           <select
             value={selectedFY}
             onChange={(e) => setSelectedFY(e.target.value)}
-            className="px-3 sm:px-4 py-2 bg-black border border-white/20 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
+            className="px-3 sm:px-4 py-2 bg-black border border-white/20 rounded-lg text-fg-primary text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
             style={{
               backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23a0a0a0' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
               backgroundRepeat: 'no-repeat',
@@ -1252,7 +1252,7 @@ export default function DocumentsTab({
           <select
             value={sortOption}
             onChange={(e) => setSortOption(e.target.value as typeof sortOption)}
-            className="px-3 sm:px-4 py-2 bg-black border border-white/20 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
+            className="px-3 sm:px-4 py-2 bg-black border border-white/20 rounded-lg text-fg-primary text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
             style={{
               backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23a0a0a0' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
               backgroundRepeat: 'no-repeat',
@@ -1272,7 +1272,7 @@ export default function DocumentsTab({
           <select
             value={expiringSoonFilter}
             onChange={(e) => setExpiringSoonFilter(e.target.value as typeof expiringSoonFilter)}
-            className="px-3 sm:px-4 py-2 bg-black border border-white/20 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
+            className="px-3 sm:px-4 py-2 bg-black border border-white/20 rounded-lg text-fg-primary text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
             style={{
               backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23a0a0a0' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
               backgroundRepeat: 'no-repeat',
@@ -1289,7 +1289,7 @@ export default function DocumentsTab({
         {/* Search Results Count */}
         {searchQuery && (
           <div className="text-sm text-fg-muted">
-            Searching for: <span className="text-white font-medium">"{searchQuery}"</span>
+            Searching for: <span className="text-fg-primary font-medium">"{searchQuery}"</span>
           </div>
         )}
       </div>
@@ -1320,7 +1320,7 @@ export default function DocumentsTab({
             onClick={() => {
               setExpandedFolders(new Set(documentFolders))
             }}
-            className="text-xs text-fg-muted hover:text-white px-2 py-1 rounded hover:bg-bg-elevated transition-colors"
+            className="text-xs text-fg-muted hover:text-fg-primary px-2 py-1 rounded hover:bg-bg-elevated transition-colors"
           >
             Expand All Folders
           </button>
@@ -1330,7 +1330,7 @@ export default function DocumentsTab({
               setExpandedDocumentVersions(new Set())
               setExpandedYearGroups({})
             }}
-            className="text-xs text-fg-muted hover:text-white px-2 py-1 rounded hover:bg-bg-elevated transition-colors"
+            className="text-xs text-fg-muted hover:text-fg-primary px-2 py-1 rounded hover:bg-bg-elevated transition-colors"
           >
             Collapse All
           </button>
@@ -1379,7 +1379,7 @@ export default function DocumentsTab({
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                 <line x1="9" y1="3" x2="9" y2="21" />
               </svg>
-              <h3 className="text-base sm:text-lg font-light text-white">Storage Stats</h3>
+              <h3 className="text-base sm:text-lg font-light text-fg-primary">Storage Stats</h3>
               <svg className="w-4 h-4 text-fg-muted ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
@@ -1398,7 +1398,7 @@ export default function DocumentsTab({
     
           {/* Recent Activity */}
           <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
-            <h3 className="text-base sm:text-lg font-light text-white mb-3 sm:mb-4">Recent Activity</h3>
+            <h3 className="text-base sm:text-lg font-light text-fg-primary mb-3 sm:mb-4">Recent Activity</h3>
             <div className="space-y-2 sm:space-y-3">
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full flex-shrink-0"></div>
@@ -1431,13 +1431,13 @@ export default function DocumentsTab({
             >
               {/* Modal Header */}
               <div className="flex items-center justify-between p-4 sm:p-6 border-b border-line/10">
-                <h2 className="text-xl sm:text-2xl font-light text-white">Upload Document</h2>
+                <h2 className="text-xl sm:text-2xl font-light text-fg-primary">Upload Document</h2>
                 <button
                   onClick={() => {
                     setIsUploadModalOpen(false)
                     setIsAdvancedOptionsOpen(false)
                   }}
-                  className="text-fg-muted hover:text-white transition-colors p-1"
+                  className="text-fg-muted hover:text-fg-primary transition-colors p-1"
                 >
                   <svg
                     width="20"
@@ -1546,10 +1546,10 @@ export default function DocumentsTab({
                   return (
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 sm:p-4">
                       <div className="flex items-center justify-between mb-2 sm:mb-3">
-                        <h4 className="text-xs sm:text-sm font-medium text-white">Compliance Information</h4>
+                        <h4 className="text-xs sm:text-sm font-medium text-fg-primary">Compliance Information</h4>
                         <button
                           onClick={() => setShowComplianceContext(!showComplianceContext)}
-                          className="text-fg-muted hover:text-white transition-colors"
+                          className="text-fg-muted hover:text-fg-primary transition-colors"
                           type="button"
                         >
                           <svg
@@ -1571,7 +1571,7 @@ export default function DocumentsTab({
                           {authority && (
                             <div>
                               <span className="text-[10px] sm:text-xs text-fg-muted">Authority:</span>
-                              <span className="text-[10px] sm:text-xs text-white ml-2">{authority}</span>
+                              <span className="text-[10px] sm:text-xs text-fg-primary ml-2">{authority}</span>
                             </div>
                           )}
     
@@ -1586,7 +1586,7 @@ export default function DocumentsTab({
                                     onClick={() => {
                                       setUploadFormData(prev => ({ ...prev, documentName: form }))
                                     }}
-                                    className="px-2 py-1 bg-bg-elevated hover:bg-bg-hover rounded text-[10px] sm:text-xs text-white flex items-center gap-1 transition-colors"
+                                    className="px-2 py-1 bg-bg-elevated hover:bg-bg-hover rounded text-[10px] sm:text-xs text-fg-primary flex items-center gap-1 transition-colors"
                                   >
                                     {form}
                                     {formFrequency?.[form] && (
@@ -1626,7 +1626,7 @@ export default function DocumentsTab({
                                 setUploadFormData((prev) => ({ ...prev, documentName: e.target.value }))
                               }
                             }}
-                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
+                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
                           >
                             <option value="">Select from predefined documents</option>
                             {folderDocNames.map((name: string) => (
@@ -1641,7 +1641,7 @@ export default function DocumentsTab({
                             setUploadFormData((prev) => ({ ...prev, documentName: e.target.value }))
                           }}
                           placeholder={folderDocNames.length > 0 ? "Or type a custom document name" : "Enter document name"}
-                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                         />
                       </div>
                     )
@@ -1674,7 +1674,7 @@ export default function DocumentsTab({
                   <button
                     type="button"
                     onClick={() => setIsAdvancedOptionsOpen(!isAdvancedOptionsOpen)}
-                    className="w-full flex items-center justify-between text-left text-sm sm:text-base font-medium text-fg-secondary hover:text-white transition-colors"
+                    className="w-full flex items-center justify-between text-left text-sm sm:text-base font-medium text-fg-secondary hover:text-fg-primary transition-colors"
                   >
                     <span>Advanced Options</span>
                     <svg
@@ -1699,7 +1699,7 @@ export default function DocumentsTab({
                           onChange={(e) =>
                             setUploadFormData((prev) => ({ ...prev, frequency: e.target.value as 'one-time' | 'monthly' | 'quarterly' | 'annually' }))
                           }
-                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors cursor-pointer"
+                          className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors cursor-pointer"
                         >
                           <option value="one-time">One-time</option>
                           <option value="monthly">Monthly</option>
@@ -1724,7 +1724,7 @@ export default function DocumentsTab({
                                 registrationDate: e.target.value,
                               }))
                             }
-                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                           />
                         </div>
                         <div>
@@ -1740,7 +1740,7 @@ export default function DocumentsTab({
                                 expiryDate: e.target.value,
                               }))
                             }
-                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                           />
                         </div>
                       </div>
@@ -1754,10 +1754,10 @@ export default function DocumentsTab({
                             onChange={(e) =>
                               setUploadFormData((prev) => ({ ...prev, hasNote: e.target.checked }))
                             }
-                            className="w-4 h-4 sm:w-5 sm:h-5 text-white bg-bg-elevated border-line/30 rounded focus:ring-white/40 focus:ring-2 mt-0.5 flex-shrink-0"
+                            className="w-4 h-4 sm:w-5 sm:h-5 text-fg-primary bg-bg-elevated border-line/30 rounded focus:ring-white/40 focus:ring-2 mt-0.5 flex-shrink-0"
                           />
                           <div>
-                            <div className="text-white font-medium text-sm sm:text-base">Note</div>
+                            <div className="text-fg-primary font-medium text-sm sm:text-base">Note</div>
                             <div className="text-fg-muted text-xs sm:text-sm mt-1">
                               Check this if you need to add external portal credentials
                             </div>
@@ -1768,7 +1768,7 @@ export default function DocumentsTab({
                       {/* External Portal Credentials */}
                       {uploadFormData.hasNote && (
                         <div className="bg-white/5 border border-white/40/30 rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4">
-                          <h3 className="text-white font-medium text-sm sm:text-base">External Portal Credentials</h3>
+                          <h3 className="text-fg-primary font-medium text-sm sm:text-base">External Portal Credentials</h3>
                           <div>
                             <label className="block text-xs sm:text-sm font-medium text-fg-secondary mb-2">
                               External Portal Email
@@ -1783,7 +1783,7 @@ export default function DocumentsTab({
                                 }))
                               }
                               placeholder="portal@example.com"
-                              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                             />
                           </div>
                           <div>
@@ -1800,7 +1800,7 @@ export default function DocumentsTab({
                                 }))
                               }
                               placeholder="Enter password"
-                              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                             />
                           </div>
                         </div>
@@ -1829,7 +1829,7 @@ export default function DocumentsTab({
                           <line x1="12" y1="3" x2="12" y2="15" />
                         </svg>
                       )}
-                      <p className="mb-1 sm:mb-2 text-xs sm:text-sm text-white font-medium text-center">
+                      <p className="mb-1 sm:mb-2 text-xs sm:text-sm text-fg-primary font-medium text-center">
                         {isUploading ? 'Uploading...' : 'Click to upload or drag and drop'}
                       </p>
                       <p className="text-[10px] sm:text-xs text-fg-muted text-center">
@@ -1861,7 +1861,7 @@ export default function DocumentsTab({
                   <button
                     onClick={() => setIsUploadModalOpen(false)}
                     disabled={isUploading}
-                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors disabled:opacity-50 text-sm sm:text-base"
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors disabled:opacity-50 text-sm sm:text-base"
                   >
                     Cancel
                   </button>
@@ -1925,7 +1925,7 @@ export default function DocumentsTab({
             >
               {/* Modal Header */}
               <div className="flex items-center justify-between p-4 sm:p-6 border-b border-line/10">
-                <h2 className="text-xl sm:text-2xl font-light text-white">Bulk Upload Documents</h2>
+                <h2 className="text-xl sm:text-2xl font-light text-fg-primary">Bulk Upload Documents</h2>
                 <button
                   onClick={() => {
                     setIsBulkUploadModalOpen(false)
@@ -1935,7 +1935,7 @@ export default function DocumentsTab({
                     setExpandedBulkFileOptions(new Set())
                     setOpenDocumentNameDropdown(null)
                   }}
-                  className="text-fg-muted hover:text-white transition-colors p-1"
+                  className="text-fg-muted hover:text-fg-primary transition-colors p-1"
                 >
                   <svg
                     width="20"
@@ -1989,7 +1989,7 @@ export default function DocumentsTab({
                                 setUploadFormData((prev) => ({ ...prev, folder }))
                                 setIsFolderDropdownOpen(false)
                               }}
-                              className="w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-bg-elevated transition-colors text-white text-sm sm:text-base"
+                              className="w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-bg-elevated transition-colors text-fg-primary text-sm sm:text-base"
                             >
                               {folder}
                             </button>
@@ -2022,7 +2022,7 @@ export default function DocumentsTab({
                         <polyline points="17 8 12 3 7 8" />
                         <line x1="12" y1="3" x2="12" y2="15" />
                       </svg>
-                      <p className="mb-1 sm:mb-2 text-xs sm:text-sm text-white font-medium text-center">
+                      <p className="mb-1 sm:mb-2 text-xs sm:text-sm text-fg-primary font-medium text-center">
                         Click to select multiple files or drag and drop
                       </p>
                       <p className="text-[10px] sm:text-xs text-fg-muted text-center">
@@ -2073,7 +2073,7 @@ export default function DocumentsTab({
                               const allExpanded = new Set(bulkUploadFiles.map(f => f.name))
                               setExpandedBulkFileOptions(allExpanded)
                             }}
-                            className="text-xs text-fg-muted hover:text-white px-2 py-1 rounded hover:bg-bg-elevated transition-colors"
+                            className="text-xs text-fg-muted hover:text-fg-primary px-2 py-1 rounded hover:bg-bg-elevated transition-colors"
                           >
                             Expand All
                           </button>
@@ -2081,7 +2081,7 @@ export default function DocumentsTab({
                             onClick={() => {
                               setExpandedBulkFileOptions(new Set())
                             }}
-                            className="text-xs text-fg-muted hover:text-white px-2 py-1 rounded hover:bg-bg-elevated transition-colors"
+                            className="text-xs text-fg-muted hover:text-fg-primary px-2 py-1 rounded hover:bg-bg-elevated transition-colors"
                           >
                             Collapse All
                           </button>
@@ -2122,7 +2122,7 @@ export default function DocumentsTab({
                                     }
                                     setExpandedBulkFileOptions(newExpanded)
                                   }}
-                                  className="text-fg-muted hover:text-white transition-colors p-1"
+                                  className="text-fg-muted hover:text-fg-primary transition-colors p-1"
                                   title={isExpanded ? 'Collapse options' : 'Expand options'}
                                 >
                                   <svg
@@ -2176,7 +2176,7 @@ export default function DocumentsTab({
                                         }))
                                       }}
                                       placeholder="Select from list or type custom name"
-                                      className="w-full px-3 py-2 pr-8 bg-black border border-line/15 rounded-lg text-white text-xs placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                                      className="w-full px-3 py-2 pr-8 bg-black border border-line/15 rounded-lg text-fg-primary text-xs placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                                     />
                                     <button
                                       type="button"
@@ -2184,7 +2184,7 @@ export default function DocumentsTab({
                                         e.stopPropagation()
                                         setOpenDocumentNameDropdown(openDocumentNameDropdown === fileKey ? null : fileKey)
                                       }}
-                                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-fg-muted hover:text-white transition-colors p-1"
+                                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-fg-muted hover:text-fg-primary transition-colors p-1"
                                       title="Show document name options"
                                     >
                                       <svg 
@@ -2218,7 +2218,7 @@ export default function DocumentsTab({
                                                     }))
                                                     setOpenDocumentNameDropdown(null)
                                                   }}
-                                                  className="w-full px-3 py-2 text-left hover:bg-bg-elevated transition-colors text-white text-xs"
+                                                  className="w-full px-3 py-2 text-left hover:bg-bg-elevated transition-colors text-fg-primary text-xs"
                                                 >
                                                   {docName}
                                                 </button>
@@ -2257,7 +2257,7 @@ export default function DocumentsTab({
                                         [fileKey]: { ...prev[fileKey], frequency: e.target.value as 'one-time' | 'monthly' | 'quarterly' | 'annually' }
                                       }))
                                     }}
-                                    className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-white text-xs focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors cursor-pointer"
+                                    className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-fg-primary text-xs focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors cursor-pointer"
                                   >
                                     <option value="one-time">One-time</option>
                                     <option value="monthly">Monthly</option>
@@ -2282,7 +2282,7 @@ export default function DocumentsTab({
                                           [fileKey]: { ...prev[fileKey], registrationDate: e.target.value }
                                         }))
                                       }}
-                                      className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-white text-xs focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                                      className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-fg-primary text-xs focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                                     />
                                   </div>
                                   <div>
@@ -2298,7 +2298,7 @@ export default function DocumentsTab({
                                           [fileKey]: { ...prev[fileKey], expiryDate: e.target.value }
                                         }))
                                       }}
-                                      className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-white text-xs focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                                      className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-fg-primary text-xs focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                                     />
                                   </div>
                                 </div>
@@ -2315,7 +2315,7 @@ export default function DocumentsTab({
                                           [fileKey]: { ...prev[fileKey], hasNote: e.target.checked }
                                         }))
                                       }}
-                                      className="w-4 h-4 text-white bg-bg-elevated border-line/30 rounded focus:ring-white/40 focus:ring-2"
+                                      className="w-4 h-4 text-fg-primary bg-bg-elevated border-line/30 rounded focus:ring-white/40 focus:ring-2"
                                     />
                                     <span className="text-xs text-fg-secondary">Add External Portal Credentials</span>
                                   </label>
@@ -2336,7 +2336,7 @@ export default function DocumentsTab({
                                             }))
                                           }}
                                           placeholder="portal@example.com"
-                                          className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-white text-xs placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                                          className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-fg-primary text-xs placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                                         />
                                       </div>
                                       <div>
@@ -2353,7 +2353,7 @@ export default function DocumentsTab({
                                             }))
                                           }}
                                           placeholder="Enter password"
-                                          className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-white text-xs placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                                          className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-fg-primary text-xs placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                                         />
                                       </div>
                                     </div>
@@ -2396,7 +2396,7 @@ export default function DocumentsTab({
                       setOpenDocumentNameDropdown(null)
                     }}
                     disabled={isUploading}
-                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors disabled:opacity-50 text-sm sm:text-base"
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors disabled:opacity-50 text-sm sm:text-base"
                   >
                     Cancel
                   </button>
@@ -2560,10 +2560,10 @@ export default function DocumentsTab({
             >
               {/* Modal Header */}
               <div className="flex items-center justify-between p-6 border-b border-line/10">
-                <h2 className="text-2xl font-light text-white">Export Files</h2>
+                <h2 className="text-2xl font-light text-fg-primary">Export Files</h2>
                 <button
                   onClick={() => setIsExportModalOpen(false)}
-                  className="text-fg-muted hover:text-white transition-colors"
+                  className="text-fg-muted hover:text-fg-primary transition-colors"
                 >
                   <svg
                     width="24"
@@ -2591,9 +2591,9 @@ export default function DocumentsTab({
                       checked={allDocuments.length > 0 && selectedDocuments.size === allDocuments.length}
                       onChange={handleSelectAll}
                       disabled={allDocuments.length === 0}
-                      className="w-5 h-5 text-white bg-bg-elevated border-line/30 rounded focus:ring-white/40 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="w-5 h-5 text-fg-primary bg-bg-elevated border-line/30 rounded focus:ring-white/40 focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50"
                     />
-                    <span className="text-white font-medium">Select All</span>
+                    <span className="text-fg-primary font-medium">Select All</span>
                   </label>
                   <span className="text-fg-muted text-sm">
                     {selectedDocuments.size} of {allDocuments.length} selected
@@ -2611,11 +2611,11 @@ export default function DocumentsTab({
                         type="checkbox"
                         checked={selectedDocuments.has(doc.id)}
                         onChange={() => toggleDocumentSelection(doc.id)}
-                        className="w-5 h-5 text-white bg-bg-elevated border-line/30 rounded focus:ring-white/40 focus:ring-2"
+                        className="w-5 h-5 text-fg-primary bg-bg-elevated border-line/30 rounded focus:ring-white/40 focus:ring-2"
                       />
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-white font-medium">{doc.name}</span>
+                          <span className="text-fg-primary font-medium">{doc.name}</span>
                           {doc.period && (
                             <span className="px-2 py-0.5 text-xs rounded-full border bg-blue-500/20 text-blue-400 border-blue-500/30">
                               {doc.period}
@@ -2635,7 +2635,7 @@ export default function DocumentsTab({
                       setIsExportModalOpen(false)
                       setSelectedDocuments(new Set())
                     }}
-                    className="px-6 py-3 bg-transparent border border-white/20 text-white rounded-lg hover:border-white/40 hover:text-white transition-colors"
+                    className="px-6 py-3 bg-transparent border border-white/20 text-fg-primary rounded-lg hover:border-white/40 hover:text-fg-primary transition-colors"
                   >
                     Cancel
                   </button>
@@ -2788,10 +2788,10 @@ export default function DocumentsTab({
             >
               {/* Modal Header */}
               <div className="flex items-center justify-between p-6 border-b border-line/10">
-                <h2 className="text-2xl font-light text-white">Send Documents</h2>
+                <h2 className="text-2xl font-light text-fg-primary">Send Documents</h2>
                 <button
                   onClick={() => setIsSendModalOpen(false)}
-                  className="text-fg-muted hover:text-white transition-colors"
+                  className="text-fg-muted hover:text-fg-primary transition-colors"
                 >
                   <svg
                     width="24"
@@ -2818,9 +2818,9 @@ export default function DocumentsTab({
                       type="checkbox"
                       checked={selectedDocumentsToSend.size === allDocuments.length}
                       onChange={handleSelectAllForSend}
-                      className="w-5 h-5 text-white bg-bg-elevated border-line/30 rounded focus:ring-white/40 focus:ring-2"
+                      className="w-5 h-5 text-fg-primary bg-bg-elevated border-line/30 rounded focus:ring-white/40 focus:ring-2"
                     />
-                    <span className="text-white font-medium">Select All</span>
+                    <span className="text-fg-primary font-medium">Select All</span>
                   </label>
                   <span className="text-fg-muted text-sm">
                     {selectedDocumentsToSend.size} of {allDocuments.length} selected
@@ -2838,11 +2838,11 @@ export default function DocumentsTab({
                         type="checkbox"
                         checked={selectedDocumentsToSend.has(doc.id)}
                         onChange={() => toggleDocumentSelectionForSend(doc.id)}
-                        className="w-5 h-5 text-white bg-bg-elevated border-line/30 rounded focus:ring-white/40 focus:ring-2"
+                        className="w-5 h-5 text-fg-primary bg-bg-elevated border-line/30 rounded focus:ring-white/40 focus:ring-2"
                       />
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-white font-medium">{doc.name}</span>
+                          <span className="text-fg-primary font-medium">{doc.name}</span>
                           {doc.period && (
                             <span className="px-2 py-0.5 text-xs rounded-full border bg-blue-500/20 text-blue-400 border-blue-500/30">
                               {doc.period}
@@ -2862,7 +2862,7 @@ export default function DocumentsTab({
                       setIsSendModalOpen(false)
                       setSelectedDocumentsToSend(new Set())
                     }}
-                    className="px-6 py-3 bg-transparent border border-white/20 text-white rounded-lg hover:border-white/40 hover:text-white transition-colors"
+                    className="px-6 py-3 bg-transparent border border-white/20 text-fg-primary rounded-lg hover:border-white/40 hover:text-fg-primary transition-colors"
                   >
                     Cancel
                   </button>
@@ -2910,13 +2910,13 @@ export default function DocumentsTab({
             >
               {/* Modal Header */}
               <div className="flex items-center justify-between p-6 border-b border-line/10">
-                <h2 className="text-2xl font-light text-white">Send Email</h2>
+                <h2 className="text-2xl font-light text-fg-primary">Send Email</h2>
                 <button
                   onClick={() => {
                     setIsEmailTemplateOpen(false)
                     setSelectedDocumentsToSend(new Set())
                   }}
-                  className="text-fg-muted hover:text-white transition-colors"
+                  className="text-fg-muted hover:text-fg-primary transition-colors"
                 >
                   <svg
                     width="24"
@@ -2939,7 +2939,7 @@ export default function DocumentsTab({
                 {/* Selected Documents Info */}
                 <div className="bg-black rounded-lg p-4 border border-white/10">
                   <div className="text-sm text-fg-muted mb-2">Selected Documents:</div>
-                  <div className="text-white">
+                  <div className="text-fg-primary">
                     {selectedDocumentsToSend.size} document
                     {selectedDocumentsToSend.size !== 1 ? 's' : ''} selected
                   </div>
@@ -2957,7 +2957,7 @@ export default function DocumentsTab({
                       setEmailData((prev) => ({ ...prev, recipients: e.target.value }))
                     }
                     placeholder="Enter email addresses (comma separated)"
-                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                   />
                   <p className="text-fg-muted text-xs mt-1">
                     Separate multiple email addresses with commas
@@ -2976,7 +2976,7 @@ export default function DocumentsTab({
                       setEmailData((prev) => ({ ...prev, subject: e.target.value }))
                     }
                     placeholder="Email subject"
-                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                   />
                 </div>
     
@@ -2992,7 +2992,7 @@ export default function DocumentsTab({
                     }
                     rows={10}
                     placeholder="Write your email message here..."
-                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors resize-none"
+                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors resize-none"
                   />
                 </div>
     
@@ -3010,7 +3010,7 @@ export default function DocumentsTab({
                         includeAttachments: false,
                       })
                     }}
-                    className="px-6 py-3 bg-transparent border border-white/20 text-white rounded-lg hover:border-white/40 hover:text-white transition-colors"
+                    className="px-6 py-3 bg-transparent border border-white/20 text-fg-primary rounded-lg hover:border-white/40 hover:text-fg-primary transition-colors"
                   >
                     Cancel
                   </button>
@@ -3122,10 +3122,10 @@ export default function DocumentsTab({
                 >
                   {/* Modal Header */}
                   <div className="flex items-center justify-between p-6 border-b border-line/10">
-                    <h2 className="text-2xl font-light text-white">Storage Breakdown</h2>
+                    <h2 className="text-2xl font-light text-fg-primary">Storage Breakdown</h2>
                     <button
                       onClick={() => setIsStorageBreakdownOpen(false)}
-                      className="text-fg-muted hover:text-white transition-colors"
+                      className="text-fg-muted hover:text-fg-primary transition-colors"
                     >
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <line x1="18" y1="6" x2="6" y2="18" />
@@ -3140,7 +3140,7 @@ export default function DocumentsTab({
                     <div className="bg-bg-card rounded-lg p-4 border border-line/10">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-fg-muted text-sm">Total Storage</span>
-                        <span className="text-white font-medium">4.2 GB / 10 GB</span>
+                        <span className="text-fg-primary font-medium">4.2 GB / 10 GB</span>
                       </div>
                       <div className="w-full bg-bg-elevated rounded-full h-2.5">
                         <div className="bg-white h-2.5 rounded-full" style={{ width: '42%' }}></div>
@@ -3150,7 +3150,7 @@ export default function DocumentsTab({
     
                     {/* Breakdown by Folder */}
                     <div>
-                      <h3 className="text-white font-medium mb-4">Storage by Folder</h3>
+                      <h3 className="text-fg-primary font-medium mb-4">Storage by Folder</h3>
                       <div className="space-y-3">
                         {documentFolders.map((folder: string) => {
                           const folderDocs = vaultDocuments.filter((d: any) => d.folder_name === folder)
@@ -3158,11 +3158,11 @@ export default function DocumentsTab({
                           return (
                             <div key={folder} className="flex items-center justify-between p-3 bg-bg-card rounded-lg border border-line/10">
                               <div className="flex-1 min-w-0">
-                                <p className="text-white text-sm truncate">{folder}</p>
+                                <p className="text-fg-primary text-sm truncate">{folder}</p>
                                 <p className="text-fg-muted text-xs">{folderDocs.length} documents</p>
                               </div>
                               <div className="text-right">
-                                <p className="text-white text-sm font-medium">{folderSize.toFixed(1)} GB</p>
+                                <p className="text-fg-primary text-sm font-medium">{folderSize.toFixed(1)} GB</p>
                                 <p className="text-fg-muted text-xs">{((folderSize / 4.2) * 100).toFixed(0)}%</p>
                               </div>
                             </div>
@@ -3173,7 +3173,7 @@ export default function DocumentsTab({
     
                     {/* Largest Files */}
                     <div>
-                      <h3 className="text-white font-medium mb-4">Largest Files</h3>
+                      <h3 className="text-fg-primary font-medium mb-4">Largest Files</h3>
                       <div className="space-y-2">
                         {vaultDocuments
                           .sort((a: any, b: any) => (b.file_size || 0) - (a.file_size || 0))
@@ -3181,7 +3181,7 @@ export default function DocumentsTab({
                           .map((doc: any) => (
                             <div key={doc.id} className="flex items-center justify-between p-2 bg-bg-card rounded border border-line/10">
                               <div className="flex-1 min-w-0">
-                                <p className="text-white text-sm truncate">{doc.document_type}</p>
+                                <p className="text-fg-primary text-sm truncate">{doc.document_type}</p>
                                 <p className="text-fg-muted text-xs truncate">{doc.folder_name}</p>
                               </div>
                               <p className="text-fg-muted text-xs ml-2">{(doc.file_size || 0) / (1024 * 1024)} MB</p>
@@ -3239,14 +3239,14 @@ export default function DocumentsTab({
                     {getFileTypeIcon(previewDocument.file_name || previewDocument.document_type)}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-lg sm:text-xl font-light text-white truncate">{previewDocument.document_type || previewDocument.file_name}</h2>
+                    <h2 className="text-lg sm:text-xl font-light text-fg-primary truncate">{previewDocument.document_type || previewDocument.file_name}</h2>
                     <p className="text-xs sm:text-sm text-fg-muted truncate">{previewDocument.folder_name}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <button
                     onClick={() => handleView(previewDocument.file_path)}
-                    className="px-3 py-2 bg-bg-elevated text-white rounded-lg hover:bg-bg-hover transition-colors text-sm"
+                    className="px-3 py-2 bg-bg-elevated text-fg-primary rounded-lg hover:bg-bg-hover transition-colors text-sm"
                   >
                     Open Full
                   </button>
@@ -3256,7 +3256,7 @@ export default function DocumentsTab({
                       setPreviewDocument(null)
                       setPreviewModalTab('preview')
                     }}
-                    className="text-fg-muted hover:text-white transition-colors p-1"
+                    className="text-fg-muted hover:text-fg-primary transition-colors p-1"
                   >
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <line x1="18" y1="6" x2="6" y2="18" />
@@ -3271,7 +3271,7 @@ export default function DocumentsTab({
                 <button
                   onClick={() => setPreviewModalTab('preview')}
                   className={`px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${previewModalTab === 'preview'
-                      ? 'text-white border-b-2 border-white'
+                      ? 'text-fg-primary border-b-2 border-white'
                       : 'text-fg-muted hover:text-fg-secondary'
                     }`}
                 >
@@ -3280,7 +3280,7 @@ export default function DocumentsTab({
                 <button
                   onClick={() => setPreviewModalTab('compliance')}
                   className={`px-4 sm:px-6 py-3 text-sm sm:text-base font-medium transition-colors ${previewModalTab === 'compliance'
-                      ? 'text-white border-b-2 border-white'
+                      ? 'text-fg-primary border-b-2 border-white'
                       : 'text-fg-muted hover:text-fg-secondary'
                     }`}
                 >
@@ -3322,7 +3322,7 @@ export default function DocumentsTab({
             <div className="p-6 border-b border-line/10">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-xl font-light text-white">Upload Document</h3>
+                  <h3 className="text-xl font-light text-fg-primary">Upload Document</h3>
                   <p className="text-sm text-fg-muted mt-1">Upload document for compliance requirement</p>
                 </div>
                 <button
@@ -3336,7 +3336,7 @@ export default function DocumentsTab({
                     }
                   }}
                   disabled={uploadingDocument}
-                  className="text-fg-muted hover:text-white transition-colors disabled:opacity-50"
+                  className="text-fg-muted hover:text-fg-primary transition-colors disabled:opacity-50"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -3351,7 +3351,7 @@ export default function DocumentsTab({
                 <div className="space-y-2">
                   <div>
                     <label className="block text-xs font-medium text-fg-muted mb-1">Requirement</label>
-                    <div className="text-white font-medium">{documentUploadModal.requirement}</div>
+                    <div className="text-fg-primary font-medium">{documentUploadModal.requirement}</div>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-fg-muted mb-1">Document Type</label>
@@ -3420,7 +3420,7 @@ export default function DocumentsTab({
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <div className="min-w-0 flex-1">
-                              <p className="text-white font-medium truncate">{uploadFile.name}</p>
+                              <p className="text-fg-primary font-medium truncate">{uploadFile.name}</p>
                               <p className="text-fg-muted text-xs mt-0.5">
                                 {(uploadFile.size / 1024 / 1024).toFixed(2)} MB • {uploadFile.type || 'Unknown type'}
                               </p>
@@ -3449,7 +3449,7 @@ export default function DocumentsTab({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-fg-muted">{uploadStage || 'Uploading...'}</span>
-                    <span className="text-white font-medium">{uploadProgress}%</span>
+                    <span className="text-fg-primary font-medium">{uploadProgress}%</span>
                   </div>
                   <div className="w-full bg-bg-elevated rounded-full h-2.5 overflow-hidden">
                     <div

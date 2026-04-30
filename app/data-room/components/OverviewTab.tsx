@@ -136,12 +136,12 @@ export default function OverviewTab({
                 />
               </svg>
             </div>
-            <h2 className="text-xl sm:text-2xl font-light text-white">Entity Details</h2>
+            <h2 className="text-xl sm:text-2xl font-light text-fg-primary">Entity Details</h2>
           </div>
           <div className="sm:ml-auto w-full sm:w-auto">
             <button
               onClick={() => router.push(`/manage-company?company_id=${currentCompany?.id || ''}`)}
-              className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-white/10 border border-white/40 text-white rounded-lg hover:bg-white/20 transition-colors text-xs sm:text-sm flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-white/10 border border-white/40 text-fg-primary rounded-lg hover:bg-white/20 transition-colors text-xs sm:text-sm flex items-center justify-center gap-2"
             >
               <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -162,7 +162,7 @@ export default function OverviewTab({
             {/* Company Name */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
               <label className="text-xs sm:text-sm text-fg-muted sm:w-32 sm:flex-shrink-0">Company Name</label>
-              <div className="text-white text-base sm:text-lg font-medium break-words">{entityDetails.companyName}</div>
+              <div className="text-fg-primary text-base sm:text-lg font-medium break-words">{entityDetails.companyName}</div>
             </div>
 
             {/* Type */}
@@ -176,37 +176,37 @@ export default function OverviewTab({
             {/* Reg Date */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
               <label className="text-xs sm:text-sm text-fg-muted sm:w-32 sm:flex-shrink-0">Reg Date</label>
-              <div className="text-white text-base sm:text-lg font-medium">{entityDetails.regDate}</div>
+              <div className="text-fg-primary text-base sm:text-lg font-medium">{entityDetails.regDate}</div>
             </div>
 
             {/* Tax ID (country-specific label) */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
               <label className="text-xs sm:text-sm text-fg-muted sm:w-32 sm:flex-shrink-0">{countryConfig.labels.taxId}</label>
-              <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.taxId}</div>
+              <div className="text-fg-primary text-base sm:text-lg font-medium break-all">{entityDetails.taxId}</div>
             </div>
 
             {/* Registration ID (country-specific label) */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
               <label className="text-xs sm:text-sm text-fg-muted sm:w-32 sm:flex-shrink-0">{countryConfig.labels.registrationId}</label>
-              <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.registrationId}</div>
+              <div className="text-fg-primary text-base sm:text-lg font-medium break-all">{entityDetails.registrationId}</div>
             </div>
 
             {/* Address */}
             <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
               <label className="text-xs sm:text-sm text-fg-muted sm:w-32 sm:flex-shrink-0 pt-0.5">Address</label>
-              <div className="text-white text-base sm:text-lg font-medium break-words flex-1">{entityDetails.address}</div>
+              <div className="text-fg-primary text-base sm:text-lg font-medium break-words flex-1">{entityDetails.address}</div>
             </div>
 
             {/* Phone Number */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
               <label className="text-xs sm:text-sm text-fg-muted sm:w-32 sm:flex-shrink-0">Phone Number</label>
-              <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.phoneNumber}</div>
+              <div className="text-fg-primary text-base sm:text-lg font-medium break-all">{entityDetails.phoneNumber}</div>
             </div>
 
             {/* Industry Category */}
             <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
               <label className="text-xs sm:text-sm text-fg-muted sm:w-32 sm:flex-shrink-0 pt-0.5">Industry Category</label>
-              <div className="text-white text-base sm:text-lg font-medium break-words flex-1">{entityDetails.industryCategory}</div>
+              <div className="text-fg-primary text-base sm:text-lg font-medium break-words flex-1">{entityDetails.industryCategory}</div>
             </div>
 
             {/* NIC Classification Card — derived from CIN */}
@@ -339,7 +339,7 @@ export default function OverviewTab({
                     return (
                       <div key={g.id} className="flex items-center justify-between gap-3 px-3 py-2 bg-black/40 border border-white/5 rounded-md">
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="font-mono text-xs sm:text-sm text-white tracking-wider">{g.gstin}</span>
+                          <span className="font-mono text-xs sm:text-sm text-fg-primary tracking-wider">{g.gstin}</span>
                           {isHome && (
                             <span className="text-[9px] uppercase tracking-wider text-emerald-400 border border-emerald-500/30 px-1 rounded flex-shrink-0">
                               Home state
@@ -393,7 +393,7 @@ export default function OverviewTab({
                         e.preventDefault()
                         setSelectedDirectorId(e.target.value || null)
                       }}
-                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-black border border-white/20 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-black border border-white/20 rounded-lg text-fg-primary text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
                     >
                       <option value="">Select a director to view profile</option>
                       {entityDetails.directors.map((director: any) => (
@@ -423,12 +423,12 @@ export default function OverviewTab({
                         <div className="flex-1">
                           <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
                             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-                              <span className="text-white font-semibold text-base sm:text-lg">
+                              <span className="text-fg-primary font-semibold text-base sm:text-lg">
                                 {director.firstName?.[0] || ''}{director.lastName?.[0] || ''}
                               </span>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="text-white font-semibold text-base sm:text-lg break-words">
+                              <h3 className="text-fg-primary font-semibold text-base sm:text-lg break-words">
                                 {director.firstName} {director.middleName} {director.lastName}
                               </h3>
                               {director.designation && (
@@ -453,31 +453,31 @@ export default function OverviewTab({
                             {director.din && (
                               <div className="p-3 bg-black border border-white/10 rounded-lg">
                                 <div className="text-xs text-fg-muted mb-1">{countryConfig.labels.directorId || 'Director ID'}</div>
-                                <div className="text-white font-mono text-sm sm:text-base break-all">{director.din}</div>
+                                <div className="text-fg-primary font-mono text-sm sm:text-base break-all">{director.din}</div>
                               </div>
                             )}
                             {director.pan && (
                               <div className="p-3 bg-black border border-white/10 rounded-lg">
                                 <div className="text-xs text-fg-muted mb-1">{countryConfig.labels.taxId}</div>
-                                <div className="text-white font-mono text-sm sm:text-base break-all">{director.pan}</div>
+                                <div className="text-fg-primary font-mono text-sm sm:text-base break-all">{director.pan}</div>
                               </div>
                             )}
                             {director.dob && (
                               <div className="p-3 bg-black border border-white/10 rounded-lg">
                                 <div className="text-xs text-fg-muted mb-1">Date of Birth</div>
-                                <div className="text-white text-sm sm:text-base">{formatDateForDisplay(director.dob)}</div>
+                                <div className="text-fg-primary text-sm sm:text-base">{formatDateForDisplay(director.dob)}</div>
                               </div>
                             )}
                             {director.email && (
                               <div className="p-3 bg-black border border-white/10 rounded-lg">
                                 <div className="text-xs text-fg-muted mb-1">Email Address</div>
-                                <div className="text-white text-sm sm:text-base break-all">{director.email}</div>
+                                <div className="text-fg-primary text-sm sm:text-base break-all">{director.email}</div>
                               </div>
                             )}
                             {director.mobile && (
                               <div className="p-3 bg-black border border-white/10 rounded-lg">
                                 <div className="text-xs text-fg-muted mb-1">Mobile Number</div>
-                                <div className="text-white text-sm sm:text-base break-all">{director.mobile}</div>
+                                <div className="text-fg-primary text-sm sm:text-base break-all">{director.mobile}</div>
                               </div>
                             )}
                           </div>

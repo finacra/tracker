@@ -105,11 +105,11 @@ export default function EmailPreferencesPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="bg-[#1E3A5F] text-white">
+      <header className="bg-[#1E3A5F] text-fg-primary">
         <div className="max-w-4xl mx-auto px-4 py-6">
           <button
             onClick={() => router.back()}
-            className="text-white/80 hover:text-white text-sm mb-2 flex items-center gap-1"
+            className="text-fg-primary/80 hover:text-fg-primary text-sm mb-2 flex items-center gap-1"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -117,7 +117,7 @@ export default function EmailPreferencesPage() {
             Back
           </button>
           <h1 className="text-2xl font-bold">Email Preferences</h1>
-          <p className="text-white/80 text-sm mt-1">Manage your notification settings</p>
+          <p className="text-fg-primary/80 text-sm mt-1">Manage your notification settings</p>
         </div>
       </header>
 
@@ -247,7 +247,7 @@ export default function EmailPreferencesPage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-6 py-2.5 bg-[#1E3A5F] text-white rounded-lg font-medium hover:bg-[#2d4a6f] transition disabled:opacity-50"
+              className="px-6 py-2.5 bg-[#1E3A5F] text-fg-primary rounded-lg font-medium hover:bg-[#2d4a6f] transition disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save Preferences'}
             </button>

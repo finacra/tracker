@@ -157,7 +157,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
                 </svg>
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-white">Compliance Intelligence</h2>
+                <h2 className="text-sm font-semibold text-fg-primary">Compliance Intelligence</h2>
                 <p className="text-[10px] text-fg-muted">CIA Agent</p>
               </div>
             </div>
@@ -166,7 +166,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
                 onClick={() => setIsFullscreen(v => !v)}
                 title={isFullscreen ? 'Collapse to side panel' : 'Expand to fullscreen'}
                 aria-label={isFullscreen ? 'Collapse chat' : 'Expand chat'}
-                className="w-7 h-7 rounded-md hover:bg-white/10 flex items-center justify-center text-fg-muted hover:text-white transition-colors"
+                className="w-7 h-7 rounded-md hover:bg-white/10 flex items-center justify-center text-fg-muted hover:text-fg-primary transition-colors"
               >
                 {isFullscreen ? (
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -181,7 +181,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
               <button
                 onClick={onClose}
                 aria-label="Close chat"
-                className="w-7 h-7 rounded-md hover:bg-white/10 flex items-center justify-center text-fg-muted hover:text-white transition-colors"
+                className="w-7 h-7 rounded-md hover:bg-white/10 flex items-center justify-center text-fg-muted hover:text-fg-primary transition-colors"
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                   <path d="M3 3l8 8M11 3l-8 8" />
@@ -215,7 +215,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
                       />
                     </svg>
                   </div>
-                  <h3 className="text-base font-medium text-white mb-1">Ask CIA anything</h3>
+                  <h3 className="text-base font-medium text-fg-primary mb-1">Ask CIA anything</h3>
                   <p className="text-xs text-fg-muted text-center mb-6 max-w-[260px]">
                     Your compliance intelligence agent. Ask about filings, deadlines, penalties, or any uploaded document.
                   </p>

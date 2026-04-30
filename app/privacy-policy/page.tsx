@@ -21,7 +21,7 @@ export default function PrivacyPolicyPage() {
         <div className="mb-12">
           <Link 
             href="/home" 
-            className="text-fg-muted hover:text-white mb-6 inline-flex items-center gap-2 transition-colors font-light"
+            className="text-fg-muted hover:text-fg-primary mb-6 inline-flex items-center gap-2 transition-colors font-light"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -35,7 +35,7 @@ export default function PrivacyPolicyPage() {
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
             </div>
-            <h1 className="text-5xl font-light text-white">Privacy Policy</h1>
+            <h1 className="text-5xl font-light text-fg-primary">Privacy Policy</h1>
           </div>
           <p className="text-fg-muted text-lg font-light">Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
         </div>
@@ -43,17 +43,17 @@ export default function PrivacyPolicyPage() {
         {/* Content */}
         <div className="space-y-8 bg-bg-card p-8 md:p-12 rounded-xl border border-line/10">
           <section className="space-y-4">
-            <h2 className="text-3xl font-light text-white mb-4 flex items-center gap-3">
+            <h2 className="text-3xl font-light text-fg-primary mb-4 flex items-center gap-3">
               <span className="w-8 h-8 bg-bg-elevated border border-line/15 rounded-lg flex items-center justify-center text-fg-muted text-lg font-light">1</span>
               Introduction
             </h2>
             <p className="text-fg-secondary leading-relaxed text-lg font-light">
-              Welcome to <span className="text-white font-light">Finacra AI</span> ("we," "our," or "us"). We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you as to how we look after your personal data when you visit our website and use our services, and tell you about your privacy rights and how the law protects you.
+              Welcome to <span className="text-fg-primary font-light">Finacra AI</span> ("we," "our," or "us"). We respect your privacy and are committed to protecting your personal data. This privacy policy will inform you as to how we look after your personal data when you visit our website and use our services, and tell you about your privacy rights and how the law protects you.
             </p>
           </section>
 
           <section className="space-y-4 pt-8 border-t border-line/10">
-            <h2 className="text-3xl font-light text-white mb-4 flex items-center gap-3">
+            <h2 className="text-3xl font-light text-fg-primary mb-4 flex items-center gap-3">
               <span className="w-8 h-8 bg-bg-elevated border border-line/15 rounded-lg flex items-center justify-center text-fg-muted text-lg font-light">2</span>
               The Data We Collect
             </h2>
@@ -62,26 +62,26 @@ export default function PrivacyPolicyPage() {
             </p>
             <div className="space-y-4">
               <div className="bg-bg-card/50 p-5 rounded-xl border border-line/10">
-                <h3 className="text-xl font-light text-white mb-2">Identity Data</h3>
+                <h3 className="text-xl font-light text-fg-primary mb-2">Identity Data</h3>
                 <p className="text-fg-muted font-light">Includes first name, last name, username or similar identifier, company name, and director information.</p>
               </div>
               <div className="bg-bg-card/50 p-5 rounded-xl border border-line/10">
-                <h3 className="text-xl font-light text-white mb-2">Contact Data</h3>
+                <h3 className="text-xl font-light text-fg-primary mb-2">Contact Data</h3>
                 <p className="text-fg-muted font-light">Includes email address, telephone numbers, and postal addresses.</p>
               </div>
               <div className="bg-bg-card/50 p-5 rounded-xl border border-line/10">
-                <h3 className="text-xl font-light text-white mb-2">Technical Data</h3>
+                <h3 className="text-xl font-light text-fg-primary mb-2">Technical Data</h3>
                 <p className="text-fg-muted font-light">Includes internet protocol (IP) address, your login data, browser type and version, time zone setting and location, browser plug-in types and versions, operating system and platform, and other technology on the devices you use to access this website.</p>
               </div>
               <div className="bg-bg-card/50 p-5 rounded-xl border border-line/10">
-                <h3 className="text-xl font-light text-white mb-2">Usage Data</h3>
+                <h3 className="text-xl font-light text-fg-primary mb-2">Usage Data</h3>
                 <p className="text-fg-muted font-light">Includes information about how you use our website, products and services, including compliance tracking data and document management activities.</p>
               </div>
             </div>
           </section>
 
           <section className="space-y-4 pt-8 border-t border-line/10">
-            <h2 className="text-3xl font-light text-white mb-4 flex items-center gap-3">
+            <h2 className="text-3xl font-light text-fg-primary mb-4 flex items-center gap-3">
               <span className="w-8 h-8 bg-bg-elevated border border-line/15 rounded-lg flex items-center justify-center text-fg-muted text-lg font-light">3</span>
               How We Use Your Data
             </h2>
@@ -105,7 +105,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section className="space-y-4 pt-8 border-t border-line/10">
-            <h2 className="text-3xl font-light text-white mb-4 flex items-center gap-3">
+            <h2 className="text-3xl font-light text-fg-primary mb-4 flex items-center gap-3">
               <span className="w-8 h-8 bg-bg-elevated border border-line/15 rounded-lg flex items-center justify-center text-fg-muted text-lg font-light">4</span>
               Data Security
             </h2>
@@ -120,7 +120,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section className="space-y-4 pt-8 border-t border-line/10">
-            <h2 className="text-3xl font-light text-white mb-4 flex items-center gap-3">
+            <h2 className="text-3xl font-light text-fg-primary mb-4 flex items-center gap-3">
               <span className="w-8 h-8 bg-bg-elevated border border-line/15 rounded-lg flex items-center justify-center text-fg-muted text-lg font-light">5</span>
               Your Rights
             </h2>
@@ -129,26 +129,26 @@ export default function PrivacyPolicyPage() {
             </p>
             <div className="grid md:grid-cols-2 gap-4">
               <div className="bg-bg-card/50 p-4 rounded-lg border border-line/10">
-                <p className="text-white font-light">Right to Access</p>
+                <p className="text-fg-primary font-light">Right to Access</p>
                 <p className="text-fg-muted text-sm mt-1 font-light">Request access to your personal data</p>
               </div>
               <div className="bg-bg-card/50 p-4 rounded-lg border border-line/10">
-                <p className="text-white font-light">Right to Rectification</p>
+                <p className="text-fg-primary font-light">Right to Rectification</p>
                 <p className="text-fg-muted text-sm mt-1 font-light">Request correction of your personal data</p>
               </div>
               <div className="bg-bg-card/50 p-4 rounded-lg border border-line/10">
-                <p className="text-white font-light">Right to Erasure</p>
+                <p className="text-fg-primary font-light">Right to Erasure</p>
                 <p className="text-fg-muted text-sm mt-1 font-light">Request deletion of your personal data</p>
               </div>
               <div className="bg-bg-card/50 p-4 rounded-lg border border-line/10">
-                <p className="text-white font-light">Right to Data Portability</p>
+                <p className="text-fg-primary font-light">Right to Data Portability</p>
                 <p className="text-fg-muted text-sm mt-1 font-light">Request transfer of your data</p>
               </div>
             </div>
           </section>
 
           <section className="space-y-4 pt-8 border-t border-line/10">
-            <h2 className="text-3xl font-light text-white mb-4 flex items-center gap-3">
+            <h2 className="text-3xl font-light text-fg-primary mb-4 flex items-center gap-3">
               <span className="w-8 h-8 bg-bg-elevated border border-line/15 rounded-lg flex items-center justify-center text-fg-muted text-lg font-light">6</span>
               Contact Us
             </h2>
@@ -156,8 +156,8 @@ export default function PrivacyPolicyPage() {
               If you have any questions about this privacy policy or our privacy practices, please contact us at:
             </p>
             <div className="bg-bg-elevated/50 border border-line/15 p-6 rounded-xl">
-              <p className="text-white font-light mb-2">Email:</p>
-              <a href="mailto:support@finnovate.ai" className="text-fg-muted hover:text-white transition-colors text-lg font-light">
+              <p className="text-fg-primary font-light mb-2">Email:</p>
+              <a href="mailto:support@finnovate.ai" className="text-fg-muted hover:text-fg-primary transition-colors text-lg font-light">
                 support@finnovate.ai
               </a>
             </div>

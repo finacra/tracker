@@ -287,12 +287,12 @@ export default function AgentAssistedUploadModal({
       <div className="w-full max-w-3xl bg-bg-card border border-line/10 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-line/10 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-light text-white">Upload Document</h2>
+            <h2 className="text-xl font-light text-fg-primary">Upload Document</h2>
             <p className="text-sm text-fg-muted mt-1">
               The agent will read the file and suggest how to file it — you can edit anything.
             </p>
           </div>
-          <button onClick={handleClose} className="p-2 text-fg-muted hover:text-white" aria-label="Close">✕</button>
+          <button onClick={handleClose} className="p-2 text-fg-muted hover:text-fg-primary" aria-label="Close">✕</button>
         </div>
 
         <div className="p-6 space-y-5">
@@ -513,7 +513,7 @@ export default function AgentAssistedUploadModal({
           <div className="p-6 border-t border-line/10 flex items-center justify-between">
             <button
               onClick={handleClose}
-              className="px-4 py-2 text-sm text-fg-muted hover:text-white"
+              className="px-4 py-2 text-sm text-fg-muted hover:text-fg-primary"
             >
               Discard
             </button>

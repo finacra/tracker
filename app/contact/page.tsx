@@ -88,7 +88,7 @@ function ContactPageContent() {
       <div className="relative z-10 px-4 sm:px-6 pt-4">
         <Link
           href="/home"
-          className="inline-flex items-center gap-2 text-fg-muted hover:text-white transition-colors font-light text-sm"
+          className="inline-flex items-center gap-2 text-fg-muted hover:text-fg-primary transition-colors font-light text-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -101,7 +101,7 @@ function ContactPageContent() {
       <section className="flex-1 relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32">
         <div className="max-w-7xl mx-auto">
           <div className="mb-8 sm:mb-12 text-center">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-light text-white mb-4">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-light text-fg-primary mb-4">
               Get in Touch
             </h1>
             <p className="text-fg-muted text-sm sm:text-base font-light">
@@ -125,7 +125,7 @@ function ContactPageContent() {
                   required
                   value={formData.name}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
                   placeholder="Your name"
                 />
               </div>
@@ -142,7 +142,7 @@ function ContactPageContent() {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
                   placeholder="your.email@example.com"
                 />
               </div>
@@ -158,7 +158,7 @@ function ContactPageContent() {
                   name="company"
                   value={formData.company}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
                   placeholder="Your company name (optional)"
                 />
               </div>
@@ -174,7 +174,7 @@ function ContactPageContent() {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
                   placeholder="Your phone number (optional)"
                 />
               </div>
@@ -191,7 +191,7 @@ function ContactPageContent() {
                   rows={6}
                   value={formData.message}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light resize-none"
+                  className="w-full px-4 py-3 bg-[#0f0f0f] border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light resize-none"
                   placeholder="Tell us how we can help you..."
                 />
               </div>
@@ -201,7 +201,7 @@ function ContactPageContent() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full px-6 py-3 bg-black border border-line/15 text-white rounded-lg hover:bg-bg-card hover:border-line/30 transition-all duration-300 font-light text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] flex items-center justify-center"
+                  className="w-full px-6 py-3 bg-black border border-line/15 text-fg-primary rounded-lg hover:bg-bg-card hover:border-line/30 transition-all duration-300 font-light text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] flex items-center justify-center"
                 >
                   {isSubmitting ? (
                     <div className="w-5 h-5 border-2 border-line/30 border-t-transparent rounded-full animate-spin"></div>
@@ -237,7 +237,7 @@ function ContactPageContent() {
               <div className="space-y-8">
                 {/* Corporate Header */}
                 <div className="pb-6 border-b border-line/10">
-                  <h2 className="text-2xl sm:text-3xl font-light text-white">Corporate</h2>
+                  <h2 className="text-2xl sm:text-3xl font-light text-fg-primary">Corporate</h2>
                 </div>
 
                 {/* India Address */}
@@ -247,7 +247,7 @@ function ContactPageContent() {
                     <h3 className="text-xs font-light text-fg-muted uppercase tracking-widest">India</h3>
                   </div>
                   <div className="pl-6 space-y-2">
-                    <p className="text-white font-light text-sm sm:text-base font-medium">
+                    <p className="text-fg-primary font-light text-sm sm:text-base font-medium">
                       Finnogenius Consulting Private Limited,
                     </p>
                     <p className="text-fg-secondary font-light leading-relaxed text-sm sm:text-base">
@@ -265,7 +265,7 @@ function ContactPageContent() {
                     <h3 className="text-xs font-light text-fg-muted uppercase tracking-widest">USA</h3>
                   </div>
                   <div className="pl-6 space-y-2">
-                    <p className="text-white font-light text-sm sm:text-base font-medium">
+                    <p className="text-fg-primary font-light text-sm sm:text-base font-medium">
                       RAZR CAPITAL LLC,
                     </p>
                     <p className="text-fg-secondary font-light leading-relaxed text-sm sm:text-base">
@@ -280,7 +280,7 @@ function ContactPageContent() {
                   <h3 className="text-xs font-light text-fg-muted uppercase tracking-widest mb-3">Email</h3>
                   <a
                     href="mailto:info@finacra.com"
-                    className="text-white hover:text-fg-secondary transition-colors font-light text-sm sm:text-base flex items-center gap-2 group"
+                    className="text-fg-primary hover:text-fg-secondary transition-colors font-light text-sm sm:text-base flex items-center gap-2 group"
                   >
                     <svg className="w-4 h-4 text-fg-muted group-hover:text-fg-secondary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -300,7 +300,7 @@ function ContactPageContent() {
                       <div>
                         <a
                           href="tel:+918790622663"
-                          className="text-white hover:text-fg-secondary transition-colors font-light"
+                          className="text-fg-primary hover:text-fg-secondary transition-colors font-light"
                         >
                           +91 8790622663
                         </a>
@@ -314,7 +314,7 @@ function ContactPageContent() {
                       <div>
                         <a
                           href="tel:+16693097426"
-                          className="text-white hover:text-fg-secondary transition-colors font-light"
+                          className="text-fg-primary hover:text-fg-secondary transition-colors font-light"
                         >
                           +1 (669) 309-7426
                         </a>
@@ -337,10 +337,10 @@ function ContactPageContent() {
               © 2026 FinacraAI. All rights reserved.
             </span>
             <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs sm:text-sm">
-              <Link href="/privacy-policy" className="text-fg-muted hover:text-white transition-colors font-light">
+              <Link href="/privacy-policy" className="text-fg-muted hover:text-fg-primary transition-colors font-light">
                 Privacy Policy
               </Link>
-              <Link href="/terms-of-service" className="text-fg-muted hover:text-white transition-colors font-light">
+              <Link href="/terms-of-service" className="text-fg-muted hover:text-fg-primary transition-colors font-light">
                 Terms of Service
               </Link>
             </div>
@@ -358,7 +358,7 @@ export default function ContactPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+        <div className="text-fg-primary">Loading...</div>
       </div>
     }>
       <ContactPageContent />

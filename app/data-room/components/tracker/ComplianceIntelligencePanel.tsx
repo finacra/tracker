@@ -454,7 +454,7 @@ export default function ComplianceIntelligencePanel({
           </div>
           <button
             onClick={() => setViewState('idle')}
-            className="text-xs text-fg-muted hover:text-white"
+            className="text-xs text-fg-muted hover:text-fg-primary"
           >
             Cancel
           </button>
@@ -560,9 +560,9 @@ export default function ComplianceIntelligencePanel({
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-white font-semibold text-sm sm:text-base">Compliance Intelligence</h3>
+            <h3 className="text-fg-primary font-semibold text-sm sm:text-base">Compliance Intelligence</h3>
             <p className="text-fg-muted text-xs sm:text-sm mt-1">
-              Evaluates <span className="text-white font-medium">{companyName}</span> against 60+ Indian regulatory rules based on company type, state, industry, employee count, and turnover. Then uses AI to find any specialized compliances the rules engine may miss.
+              Evaluates <span className="text-fg-primary font-medium">{companyName}</span> against 60+ Indian regulatory rules based on company type, state, industry, employee count, and turnover. Then uses AI to find any specialized compliances the rules engine may miss.
             </p>
 
             {/* Stats from last generation */}
@@ -605,7 +605,7 @@ export default function ComplianceIntelligencePanel({
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-400">
                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  <span className="text-white text-xs font-semibold">AI Validation Complete</span>
+                  <span className="text-fg-primary text-xs font-semibold">AI Validation Complete</span>
                 </div>
                 <div className="flex flex-wrap gap-2 text-xs">
                   <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -774,7 +774,7 @@ export default function ComplianceIntelligencePanel({
                         <button
                           key={years}
                           onClick={() => handleGenerateHistory(years)}
-                          className="w-full px-3 py-2 text-left text-sm text-fg-secondary hover:bg-bg-hover hover:text-white transition-colors flex items-center justify-between"
+                          className="w-full px-3 py-2 text-left text-sm text-fg-secondary hover:bg-bg-hover hover:text-fg-primary transition-colors flex items-center justify-between"
                         >
                           <span>{years} Year{years > 1 ? 's' : ''}</span>
                           <span className="text-fg-muted text-xs">
@@ -785,7 +785,7 @@ export default function ComplianceIntelligencePanel({
                       {maxHistoricalYears > 3 && (
                         <button
                           onClick={() => handleGenerateHistory(maxHistoricalYears)}
-                          className="w-full px-3 py-2 text-left text-sm text-fg-secondary hover:bg-bg-hover hover:text-white transition-colors flex items-center justify-between border-t border-line/15"
+                          className="w-full px-3 py-2 text-left text-sm text-fg-secondary hover:bg-bg-hover hover:text-fg-primary transition-colors flex items-center justify-between border-t border-line/15"
                         >
                           <span>Since Incorporation</span>
                           <span className="text-fg-muted text-xs">
@@ -821,9 +821,9 @@ export default function ComplianceIntelligencePanel({
               </svg>
             </div>
           </div>
-          <h3 className="text-white font-semibold mb-1">Evaluating Compliance Rules</h3>
+          <h3 className="text-fg-primary font-semibold mb-1">Evaluating Compliance Rules</h3>
           <p className="text-fg-muted text-sm max-w-md">
-            Running deterministic rules engine for <span className="text-white">{companyName}</span>, then validating with AI for specialized industry and state requirements.
+            Running deterministic rules engine for <span className="text-fg-primary">{companyName}</span>, then validating with AI for specialized industry and state requirements.
           </p>
           <p className="text-fg-muted text-xs mt-3">Rules engine is instant. AI validation takes 10-20 seconds.</p>
         </div>
@@ -845,9 +845,9 @@ export default function ComplianceIntelligencePanel({
               </svg>
             </div>
           </div>
-          <h3 className="text-white font-semibold mb-1">Validating Compliances</h3>
+          <h3 className="text-fg-primary font-semibold mb-1">Validating Compliances</h3>
           <p className="text-fg-muted text-sm max-w-md">
-            AI is reviewing each compliance requirement for <span className="text-white">{companyName}</span> to verify applicability based on thresholds, state, industry, and entity type.
+            AI is reviewing each compliance requirement for <span className="text-fg-primary">{companyName}</span> to verify applicability based on thresholds, state, industry, and entity type.
           </p>
           <p className="text-fg-muted text-xs mt-3">This takes 15-30 seconds.</p>
         </div>
@@ -873,7 +873,7 @@ export default function ComplianceIntelligencePanel({
             <p className="text-fg-muted text-xs mt-1">{error}</p>
             <button
               onClick={handleGenerate}
-              className="mt-3 px-3 py-1.5 bg-bg-elevated hover:bg-bg-hover text-white rounded-lg text-xs font-medium transition-colors"
+              className="mt-3 px-3 py-1.5 bg-bg-elevated hover:bg-bg-hover text-fg-primary rounded-lg text-xs font-medium transition-colors"
             >
               Retry
             </button>
@@ -897,7 +897,7 @@ export default function ComplianceIntelligencePanel({
       <div className="p-4 sm:p-5 border-b border-purple-500/10">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h3 className="text-white font-semibold text-sm sm:text-base flex items-center gap-2">
+            <h3 className="text-fg-primary font-semibold text-sm sm:text-base flex items-center gap-2">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-purple-400">
                 <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -977,7 +977,7 @@ export default function ComplianceIntelligencePanel({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className="text-white text-sm font-medium leading-tight">{req.requirement}</p>
+                          <p className="text-fg-primary text-sm font-medium leading-tight">{req.requirement}</p>
                           <p className="text-fg-muted text-xs mt-0.5">
                             {req.authority && <span className="text-fg-muted">{req.authority}</span>}
                             {req.authority && req.compliance_type && <span className="mx-1.5">·</span>}

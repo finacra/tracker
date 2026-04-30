@@ -127,7 +127,7 @@ function VerifyEmailContent() {
                   </svg>
                 </div>
               </div>
-              <h1 className="text-2xl font-bold text-white text-center mb-4">
+              <h1 className="text-2xl font-bold text-fg-primary text-center mb-4">
                 Email Verified!
               </h1>
               <p className="text-fg-muted text-center mb-6">
@@ -163,7 +163,7 @@ function VerifyEmailContent() {
                   </svg>
                 </div>
               </div>
-              <h1 className="text-2xl font-bold text-white text-center mb-4">
+              <h1 className="text-2xl font-bold text-fg-primary text-center mb-4">
                 {isVerifying ? 'Verifying Email...' : 'Verify Your Email'}
               </h1>
               <p className="text-fg-muted text-center mb-6">
@@ -224,7 +224,7 @@ export default function VerifyEmailPage() {
                 </svg>
               </div>
             </div>
-            <h1 className="text-2xl font-bold text-white text-center mb-4">
+            <h1 className="text-2xl font-bold text-fg-primary text-center mb-4">
               Loading...
             </h1>
           </div>

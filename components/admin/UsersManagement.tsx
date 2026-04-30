@@ -341,7 +341,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
       {/* Header and Filters */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-light text-white mb-1">Trial & Subscription Management</h2>
+          <h2 className="text-2xl font-light text-fg-primary mb-1">Trial & Subscription Management</h2>
           <p className="text-fg-muted text-sm">Manage company owners, their trials/subscriptions, and team access</p>
         </div>
         
@@ -356,7 +356,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
               placeholder="Search by email, ID or company..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange w-72"
+              className="pl-10 pr-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-primary-orange w-72"
             />
           </div>
 
@@ -364,7 +364,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as any)}
-            className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white text-sm focus:outline-none focus:border-primary-orange"
+            className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-primary-orange"
           >
             <option value="all">All Company Owners</option>
             <option value="active">Paid Subscribers</option>
@@ -376,7 +376,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
           {/* Refresh */}
           <button
             onClick={loadUsers}
-            className="p-2 bg-bg-elevated border border-line/15 rounded-lg text-fg-muted hover:text-white hover:border-line/30 transition-colors"
+            className="p-2 bg-bg-elevated border border-line/15 rounded-lg text-fg-muted hover:text-fg-primary hover:border-line/30 transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -388,7 +388,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-bg-card/50 border border-line/10 rounded-xl p-4">
-          <div className="text-2xl font-bold text-white">{users.length}</div>
+          <div className="text-2xl font-bold text-fg-primary">{users.length}</div>
           <div className="text-xs text-fg-muted">Company Owners</div>
           <div className="text-[10px] text-fg-muted mt-1">Users who created companies</div>
         </div>
@@ -499,7 +499,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                           </span>
                         </div>
                         <div>
-                          <div className="text-white font-medium">
+                          <div className="text-fg-primary font-medium">
                             {user.email.includes('@') ? user.email : `User ${user.id.substring(0, 8)}...`}
                           </div>
                           <div className="text-fg-muted text-xs flex items-center gap-2">
@@ -531,7 +531,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                                 max="365"
                                 value={extendDays[user.id] || 15}
                                 onChange={(e) => setExtendDays(prev => ({ ...prev, [user.id]: parseInt(e.target.value) || 15 }))}
-                                className="w-14 px-2 py-1 bg-bg-card border border-line/15 rounded text-white text-sm text-center focus:outline-none focus:border-primary-orange"
+                                className="w-14 px-2 py-1 bg-bg-card border border-line/15 rounded text-fg-primary text-sm text-center focus:outline-none focus:border-primary-orange"
                               />
                               <button
                                 onClick={() => handleExtendTrial(user.id, user.subscription!.id)}
@@ -558,7 +558,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                                 max="365"
                                 value={extendDays[user.id] || 15}
                                 onChange={(e) => setExtendDays(prev => ({ ...prev, [user.id]: parseInt(e.target.value) || 15 }))}
-                                className="w-14 px-2 py-1 bg-bg-card border border-line/15 rounded text-white text-sm text-center focus:outline-none focus:border-primary-orange"
+                                className="w-14 px-2 py-1 bg-bg-card border border-line/15 rounded text-fg-primary text-sm text-center focus:outline-none focus:border-primary-orange"
                               />
                               <button
                                 onClick={() => handleGrantTrial(user.id, 'enterprise')}
@@ -615,7 +615,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                                         </svg>
                                       </div>
                                       <div>
-                                        <div className="text-white text-sm font-medium">{company.name}</div>
+                                        <div className="text-fg-primary text-sm font-medium">{company.name}</div>
                                         <div className="text-fg-muted text-xs">
                                           {company.type} • {company.team_members.length} team member{company.team_members.length !== 1 ? 's' : ''}
                                         </div>
@@ -654,7 +654,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                                                   }
                                                 }}
                                                 disabled={isChangingTier[company.id]}
-                                                className="px-2 py-1 bg-bg-card border border-line/15 rounded text-white text-xs focus:outline-none focus:border-primary-orange disabled:opacity-50"
+                                                className="px-2 py-1 bg-bg-card border border-line/15 rounded text-fg-primary text-xs focus:outline-none focus:border-primary-orange disabled:opacity-50"
                                               >
                                                 <option value="starter">Starter</option>
                                                 <option value="professional">Professional</option>
@@ -667,7 +667,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                                                 max="365"
                                                 value={companyExtendDays[company.id] || 15}
                                                 onChange={(e) => setCompanyExtendDays(prev => ({ ...prev, [company.id]: parseInt(e.target.value) || 15 }))}
-                                                className="w-12 px-1 py-0.5 bg-bg-card border border-line/15 rounded text-white text-xs text-center focus:outline-none focus:border-primary-orange"
+                                                className="w-12 px-1 py-0.5 bg-bg-card border border-line/15 rounded text-fg-primary text-xs text-center focus:outline-none focus:border-primary-orange"
                                               />
                                               <button
                                                 onClick={() => handleExtendCompanyTrial(company.id, company.subscription!.id, company.name)}
@@ -702,7 +702,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                                                   <select
                                                     value={companyTier[company.id] || company.subscription.tier}
                                                     onChange={(e) => setCompanyTier(prev => ({ ...prev, [company.id]: e.target.value as 'starter' | 'professional' }))}
-                                                    className="px-2 py-1 bg-bg-card border border-line/15 rounded text-white text-xs focus:outline-none focus:border-primary-orange"
+                                                    className="px-2 py-1 bg-bg-card border border-line/15 rounded text-fg-primary text-xs focus:outline-none focus:border-primary-orange"
                                                   >
                                                     <option value="starter">Starter</option>
                                                     <option value="professional">Professional</option>
@@ -713,7 +713,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                                                     max="365"
                                                     value={companyExtendDays[company.id] || 15}
                                                     onChange={(e) => setCompanyExtendDays(prev => ({ ...prev, [company.id]: parseInt(e.target.value) || 15 }))}
-                                                    className="w-12 px-1 py-0.5 bg-bg-card border border-line/15 rounded text-white text-xs text-center focus:outline-none focus:border-primary-orange"
+                                                    className="w-12 px-1 py-0.5 bg-bg-card border border-line/15 rounded text-fg-primary text-xs text-center focus:outline-none focus:border-primary-orange"
                                                   />
                                                   <button
                                                     onClick={() => handleGrantCompanyTrial(company.id, user.id, companyTier[company.id] || (company.subscription?.tier as 'starter' | 'professional') || 'starter', company.name)}
@@ -742,7 +742,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                                                 <select
                                                   value={companyTier[company.id] || 'starter'}
                                                   onChange={(e) => setCompanyTier(prev => ({ ...prev, [company.id]: e.target.value as 'starter' | 'professional' }))}
-                                                  className="px-2 py-1 bg-bg-card border border-line/15 rounded text-white text-xs focus:outline-none focus:border-primary-orange"
+                                                  className="px-2 py-1 bg-bg-card border border-line/15 rounded text-fg-primary text-xs focus:outline-none focus:border-primary-orange"
                                                 >
                                                   <option value="starter">Starter</option>
                                                   <option value="professional">Professional</option>
@@ -753,7 +753,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                                                   max="365"
                                                   value={companyExtendDays[company.id] || 15}
                                                   onChange={(e) => setCompanyExtendDays(prev => ({ ...prev, [company.id]: parseInt(e.target.value) || 15 }))}
-                                                  className="w-12 px-1 py-0.5 bg-bg-card border border-line/15 rounded text-white text-xs text-center focus:outline-none focus:border-primary-orange"
+                                                  className="w-12 px-1 py-0.5 bg-bg-card border border-line/15 rounded text-fg-primary text-xs text-center focus:outline-none focus:border-primary-orange"
                                                 />
                                                 <button
                                                   onClick={() => {
@@ -864,19 +864,19 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div>
                               <span className="text-fg-muted">Status:</span>
-                              <span className="ml-2 text-white">{user.subscription.status}</span>
+                              <span className="ml-2 text-fg-primary">{user.subscription.status}</span>
                             </div>
                             <div>
                               <span className="text-fg-muted">Tier:</span>
-                              <span className="ml-2 text-white">{user.subscription.tier}</span>
+                              <span className="ml-2 text-fg-primary">{user.subscription.tier}</span>
                             </div>
                             <div>
                               <span className="text-fg-muted">Is Trial:</span>
-                              <span className="ml-2 text-white">{user.subscription.is_trial ? 'Yes' : 'No'}</span>
+                              <span className="ml-2 text-fg-primary">{user.subscription.is_trial ? 'Yes' : 'No'}</span>
                             </div>
                             <div>
                               <span className="text-fg-muted">Expires:</span>
-                              <span className="ml-2 text-white">
+                              <span className="ml-2 text-fg-primary">
                                 {user.subscription.trial_ends_at || user.subscription.end_date
                                   ? new Date(user.subscription.trial_ends_at || user.subscription.end_date).toLocaleDateString()
                                   : '-'

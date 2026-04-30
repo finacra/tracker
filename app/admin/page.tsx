@@ -555,7 +555,7 @@ function AdminPageInner() {
                   e.stopPropagation()
                   toggleVaultFolderExpansion(folder.path)
                 }}
-                className="w-4 h-4 flex items-center justify-center text-fg-muted hover:text-white"
+                className="w-4 h-4 flex items-center justify-center text-fg-muted hover:text-fg-primary"
               >
                 {isExpanded ? '▼' : '▶'}
               </button>
@@ -572,7 +572,7 @@ function AdminPageInner() {
             >
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
             </svg>
-            <span className="flex-1 text-sm text-white">{folder.name}</span>
+            <span className="flex-1 text-sm text-fg-primary">{folder.name}</span>
             <span className="text-xs text-fg-muted">({folder.documentCount})</span>
             <div className="flex items-center gap-1">
               <button
@@ -702,7 +702,7 @@ function AdminPageInner() {
 
       <div className="relative z-10 container mx-auto px-4 py-8 animate-fadeIn">
         <div className="mb-6">
-          <h1 className="text-4xl font-light text-white mb-2">Superadmin Dashboard</h1>
+          <h1 className="text-4xl font-light text-fg-primary mb-2">Superadmin Dashboard</h1>
           <p className="text-fg-muted">Manage all companies, compliances, and users across the platform</p>
         </div>
 
@@ -711,7 +711,7 @@ function AdminPageInner() {
           <select
             value={activeTab}
             onChange={(e) => setActiveTab(e.target.value as typeof activeTab)}
-            className="w-full bg-bg-card border border-line/15 text-white rounded-lg px-4 py-3 font-light text-sm focus:outline-none focus:border-line/40"
+            className="w-full bg-bg-card border border-line/15 text-fg-primary rounded-lg px-4 py-3 font-light text-sm focus:outline-none focus:border-line/40"
           >
             <option value="overview">Overview</option>
             <option value="companies">Companies</option>
@@ -733,7 +733,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('overview')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'overview'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-fg-primary hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -748,7 +748,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('companies')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'companies'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-fg-primary hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -761,7 +761,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('compliances')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'compliances'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-fg-primary hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -773,7 +773,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('templates')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'templates'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-fg-primary hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -789,7 +789,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('subscriptions')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'subscriptions'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-fg-primary hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -802,7 +802,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('allusers')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'allusers'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-fg-primary hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -817,7 +817,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('financials')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'financials'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-fg-primary hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -830,7 +830,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('transactions')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'transactions'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-fg-primary hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -846,7 +846,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('vault')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'vault'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-fg-primary hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -860,7 +860,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('kpis')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'kpis'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-fg-primary hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -874,7 +874,7 @@ function AdminPageInner() {
             onClick={() => setActiveTab('tracking')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 transition-colors ${activeTab === 'tracking'
               ? 'border-primary-orange bg-primary-orange/20 text-white'
-              : 'border-line/15 bg-bg-card text-fg-muted hover:text-white hover:border-line/30'
+              : 'border-line/15 bg-bg-card text-fg-muted hover:text-fg-primary hover:border-line/30'
               }`}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -897,7 +897,7 @@ function AdminPageInner() {
                   </svg>
                 </div>
               </div>
-              <p className="text-3xl font-light text-white">{stats.totalCompanies}</p>
+              <p className="text-3xl font-light text-fg-primary">{stats.totalCompanies}</p>
             </div>
 
             <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-6">
@@ -909,7 +909,7 @@ function AdminPageInner() {
                   </svg>
                 </div>
               </div>
-              <p className="text-3xl font-light text-white">{stats.totalRequirements}</p>
+              <p className="text-3xl font-light text-fg-primary">{stats.totalRequirements}</p>
             </div>
 
             <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-6">
@@ -943,7 +943,7 @@ function AdminPageInner() {
         {activeTab === 'companies' && (
           <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl overflow-hidden">
             <div className="p-6 border-b border-line/10">
-              <h2 className="text-2xl font-light text-white">All Companies</h2>
+              <h2 className="text-2xl font-light text-fg-primary">All Companies</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -959,7 +959,7 @@ function AdminPageInner() {
                 <tbody>
                   {companies.map((company) => (
                     <tr key={company.id} className="hover:bg-bg-card/50 transition-colors border-t border-line/10">
-                      <td className="px-6 py-4 text-white font-medium">{company.name}</td>
+                      <td className="px-6 py-4 text-fg-primary font-medium">{company.name}</td>
                       <td className="px-6 py-4 text-fg-secondary">{company.type}</td>
                       <td className="px-6 py-4 text-fg-secondary">
                         {company.country_code || 'IN'}
@@ -991,7 +991,7 @@ function AdminPageInner() {
               <select
                 value={selectedCompany}
                 onChange={(e) => setSelectedCompany(e.target.value)}
-                className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
               >
                 <option value="all">All Companies</option>
                 {companies.map((company) => (
@@ -1003,7 +1003,7 @@ function AdminPageInner() {
             {/* Requirements Table */}
             <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl overflow-hidden">
               <div className="p-6 border-b border-line/10">
-                <h2 className="text-2xl font-light text-white">All Compliance Requirements</h2>
+                <h2 className="text-2xl font-light text-fg-primary">All Compliance Requirements</h2>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -1019,9 +1019,9 @@ function AdminPageInner() {
                   <tbody>
                     {filteredRequirements.map((req) => (
                       <tr key={req.id} className="hover:bg-bg-card/50 transition-colors border-t border-line/10">
-                        <td className="px-6 py-4 text-white font-medium">{req.company_name}</td>
+                        <td className="px-6 py-4 text-fg-primary font-medium">{req.company_name}</td>
                         <td className="px-6 py-4 text-fg-secondary">{req.category}</td>
-                        <td className="px-6 py-4 text-white">{req.requirement}</td>
+                        <td className="px-6 py-4 text-fg-primary">{req.requirement}</td>
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-medium ${req.status === 'completed' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
                             req.status === 'overdue' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
@@ -1049,7 +1049,7 @@ function AdminPageInner() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div>
-                  <h2 className="text-2xl font-light text-white mb-2">
+                  <h2 className="text-2xl font-light text-fg-primary mb-2">
                     Compliance Templates
                     {templates.length > 0 && (
                       <span className="ml-3 text-sm font-normal text-fg-muted">
@@ -1202,7 +1202,7 @@ function AdminPageInner() {
             ) : (
               <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl overflow-hidden">
                 <div className="p-6 border-b border-line/10">
-                  <h3 className="text-xl font-light text-white">All Templates</h3>
+                  <h3 className="text-xl font-light text-fg-primary">All Templates</h3>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -1256,7 +1256,7 @@ function AdminPageInner() {
                                 className="w-4 h-4 text-primary-orange bg-bg-card border-line/15 rounded focus:ring-primary-orange"
                               />
                             </td>
-                            <td className="px-6 py-4 text-white font-medium">{template.requirement}</td>
+                            <td className="px-6 py-4 text-fg-primary font-medium">{template.requirement}</td>
                             <td className="px-6 py-4">
                               <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">
                                 {template.compliance_type.toUpperCase()}
@@ -1425,7 +1425,7 @@ function AdminPageInner() {
           <div className="space-y-6">
             {/* Cost Breakdown */}
             <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-6">
-              <h2 className="text-2xl font-light text-white mb-6">Cost Structure</h2>
+              <h2 className="text-2xl font-light text-fg-primary mb-6">Cost Structure</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <h3 className="text-lg font-medium text-fg-secondary mb-4">Operational Costs</h3>
@@ -1502,15 +1502,15 @@ function AdminPageInner() {
                   <h3 className="text-lg font-medium text-fg-secondary mb-4">Summary</h3>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center pt-2 border-t border-line/15">
-                      <span className="text-white font-medium">Total Annual Fixed Costs</span>
+                      <span className="text-fg-primary font-medium">Total Annual Fixed Costs</span>
                       <span className="text-xl font-bold text-primary-orange">{formatCurrency(FIXED_COSTS.total)}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-fg-muted">CapEx (Year 1 Only)</span>
-                      <span className="text-white font-medium">{formatCurrency(CAPEX_YEAR_1)}</span>
+                      <span className="text-fg-primary font-medium">{formatCurrency(CAPEX_YEAR_1)}</span>
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-line/15">
-                      <span className="text-white font-medium">Year 1 Total Costs</span>
+                      <span className="text-fg-primary font-medium">Year 1 Total Costs</span>
                       <span className="text-xl font-bold text-red-400">{formatCurrency(FIXED_COSTS.total + CAPEX_YEAR_1)}</span>
                     </div>
                   </div>
@@ -1520,7 +1520,7 @@ function AdminPageInner() {
 
             {/* Break-Even Analysis */}
             <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-6">
-              <h2 className="text-2xl font-light text-white mb-6">Break-Even Analysis (3-4 Year Timeline)</h2>
+              <h2 className="text-2xl font-light text-fg-primary mb-6">Break-Even Analysis (3-4 Year Timeline)</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <h3 className="text-lg font-medium text-fg-secondary mb-4">Year 1 (with CapEx)</h3>
@@ -1538,7 +1538,7 @@ function AdminPageInner() {
                         </div>
                         <div className="flex justify-between text-fg-muted">
                           <span>Required Revenue</span>
-                          <span className="text-white font-medium">{formatCurrency(year1Analysis.requiredRevenue)}</span>
+                          <span className="text-fg-primary font-medium">{formatCurrency(year1Analysis.requiredRevenue)}</span>
                         </div>
                         <div className="flex justify-between text-fg-muted">
                           <span>Break-Even Customers</span>
@@ -1564,7 +1564,7 @@ function AdminPageInner() {
                         </div>
                         <div className="flex justify-between text-fg-muted">
                           <span>Required Revenue</span>
-                          <span className="text-white font-medium">{formatCurrency(year2Analysis.requiredRevenue)}</span>
+                          <span className="text-fg-primary font-medium">{formatCurrency(year2Analysis.requiredRevenue)}</span>
                         </div>
                         <div className="flex justify-between text-fg-muted">
                           <span>Break-Even Customers</span>
@@ -1592,7 +1592,7 @@ function AdminPageInner() {
 
             {/* Financial Metrics */}
             <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-6">
-              <h2 className="text-2xl font-light text-white mb-6">Financial Metrics</h2>
+              <h2 className="text-2xl font-light text-fg-primary mb-6">Financial Metrics</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {(() => {
                   // Example customer mix for demonstration
@@ -1606,11 +1606,11 @@ function AdminPageInner() {
                     <>
                       <div className="bg-bg-card/50 rounded-lg p-4 border border-line/15">
                         <div className="text-xs text-fg-muted mb-1">MRR</div>
-                        <div className="text-2xl font-bold text-white">{formatCurrency(metrics.mrr)}</div>
+                        <div className="text-2xl font-bold text-fg-primary">{formatCurrency(metrics.mrr)}</div>
                       </div>
                       <div className="bg-bg-card/50 rounded-lg p-4 border border-line/15">
                         <div className="text-xs text-fg-muted mb-1">ARR</div>
-                        <div className="text-2xl font-bold text-white">{formatCurrency(metrics.arr)}</div>
+                        <div className="text-2xl font-bold text-fg-primary">{formatCurrency(metrics.arr)}</div>
                       </div>
                       <div className="bg-bg-card/50 rounded-lg p-4 border border-line/15">
                         <div className="text-xs text-fg-muted mb-1">CAC</div>
@@ -1622,11 +1622,11 @@ function AdminPageInner() {
                       </div>
                       <div className="bg-bg-card/50 rounded-lg p-4 border border-line/15">
                         <div className="text-xs text-fg-muted mb-1">LTV:CAC Ratio</div>
-                        <div className="text-2xl font-bold text-white">{metrics.ltvCacRatio}x</div>
+                        <div className="text-2xl font-bold text-fg-primary">{metrics.ltvCacRatio}x</div>
                       </div>
                       <div className="bg-bg-card/50 rounded-lg p-4 border border-line/15">
                         <div className="text-xs text-fg-muted mb-1">CAC Payback</div>
-                        <div className="text-2xl font-bold text-white">{metrics.cacPaybackMonths} months</div>
+                        <div className="text-2xl font-bold text-fg-primary">{metrics.cacPaybackMonths} months</div>
                       </div>
                       <div className="bg-bg-card/50 rounded-lg p-4 border border-line/15">
                         <div className="text-xs text-fg-muted mb-1">Churn Rate</div>
@@ -1647,7 +1647,7 @@ function AdminPageInner() {
 
             {/* Profitability Projection */}
             <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-6">
-              <h2 className="text-2xl font-light text-white mb-6">Profitability Projection</h2>
+              <h2 className="text-2xl font-light text-fg-primary mb-6">Profitability Projection</h2>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-bg-card border-b border-line/10">
@@ -1676,7 +1676,7 @@ function AdminPageInner() {
                       const profitability = calculateProfitability(mix, FIXED_COSTS.total, scenario.year === 1 ? CAPEX_YEAR_1 : 0)
                       return (
                         <tr key={scenario.year} className="hover:bg-bg-card/50 transition-colors border-t border-line/10">
-                          <td className="px-6 py-4 text-white font-medium">Year {scenario.year}</td>
+                          <td className="px-6 py-4 text-fg-primary font-medium">Year {scenario.year}</td>
                           <td className="px-6 py-4 text-fg-secondary">{formatCurrency(profitability.revenue)}</td>
                           <td className="px-6 py-4 text-fg-secondary">{formatCurrency(profitability.variableCosts)}</td>
                           <td className="px-6 py-4 text-green-400">{formatCurrency(profitability.grossProfit)}</td>
@@ -1704,7 +1704,7 @@ function AdminPageInner() {
             <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
               <div className="p-6 border-b border-line/10">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-2xl font-light text-white">
+                  <h3 className="text-2xl font-light text-fg-primary">
                     {editingTemplate ? 'Edit Compliance Template' : 'Create Compliance Template'}
                   </h3>
                   <button
@@ -1713,7 +1713,7 @@ function AdminPageInner() {
                       setEditingTemplate(null)
                       setTemplateForm({ ...EMPTY_TEMPLATE_FORM })
                     }}
-                    className="text-fg-muted hover:text-white transition-colors"
+                    className="text-fg-muted hover:text-fg-primary transition-colors"
                   >
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <line x1="18" y1="6" x2="6" y2="18" />
@@ -1732,7 +1732,7 @@ function AdminPageInner() {
                   <select
                     value={templateForm.category}
                     onChange={(e) => setTemplateForm(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     disabled={categoriesLoading}
                   >
                     <option value="">Select Category</option>
@@ -1751,7 +1751,7 @@ function AdminPageInner() {
                     type="text"
                     value={templateForm.requirement}
                     onChange={(e) => setTemplateForm(prev => ({ ...prev, requirement: e.target.value }))}
-                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     placeholder="e.g., TDS Payment - Monthly"
                   />
                 </div>
@@ -1764,7 +1764,7 @@ function AdminPageInner() {
                   <textarea
                     value={templateForm.description}
                     onChange={(e) => setTemplateForm(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     rows={3}
                     placeholder="Brief description of the requirement"
                   />
@@ -1778,7 +1778,7 @@ function AdminPageInner() {
                   <select
                     value={templateForm.compliance_type}
                     onChange={(e) => setTemplateForm(prev => ({ ...prev, compliance_type: e.target.value as any }))}
-                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                   >
                     <option value="one-time">One-time</option>
                     <option value="monthly">Monthly</option>
@@ -1811,7 +1811,7 @@ function AdminPageInner() {
                     <select
                       value={templateForm.year_type}
                       onChange={(e) => setTemplateForm(prev => ({ ...prev, year_type: e.target.value as 'FY' | 'CY' }))}
-                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     >
                       <option value="FY">Financial Year (India) - FY starts from April</option>
                       <option value="CY">Calendar Year (Gulf/USA) - CY starts from January</option>
@@ -1844,7 +1844,7 @@ function AdminPageInner() {
                           }}
                           className="w-4 h-4 text-primary-orange bg-bg-card border-line/15 rounded focus:ring-primary-orange"
                         />
-                        <span className="text-white text-sm">{type}</span>
+                        <span className="text-fg-primary text-sm">{type}</span>
                       </label>
                     ))}
                   </div>
@@ -1870,7 +1870,7 @@ function AdminPageInner() {
                         }}
                         className="w-4 h-4 text-primary-orange bg-bg-card border-line/15 rounded focus:ring-primary-orange"
                       />
-                      <span className="text-white text-sm font-medium">Select All</span>
+                      <span className="text-fg-primary text-sm font-medium">Select All</span>
                     </label>
                   </div>
                   <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
@@ -1888,7 +1888,7 @@ function AdminPageInner() {
                           }}
                           className="w-4 h-4 text-primary-orange bg-bg-card border-line/15 rounded focus:ring-primary-orange"
                         />
-                        <span className="text-white text-sm">{industry}</span>
+                        <span className="text-fg-primary text-sm">{industry}</span>
                       </label>
                     ))}
                   </div>
@@ -1914,7 +1914,7 @@ function AdminPageInner() {
                         }}
                         className="w-4 h-4 text-primary-orange bg-bg-card border-line/15 rounded focus:ring-primary-orange"
                       />
-                      <span className="text-white text-sm font-medium">Select All</span>
+                      <span className="text-fg-primary text-sm font-medium">Select All</span>
                     </label>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -1932,7 +1932,7 @@ function AdminPageInner() {
                           }}
                           className="w-4 h-4 text-primary-orange bg-bg-card border-line/15 rounded focus:ring-primary-orange"
                         />
-                        <span className="text-white text-sm">{category}</span>
+                        <span className="text-fg-primary text-sm">{category}</span>
                       </label>
                     ))}
                   </div>
@@ -1949,7 +1949,7 @@ function AdminPageInner() {
                         type="date"
                         value={templateForm.due_date}
                         onChange={(e) => setTemplateForm(prev => ({ ...prev, due_date: e.target.value }))}
-                        className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                       />
                     </div>
                     <div>
@@ -1960,7 +1960,7 @@ function AdminPageInner() {
                         type="text"
                         value={templateForm.financial_year}
                         onChange={(e) => setTemplateForm(prev => ({ ...prev, financial_year: e.target.value }))}
-                        className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                         placeholder="e.g., FY 2025-26"
                       />
                     </div>
@@ -1978,7 +1978,7 @@ function AdminPageInner() {
                       max="31"
                       value={templateForm.due_date_offset || ''}
                       onChange={(e) => setTemplateForm(prev => ({ ...prev, due_date_offset: e.target.value ? parseInt(e.target.value) : undefined }))}
-                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                       placeholder="15"
                     />
                   </div>
@@ -2024,7 +2024,7 @@ function AdminPageInner() {
                             const monthInQuarter = e.target.value ? parseInt(e.target.value) : undefined
                             setTemplateForm(prev => ({ ...prev, due_month: monthInQuarter }))
                           }}
-                          className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                         >
                           <option value="">Select Month</option>
                           <option value="1">1st Month of Quarter</option>
@@ -2045,7 +2045,7 @@ function AdminPageInner() {
                           max="31"
                           value={templateForm.due_day || ''}
                           onChange={(e) => setTemplateForm(prev => ({ ...prev, due_day: e.target.value ? parseInt(e.target.value) : undefined }))}
-                          className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                           placeholder="15"
                         />
                         <p className="text-xs text-fg-muted mt-1">
@@ -2068,7 +2068,7 @@ function AdminPageInner() {
                         max="12"
                         value={templateForm.due_month || ''}
                         onChange={(e) => setTemplateForm(prev => ({ ...prev, due_month: e.target.value ? parseInt(e.target.value) : undefined }))}
-                        className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                         placeholder="3"
                       />
                     </div>
@@ -2082,7 +2082,7 @@ function AdminPageInner() {
                         max="31"
                         value={templateForm.due_day || ''}
                         onChange={(e) => setTemplateForm(prev => ({ ...prev, due_day: e.target.value ? parseInt(e.target.value) : undefined }))}
-                        className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                         placeholder="31"
                       />
                     </div>
@@ -2098,7 +2098,7 @@ function AdminPageInner() {
                     type="text"
                     value={templateForm.penalty}
                     onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty: e.target.value }))}
-                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     placeholder="e.g., Late fee ₹200/day"
                   />
                 </div>
@@ -2109,7 +2109,7 @@ function AdminPageInner() {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-yellow-400">
                       <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                     </svg>
-                    <span className="text-sm font-medium text-white">Penalty Calculator</span>
+                    <span className="text-sm font-medium text-fg-primary">Penalty Calculator</span>
                     <span className="text-xs text-fg-muted">(enables automatic penalty calculation when applied to companies)</span>
                   </div>
 
@@ -2118,7 +2118,7 @@ function AdminPageInner() {
                     <select
                       value={templateForm.penalty_config_type}
                       onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_type: e.target.value as any }))}
-                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     >
                       <option value="none">None / Text only</option>
                       <option value="flat">Flat amount (fixed penalty)</option>
@@ -2133,7 +2133,7 @@ function AdminPageInner() {
                       <label className="block text-sm font-medium text-fg-secondary mb-2">Fixed Penalty Amount (₹)</label>
                       <input type="number" value={templateForm.penalty_config_amount}
                         onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_amount: e.target.value }))}
-                        className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                        className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                         placeholder="e.g., 5000" min="0" />
                     </div>
                   )}
@@ -2144,14 +2144,14 @@ function AdminPageInner() {
                         <label className="block text-sm font-medium text-fg-secondary mb-2">Rate per Day (₹)</label>
                         <input type="number" value={templateForm.penalty_config_rate}
                           onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_rate: e.target.value }))}
-                          className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                           placeholder="e.g., 200" min="0" />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-fg-secondary mb-2">Maximum Cap (₹, optional)</label>
                         <input type="number" value={templateForm.penalty_config_cap}
                           onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_cap: e.target.value }))}
-                          className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                           placeholder="e.g., 10000" min="0" />
                       </div>
                     </div>
@@ -2163,7 +2163,7 @@ function AdminPageInner() {
                         <label className="block text-sm font-medium text-fg-secondary mb-2">Rate (%)</label>
                         <input type="number" value={templateForm.penalty_config_rate}
                           onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_rate: e.target.value }))}
-                          className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                          className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                           placeholder="e.g., 1.5" min="0" step="0.01" />
                       </div>
                       {templateForm.penalty_config_type === 'interest' && (
@@ -2171,7 +2171,7 @@ function AdminPageInner() {
                           <label className="block text-sm font-medium text-fg-secondary mb-2">Per</label>
                           <select value={templateForm.penalty_config_period}
                             onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_period: e.target.value as any }))}
-                            className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors">
+                            className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors">
                             <option value="month">Month</option>
                             <option value="day">Day</option>
                             <option value="year">Year</option>
@@ -2182,7 +2182,7 @@ function AdminPageInner() {
                         <label className="block text-sm font-medium text-fg-secondary mb-2">Base Amount Type</label>
                         <select value={templateForm.penalty_config_base}
                           onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_base: e.target.value }))}
-                          className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors">
+                          className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors">
                           <option value="tax_due">Tax Due</option>
                           <option value="turnover">Turnover</option>
                           <option value="income">Income</option>
@@ -2194,7 +2194,7 @@ function AdminPageInner() {
                           <label className="block text-sm font-medium text-fg-secondary mb-2">Cap (₹, optional)</label>
                           <input type="number" value={templateForm.penalty_config_cap}
                             onChange={(e) => setTemplateForm(prev => ({ ...prev, penalty_config_cap: e.target.value }))}
-                            className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                            className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                             placeholder="Maximum penalty cap" min="0" />
                         </div>
                       )}
@@ -2219,7 +2219,7 @@ function AdminPageInner() {
                     type="text"
                     value={templateForm.possible_legal_action}
                     onChange={(e) => setTemplateForm(prev => ({ ...prev, possible_legal_action: e.target.value }))}
-                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     placeholder="e.g., Prosecution under Section 276B"
                   />
                 </div>
@@ -2244,7 +2244,7 @@ function AdminPageInner() {
                           }))
                         }
                       }}
-                      className="flex-1 px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                      className="flex-1 px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                       placeholder="Type document name and press Enter"
                     />
                     <button
@@ -2424,7 +2424,7 @@ function AdminPageInner() {
         {activeTab === 'vault' && (
           <div className="space-y-6">
             <div className="mb-6">
-              <h2 className="text-2xl font-light text-white mb-2">Compliance Vault</h2>
+              <h2 className="text-2xl font-light text-fg-primary mb-2">Compliance Vault</h2>
               <p className="text-fg-muted">Manage global folder structure and document templates for all companies</p>
             </div>
 
@@ -2438,7 +2438,7 @@ function AdminPageInner() {
                 <div className="lg:col-span-1">
                   <div className="bg-bg-card border border-line/10 rounded-xl p-4">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-white">Folders</h3>
+                      <h3 className="text-lg font-semibold text-fg-primary">Folders</h3>
                       <button
                         onClick={() => {
                           setEditingVaultFolder(null)
@@ -2469,7 +2469,7 @@ function AdminPageInner() {
                         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                         <polyline points="9 22 9 12 15 12 15 22" />
                       </svg>
-                      <span className="text-sm text-white">Root</span>
+                      <span className="text-sm text-fg-primary">Root</span>
                     </button>
 
                     <div className="space-y-1 max-h-[600px] overflow-y-auto">
@@ -2483,7 +2483,7 @@ function AdminPageInner() {
                   <div className="bg-bg-card border border-line/10 rounded-xl p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h3 className="text-lg font-semibold text-white">
+                        <h3 className="text-lg font-semibold text-fg-primary">
                           {selectedFolderPath ? getFolderName(selectedFolderPath) : 'Root'} Documents
                         </h3>
                         {selectedFolderPath && (
@@ -2554,8 +2554,8 @@ function AdminPageInner() {
                           >
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-3 mb-2">
-                                <h4 className="text-white font-medium truncate">{template.document_name}</h4>
-                                <span className={`px-2 py-0.5 rounded text-xs font-medium text-white ${getVaultFrequencyBadgeColor(template.default_frequency)}`}>
+                                <h4 className="text-fg-primary font-medium truncate">{template.document_name}</h4>
+                                <span className={`px-2 py-0.5 rounded text-xs font-medium text-fg-primary ${getVaultFrequencyBadgeColor(template.default_frequency)}`}>
                                   {getVaultFrequencyLabel(template.default_frequency)}
                                 </span>
                                 {template.is_mandatory && (
@@ -2619,7 +2619,7 @@ function AdminPageInner() {
             {(showCreateVaultFolderModal || editingVaultFolder) && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                 <div className="bg-bg-card border border-line/10 rounded-xl p-6 w-full max-w-md">
-                  <h2 className="text-xl font-semibold text-white mb-4">
+                  <h2 className="text-xl font-semibold text-fg-primary mb-4">
                     {editingVaultFolder ? 'Edit Folder' : 'Create New Folder'}
                   </h2>
                   <div className="space-y-4">
@@ -2629,7 +2629,7 @@ function AdminPageInner() {
                         type="text"
                         value={vaultFolderForm.name}
                         onChange={(e) => setVaultFolderForm({ ...vaultFolderForm, name: e.target.value })}
-                        className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange"
                         placeholder="Enter folder name"
                       />
                     </div>
@@ -2638,7 +2638,7 @@ function AdminPageInner() {
                       <textarea
                         value={vaultFolderForm.description}
                         onChange={(e) => setVaultFolderForm({ ...vaultFolderForm, description: e.target.value })}
-                        className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange"
                         placeholder="Enter folder description"
                         rows={3}
                       />
@@ -2662,7 +2662,7 @@ function AdminPageInner() {
                           setEditingVaultFolder(null)
                           setVaultFolderForm({ name: '', description: '' })
                         }}
-                        className="px-4 py-2 bg-bg-hover text-white rounded-lg hover:bg-bg-hover transition-colors"
+                        className="px-4 py-2 bg-bg-hover text-fg-primary rounded-lg hover:bg-bg-hover transition-colors"
                       >
                         Cancel
                       </button>
@@ -2676,7 +2676,7 @@ function AdminPageInner() {
             {(showCreateVaultTemplateModal || editingVaultTemplate) && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                 <div className="bg-bg-card border border-line/10 rounded-xl p-6 w-full max-w-md">
-                  <h2 className="text-xl font-semibold text-white mb-4">
+                  <h2 className="text-xl font-semibold text-fg-primary mb-4">
                     {editingVaultTemplate ? 'Edit Document Template' : 'Create New Document Template'}
                   </h2>
                   <div className="space-y-4">
@@ -2686,7 +2686,7 @@ function AdminPageInner() {
                         type="text"
                         value={vaultTemplateForm.name}
                         onChange={(e) => setVaultTemplateForm({ ...vaultTemplateForm, name: e.target.value })}
-                        className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange"
                         placeholder="e.g., GSTR-3B Filed Copy"
                       />
                     </div>
@@ -2698,7 +2698,7 @@ function AdminPageInner() {
                           const value = e.target.value as 'one-time' | 'monthly' | 'quarterly' | 'yearly'
                           setVaultTemplateForm({ ...vaultTemplateForm, frequency: value })
                         }}
-                        className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange"
                       >
                         <option value="one-time">One-Time</option>
                         <option value="monthly">Monthly</option>
@@ -2712,7 +2712,7 @@ function AdminPageInner() {
                         type="text"
                         value={vaultTemplateForm.category}
                         onChange={(e) => setVaultTemplateForm({ ...vaultTemplateForm, category: e.target.value })}
-                        className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange"
                         placeholder="e.g., GST, Income Tax"
                       />
                     </div>
@@ -2721,7 +2721,7 @@ function AdminPageInner() {
                       <textarea
                         value={vaultTemplateForm.description}
                         onChange={(e) => setVaultTemplateForm({ ...vaultTemplateForm, description: e.target.value })}
-                        className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+                        className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange"
                         placeholder="Enter document description"
                         rows={3}
                       />
@@ -2763,7 +2763,7 @@ function AdminPageInner() {
                             isMandatory: false,
                           })
                         }}
-                        className="px-4 py-2 bg-bg-hover text-white rounded-lg hover:bg-bg-hover transition-colors"
+                        className="px-4 py-2 bg-bg-hover text-fg-primary rounded-lg hover:bg-bg-hover transition-colors"
                       >
                         Cancel
                       </button>
@@ -2863,7 +2863,7 @@ function KPIsTab() {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+              className="w-full px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange"
             >
               {categories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
@@ -2878,7 +2878,7 @@ function KPIsTab() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search KPIs, formulas, descriptions..."
-              className="w-full px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-primary-orange"
+              className="w-full px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-primary-orange"
             />
           </div>
         </div>
@@ -2910,7 +2910,7 @@ function KPIsTab() {
                     className="border-b border-line/10/50 hover:bg-bg-card/30 transition-colors"
                   >
                     <td className="px-6 py-4 text-sm text-fg-secondary">{kpi.category}</td>
-                    <td className="px-6 py-4 text-sm text-white font-medium">{kpi.kpi}</td>
+                    <td className="px-6 py-4 text-sm text-fg-primary font-medium">{kpi.kpi}</td>
                     <td className="px-6 py-4 text-sm text-fg-muted">{kpi.formula || '-'}</td>
                     <td className="px-6 py-4 text-sm text-fg-muted">{kpi.description || '-'}</td>
                   </tr>
@@ -3176,7 +3176,7 @@ function TrackingSystemTab() {
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+              className="w-full px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange"
             >
               {categories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
@@ -3189,7 +3189,7 @@ function TrackingSystemTab() {
             <select
               value={selectedKPI}
               onChange={(e) => setSelectedKPI(e.target.value)}
-              className="w-full px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+              className="w-full px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange"
             >
               {kpis.map(kpi => (
                 <option key={kpi} value={kpi}>{kpi}</option>
@@ -3202,7 +3202,7 @@ function TrackingSystemTab() {
             <select
               value={selectedCompany}
               onChange={(e) => setSelectedCompany(e.target.value)}
-              className="w-full px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+              className="w-full px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange"
             >
               <option value="All">All Companies</option>
               {companies.map(company => (
@@ -3216,7 +3216,7 @@ function TrackingSystemTab() {
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value as '7d' | '30d' | '90d' | 'all')}
-              className="w-full px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-white focus:outline-none focus:border-primary-orange"
+              className="w-full px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange"
             >
               <option value="7d">Last 7 days</option>
               <option value="30d">Last 30 days</option>
@@ -3328,7 +3328,7 @@ function TrackingSystemTab() {
       {/* Aggregations Table */}
       <div className="bg-bg-card border border-line/10 rounded-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-line/10">
-          <h2 className="text-xl font-light text-white">KPI Tracking Summary</h2>
+          <h2 className="text-xl font-light text-fg-primary">KPI Tracking Summary</h2>
           <p className="text-sm text-fg-muted mt-1">Aggregated metrics across all tracked KPIs</p>
         </div>
         {isLoading ? (
@@ -3366,7 +3366,7 @@ function TrackingSystemTab() {
                       className="border-b border-line/10/50 hover:bg-bg-card/30 transition-colors"
                     >
                       <td className="px-6 py-4 text-sm text-fg-secondary">{agg.category}</td>
-                      <td className="px-6 py-4 text-sm text-white font-medium">{agg.kpi_name}</td>
+                      <td className="px-6 py-4 text-sm text-fg-primary font-medium">{agg.kpi_name}</td>
                       <td className="px-6 py-4 text-sm text-fg-muted text-right">{agg.total_count}</td>
                       <td className="px-6 py-4 text-sm text-fg-muted text-right">{agg.average_value.toFixed(2)}</td>
                       <td className="px-6 py-4 text-sm text-fg-muted text-right">{agg.min_value}</td>
@@ -3403,7 +3403,7 @@ function TrackingSystemTab() {
         <div className="bg-bg-card border border-line/10 rounded-2xl overflow-hidden">
           <div className="px-6 py-4 border-b border-line/10 flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-light text-white">Detailed Metrics: {selectedKPIDetail}</h2>
+              <h2 className="text-xl font-light text-fg-primary">Detailed Metrics: {selectedKPIDetail}</h2>
               <p className="text-sm text-fg-muted mt-1">Individual tracking records</p>
             </div>
             <button
@@ -3411,7 +3411,7 @@ function TrackingSystemTab() {
                 setSelectedKPIDetail(null)
                 setMetrics([])
               }}
-              className="text-fg-muted hover:text-white transition-colors"
+              className="text-fg-muted hover:text-fg-primary transition-colors"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -3455,7 +3455,7 @@ function TrackingSystemTab() {
                       <td className="px-6 py-4 text-sm text-fg-secondary">
                         {metric.user_id ? metric.user_id.substring(0, 8) + '...' : 'N/A'}
                       </td>
-                      <td className="px-6 py-4 text-sm text-white font-medium text-right">
+                      <td className="px-6 py-4 text-sm text-fg-primary font-medium text-right">
                         {metric.metric_value}
                       </td>
                       <td className="px-6 py-4 text-sm text-fg-muted">
@@ -3475,7 +3475,7 @@ function TrackingSystemTab() {
         <div className="bg-bg-card border border-line/10 rounded-2xl overflow-hidden">
           <div className="px-6 py-4 border-b border-line/10 flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-light text-white flex items-center gap-2">
+              <h2 className="text-xl font-light text-fg-primary flex items-center gap-2">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 2L2 7l10 5 10-5-10-5z" />
                   <path d="M2 17l10 5 10-5" />
@@ -3497,7 +3497,7 @@ function TrackingSystemTab() {
                   setExplanationError(null)
                 }
               }}
-              className="text-fg-muted hover:text-white transition-colors"
+              className="text-fg-muted hover:text-fg-primary transition-colors"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -3559,7 +3559,7 @@ function TrackingSystemTab() {
                       }
                     }}
                     placeholder="Ask a question about your KPI data..."
-                    className="flex-1 px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-blue-500"
+                    className="flex-1 px-4 py-2 bg-primary-dark border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-blue-500"
                     disabled={isGeneratingChat || aggregations.length === 0}
                   />
                   <button
@@ -3598,7 +3598,7 @@ function TrackingSystemTab() {
                     // Check if this is a header (starts with # or is all caps)
                     if (paragraph.trim().startsWith('#') || (paragraph.trim().length > 0 && paragraph.trim().length < 50 && paragraph === paragraph.toUpperCase())) {
                       return (
-                        <h3 key={index} className="text-white font-semibold text-lg mt-6 mb-3 first:mt-0">
+                        <h3 key={index} className="text-fg-primary font-semibold text-lg mt-6 mb-3 first:mt-0">
                           {renderWithLaTeX(paragraph.replace(/^#+\s*/, '').trim())}
                         </h3>
                       )

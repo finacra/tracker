@@ -57,7 +57,7 @@ function ConversationItem({
       onMouseLeave={() => setShowDelete(false)}
       className={`w-full text-left px-3 py-2 rounded-lg text-sm truncate transition-all duration-150 group relative ${
         isActive
-          ? 'bg-white/10 text-white'
+          ? 'bg-white/10 text-fg-primary'
           : 'text-fg-muted hover:bg-white/5 hover:text-fg-secondary'
       }`}
     >

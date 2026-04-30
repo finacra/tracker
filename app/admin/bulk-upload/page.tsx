@@ -917,7 +917,7 @@ function BulkUploadPage() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push('/admin')}
-              className="text-white/80 hover:text-white transition-colors text-sm flex items-center gap-1"
+              className="text-fg-primary/80 hover:text-fg-primary transition-colors text-sm flex items-center gap-1"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -925,15 +925,15 @@ function BulkUploadPage() {
               Back
             </button>
             <div className="flex items-center gap-2">
-              <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+              <svg className="w-6 h-6 text-fg-primary" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M21.17 3H7.83A1.83 1.83 0 006 4.83v14.34A1.83 1.83 0 007.83 21h13.34A1.83 1.83 0 0023 19.17V4.83A1.83 1.83 0 0021.17 3zM12 17h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/>
               </svg>
-              <h1 className="text-lg font-semibold text-white">Compliance Templates</h1>
+              <h1 className="text-lg font-semibold text-fg-primary">Compliance Templates</h1>
             </div>
             {validation && (
               <span className={`px-3 py-1 rounded text-xs font-medium ${
                 validation.valid
-                  ? 'bg-white/20 text-white'
+                  ? 'bg-white/20 text-fg-primary'
                   : 'bg-red-500 text-white'
               }`}>
                 {nonEmptyRowCount} rows • {validation.valid ? 'Ready to upload' : `${validation.errors.length} errors`}
@@ -941,7 +941,7 @@ function BulkUploadPage() {
             )}
             {/* Auto-save indicator */}
             {lastSaved && (
-              <span className="px-3 py-1 rounded text-xs font-medium bg-white/10 text-white/80 flex items-center gap-1.5">
+              <span className="px-3 py-1 rounded text-xs font-medium bg-white/10 text-fg-primary/80 flex items-center gap-1.5">
                 {isSaving ? (
                   <>
                     <div className="w-3 h-3 border-2 border-white/50 border-t-transparent rounded-full animate-spin"></div>
@@ -961,14 +961,14 @@ function BulkUploadPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={downloadCSVTemplate}
-              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-sm rounded transition-colors flex items-center gap-2"
+              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-fg-primary text-sm rounded transition-colors flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
               Template
             </button>
-            <label className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-sm rounded transition-colors cursor-pointer flex items-center gap-2">
+            <label className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-fg-primary text-sm rounded transition-colors cursor-pointer flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
@@ -986,7 +986,7 @@ function BulkUploadPage() {
                 <select
                   value={resolveMode}
                   onChange={(e) => setResolveMode(e.target.value as 'auto' | 'custom')}
-                  className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded border border-white/20 focus:outline-none focus:border-white/40 transition-colors"
+                  className="px-3 py-2 bg-white/10 hover:bg-white/20 text-fg-primary text-sm rounded border border-white/20 focus:outline-none focus:border-white/40 transition-colors"
                 >
                   <option value="auto">Auto Resolve</option>
                   <option value="custom">Custom Resolver</option>
@@ -997,7 +997,7 @@ function BulkUploadPage() {
                   disabled={isResolvingErrors}
                   className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 shadow-md ${
                     !isResolvingErrors
-                      ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-700 hover:shadow-lg'
+                      ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-fg-primary hover:from-purple-600 hover:to-indigo-700 hover:shadow-lg'
                       : 'bg-purple-400 text-white cursor-not-allowed'
                   }`}
                 >
@@ -1019,7 +1019,7 @@ function BulkUploadPage() {
             )}
             {/* Country Selector */}
             <div className="flex items-center gap-2">
-              <label className="text-white text-sm font-medium whitespace-nowrap">Country:</label>
+              <label className="text-fg-primary text-sm font-medium whitespace-nowrap">Country:</label>
               <div className="w-48">
                 <CountrySelector
                   value={selectedCountry}
@@ -1033,7 +1033,7 @@ function BulkUploadPage() {
               className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 shadow-md ${
                 validation?.valid && nonEmptyRowCount > 0 && !isUploading
                   ? 'bg-white text-[#217346] hover:bg-bg-elevated hover:shadow-lg'
-                  : 'bg-white/30 text-white/50 cursor-not-allowed'
+                  : 'bg-white/30 text-fg-primary/50 cursor-not-allowed'
               }`}
             >
               {isUploading ? (
@@ -1511,7 +1511,7 @@ function BulkUploadPage() {
                 type="button"
                 onClick={executeResolveErrors}
                 disabled={!customInstructions.trim() || isResolvingErrors}
-                className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+                className={`px-4 py-2 text-sm font-medium text-fg-primary rounded-lg transition-colors ${
                   customInstructions.trim() && !isResolvingErrors
                     ? 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700'
                     : 'bg-bg-hover cursor-not-allowed'

@@ -75,7 +75,7 @@ function LinkPasswordPageInner() {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
         <div className="w-full max-w-md bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-8">
-          <h1 className="text-2xl font-light text-white mb-2">Link Password</h1>
+          <h1 className="text-2xl font-light text-fg-primary mb-2">Link Password</h1>
           <p className="text-sm text-red-400 mb-4">Missing verification token.</p>
           <Link
             href="/login"
@@ -92,7 +92,7 @@ function LinkPasswordPageInner() {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
         <div className="w-full max-w-md bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-8">
-          <h1 className="text-2xl font-light text-white mb-2">Password Linked!</h1>
+          <h1 className="text-2xl font-light text-fg-primary mb-2">Password Linked!</h1>
           <p className="text-sm text-green-400 mb-4">
             Your password has been successfully linked to your account. Redirecting...
           </p>
@@ -104,7 +104,7 @@ function LinkPasswordPageInner() {
   return (
     <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-8">
-        <h1 className="text-2xl font-light text-white mb-2">Set Password</h1>
+        <h1 className="text-2xl font-light text-fg-primary mb-2">Set Password</h1>
         <p className="text-sm text-fg-muted mb-6">
           Your email has been verified. Now set a password for your account.
         </p>
@@ -117,7 +117,7 @@ function LinkPasswordPageInner() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-bg-card border border-line/15 rounded-lg px-4 py-2.5 pr-10 text-white focus:border-primary-orange focus:outline-none"
+                className="w-full bg-bg-card border border-line/15 rounded-lg px-4 py-2.5 pr-10 text-fg-primary focus:border-primary-orange focus:outline-none"
                 placeholder="At least 6 characters"
                 required
                 minLength={6}
@@ -125,7 +125,7 @@ function LinkPasswordPageInner() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-fg-primary"
               >
                 {showPassword ? (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,7 +147,7 @@ function LinkPasswordPageInner() {
               type={showPassword ? 'text' : 'password'}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full bg-bg-card border border-line/15 rounded-lg px-4 py-2.5 text-white focus:border-primary-orange focus:outline-none"
+              className="w-full bg-bg-card border border-line/15 rounded-lg px-4 py-2.5 text-fg-primary focus:border-primary-orange focus:outline-none"
               placeholder="Confirm your password"
               required
               minLength={6}

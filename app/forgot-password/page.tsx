@@ -59,7 +59,7 @@ function ForgotPasswordPageInner() {
           </Link>
           <Link
             href="/login"
-            className="text-sm font-light transition-colors text-fg-secondary hover:text-white"
+            className="text-sm font-light transition-colors text-fg-secondary hover:text-fg-primary"
           >
             Back to Login
           </Link>
@@ -71,7 +71,7 @@ function ForgotPasswordPageInner() {
         <div className="flex items-center justify-center px-4 py-20">
           <div className="relative z-10 w-full max-w-md">
             {/* Title */}
-            <h1 className="text-4xl md:text-5xl font-light text-white mb-3 text-center tracking-tight">
+            <h1 className="text-4xl md:text-5xl font-light text-fg-primary mb-3 text-center tracking-tight">
               Forgot Password
             </h1>
             <p className="text-fg-muted mb-12 text-center font-light">
@@ -91,7 +91,7 @@ function ForgotPasswordPageInner() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
+                    className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
                     placeholder="your.email@example.com"
                     disabled={isLoading}
                   />
@@ -126,7 +126,7 @@ function ForgotPasswordPageInner() {
               <div className="mt-6 text-center">
                 <Link
                   href="/login"
-                  className="text-sm text-fg-muted hover:text-white transition-colors font-light"
+                  className="text-sm text-fg-muted hover:text-fg-primary transition-colors font-light"
                 >
                   ← Back to Login
                 </Link>

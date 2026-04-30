@@ -3947,7 +3947,7 @@ function DataRoomPageInner() {
       <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
         <div className="text-center max-w-md">
           <div className="text-red-500 text-4xl mb-4">⚠️</div>
-          <h2 className="text-white text-xl font-medium mb-2">Failed to initialize</h2>
+          <h2 className="text-fg-primary text-xl font-medium mb-2">Failed to initialize</h2>
           <p className="text-fg-muted text-sm mb-6">{initError}</p>
           <button
             onClick={() => window.location.reload()}
@@ -3972,7 +3972,7 @@ function DataRoomPageInner() {
               <div className="w-6 h-6 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-full animate-pulse" />
             </div>
           </div>
-          <h2 className="text-white text-lg font-semibold mb-2">
+          <h2 className="text-fg-primary text-lg font-semibold mb-2">
             {isNoCompany ? "Setting Up Your Workspace" : "Verifying Access"}
           </h2>
           <p className="text-fg-secondary text-sm">
@@ -3994,7 +3994,7 @@ function DataRoomPageInner() {
               <div className="w-6 h-6 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-full animate-pulse" />
             </div>
           </div>
-          <h2 className="text-white text-lg font-semibold mb-2">Subscription Required</h2>
+          <h2 className="text-fg-primary text-lg font-semibold mb-2">Subscription Required</h2>
           <p className="text-fg-secondary text-sm">Redirecting to subscription page...</p>
         </div>
       </div>
@@ -4447,7 +4447,7 @@ function DataRoomPageInner() {
                   {/* Modal Header */}
                   <div className="sticky top-0 bg-black border-b border-white/10 p-6 flex items-center justify-between z-10">
                     <div>
-                      <h2 className="text-2xl font-light text-white mb-1">
+                      <h2 className="text-2xl font-light text-fg-primary mb-1">
                         Compliance Details
                       </h2>
                       <p className="text-fg-muted text-sm">{req.requirement}</p>
@@ -4475,27 +4475,27 @@ function DataRoomPageInner() {
                   <div className="p-6 space-y-6">
                     {/* Basic Information */}
                     <div className="bg-bg-card/50 rounded-lg p-4 border border-line/10">
-                      <h3 className="text-white font-medium mb-3">
+                      <h3 className="text-fg-primary font-medium mb-3">
                         Basic Information
                       </h3>
                       <div className="space-y-2 text-sm">
                         <div className="flex items-start justify-between">
                           <span className="text-fg-muted">Category:</span>
-                          <span className="text-white font-medium">
+                          <span className="text-fg-primary font-medium">
                             {req.category}
                           </span>
                         </div>
                         {req.description && (
                           <div className="flex items-start justify-between">
                             <span className="text-fg-muted">Description:</span>
-                            <span className="text-white text-right max-w-[70%]">
+                            <span className="text-fg-primary text-right max-w-[70%]">
                               {req.description}
                             </span>
                           </div>
                         )}
                         <div className="flex items-start justify-between">
                           <span className="text-fg-muted">Due Date:</span>
-                          <span className="text-white">
+                          <span className="text-fg-primary">
                             {(req as any).due_date || (req as any).dueDate}
                           </span>
                         </div>
@@ -4541,7 +4541,7 @@ function DataRoomPageInner() {
                     {/* Regulatory Authority */}
                     {authority && (
                       <div className="bg-bg-card/50 rounded-lg p-4 border border-line/10">
-                        <h3 className="text-white font-medium mb-3">
+                        <h3 className="text-fg-primary font-medium mb-3">
                           Regulatory Authority
                         </h3>
                         <p className="text-fg-secondary text-sm">{authority}</p>
@@ -4551,7 +4551,7 @@ function DataRoomPageInner() {
                     {/* Legal Sections */}
                     {legalSections.length > 0 && (
                       <div className="bg-bg-card/50 rounded-lg p-4 border border-line/10">
-                        <h3 className="text-white font-medium mb-3">
+                        <h3 className="text-fg-primary font-medium mb-3">
                           Legal References
                         </h3>
                         <div className="space-y-3">
@@ -4560,7 +4560,7 @@ function DataRoomPageInner() {
                               key={idx}
                               className="border-l-2 border-blue-500/50 pl-3"
                             >
-                              <div className="text-white font-medium text-sm">
+                              <div className="text-fg-primary font-medium text-sm">
                                 {section.act} - {section.section}
                               </div>
                               <div className="text-fg-muted text-xs mt-1">
@@ -4580,7 +4580,7 @@ function DataRoomPageInner() {
                     {/* Relevant Forms */}
                     {categoryForms.length > 0 && (
                       <div className="bg-bg-card/50 rounded-lg p-4 border border-line/10">
-                        <h3 className="text-white font-medium mb-3">
+                        <h3 className="text-fg-primary font-medium mb-3">
                           Relevant Forms
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -4589,7 +4589,7 @@ function DataRoomPageInner() {
                               key={form}
                               className="flex items-center justify-between p-2 bg-bg-elevated rounded border border-line/15"
                             >
-                              <span className="text-white text-sm">{form}</span>
+                              <span className="text-fg-primary text-sm">{form}</span>
                               {formFrequency?.[form] && (
                                 <span
                                   className={`px-2 py-0.5 rounded text-[10px] font-medium ${
@@ -4614,7 +4614,7 @@ function DataRoomPageInner() {
                     {/* Penalty Information */}
                     {req.penalty && (
                       <div className="bg-bg-card/50 rounded-lg p-4 border border-line/10">
-                        <h3 className="text-white font-medium mb-3">
+                        <h3 className="text-fg-primary font-medium mb-3">
                           Penalty Information
                         </h3>
                         <p className="text-fg-secondary text-sm">{req.penalty}</p>
