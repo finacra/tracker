@@ -310,7 +310,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
   if (isLoading) {
     return (
       <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-12 flex flex-col items-center justify-center">
-        <div className="w-10 h-10 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mb-4"></div>
+        <div className="w-10 h-10 border-4 border-accent-brand border-t-transparent rounded-full animate-spin mb-4"></div>
         <p className="text-fg-muted">Loading users...</p>
       </div>
     )
@@ -356,7 +356,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
               placeholder="Search by email, ID or company..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-primary-orange w-72"
+              className="pl-10 pr-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-accent-brand w-72"
             />
           </div>
 
@@ -364,7 +364,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as any)}
-            className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-primary-orange"
+            className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-accent-brand"
           >
             <option value="all">All Company Owners</option>
             <option value="active">Paid Subscribers</option>
@@ -421,13 +421,13 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
       </div>
 
       {/* Info Box */}
-      <div className="bg-primary-orange/10 border border-primary-orange/30 rounded-xl p-4 flex items-start gap-3">
-        <svg className="w-5 h-5 text-primary-orange flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="bg-accent-brand/10 border border-accent-brand/30 rounded-xl p-4 flex items-start gap-3">
+        <svg className="w-5 h-5 text-accent-brand flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <div className="text-sm">
-          <p className="text-primary-orange font-medium">Understanding Trial vs Paid Subscriptions</p>
-          <div className="text-primary-orange/80 mt-1 space-y-1">
+          <p className="text-accent-brand font-medium">Understanding Trial vs Paid Subscriptions</p>
+          <div className="text-accent-brand/80 mt-1 space-y-1">
             <p>• <strong>Active Trial:</strong> Free trial period (e.g., 15 days). User has access but hasn't paid yet.</p>
             <p>• <strong>Paid Subscriber:</strong> User has purchased a subscription plan (Starter/Professional/Enterprise).</p>
             <p>• <strong>Expired:</strong> Trial or subscription has ended. User and their team members lose access.</p>
@@ -493,8 +493,8 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                         </svg>
                         
                         {/* User Info */}
-                        <div className="w-10 h-10 bg-primary-orange/20 rounded-full flex items-center justify-center">
-                          <span className="text-primary-orange text-sm font-bold">
+                        <div className="w-10 h-10 bg-accent-brand/20 rounded-full flex items-center justify-center">
+                          <span className="text-accent-brand text-sm font-bold">
                             {user.email.includes('@') ? user.email.charAt(0).toUpperCase() : 'U'}
                           </span>
                         </div>
@@ -531,7 +531,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                                 max="365"
                                 value={extendDays[user.id] || 15}
                                 onChange={(e) => setExtendDays(prev => ({ ...prev, [user.id]: parseInt(e.target.value) || 15 }))}
-                                className="w-14 px-2 py-1 bg-bg-card border border-line/15 rounded text-fg-primary text-sm text-center focus:outline-none focus:border-primary-orange"
+                                className="w-14 px-2 py-1 bg-bg-card border border-line/15 rounded text-fg-primary text-sm text-center focus:outline-none focus:border-accent-brand"
                               />
                               <button
                                 onClick={() => handleExtendTrial(user.id, user.subscription!.id)}
@@ -558,12 +558,12 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                                 max="365"
                                 value={extendDays[user.id] || 15}
                                 onChange={(e) => setExtendDays(prev => ({ ...prev, [user.id]: parseInt(e.target.value) || 15 }))}
-                                className="w-14 px-2 py-1 bg-bg-card border border-line/15 rounded text-fg-primary text-sm text-center focus:outline-none focus:border-primary-orange"
+                                className="w-14 px-2 py-1 bg-bg-card border border-line/15 rounded text-fg-primary text-sm text-center focus:outline-none focus:border-accent-brand"
                               />
                               <button
                                 onClick={() => handleGrantTrial(user.id, 'enterprise')}
                                 disabled={isGranting[user.id]}
-                                className="px-3 py-1 bg-primary-orange text-white rounded text-xs font-medium hover:bg-primary-orange/90 transition-colors disabled:opacity-50"
+                                className="px-3 py-1 bg-accent-brand text-white rounded text-xs font-medium hover:bg-accent-brand/90 transition-colors disabled:opacity-50"
                                 title="Grant Enterprise trial (covers all companies)"
                               >
                                 {isGranting[user.id] ? '...' : 'Grant Trial'}
@@ -654,7 +654,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                                                   }
                                                 }}
                                                 disabled={isChangingTier[company.id]}
-                                                className="px-2 py-1 bg-bg-card border border-line/15 rounded text-fg-primary text-xs focus:outline-none focus:border-primary-orange disabled:opacity-50"
+                                                className="px-2 py-1 bg-bg-card border border-line/15 rounded text-fg-primary text-xs focus:outline-none focus:border-accent-brand disabled:opacity-50"
                                               >
                                                 <option value="starter">Starter</option>
                                                 <option value="professional">Professional</option>
@@ -667,7 +667,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                                                 max="365"
                                                 value={companyExtendDays[company.id] || 15}
                                                 onChange={(e) => setCompanyExtendDays(prev => ({ ...prev, [company.id]: parseInt(e.target.value) || 15 }))}
-                                                className="w-12 px-1 py-0.5 bg-bg-card border border-line/15 rounded text-fg-primary text-xs text-center focus:outline-none focus:border-primary-orange"
+                                                className="w-12 px-1 py-0.5 bg-bg-card border border-line/15 rounded text-fg-primary text-xs text-center focus:outline-none focus:border-accent-brand"
                                               />
                                               <button
                                                 onClick={() => handleExtendCompanyTrial(company.id, company.subscription!.id, company.name)}
@@ -702,7 +702,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                                                   <select
                                                     value={companyTier[company.id] || company.subscription.tier}
                                                     onChange={(e) => setCompanyTier(prev => ({ ...prev, [company.id]: e.target.value as 'starter' | 'professional' }))}
-                                                    className="px-2 py-1 bg-bg-card border border-line/15 rounded text-fg-primary text-xs focus:outline-none focus:border-primary-orange"
+                                                    className="px-2 py-1 bg-bg-card border border-line/15 rounded text-fg-primary text-xs focus:outline-none focus:border-accent-brand"
                                                   >
                                                     <option value="starter">Starter</option>
                                                     <option value="professional">Professional</option>
@@ -713,12 +713,12 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                                                     max="365"
                                                     value={companyExtendDays[company.id] || 15}
                                                     onChange={(e) => setCompanyExtendDays(prev => ({ ...prev, [company.id]: parseInt(e.target.value) || 15 }))}
-                                                    className="w-12 px-1 py-0.5 bg-bg-card border border-line/15 rounded text-fg-primary text-xs text-center focus:outline-none focus:border-primary-orange"
+                                                    className="w-12 px-1 py-0.5 bg-bg-card border border-line/15 rounded text-fg-primary text-xs text-center focus:outline-none focus:border-accent-brand"
                                                   />
                                                   <button
                                                     onClick={() => handleGrantCompanyTrial(company.id, user.id, companyTier[company.id] || (company.subscription?.tier as 'starter' | 'professional') || 'starter', company.name)}
                                                     disabled={isGrantingCompany[company.id]}
-                                                    className="px-2 py-1 bg-primary-orange text-white rounded text-xs font-medium hover:bg-primary-orange/90 transition-colors disabled:opacity-50"
+                                                    className="px-2 py-1 bg-accent-brand text-white rounded text-xs font-medium hover:bg-accent-brand/90 transition-colors disabled:opacity-50"
                                                   >
                                                     {isGrantingCompany[company.id] ? '...' : 'Grant Trial'}
                                                   </button>
@@ -742,7 +742,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                                                 <select
                                                   value={companyTier[company.id] || 'starter'}
                                                   onChange={(e) => setCompanyTier(prev => ({ ...prev, [company.id]: e.target.value as 'starter' | 'professional' }))}
-                                                  className="px-2 py-1 bg-bg-card border border-line/15 rounded text-fg-primary text-xs focus:outline-none focus:border-primary-orange"
+                                                  className="px-2 py-1 bg-bg-card border border-line/15 rounded text-fg-primary text-xs focus:outline-none focus:border-accent-brand"
                                                 >
                                                   <option value="starter">Starter</option>
                                                   <option value="professional">Professional</option>
@@ -753,14 +753,14 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                                                   max="365"
                                                   value={companyExtendDays[company.id] || 15}
                                                   onChange={(e) => setCompanyExtendDays(prev => ({ ...prev, [company.id]: parseInt(e.target.value) || 15 }))}
-                                                  className="w-12 px-1 py-0.5 bg-bg-card border border-line/15 rounded text-fg-primary text-xs text-center focus:outline-none focus:border-primary-orange"
+                                                  className="w-12 px-1 py-0.5 bg-bg-card border border-line/15 rounded text-fg-primary text-xs text-center focus:outline-none focus:border-accent-brand"
                                                 />
                                                 <button
                                                   onClick={() => {
                                                     handleGrantCompanyTrial(company.id, user.id, companyTier[company.id] || 'starter', company.name)
                                                   }}
                                                   disabled={isGrantingCompany[company.id]}
-                                                  className="px-2 py-1 bg-primary-orange text-white rounded text-xs font-medium hover:bg-primary-orange/90 transition-colors disabled:opacity-50"
+                                                  className="px-2 py-1 bg-accent-brand text-white rounded text-xs font-medium hover:bg-accent-brand/90 transition-colors disabled:opacity-50"
                                                 >
                                                   {isGrantingCompany[company.id] ? '...' : 'Grant Trial'}
                                                 </button>
@@ -799,7 +799,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
                                                   {member.email.includes('@') ? member.email : `User ${member.user_id.substring(0, 8)}...`}
                                                 </div>
                                                 {member.user_id === user.id && (
-                                                  <span className="text-xs text-primary-orange">Owner</span>
+                                                  <span className="text-xs text-accent-brand">Owner</span>
                                                 )}
                                               </div>
                                             </div>

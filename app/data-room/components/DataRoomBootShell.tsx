@@ -4,6 +4,8 @@ import React from 'react'
 import Header from '@/components/layout/Header'
 import TrackerCategoryAccordionView from './tracker/TrackerCategoryAccordionView'
 import { getCountryConfig } from '@/lib/config/countries'
+import { useRotatingLoadingMessage } from '@/hooks/useRotatingLoadingMessage'
+import { DATA_ROOM_LOADING_MESSAGES } from '@/lib/ui/loading-messages'
 
 /**
  * Pre-data layout shell for the entire data-room page.
@@ -48,11 +50,27 @@ export default function DataRoomBootShell({
       ? config.compliance.defaultCategories
       : ['Income Tax', 'GST', 'Payroll', 'RoC', 'Renewals', 'Others']
 
+  // Rotating loading message — gives users something to read while the
+  // data-room boots. Cycles through DATA_ROOM_LOADING_MESSAGES every ~2s.
+  const loadingMessage = useRotatingLoadingMessage({
+    active: true,
+    messages: DATA_ROOM_LOADING_MESSAGES,
+  })
+
   return (
     <div className="min-h-screen bg-bg-base relative">
       <Header />
 
       <div className="relative z-10 container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        {/* Loading banner — small status pill above the company selector
+            so users see something is happening while the data-room boots. */}
+        <div className="mb-4 sm:mb-6 flex items-center gap-2 text-xs text-fg-muted">
+          <span className="inline-block w-2 h-2 rounded-full bg-accent-brand animate-pulse" aria-hidden="true" />
+          <span key={loadingMessage} className="animate-fadeIn">
+            {loadingMessage}
+          </span>
+        </div>
+
         {/* Company Selector slot — matches post-boot dimensions */}
         <div className="mb-4 sm:mb-6">
           <h2 className="text-fg-muted text-xs font-medium uppercase tracking-wider mb-2 sm:mb-3">My companies</h2>

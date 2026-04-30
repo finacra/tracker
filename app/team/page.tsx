@@ -327,7 +327,7 @@ export default function TeamPage() {
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark relative overflow-hidden">
+    <div className="min-h-screen bg-bg-base relative overflow-hidden">
       {/* Subtle Circuit Board Background */}
       <SubtleCircuitBackground />
 
@@ -413,7 +413,7 @@ export default function TeamPage() {
                       max="365"
                       value={extendDays}
                       onChange={(e) => setExtendDays(parseInt(e.target.value) || 15)}
-                      className="w-16 px-2 py-1.5 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm text-center focus:outline-none focus:border-primary-orange"
+                      className="w-16 px-2 py-1.5 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm text-center focus:outline-none focus:border-accent-brand"
                     />
                     <button
                       onClick={handleExtendTrial}
@@ -462,13 +462,13 @@ export default function TeamPage() {
                     max="365"
                     value={extendDays}
                     onChange={(e) => setExtendDays(parseInt(e.target.value) || 15)}
-                    className="w-16 px-2 py-1.5 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm text-center focus:outline-none focus:border-primary-orange"
+                    className="w-16 px-2 py-1.5 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm text-center focus:outline-none focus:border-accent-brand"
                     placeholder="Days"
                   />
                   <button
                     onClick={handleGrantTrial}
                     disabled={isGrantingTrial}
-                    className="px-4 py-2 bg-primary-orange text-white rounded-lg text-sm font-medium hover:bg-primary-orange/90 transition-colors disabled:opacity-50"
+                    className="px-4 py-2 bg-accent-brand text-white rounded-lg text-sm font-medium hover:bg-accent-brand/90 transition-colors disabled:opacity-50"
                   >
                     {isGrantingTrial ? 'Granting...' : 'Grant Trial'}
                   </button>
@@ -481,7 +481,7 @@ export default function TeamPage() {
           {(canManage || isSuperadmin) && (
             <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8">
               <div className="flex items-center gap-2 sm:gap-3 mb-2">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary-orange rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-accent-brand rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg
                     width="14"
                     height="14"
@@ -515,7 +515,7 @@ export default function TeamPage() {
                     type="email"
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-accent-brand focus:ring-1 focus:ring-accent-brand transition-colors"
                     placeholder="colleague@example.com"
                   />
                 </div>
@@ -529,7 +529,7 @@ export default function TeamPage() {
                     type="text"
                     value={inviteName}
                     onChange={(e) => setInviteName(e.target.value)}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-accent-brand focus:ring-1 focus:ring-accent-brand transition-colors"
                     placeholder="John Doe"
                   />
                 </div>
@@ -539,7 +539,7 @@ export default function TeamPage() {
                   <label className="block text-xs sm:text-sm font-medium text-fg-secondary mb-2">Role</label>
                   <button
                     onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base text-left flex items-center justify-between focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base text-left flex items-center justify-between focus:outline-none focus:border-accent-brand focus:ring-1 focus:ring-accent-brand transition-colors"
                   >
                     <span className="truncate">{roles.find((r) => r.value === inviteRole)?.label}</span>
                     <svg
@@ -573,7 +573,7 @@ export default function TeamPage() {
                             }}
                             className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-bg-elevated transition-colors flex items-center justify-between text-sm sm:text-base ${
                               inviteRole === role.value
-                                ? 'bg-primary-orange/20 text-white'
+                                ? 'bg-accent-brand/20 text-white'
                                 : 'text-fg-secondary'
                             }`}
                           >
@@ -582,7 +582,7 @@ export default function TeamPage() {
                               <svg
                                 width="14"
                                 height="14"
-                                className="sm:w-4 sm:h-4 flex-shrink-0 ml-2 text-primary-orange"
+                                className="sm:w-4 sm:h-4 flex-shrink-0 ml-2 text-accent-brand"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
@@ -604,7 +604,7 @@ export default function TeamPage() {
                 <button
                   onClick={handleInvite}
                   disabled={isInviting || !inviteEmail}
-                  className="w-full bg-primary-orange text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:bg-primary-orange/90 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-accent-brand text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg hover:bg-accent-brand/90 transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isInviting ? (
                     <>
@@ -638,7 +638,7 @@ export default function TeamPage() {
           {/* Team Members */}
           <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8">
             <div className="flex items-center gap-2 sm:gap-3 mb-2">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary-orange rounded-lg flex items-center justify-center flex-shrink-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 bg-accent-brand rounded-lg flex items-center justify-center flex-shrink-0">
                 <svg
                   width="14"
                   height="14"
@@ -666,7 +666,7 @@ export default function TeamPage() {
 
             {isLoading ? (
               <div className="py-8 sm:py-12 flex flex-col items-center justify-center">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mb-3 sm:mb-4"></div>
+                <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-accent-brand border-t-transparent rounded-full animate-spin mb-3 sm:mb-4"></div>
                 <p className="text-fg-muted text-sm sm:text-base">Loading team members...</p>
               </div>
             ) : teamMembers.length === 0 ? (
@@ -726,7 +726,7 @@ export default function TeamPage() {
                         <select
                           value={member.role}
                           onChange={(e) => handleRoleChange(member.id, e.target.value as 'viewer' | 'editor' | 'admin')}
-                          className="px-2 sm:px-3 py-1 bg-bg-elevated text-fg-secondary rounded-full text-[10px] sm:text-xs font-medium border border-line/15 hover:border-primary-orange transition-colors cursor-pointer"
+                          className="px-2 sm:px-3 py-1 bg-bg-elevated text-fg-secondary rounded-full text-[10px] sm:text-xs font-medium border border-line/15 hover:border-accent-brand transition-colors cursor-pointer"
                         >
                           <option value="viewer">VIEWER</option>
                           <option value="editor">EDITOR</option>

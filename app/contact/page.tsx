@@ -80,7 +80,7 @@ function ContactPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-bg-base flex flex-col relative overflow-hidden">
       {/* Navigation Bar */}
       <PublicHeader />
       
@@ -357,7 +357,7 @@ export const dynamic = 'force-dynamic'
 export default function ContactPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
         <div className="text-fg-primary">Loading...</div>
       </div>
     }>

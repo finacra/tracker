@@ -73,13 +73,13 @@ function LinkPasswordPageInner() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
+      <div className="min-h-screen bg-bg-base flex items-center justify-center px-4">
         <div className="w-full max-w-md bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-8">
           <h1 className="text-2xl font-light text-fg-primary mb-2">Link Password</h1>
           <p className="text-sm text-red-400 mb-4">Missing verification token.</p>
           <Link
             href="/login"
-            className="block w-full bg-primary-orange text-white px-4 py-2.5 rounded-lg hover:bg-primary-orange/90 transition-colors text-center"
+            className="block w-full bg-accent-brand text-white px-4 py-2.5 rounded-lg hover:bg-accent-brand/90 transition-colors text-center"
           >
             Go to Login
           </Link>
@@ -90,7 +90,7 @@ function LinkPasswordPageInner() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
+      <div className="min-h-screen bg-bg-base flex items-center justify-center px-4">
         <div className="w-full max-w-md bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-8">
           <h1 className="text-2xl font-light text-fg-primary mb-2">Password Linked!</h1>
           <p className="text-sm text-green-400 mb-4">
@@ -102,7 +102,7 @@ function LinkPasswordPageInner() {
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
+    <div className="min-h-screen bg-bg-base flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-8">
         <h1 className="text-2xl font-light text-fg-primary mb-2">Set Password</h1>
         <p className="text-sm text-fg-muted mb-6">
@@ -117,7 +117,7 @@ function LinkPasswordPageInner() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-bg-card border border-line/15 rounded-lg px-4 py-2.5 pr-10 text-fg-primary focus:border-primary-orange focus:outline-none"
+                className="w-full bg-bg-card border border-line/15 rounded-lg px-4 py-2.5 pr-10 text-fg-primary focus:border-accent-brand focus:outline-none"
                 placeholder="At least 6 characters"
                 required
                 minLength={6}
@@ -147,7 +147,7 @@ function LinkPasswordPageInner() {
               type={showPassword ? 'text' : 'password'}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full bg-bg-card border border-line/15 rounded-lg px-4 py-2.5 text-fg-primary focus:border-primary-orange focus:outline-none"
+              className="w-full bg-bg-card border border-line/15 rounded-lg px-4 py-2.5 text-fg-primary focus:border-accent-brand focus:outline-none"
               placeholder="Confirm your password"
               required
               minLength={6}
@@ -163,7 +163,7 @@ function LinkPasswordPageInner() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-primary-orange text-white px-4 py-2.5 rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-accent-brand text-white px-4 py-2.5 rounded-lg hover:bg-accent-brand/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? 'Linking password...' : 'Link Password'}
           </button>
@@ -176,8 +176,8 @@ function LinkPasswordPageInner() {
 export default function LinkPasswordPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-accent-brand border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <LinkPasswordPageInner />

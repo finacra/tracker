@@ -7,7 +7,7 @@ import PublicHeader from '@/components/layout/PublicHeader'
 
 function PricingContent() {
   return (
-    <div className="min-h-screen bg-primary-dark relative overflow-hidden">
+    <div className="min-h-screen bg-bg-base relative overflow-hidden">
       <SubtleCircuitBackground />
       
       <div className="relative z-10">
@@ -21,7 +21,7 @@ function PricingContent() {
 export default function PricingPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-primary-dark relative overflow-hidden">
+      <div className="min-h-screen bg-bg-base relative overflow-hidden">
         <SubtleCircuitBackground />
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <div className="text-fg-primary">Loading...</div>

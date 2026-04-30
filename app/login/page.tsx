@@ -205,7 +205,7 @@ function LoginPageInner() {
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-bg-base flex flex-col relative overflow-hidden">
       {/* Top Navigation Bar */}
       <nav className="relative z-10 w-full px-4 sm:px-6 py-4 sm:py-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -578,8 +578,8 @@ function LoginPageInner() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-accent-brand border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <LoginPageInner />

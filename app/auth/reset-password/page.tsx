@@ -99,7 +99,7 @@ function ResetPasswordPageInner() {
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-bg-base flex flex-col relative overflow-hidden">
       {/* Top Navigation Bar */}
       <nav className="relative z-10 w-full px-6 py-6 border-b border-line/10">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -265,7 +265,7 @@ function ResetPasswordPageInner() {
 export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full animate-spin" />
       </div>
     }>

@@ -64,14 +64,14 @@ function SubscriptionRequiredInner() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark relative overflow-hidden">
+    <div className="min-h-screen bg-bg-base relative overflow-hidden">
       <SubtleCircuitBackground />
       
       <div className="relative z-10 flex items-center justify-center min-h-screen px-4 py-8">
@@ -244,7 +244,7 @@ function SubscriptionRequiredInner() {
 export default function SubscriptionRequiredPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full animate-spin" />
       </div>
     }>

@@ -148,21 +148,21 @@ export default function InviteAcceptClient(props: { token?: string }) {
   }, [user, loading, status])
 
   return (
-    <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
+    <div className="min-h-screen bg-bg-base flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-8">
         <h1 className="text-2xl font-light text-fg-primary mb-2">Accept invitation</h1>
         <p className="text-sm text-fg-muted mb-6">{message}</p>
 
         {status === 'loading' && (
           <div className="flex items-center gap-3 text-fg-secondary">
-            <div className="w-4 h-4 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-accent-brand border-t-transparent rounded-full animate-spin" />
             <span>Loading invitation…</span>
           </div>
         )}
 
         {status === 'checking' && (
           <div className="flex items-center gap-3 text-fg-secondary">
-            <div className="w-4 h-4 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-accent-brand border-t-transparent rounded-full animate-spin" />
             <span>Processing…</span>
           </div>
         )}
@@ -185,7 +185,7 @@ export default function InviteAcceptClient(props: { token?: string }) {
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="w-full bg-bg-card border border-line/15 rounded-lg px-4 py-2.5 text-fg-primary focus:border-primary-orange focus:outline-none"
+                className="w-full bg-bg-card border border-line/15 rounded-lg px-4 py-2.5 text-fg-primary focus:border-accent-brand focus:outline-none"
                 placeholder="John Doe"
               />
             </div>
@@ -197,7 +197,7 @@ export default function InviteAcceptClient(props: { token?: string }) {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-bg-card border border-line/15 rounded-lg px-4 py-2.5 pr-10 text-fg-primary focus:border-primary-orange focus:outline-none"
+                  className="w-full bg-bg-card border border-line/15 rounded-lg px-4 py-2.5 pr-10 text-fg-primary focus:border-accent-brand focus:outline-none"
                   placeholder="At least 6 characters"
                   required
                 />
@@ -226,7 +226,7 @@ export default function InviteAcceptClient(props: { token?: string }) {
                 type={showPassword ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full bg-bg-card border border-line/15 rounded-lg px-4 py-2.5 text-fg-primary focus:border-primary-orange focus:outline-none"
+                className="w-full bg-bg-card border border-line/15 rounded-lg px-4 py-2.5 text-fg-primary focus:border-accent-brand focus:outline-none"
                 placeholder="Confirm your password"
                 required
               />
@@ -241,7 +241,7 @@ export default function InviteAcceptClient(props: { token?: string }) {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-primary-orange text-white px-4 py-2.5 rounded-lg hover:bg-primary-orange/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-accent-brand text-white px-4 py-2.5 rounded-lg hover:bg-accent-brand/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Creating account…' : 'Create account & accept invitation'}
             </button>
@@ -255,7 +255,7 @@ export default function InviteAcceptClient(props: { token?: string }) {
             </p>
             <Link
               href={`/login?returnTo=${encodeURIComponent(`/invite/accept?token=${props.token}`)}`}
-              className="block w-full bg-primary-orange text-white px-4 py-2.5 rounded-lg hover:bg-primary-orange/90 transition-colors text-center"
+              className="block w-full bg-accent-brand text-white px-4 py-2.5 rounded-lg hover:bg-accent-brand/90 transition-colors text-center"
             >
               Sign in to accept invitation
             </Link>
@@ -273,7 +273,7 @@ export default function InviteAcceptClient(props: { token?: string }) {
             <div className="text-sm text-red-400">{message}</div>
             <button
               onClick={() => router.push('/team')}
-              className="w-full bg-primary-orange text-white px-4 py-2.5 rounded-lg hover:bg-primary-orange/90 transition-colors"
+              className="w-full bg-accent-brand text-white px-4 py-2.5 rounded-lg hover:bg-accent-brand/90 transition-colors"
             >
               Go to Team
             </button>

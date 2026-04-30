@@ -7,7 +7,7 @@ export default function AuthCodeErrorPage() {
   const router = useRouter()
 
   return (
-    <div className="min-h-screen bg-primary-dark flex flex-col items-center justify-center px-4 relative overflow-hidden">
+    <div className="min-h-screen bg-bg-base flex flex-col items-center justify-center px-4 relative overflow-hidden">
       <div className="relative z-10 w-full max-w-md text-center">
         <div className="mb-8 flex justify-center">
           <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-center">
