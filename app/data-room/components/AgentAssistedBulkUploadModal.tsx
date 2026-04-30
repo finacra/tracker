@@ -322,26 +322,26 @@ export default function AgentAssistedBulkUploadModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
          onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}>
-      <div className="w-full max-w-6xl bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+      <div className="w-full max-w-6xl bg-bg-card border border-line/10 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-line/10 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-light text-white">Bulk Upload · with Agent</h2>
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-sm text-fg-muted mt-1">
               Drop many files. The agent reads each one and fills the fields — you just review and save.
             </p>
           </div>
-          <button onClick={handleClose} className="p-2 text-gray-500 hover:text-white">✕</button>
+          <button onClick={handleClose} className="p-2 text-fg-muted hover:text-white">✕</button>
         </div>
 
         <div className="p-6 space-y-5">
           {stage === 'picking' && (
             <div
-              className="border-2 border-dashed border-gray-700 rounded-xl p-10 text-center"
+              className="border-2 border-dashed border-line/15 rounded-xl p-10 text-center"
               onDrop={handleDrop}
               onDragOver={handleDragOver}
             >
-              <p className="text-gray-300 mb-2">Drop files or a folder here</p>
-              <p className="text-xs text-gray-500 mb-6">PDF, Word, Excel, CSV, images — scanned PDFs are OCR'd automatically. Pick as many batches as you like.</p>
+              <p className="text-fg-secondary mb-2">Drop files or a folder here</p>
+              <p className="text-xs text-fg-muted mb-6">PDF, Word, Excel, CSV, images — scanned PDFs are OCR'd automatically. Pick as many batches as you like.</p>
               <input
                 type="file"
                 id="bulk-agent-upload-files"
@@ -370,7 +370,7 @@ export default function AgentAssistedBulkUploadModal({
               <div className="flex items-center justify-center gap-3">
                 <label
                   htmlFor="bulk-agent-upload-files"
-                  className="inline-block px-5 py-2.5 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-200 cursor-pointer"
+                  className="inline-block px-5 py-2.5 bg-white text-black rounded-lg text-sm font-medium hover:bg-bg-elevated cursor-pointer"
                 >
                   Choose files
                 </label>
@@ -388,7 +388,7 @@ export default function AgentAssistedBulkUploadModal({
           {(stage === 'processing' || stage === 'review' || stage === 'saving' || stage === 'done') && (
             <>
               <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4 text-xs text-gray-400">
+                <div className="flex items-center gap-4 text-xs text-fg-muted">
                   <span>Total: <span className="text-white">{totals.total}</span></span>
                   {totals.analyzing > 0 && <span>Analyzing: <span className="text-white">{totals.analyzing}</span></span>}
                   <span>Ready: <span className="text-emerald-300">{totals.ready}</span></span>
@@ -425,13 +425,13 @@ export default function AgentAssistedBulkUploadModal({
                     />
                     <label
                       htmlFor="bulk-agent-add-files"
-                      className="text-[11px] px-2.5 py-1 border border-white/15 text-gray-300 rounded hover:bg-white/5 cursor-pointer"
+                      className="text-[11px] px-2.5 py-1 border border-white/15 text-fg-secondary rounded hover:bg-white/5 cursor-pointer"
                     >
                       + Add files
                     </label>
                     <label
                       htmlFor="bulk-agent-add-folder"
-                      className="text-[11px] px-2.5 py-1 border border-white/15 text-gray-300 rounded hover:bg-white/5 cursor-pointer"
+                      className="text-[11px] px-2.5 py-1 border border-white/15 text-fg-secondary rounded hover:bg-white/5 cursor-pointer"
                     >
                       + Add folder
                     </label>
@@ -439,17 +439,17 @@ export default function AgentAssistedBulkUploadModal({
                 )}
               </div>
 
-              <div className="overflow-x-auto border border-gray-800 rounded-lg">
+              <div className="overflow-x-auto border border-line/10 rounded-lg">
                 <table className="w-full text-xs">
-                  <thead className="bg-gray-900/50 border-b border-gray-800">
-                    <tr className="text-left text-gray-400">
+                  <thead className="bg-bg-card/50 border-b border-line/10">
+                    <tr className="text-left text-fg-muted">
                       <th className="p-2 w-8">
                         <input
                           type="checkbox"
                           checked={allReadySelected}
                           disabled={readyRows.length === 0}
                           onChange={toggleSelectAllReady}
-                          className="w-3.5 h-3.5 rounded border-gray-600 bg-transparent text-blue-500 focus:ring-blue-500/30 focus:ring-1 cursor-pointer disabled:opacity-40"
+                          className="w-3.5 h-3.5 rounded border-line/30 bg-transparent text-blue-500 focus:ring-blue-500/30 focus:ring-1 cursor-pointer disabled:opacity-40"
                           title={allReadySelected ? 'Deselect all ready rows' : 'Select all ready rows'}
                         />
                       </th>
@@ -463,14 +463,14 @@ export default function AgentAssistedBulkUploadModal({
                   </thead>
                   <tbody>
                     {rows.map((r, idx) => (
-                      <tr key={idx} className={`border-b border-gray-800/50 ${r.status === 'error' ? 'bg-red-900/10' : r.status === 'saved' ? 'bg-emerald-900/10' : ''}`}>
+                      <tr key={idx} className={`border-b border-line/10/50 ${r.status === 'error' ? 'bg-red-900/10' : r.status === 'saved' ? 'bg-emerald-900/10' : ''}`}>
                         <td className="p-2">
                           <input
                             type="checkbox"
                             checked={r.selected}
                             disabled={r.status !== 'ready'}
                             onChange={() => setRows((prev) => prev.map((x, i) => i === idx ? { ...x, selected: !x.selected } : x))}
-                            className="w-3.5 h-3.5 rounded border-gray-600 bg-transparent text-blue-500 focus:ring-blue-500/30 focus:ring-1 cursor-pointer disabled:opacity-40"
+                            className="w-3.5 h-3.5 rounded border-line/30 bg-transparent text-blue-500 focus:ring-blue-500/30 focus:ring-1 cursor-pointer disabled:opacity-40"
                           />
                         </td>
                         <td className="p-2 text-[10px]">
@@ -482,9 +482,9 @@ export default function AgentAssistedBulkUploadModal({
                             value={r.fileName}
                             disabled={r.status === 'saving' || r.status === 'saved'}
                             onChange={(e) => setRows((prev) => prev.map((x, i) => i === idx ? { ...x, fileName: e.target.value } : x))}
-                            className="w-full px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white"
+                            className="w-full px-2 py-1 bg-bg-card border border-line/15 rounded text-white"
                           />
-                          <div className="text-[10px] text-gray-500 mt-0.5 truncate" title={r.relativePath || r.originalFileName}>
+                          <div className="text-[10px] text-fg-muted mt-0.5 truncate" title={r.relativePath || r.originalFileName}>
                             {r.relativePath && r.relativePath !== r.originalFileName
                               ? r.relativePath
                               : r.originalFileName}
@@ -497,7 +497,7 @@ export default function AgentAssistedBulkUploadModal({
                             disabled={r.status === 'saving' || r.status === 'saved'}
                             placeholder="e.g. GSTR-3B"
                             onChange={(e) => setRows((prev) => prev.map((x, i) => i === idx ? { ...x, documentName: e.target.value } : x))}
-                            className="w-full px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white"
+                            className="w-full px-2 py-1 bg-bg-card border border-line/15 rounded text-white"
                           />
                         </td>
                         <td className="p-2 min-w-[200px]">
@@ -505,7 +505,7 @@ export default function AgentAssistedBulkUploadModal({
                             value={r.folderId}
                             disabled={r.status === 'saving' || r.status === 'saved'}
                             onChange={(e) => setRows((prev) => prev.map((x, i) => i === idx ? { ...x, folderId: e.target.value } : x))}
-                            className="w-full px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white"
+                            className="w-full px-2 py-1 bg-bg-card border border-line/15 rounded text-white"
                           >
                             <option value="">Select…</option>
                             {folderOptions.map((o) => (<option key={o.id} value={o.id}>{o.label}</option>))}
@@ -518,7 +518,7 @@ export default function AgentAssistedBulkUploadModal({
                             disabled={r.status === 'saving' || r.status === 'saved'}
                             placeholder="YYYY-MM or YYYY-Q1"
                             onChange={(e) => setRows((prev) => prev.map((x, i) => i === idx ? { ...x, periodKey: e.target.value } : x))}
-                            className="w-full px-2 py-1 bg-gray-900 border border-gray-700 rounded text-white"
+                            className="w-full px-2 py-1 bg-bg-card border border-line/15 rounded text-white"
                           />
                         </td>
                         <td className="p-2 min-w-[80px]">
@@ -526,7 +526,7 @@ export default function AgentAssistedBulkUploadModal({
                             <span className={`px-1.5 py-0.5 rounded text-[10px] ${
                               r.confidence >= 0.8 ? 'bg-emerald-900/40 text-emerald-300' :
                               r.confidence >= 0.6 ? 'bg-amber-900/40 text-amber-300' :
-                              'bg-gray-900/40 text-gray-400'
+                              'bg-bg-card/40 text-fg-muted'
                             }`}>
                               {Math.round(r.confidence * 100)}%
                             </span>
@@ -542,13 +542,13 @@ export default function AgentAssistedBulkUploadModal({
         </div>
 
         {stage === 'review' && (
-          <div className="p-6 border-t border-gray-800 flex items-center justify-between">
-            <button onClick={handleClose} className="px-4 py-2 text-sm text-gray-400 hover:text-white">
+          <div className="p-6 border-t border-line/10 flex items-center justify-between">
+            <button onClick={handleClose} className="px-4 py-2 text-sm text-fg-muted hover:text-white">
               Discard all
             </button>
             <button
               onClick={handleSaveAll}
-              className="px-6 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-200 disabled:opacity-50"
+              className="px-6 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-bg-elevated disabled:opacity-50"
               disabled={totals.readySelected === 0}
             >
               Save {totals.readySelected} document{totals.readySelected === 1 ? '' : 's'}
@@ -557,10 +557,10 @@ export default function AgentAssistedBulkUploadModal({
         )}
 
         {stage === 'done' && (
-          <div className="p-6 border-t border-gray-800 flex items-center justify-end">
+          <div className="p-6 border-t border-line/10 flex items-center justify-end">
             <button
               onClick={handleClose}
-              className="px-6 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-200"
+              className="px-6 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-bg-elevated"
             >
               Close
             </button>
@@ -574,7 +574,7 @@ export default function AgentAssistedBulkUploadModal({
 function StatusBadge({ status, error }: { status: DraftRow['status']; error?: string }) {
   if (status === 'pending' || status === 'analyzing') {
     return (
-      <span className="inline-flex items-center gap-1 text-gray-300">
+      <span className="inline-flex items-center gap-1 text-fg-secondary">
         <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
         {status === 'pending' ? 'Queued' : 'Reading…'}
       </span>

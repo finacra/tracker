@@ -284,23 +284,23 @@ export default function AgentAssistedUploadModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
          onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}>
-      <div className="w-full max-w-3xl bg-primary-dark-card border border-gray-800 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+      <div className="w-full max-w-3xl bg-bg-card border border-line/10 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-line/10 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-light text-white">Upload Document</h2>
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-sm text-fg-muted mt-1">
               The agent will read the file and suggest how to file it — you can edit anything.
             </p>
           </div>
-          <button onClick={handleClose} className="p-2 text-gray-500 hover:text-white" aria-label="Close">✕</button>
+          <button onClick={handleClose} className="p-2 text-fg-muted hover:text-white" aria-label="Close">✕</button>
         </div>
 
         <div className="p-6 space-y-5">
           {/* Stage: picking */}
           {stage === 'picking' && (
-            <div className="border-2 border-dashed border-gray-700 rounded-xl p-10 text-center">
-              <p className="text-gray-300 mb-4">Drop a file here or click to browse</p>
-              <p className="text-xs text-gray-500 mb-6">PDF, Word, Excel, CSV, images — scanned PDFs are OCR'd automatically</p>
+            <div className="border-2 border-dashed border-line/15 rounded-xl p-10 text-center">
+              <p className="text-fg-secondary mb-4">Drop a file here or click to browse</p>
+              <p className="text-xs text-fg-muted mb-6">PDF, Word, Excel, CSV, images — scanned PDFs are OCR'd automatically</p>
               <input
                 type="file"
                 id="agent-upload-input"
@@ -312,7 +312,7 @@ export default function AgentAssistedUploadModal({
               />
               <label
                 htmlFor="agent-upload-input"
-                className="inline-block px-6 py-3 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-200 cursor-pointer"
+                className="inline-block px-6 py-3 bg-white text-black rounded-lg text-sm font-medium hover:bg-bg-elevated cursor-pointer"
               >
                 Choose file
               </label>
@@ -323,10 +323,10 @@ export default function AgentAssistedUploadModal({
           {(stage === 'uploading' || stage === 'analyzing') && (
             <div className="text-center py-10 space-y-4">
               <div className="w-12 h-12 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-gray-300">
+              <p className="text-fg-secondary">
                 {stage === 'uploading' ? 'Uploading…' : 'Agent is reading the document…'}
               </p>
-              <p className="text-xs text-gray-500">{file?.name}</p>
+              <p className="text-xs text-fg-muted">{file?.name}</p>
             </div>
           )}
 
@@ -334,11 +334,11 @@ export default function AgentAssistedUploadModal({
           {stage === 'review' && (
             <>
               {/* Agent status — always visible, whether suggestion succeeded or failed */}
-              <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-4 space-y-2">
+              <div className="bg-bg-card/50 border border-line/10 rounded-lg p-4 space-y-2">
                 {suggestion ? (
                   <>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs uppercase tracking-wider text-gray-400">Agent suggestion</span>
+                      <span className="text-xs uppercase tracking-wider text-fg-muted">Agent suggestion</span>
                       <span className={`text-[10px] px-2 py-0.5 rounded ${
                         confidencePct >= 80 ? 'bg-emerald-900/40 text-emerald-300' :
                         confidencePct >= 60 ? 'bg-amber-900/40 text-amber-300' :
@@ -347,7 +347,7 @@ export default function AgentAssistedUploadModal({
                         {confidencePct}% confident
                       </span>
                     </div>
-                    <p className="text-sm text-gray-300">{suggestion.reasoning || '—'}</p>
+                    <p className="text-sm text-fg-secondary">{suggestion.reasoning || '—'}</p>
                     {suggestion.candidateSupersedesDocumentId && (
                       <p className="text-xs text-amber-300">
                         Looks like a new version of an existing document — will be linked as version N+1 when you save.
@@ -357,7 +357,7 @@ export default function AgentAssistedUploadModal({
                 ) : (
                   <div>
                     <p className="text-sm text-amber-300 font-medium">Agent couldn't read this file — fill fields manually</p>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-fg-muted mt-1">
                       {analysisErrors.find(e => e.startsWith('processing_failed:'))
                         ? analysisErrors.find(e => e.startsWith('processing_failed:'))!.replace('processing_failed: ', '')
                         : analysisErrors.includes('no_text_available')
@@ -481,17 +481,17 @@ export default function AgentAssistedUploadModal({
               </div>
 
               {suggestion && suggestion.facts.length > 0 && (
-                <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-4">
-                  <p className="text-xs uppercase tracking-wider text-gray-400 mb-2">
+                <div className="bg-bg-card/30 border border-line/10 rounded-lg p-4">
+                  <p className="text-xs uppercase tracking-wider text-fg-muted mb-2">
                     {suggestion.facts.length} fact{suggestion.facts.length === 1 ? '' : 's'} will be recorded
                   </p>
-                  <ul className="text-xs text-gray-300 space-y-1">
+                  <ul className="text-xs text-fg-secondary space-y-1">
                     {suggestion.facts.map((f, i) => (
                       <li key={i}>
                         <span className="font-mono">{f.kind}</span>
                         {f.amount != null && <> · ₹{Number(f.amount).toLocaleString('en-IN')}</>}
                         {f.counterparty && <> · {f.counterparty}</>}
-                        <span className="text-gray-500"> · {Math.round(f.confidence * 100)}%</span>
+                        <span className="text-fg-muted"> · {Math.round(f.confidence * 100)}%</span>
                       </li>
                     ))}
                   </ul>
@@ -504,22 +504,22 @@ export default function AgentAssistedUploadModal({
           {stage === 'saving' && (
             <div className="text-center py-10 space-y-4">
               <div className="w-10 h-10 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-gray-300">Saving…</p>
+              <p className="text-fg-secondary">Saving…</p>
             </div>
           )}
         </div>
 
         {stage === 'review' && (
-          <div className="p-6 border-t border-gray-800 flex items-center justify-between">
+          <div className="p-6 border-t border-line/10 flex items-center justify-between">
             <button
               onClick={handleClose}
-              className="px-4 py-2 text-sm text-gray-400 hover:text-white"
+              className="px-4 py-2 text-sm text-fg-muted hover:text-white"
             >
               Discard
             </button>
             <button
               onClick={handleSave}
-              className="px-6 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-gray-200 disabled:opacity-50"
+              className="px-6 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-bg-elevated disabled:opacity-50"
               disabled={!form.fileName.trim() || !form.documentName.trim() || !form.folderId}
             >
               Save document
@@ -551,7 +551,7 @@ export default function AgentAssistedUploadModal({
 function Field(props: { label: string; required?: boolean; className?: string; children: React.ReactNode }) {
   return (
     <div className={props.className}>
-      <label className="block text-xs uppercase tracking-wider text-gray-400 mb-1">
+      <label className="block text-xs uppercase tracking-wider text-fg-muted mb-1">
         {props.label}
         {props.required && <span className="text-red-400 ml-1">*</span>}
       </label>

@@ -196,7 +196,7 @@ export default function RequirementDesktopTableView({
       <thead className="bg-black border-b border-white/10">
         <tr>
           {canEdit && (
-            <th className="px-4 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider w-12">
+            <th className="px-4 py-4 text-left text-xs font-medium text-fg-muted uppercase tracking-wider w-12">
               <input
                 type="checkbox"
                 checked={filteredRequirements.length > 0 && filteredRequirements.every((req: Requirement) => selectedRequirements.has(req.id))}
@@ -207,51 +207,51 @@ export default function RequirementDesktopTableView({
                     setSelectedRequirements(() => new Set())
                   }
                 }}
-                className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-white focus:ring-white/40 focus:ring-2 cursor-pointer"
+                className="w-4 h-4 rounded border-line/30 bg-bg-elevated text-white focus:ring-white/40 focus:ring-2 cursor-pointer"
               />
             </th>
           )}
-          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+          <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
             REQUIREMENT
           </th>
-          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+          <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
             STATUS
           </th>
-          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+          <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
             DUE DATE
           </th>
-          <th className="px-4 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+          <th className="px-4 py-4 text-right text-xs font-medium text-fg-muted uppercase tracking-wider">
             PAYABLE (₹)
           </th>
-          <th className="px-4 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+          <th className="px-4 py-4 text-right text-xs font-medium text-fg-muted uppercase tracking-wider">
             PAID (₹)
           </th>
-          <th className="px-4 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
+          <th className="px-4 py-4 text-right text-xs font-medium text-fg-muted uppercase tracking-wider hidden md:table-cell">
             AUTO-CALC
           </th>
-          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">
+          <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase tracking-wider hidden md:table-cell">
             DOCS
           </th>
-          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+          <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase tracking-wider hidden lg:table-cell">
             PENALTY
           </th>
-          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+          <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase tracking-wider hidden lg:table-cell">
             CALC PENALTY
           </th>
-          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden xl:table-cell">
+          <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase tracking-wider hidden xl:table-cell">
             LEGAL ACTION
           </th>
-          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden lg:table-cell">
+          <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase tracking-wider hidden lg:table-cell">
             FILED ON
           </th>
-          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden xl:table-cell">
+          <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase tracking-wider hidden xl:table-cell">
             FILED BY
           </th>
-          <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden xl:table-cell">
+          <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase tracking-wider hidden xl:table-cell">
             STATUS REASON
           </th>
           {canEdit && (
-            <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+            <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
               ACTIONS
             </th>
           )}
@@ -290,7 +290,7 @@ export default function RequirementDesktopTableView({
                           }
                           setSelectedRequirements(() => newSelected)
                         }}
-                        className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-white focus:ring-white/40 focus:ring-2 cursor-pointer"
+                        className="w-4 h-4 rounded border-line/30 bg-bg-elevated text-white focus:ring-white/40 focus:ring-2 cursor-pointer"
                       />
                     </td>
                   )}
@@ -323,7 +323,7 @@ export default function RequirementDesktopTableView({
                         {(formFreq || authority || legalSections.length > 0 || req.description) && (
                           <button
                             onClick={() => setComplianceDetailsModal(req)}
-                            className="mt-1 text-gray-500 hover:text-gray-300 text-[11px] flex items-center gap-1 transition-colors"
+                            className="mt-1 text-fg-muted hover:text-fg-secondary text-[11px] flex items-center gap-1 transition-colors"
                           >
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <circle cx="12" cy="12" r="10" />
@@ -349,7 +349,7 @@ export default function RequirementDesktopTableView({
                                 ? 'bg-yellow-500/10 text-yellow-400/90 hover:bg-yellow-500/20'
                                 : req.status === 'upcoming'
                                   ? 'bg-blue-500/10 text-blue-400/90 hover:bg-blue-500/20'
-                                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                  : 'bg-white/5 text-fg-muted hover:bg-white/10'
                           }`}
                         style={{
                           appearance: 'none',
@@ -375,7 +375,7 @@ export default function RequirementDesktopTableView({
                                 ? 'bg-yellow-500/10 text-yellow-400/90'
                                 : req.status === 'upcoming'
                                   ? 'bg-blue-500/10 text-blue-400/90'
-                                  : 'bg-white/5 text-gray-400'
+                                  : 'bg-white/5 text-fg-muted'
                           }`}
                       >
                         {req.status === 'completed'
@@ -393,7 +393,7 @@ export default function RequirementDesktopTableView({
                   <td className="px-6 py-4">
                     {(() => {
                       if (!req.dueDate) {
-                        return <span className="text-gray-500 text-sm italic">No due date</span>
+                        return <span className="text-fg-muted text-sm italic">No due date</span>
                       }
                       const daysDelayed = calculateDelay(req.dueDate, req.status)
                       return (
@@ -402,7 +402,7 @@ export default function RequirementDesktopTableView({
                             <svg
                               width="16"
                               height="16"
-                              className="w-4 h-4 flex-shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                              className="w-4 h-4 flex-shrink-0 text-fg-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                             >
                               <circle cx="12" cy="12" r="10" />
                               <polyline points="12 6 12 12 16 14" />
@@ -441,7 +441,7 @@ export default function RequirementDesktopTableView({
                     {(() => {
                       const calc = computeAutoCalc(req)
                       const nothing = calc.short === null && calc.delay === 0 && calc.total === 0
-                      if (nothing) return <span className="text-gray-600">—</span>
+                      if (nothing) return <span className="text-fg-muted/60">—</span>
                       return (
                         <div className="space-y-0.5 text-[11px]">
                           {calc.short != null && calc.short > 0 && (
@@ -451,7 +451,7 @@ export default function RequirementDesktopTableView({
                             <div className="text-red-300">Delay: {calc.delay}d</div>
                           )}
                           {calc.total > 0 && (
-                            <div className="text-gray-300">Interest: ₹{calc.total.toLocaleString('en-IN')}</div>
+                            <div className="text-fg-secondary">Interest: ₹{calc.total.toLocaleString('en-IN')}</div>
                           )}
                         </div>
                       )
@@ -462,7 +462,7 @@ export default function RequirementDesktopTableView({
                     {(() => {
                       const requiredDocs = (req as any).required_documents || []
                       if (!Array.isArray(requiredDocs) || requiredDocs.length === 0) {
-                        return <div className="text-gray-500 text-sm">-</div>
+                        return <div className="text-fg-muted text-sm">-</div>
                       }
                       const slotMatchCount = requiredDocs.filter((doc: string) => isDocUploaded(req.id, doc)).length
                       // If the doc is linked to the requirement but doesn't
@@ -504,7 +504,7 @@ export default function RequirementDesktopTableView({
                                 ? 'bg-green-500/15 text-green-400 border-green-500/30'
                                 : uploadedCount > 0
                                   ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30'
-                                  : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-500 hover:text-white'
+                                  : 'bg-bg-elevated text-fg-muted border-line/15 hover:border-line/40 hover:text-white'
                             }`}
                             title={allDone ? 'All required documents uploaded' : 'Click to upload required documents'}
                           >
@@ -531,33 +531,33 @@ export default function RequirementDesktopTableView({
                             <>
                               <div className="fixed inset-0 z-40" onClick={() => { setOpenDocChecklist(null); setDocChecklistCoords(null) }} />
                               <div
-                                className="fixed z-50 w-80 bg-[#1a1a1a] border border-gray-700 rounded-xl shadow-2xl p-4"
+                                className="fixed z-50 w-80 bg-bg-card border border-line/15 rounded-xl shadow-2xl p-4"
                                 style={{ top: docChecklistCoords.top, left: docChecklistCoords.left }}
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <div className="flex items-center justify-between mb-3">
-                                  <div className="text-sm font-medium text-gray-200 flex items-center gap-2">
-                                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                                  <div className="text-sm font-medium text-fg-secondary flex items-center gap-2">
+                                    <svg className="w-4 h-4 text-fg-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                                     Required Documents
                                   </div>
-                                  <button onClick={() => { setOpenDocChecklist(null); setDocChecklistCoords(null) }} className="text-gray-500 hover:text-gray-300 p-0.5">
+                                  <button onClick={() => { setOpenDocChecklist(null); setDocChecklistCoords(null) }} className="text-fg-muted hover:text-fg-secondary p-0.5">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                   </button>
                                 </div>
-                                <div className="text-[10px] text-gray-500 mb-3">{uploadedCount} of {requiredDocs.length} uploaded</div>
+                                <div className="text-[10px] text-fg-muted mb-3">{uploadedCount} of {requiredDocs.length} uploaded</div>
                                 <div className="space-y-2">
                                   {requiredDocs.map((doc: string, idx: number) => {
                                     const matchedDoc = findDocForSlot(req.id, doc)
                                     const uploaded = !!matchedDoc
                                     return (
-                                      <div key={idx} className={`flex items-start gap-2.5 p-2 rounded-lg ${uploaded ? 'bg-green-500/5' : 'bg-gray-800/50'}`}>
+                                      <div key={idx} className={`flex items-start gap-2.5 p-2 rounded-lg ${uploaded ? 'bg-green-500/5' : 'bg-bg-elevated/50'}`}>
                                         {uploaded ? (
                                           <svg className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                                         ) : (
-                                          <div className="w-4 h-4 rounded border border-gray-600 flex-shrink-0 mt-0.5" />
+                                          <div className="w-4 h-4 rounded border border-line/30 flex-shrink-0 mt-0.5" />
                                         )}
                                         <div className="flex-1 min-w-0">
-                                          <div className={`text-xs ${uploaded ? 'text-green-400/90' : 'text-gray-300'}`}>{doc}</div>
+                                          <div className={`text-xs ${uploaded ? 'text-green-400/90' : 'text-fg-secondary'}`}>{doc}</div>
                                           {!uploaded && (
                                             <button
                                               onClick={() => {
@@ -608,7 +608,7 @@ export default function RequirementDesktopTableView({
                   </td>
                   <td className="px-6 py-4 hidden lg:table-cell">
                     <div
-                      className="text-gray-400 text-xs truncate max-w-[140px]"
+                      className="text-fg-muted text-xs truncate max-w-[140px]"
                       title={req.penalty || ''}
                     >
                       {req.penalty || '-'}
@@ -633,7 +633,7 @@ export default function RequirementDesktopTableView({
                                 value={inputVal}
                                 onChange={e => setBaseAmountInputs(prev => ({ ...prev, [req.id]: e.target.value }))}
                                 placeholder="e.g. 50000"
-                                className="w-24 px-2 py-1 text-xs bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-500 focus:outline-none focus:border-white/40"
+                                className="w-24 px-2 py-1 text-xs bg-bg-elevated border border-line/30 rounded text-white placeholder-gray-500 focus:outline-none focus:border-white/40"
                                 onKeyDown={async e => {
                                   if (e.key === 'Enter') {
                                     const amount = parseFloat(inputVal)
@@ -687,7 +687,7 @@ export default function RequirementDesktopTableView({
                         )
                       }
                       if (calculatedPenalty === '-') {
-                        return <div className="text-gray-500 text-sm">-</div>
+                        return <div className="text-fg-muted text-sm">-</div>
                       }
                       if (needsBaseAmount || calculatedPenalty.startsWith('Cannot calculate') || calculatedPenalty.startsWith('Refer')) {
                         return (
@@ -708,11 +708,11 @@ export default function RequirementDesktopTableView({
                     {(() => {
                       const legalAction = req.possible_legal_action
                       if (!legalAction) {
-                        return <div className="text-gray-500 text-sm">-</div>
+                        return <div className="text-fg-muted text-sm">-</div>
                       }
                       return (
                         <div
-                          className="text-gray-400 text-xs truncate max-w-[140px]"
+                          className="text-fg-muted text-xs truncate max-w-[140px]"
                           title={legalAction}
                         >
                           {legalAction}
@@ -725,7 +725,7 @@ export default function RequirementDesktopTableView({
                     {(() => {
                       const filedOn = req.filed_on
                       if (!filedOn) {
-                        return <div className="text-gray-500 text-sm">-</div>
+                        return <div className="text-fg-muted text-sm">-</div>
                       }
                       return (
                         <div className="text-green-400 text-sm">
@@ -739,7 +739,7 @@ export default function RequirementDesktopTableView({
                     {(() => {
                       const filedBy = req.filed_by
                       if (!filedBy) {
-                        return <div className="text-gray-500 text-sm">-</div>
+                        return <div className="text-fg-muted text-sm">-</div>
                       }
                       return (
                         <div className="text-blue-400 text-sm">
@@ -753,7 +753,7 @@ export default function RequirementDesktopTableView({
                     {(() => {
                       const statusReason = req.status_reason
                       if (!statusReason) {
-                        return <div className="text-gray-500 text-sm">-</div>
+                        return <div className="text-fg-muted text-sm">-</div>
                       }
                       return (
                         <div className="text-yellow-400 text-xs max-w-[200px]" title={statusReason}>
@@ -901,7 +901,7 @@ function AmountInputCell({
 
   if (!canEdit) {
     return (
-      <span className={value != null ? 'text-white text-sm' : 'text-gray-600 text-sm'}>
+      <span className={value != null ? 'text-white text-sm' : 'text-fg-muted/60 text-sm'}>
         {value != null ? `₹${Number(value).toLocaleString('en-IN')}` : '—'}
       </span>
     )
@@ -939,10 +939,10 @@ function AmountInputCell({
       }}
       className={`w-28 px-2.5 py-1.5 text-sm rounded-md text-right bg-transparent border transition-colors focus:outline-none ${
         focused
-          ? 'border-blue-400/60 bg-gray-900/80 text-white'
+          ? 'border-blue-400/60 bg-bg-card/80 text-white'
           : value != null
             ? 'border-white/10 text-white hover:border-white/25'
-            : 'border-dashed border-white/10 text-gray-500 hover:border-white/25 hover:text-gray-300'
+            : 'border-dashed border-white/10 text-fg-muted hover:border-white/25 hover:text-fg-secondary'
       }`}
     />
   )

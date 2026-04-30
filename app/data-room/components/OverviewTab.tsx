@@ -155,19 +155,19 @@ export default function OverviewTab({
         {isLoading ? (
           <div className="py-8 sm:py-12 flex flex-col items-center justify-center">
             <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-white/40 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-gray-400 text-sm sm:text-base">Loading company details...</p>
+            <p className="text-fg-muted text-sm sm:text-base">Loading company details...</p>
           </div>
         ) : entityDetails ? (
           <div className="space-y-3 sm:space-y-4">
             {/* Company Name */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-              <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Company Name</label>
+              <label className="text-xs sm:text-sm text-fg-muted sm:w-32 sm:flex-shrink-0">Company Name</label>
               <div className="text-white text-base sm:text-lg font-medium break-words">{entityDetails.companyName}</div>
             </div>
 
             {/* Type */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-              <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Type</label>
+              <label className="text-xs sm:text-sm text-fg-muted sm:w-32 sm:flex-shrink-0">Type</label>
               <span className="inline-block bg-white text-black px-3 py-1 rounded-full text-xs sm:text-sm font-medium w-fit">
                 {entityDetails.type}
               </span>
@@ -175,43 +175,43 @@ export default function OverviewTab({
 
             {/* Reg Date */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-              <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Reg Date</label>
+              <label className="text-xs sm:text-sm text-fg-muted sm:w-32 sm:flex-shrink-0">Reg Date</label>
               <div className="text-white text-base sm:text-lg font-medium">{entityDetails.regDate}</div>
             </div>
 
             {/* Tax ID (country-specific label) */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-              <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">{countryConfig.labels.taxId}</label>
+              <label className="text-xs sm:text-sm text-fg-muted sm:w-32 sm:flex-shrink-0">{countryConfig.labels.taxId}</label>
               <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.taxId}</div>
             </div>
 
             {/* Registration ID (country-specific label) */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-              <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">{countryConfig.labels.registrationId}</label>
+              <label className="text-xs sm:text-sm text-fg-muted sm:w-32 sm:flex-shrink-0">{countryConfig.labels.registrationId}</label>
               <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.registrationId}</div>
             </div>
 
             {/* Address */}
             <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
-              <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-0.5">Address</label>
+              <label className="text-xs sm:text-sm text-fg-muted sm:w-32 sm:flex-shrink-0 pt-0.5">Address</label>
               <div className="text-white text-base sm:text-lg font-medium break-words flex-1">{entityDetails.address}</div>
             </div>
 
             {/* Phone Number */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-              <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0">Phone Number</label>
+              <label className="text-xs sm:text-sm text-fg-muted sm:w-32 sm:flex-shrink-0">Phone Number</label>
               <div className="text-white text-base sm:text-lg font-medium break-all">{entityDetails.phoneNumber}</div>
             </div>
 
             {/* Industry Category */}
             <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
-              <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-0.5">Industry Category</label>
+              <label className="text-xs sm:text-sm text-fg-muted sm:w-32 sm:flex-shrink-0 pt-0.5">Industry Category</label>
               <div className="text-white text-base sm:text-lg font-medium break-words flex-1">{entityDetails.industryCategory}</div>
             </div>
 
             {/* NIC Classification Card — derived from CIN */}
             {parsedCIN && (
-              <div className="mt-2 p-3 sm:p-4 bg-gray-900/60 border border-white/10 rounded-lg space-y-2">
+              <div className="mt-2 p-3 sm:p-4 bg-bg-card/60 border border-white/10 rounded-lg space-y-2">
                 <div className="flex items-center gap-2 mb-2">
                   <svg width="14" height="14" className="sm:w-4 sm:h-4 text-emerald-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
@@ -221,38 +221,38 @@ export default function OverviewTab({
                 </div>
 
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs sm:text-sm">
-                  <div className="text-gray-500">Listing Status</div>
-                  <div className="text-gray-200">{parsedCIN.isListed ? 'Listed' : 'Unlisted'}</div>
+                  <div className="text-fg-muted">Listing Status</div>
+                  <div className="text-fg-secondary">{parsedCIN.isListed ? 'Listed' : 'Unlisted'}</div>
 
-                  <div className="text-gray-500">State of Registration</div>
-                  <div className="text-gray-200">{parsedCIN.stateName || parsedCIN.stateCode || '—'}</div>
+                  <div className="text-fg-muted">State of Registration</div>
+                  <div className="text-fg-secondary">{parsedCIN.stateName || parsedCIN.stateCode || '—'}</div>
 
-                  <div className="text-gray-500">Year of Incorporation</div>
-                  <div className="text-gray-200">{parsedCIN.yearOfIncorporation || '—'}</div>
+                  <div className="text-fg-muted">Year of Incorporation</div>
+                  <div className="text-fg-secondary">{parsedCIN.yearOfIncorporation || '—'}</div>
 
-                  <div className="text-gray-500">Company Type</div>
-                  <div className="text-gray-200">{parsedCIN.companyTypeName || parsedCIN.companyTypeCode || '—'}</div>
+                  <div className="text-fg-muted">Company Type</div>
+                  <div className="text-fg-secondary">{parsedCIN.companyTypeName || parsedCIN.companyTypeCode || '—'}</div>
                 </div>
 
                 {parsedCIN.nicDetails && (
                   <>
                     <div className="border-t border-white/5 my-2"></div>
-                    <div className="text-xs sm:text-sm font-medium text-gray-300 mb-1">Industry Classification (NIC 2008)</div>
+                    <div className="text-xs sm:text-sm font-medium text-fg-secondary mb-1">Industry Classification (NIC 2008)</div>
                     <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs sm:text-sm">
-                      <span className="text-gray-500">Section</span>
-                      <span className="text-gray-200">{parsedCIN.nicDetails.section} — {parsedCIN.nicDetails.sectionName}</span>
+                      <span className="text-fg-muted">Section</span>
+                      <span className="text-fg-secondary">{parsedCIN.nicDetails.section} — {parsedCIN.nicDetails.sectionName}</span>
 
-                      <span className="text-gray-500">Division</span>
-                      <span className="text-gray-200">{parsedCIN.nicDetails.divisionCode} — {parsedCIN.nicDetails.divisionName}</span>
+                      <span className="text-fg-muted">Division</span>
+                      <span className="text-fg-secondary">{parsedCIN.nicDetails.divisionCode} — {parsedCIN.nicDetails.divisionName}</span>
 
-                      <span className="text-gray-500">Group</span>
-                      <span className="text-gray-200">{parsedCIN.nicDetails.groupCode} — {parsedCIN.nicDetails.groupName}</span>
+                      <span className="text-fg-muted">Group</span>
+                      <span className="text-fg-secondary">{parsedCIN.nicDetails.groupCode} — {parsedCIN.nicDetails.groupName}</span>
 
-                      <span className="text-gray-500">Class</span>
-                      <span className="text-gray-200">{parsedCIN.nicDetails.classCode} — {parsedCIN.nicDetails.className}</span>
+                      <span className="text-fg-muted">Class</span>
+                      <span className="text-fg-secondary">{parsedCIN.nicDetails.classCode} — {parsedCIN.nicDetails.className}</span>
 
-                      <span className="text-gray-500">Sub-class</span>
-                      <span className="text-gray-200">{parsedCIN.nicDetails.code} — {parsedCIN.nicDetails.description}</span>
+                      <span className="text-fg-muted">Sub-class</span>
+                      <span className="text-fg-secondary">{parsedCIN.nicDetails.code} — {parsedCIN.nicDetails.description}</span>
                     </div>
                   </>
                 )}
@@ -261,49 +261,49 @@ export default function OverviewTab({
 
             {/* MCA / CIN API Data */}
             {(entityDetails.authorisedCapital || entityDetails.paidUpCapital || entityDetails.rocName || entityDetails.companyStatus) && (
-              <div className="mt-2 p-3 sm:p-4 bg-gray-900/60 border border-white/10 rounded-lg">
-                <div className="text-xs sm:text-sm font-medium text-gray-300 mb-2">MCA Records</div>
+              <div className="mt-2 p-3 sm:p-4 bg-bg-card/60 border border-white/10 rounded-lg">
+                <div className="text-xs sm:text-sm font-medium text-fg-secondary mb-2">MCA Records</div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs sm:text-sm">
                   {entityDetails.companyStatus && (
                     <>
-                      <div className="text-gray-500">Status</div>
-                      <div className="text-gray-200">{entityDetails.companyStatus}</div>
+                      <div className="text-fg-muted">Status</div>
+                      <div className="text-fg-secondary">{entityDetails.companyStatus}</div>
                     </>
                   )}
                   {entityDetails.authorisedCapital && (
                     <>
-                      <div className="text-gray-500">Authorised Capital</div>
-                      <div className="text-gray-200">{Number(entityDetails.authorisedCapital).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}</div>
+                      <div className="text-fg-muted">Authorised Capital</div>
+                      <div className="text-fg-secondary">{Number(entityDetails.authorisedCapital).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}</div>
                     </>
                   )}
                   {entityDetails.paidUpCapital && (
                     <>
-                      <div className="text-gray-500">Paid-up Capital</div>
-                      <div className="text-gray-200">{Number(entityDetails.paidUpCapital).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}</div>
+                      <div className="text-fg-muted">Paid-up Capital</div>
+                      <div className="text-fg-secondary">{Number(entityDetails.paidUpCapital).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })}</div>
                     </>
                   )}
                   {entityDetails.companyCategory && (
                     <>
-                      <div className="text-gray-500">Category</div>
-                      <div className="text-gray-200">{entityDetails.companyCategory}</div>
+                      <div className="text-fg-muted">Category</div>
+                      <div className="text-fg-secondary">{entityDetails.companyCategory}</div>
                     </>
                   )}
                   {entityDetails.rocName && (
                     <>
-                      <div className="text-gray-500">ROC</div>
-                      <div className="text-gray-200">{entityDetails.rocName}</div>
+                      <div className="text-fg-muted">ROC</div>
+                      <div className="text-fg-secondary">{entityDetails.rocName}</div>
                     </>
                   )}
                   {entityDetails.dateOfLastAgm && (
                     <>
-                      <div className="text-gray-500">Last AGM</div>
-                      <div className="text-gray-200">{entityDetails.dateOfLastAgm}</div>
+                      <div className="text-fg-muted">Last AGM</div>
+                      <div className="text-fg-secondary">{entityDetails.dateOfLastAgm}</div>
                     </>
                   )}
                   {entityDetails.balanceSheetDate && (
                     <>
-                      <div className="text-gray-500">Balance Sheet Date</div>
-                      <div className="text-gray-200">{entityDetails.balanceSheetDate}</div>
+                      <div className="text-fg-muted">Balance Sheet Date</div>
+                      <div className="text-fg-secondary">{entityDetails.balanceSheetDate}</div>
                     </>
                   )}
                 </div>
@@ -312,7 +312,7 @@ export default function OverviewTab({
 
             {/* GST Registrations — IN-only, one card per GSTIN */}
             {currentCompany?.country_code === 'IN' && gstRegs.length > 0 && (
-              <div className="mt-2 p-3 sm:p-4 bg-gray-900/60 border border-white/10 rounded-lg">
+              <div className="mt-2 p-3 sm:p-4 bg-bg-card/60 border border-white/10 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <svg width="14" height="14" className="sm:w-4 sm:h-4 text-blue-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -320,7 +320,7 @@ export default function OverviewTab({
                       <path d="M3 10h18" />
                     </svg>
                     <span className="text-xs sm:text-sm font-medium text-blue-400">GST Registrations</span>
-                    <span className="text-[10px] sm:text-xs text-gray-500">
+                    <span className="text-[10px] sm:text-xs text-fg-muted">
                       {gstRegs.length} registration{gstRegs.length === 1 ? '' : 's'}
                     </span>
                   </div>
@@ -346,7 +346,7 @@ export default function OverviewTab({
                             </span>
                           )}
                         </div>
-                        <span className="text-[11px] sm:text-xs text-gray-400 truncate">
+                        <span className="text-[11px] sm:text-xs text-fg-muted truncate">
                           {g.state || '—'}
                         </span>
                       </div>
@@ -363,9 +363,9 @@ export default function OverviewTab({
             )}
 
             {currentCompany?.country_code === 'IN' && gstRegs.length === 0 && (
-              <div className="mt-2 p-3 sm:p-4 bg-gray-900/40 border border-dashed border-white/10 rounded-lg flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-400">
-                  <svg width="14" height="14" className="sm:w-4 sm:h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <div className="mt-2 p-3 sm:p-4 bg-bg-card/40 border border-dashed border-white/10 rounded-lg flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-fg-muted">
+                  <svg width="14" height="14" className="sm:w-4 sm:h-4 text-fg-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="3" y="4" width="18" height="16" rx="2" />
                     <path d="M3 10h18" />
                   </svg>
@@ -382,7 +382,7 @@ export default function OverviewTab({
 
             {/* Directors */}
             <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-4">
-              <label className="text-xs sm:text-sm text-gray-400 sm:w-32 sm:flex-shrink-0 pt-1">Directors</label>
+              <label className="text-xs sm:text-sm text-fg-muted sm:w-32 sm:flex-shrink-0 pt-1">Directors</label>
               <div className="flex-1 space-y-3 sm:space-y-4">
                 {/* Directors Dropdown */}
                 <div>
@@ -403,7 +403,7 @@ export default function OverviewTab({
                       ))}
                     </select>
                   ) : (
-                    <div className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-black border border-white/20 rounded-lg text-gray-400 text-sm sm:text-base">
+                    <div className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-black border border-white/20 rounded-lg text-fg-muted text-sm sm:text-base">
                       No directors found for this company
                     </div>
                   )}
@@ -432,7 +432,7 @@ export default function OverviewTab({
                                 {director.firstName} {director.middleName} {director.lastName}
                               </h3>
                               {director.designation && (
-                                <p className="text-gray-400 text-xs sm:text-sm break-words">{director.designation}</p>
+                                <p className="text-fg-muted text-xs sm:text-sm break-words">{director.designation}</p>
                               )}
                             </div>
                             <div className="sm:ml-auto flex items-center gap-2 flex-shrink-0">
@@ -452,31 +452,31 @@ export default function OverviewTab({
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                             {director.din && (
                               <div className="p-3 bg-black border border-white/10 rounded-lg">
-                                <div className="text-xs text-gray-500 mb-1">{countryConfig.labels.directorId || 'Director ID'}</div>
+                                <div className="text-xs text-fg-muted mb-1">{countryConfig.labels.directorId || 'Director ID'}</div>
                                 <div className="text-white font-mono text-sm sm:text-base break-all">{director.din}</div>
                               </div>
                             )}
                             {director.pan && (
                               <div className="p-3 bg-black border border-white/10 rounded-lg">
-                                <div className="text-xs text-gray-500 mb-1">{countryConfig.labels.taxId}</div>
+                                <div className="text-xs text-fg-muted mb-1">{countryConfig.labels.taxId}</div>
                                 <div className="text-white font-mono text-sm sm:text-base break-all">{director.pan}</div>
                               </div>
                             )}
                             {director.dob && (
                               <div className="p-3 bg-black border border-white/10 rounded-lg">
-                                <div className="text-xs text-gray-500 mb-1">Date of Birth</div>
+                                <div className="text-xs text-fg-muted mb-1">Date of Birth</div>
                                 <div className="text-white text-sm sm:text-base">{formatDateForDisplay(director.dob)}</div>
                               </div>
                             )}
                             {director.email && (
                               <div className="p-3 bg-black border border-white/10 rounded-lg">
-                                <div className="text-xs text-gray-500 mb-1">Email Address</div>
+                                <div className="text-xs text-fg-muted mb-1">Email Address</div>
                                 <div className="text-white text-sm sm:text-base break-all">{director.email}</div>
                               </div>
                             )}
                             {director.mobile && (
                               <div className="p-3 bg-black border border-white/10 rounded-lg">
-                                <div className="text-xs text-gray-500 mb-1">Mobile Number</div>
+                                <div className="text-xs text-fg-muted mb-1">Mobile Number</div>
                                 <div className="text-white text-sm sm:text-base break-all">{director.mobile}</div>
                               </div>
                             )}
@@ -491,7 +491,7 @@ export default function OverviewTab({
           </div>
         ) : (
           <div className="py-12 text-center">
-            <p className="text-gray-400">No company selected or found.</p>
+            <p className="text-fg-muted">No company selected or found.</p>
           </div>
         )}
       </div>
