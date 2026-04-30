@@ -3951,7 +3951,7 @@ function DataRoomPageInner() {
           <p className="text-fg-muted text-sm mb-6">{initError}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-white text-black rounded-lg hover:bg-bg-elevated"
+            className="px-6 py-2 bg-accent-brand text-white rounded-lg hover:bg-bg-elevated"
           >
             Retry
           </button>
@@ -3967,7 +3967,7 @@ function DataRoomPageInner() {
       <div className="min-h-screen bg-bg-base flex items-center justify-center">
         <div className="text-center max-w-md px-4">
           <div className="relative mb-6">
-            <div className="w-12 h-12 border-4 border-white/30 border-t-transparent rounded-full animate-spin mx-auto" />
+            <div className="w-12 h-12 border-4 border-line/30 border-t-transparent rounded-full animate-spin mx-auto" />
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-6 h-6 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-full animate-pulse" />
             </div>
@@ -3989,7 +3989,7 @@ function DataRoomPageInner() {
       <div className="min-h-screen bg-bg-base flex items-center justify-center">
         <div className="text-center max-w-md px-4">
           <div className="relative mb-6">
-            <div className="w-12 h-12 border-4 border-white/30 border-t-transparent rounded-full animate-spin mx-auto" />
+            <div className="w-12 h-12 border-4 border-line/30 border-t-transparent rounded-full animate-spin mx-auto" />
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-6 h-6 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-full animate-pulse" />
             </div>
@@ -4277,7 +4277,7 @@ function DataRoomPageInner() {
           <Suspense
             fallback={
               <div className="flex items-center justify-center p-8">
-                <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-2 border-line/40 border-t-transparent rounded-full animate-spin" />
               </div>
             }
           >
@@ -4297,7 +4297,7 @@ function DataRoomPageInner() {
           <Suspense
             fallback={
               <div className="flex items-center justify-center p-8">
-                <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-2 border-line/40 border-t-transparent rounded-full animate-spin" />
               </div>
             }
           >
@@ -4327,7 +4327,7 @@ function DataRoomPageInner() {
           <Suspense
             fallback={
               <div className="flex items-center justify-center p-8">
-                <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-2 border-line/40 border-t-transparent rounded-full animate-spin" />
               </div>
             }
           >
@@ -4443,9 +4443,9 @@ function DataRoomPageInner() {
 
             return (
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                <div className="bg-black border border-white/10 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+                <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
                   {/* Modal Header */}
-                  <div className="sticky top-0 bg-black border-b border-white/10 p-6 flex items-center justify-between z-10">
+                  <div className="sticky top-0 bg-black border-b border-line/10 p-6 flex items-center justify-between z-10">
                     <div>
                       <h2 className="text-2xl font-light text-fg-primary mb-1">
                         Compliance Details
@@ -4654,10 +4654,10 @@ function DataRoomPageInner() {
                   </div>
 
                   {/* Modal Footer */}
-                  <div className="sticky bottom-0 bg-black border-t border-white/10 p-6 flex items-center justify-end">
+                  <div className="sticky bottom-0 bg-black border-t border-line/10 p-6 flex items-center justify-end">
                     <button
                       onClick={() => setComplianceDetailsModal(null)}
-                      className="px-6 py-2.5 bg-white text-black rounded-lg hover:bg-bg-elevated transition-colors"
+                      className="px-6 py-2.5 bg-accent-brand text-white rounded-lg hover:bg-bg-elevated transition-colors"
                     >
                       Close
                     </button>
@@ -4671,7 +4671,7 @@ function DataRoomPageInner() {
           <Suspense
             fallback={
               <div className="flex items-center justify-center p-8">
-                <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-2 border-line/40 border-t-transparent rounded-full animate-spin" />
               </div>
             }
           >
@@ -4729,7 +4729,7 @@ function DataRoomPageInner() {
             <Suspense
               fallback={
                 <div className="flex items-center justify-center p-8">
-                  <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-8 h-8 border-2 border-line/40 border-t-transparent rounded-full animate-spin" />
                 </div>
               }
             >
@@ -4742,7 +4742,7 @@ function DataRoomPageInner() {
           <Suspense
             fallback={
               <div className="flex items-center justify-center p-8">
-                <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-2 border-line/40 border-t-transparent rounded-full animate-spin" />
               </div>
             }
           >
@@ -4754,7 +4754,7 @@ function DataRoomPageInner() {
           <Suspense
             fallback={
               <div className="flex items-center justify-center p-8">
-                <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-2 border-line/40 border-t-transparent rounded-full animate-spin" />
               </div>
             }
           >
@@ -4836,7 +4836,7 @@ export default function DataRoomPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center min-h-screen">
-          <div className="w-8 h-8 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-line/40 border-t-transparent rounded-full animate-spin" />
         </div>
       }
     >

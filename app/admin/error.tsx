@@ -38,7 +38,7 @@ export default function AdminError({
           </button>
           <Link
             href="/data-room"
-            className="px-6 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-fg-secondary text-sm font-medium transition-colors"
+            className="px-6 py-2.5 rounded-xl border border-line/10 hover:bg-bg-hover text-fg-secondary text-sm font-medium transition-colors"
           >
             Go to Dashboard
           </Link>

@@ -1053,14 +1053,14 @@ export default function ReportsTab({
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+      <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-3 sm:mb-4">
           <h2 className="text-xl sm:text-2xl font-light text-fg-primary">Compliance Reports</h2>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
             <button
               onClick={exportPDFReport}
               disabled={isGeneratingEnhancedPDF}
-              className="px-3 sm:px-4 py-2 bg-white text-black rounded-lg hover:bg-bg-hover transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 sm:px-4 py-2 bg-accent-brand text-white rounded-lg hover:bg-bg-hover transition-colors flex items-center justify-center gap-2 font-medium text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isGeneratingEnhancedPDF ? (
                 <>
@@ -1086,7 +1086,7 @@ export default function ReportsTab({
             </button>
             <button
               onClick={exportComplianceReport}
-              className="px-3 sm:px-4 py-2 bg-white/10 border border-white/40 text-fg-primary rounded-lg hover:bg-white/20 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+              className="px-3 sm:px-4 py-2 bg-bg-hover border border-line/40 text-fg-primary rounded-lg hover:bg-bg-hover transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
             >
               <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -1114,7 +1114,7 @@ export default function ReportsTab({
             )}
           </div>
           {isGeneratingEnhancedPDF && (
-            <div className="mt-4 p-4 bg-white/5 border border-white/40/30 rounded-lg">
+            <div className="mt-4 p-4 bg-bg-hover border border-line/40/30 rounded-lg">
               <div className="flex items-center gap-3">
                 <svg className="animate-spin h-5 w-5 text-fg-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -1141,7 +1141,7 @@ export default function ReportsTab({
       {/* Statistics Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Total Compliances */}
-        <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+        <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h3 className="text-base sm:text-lg font-medium text-fg-secondary">Total Compliances</h3>
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -1156,7 +1156,7 @@ export default function ReportsTab({
         </div>
 
         {/* Completed */}
-        <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+        <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h3 className="text-base sm:text-lg font-medium text-fg-secondary">Completed</h3>
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -1172,7 +1172,7 @@ export default function ReportsTab({
         </div>
 
         {/* Overdue */}
-        <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+        <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h3 className="text-base sm:text-lg font-medium text-fg-secondary">Overdue</h3>
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -1190,7 +1190,7 @@ export default function ReportsTab({
         </div>
 
         {/* Pending */}
-        <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+        <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h3 className="text-base sm:text-lg font-medium text-fg-secondary">Pending</h3>
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -1206,7 +1206,7 @@ export default function ReportsTab({
         </div>
 
         {/* Not Started */}
-        <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+        <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h3 className="text-base sm:text-lg font-medium text-fg-secondary">Not Started</h3>
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-bg-hover/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -1222,7 +1222,7 @@ export default function ReportsTab({
         </div>
 
         {/* Compliance Score */}
-        <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+        <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h3 className="text-base sm:text-lg font-medium text-fg-secondary">Compliance Score</h3>
             <div className="flex items-center gap-2">
@@ -1260,7 +1260,7 @@ export default function ReportsTab({
         </div>
 
         {/* Total Penalty */}
-        <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+        <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h3 className="text-base sm:text-lg font-medium text-fg-secondary">Total Penalty</h3>
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -1279,7 +1279,7 @@ export default function ReportsTab({
       </div>
 
       {/* Status Breakdown Chart */}
-      <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+      <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
         <h3 className="text-lg sm:text-xl font-light text-fg-primary mb-4 sm:mb-6">Status Breakdown</h3>
         <div className="space-y-3 sm:space-y-4">
           {Object.entries(statusBreakdown).map(([status, count]) => {
@@ -1313,7 +1313,7 @@ export default function ReportsTab({
       </div>
 
       {/* Category Breakdown */}
-      <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+      <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
         <h3 className="text-lg sm:text-xl font-light text-fg-primary mb-4 sm:mb-6">Category Breakdown</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {Object.entries(categoryBreakdown)
@@ -1321,7 +1321,7 @@ export default function ReportsTab({
             .map(([category, count]) => {
               const percentage = totalCompliances > 0 ? ((count as number) / totalCompliances) * 100 : 0
               return (
-                <div key={category} className="border border-white/10 rounded-lg p-3 sm:p-4">
+                <div key={category} className="border border-line/10 rounded-lg p-3 sm:p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-fg-primary font-medium text-sm sm:text-base break-words">{category}</span>
                     <span className="text-fg-primary font-semibold text-sm sm:text-base flex-shrink-0 ml-2">{count}</span>
@@ -1340,7 +1340,7 @@ export default function ReportsTab({
       </div>
 
       {/* Compliance Type Breakdown */}
-      <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+      <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
         <h3 className="text-lg sm:text-xl font-light text-fg-primary mb-4 sm:mb-6">Compliance Type Breakdown</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {Object.entries(complianceTypeBreakdown)
@@ -1386,7 +1386,7 @@ export default function ReportsTab({
                       <span className="text-fg-muted font-medium">{data.notStarted}</span>
                     </div>
                   </div>
-                  <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-white/10">
+                  <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-line/10">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[10px] sm:text-xs text-fg-muted">Completion Rate</span>
                       <span className={`text-[10px] sm:text-xs font-semibold ${colors.text}`}>{Math.round(completionRate)}%</span>
@@ -1406,7 +1406,7 @@ export default function ReportsTab({
 
       {/* Financial Year Breakdown */}
       {Object.keys(fyBreakdown).length > 0 && (
-        <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+        <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <h3 className="text-lg sm:text-xl font-light text-fg-primary mb-4 sm:mb-6">Financial Year Breakdown</h3>
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {Object.entries(fyBreakdown)
@@ -1420,7 +1420,7 @@ export default function ReportsTab({
                 return getYear(b) - getYear(a)
               })
               .map(([fy, count]) => (
-                <div key={fy} className="border border-white/10 rounded-lg p-3 sm:p-4 text-center">
+                <div key={fy} className="border border-line/10 rounded-lg p-3 sm:p-4 text-center">
                   <div className="text-xl sm:text-2xl font-light text-fg-primary mb-1">{count}</div>
                   <div className="text-xs sm:text-sm text-fg-muted break-words">{fy}</div>
                 </div>
@@ -1431,7 +1431,7 @@ export default function ReportsTab({
 
       {/* Overdue Compliances Detail */}
       {overdueCompliances.length > 0 && (
-        <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+        <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
             <h3 className="text-lg sm:text-xl font-light text-fg-primary">Overdue Compliances</h3>
             <span className="px-2 sm:px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-xs sm:text-sm font-medium w-fit">
@@ -1445,7 +1445,7 @@ export default function ReportsTab({
                 const delay = calculateDelayMemoized(req.dueDate, req.status)
                 const penalty = calculatePenalty(req.penalty || '', delay, req.penalty_base_amount)
                 return (
-                  <div key={req.id} className="bg-black border border-white/10 rounded-lg p-3 space-y-2">
+                  <div key={req.id} className="bg-bg-card border border-line/10 rounded-lg p-3 space-y-2">
                     <div>
                       <div className="text-xs text-fg-muted mb-1">Category</div>
                       <div className="text-fg-primary text-sm font-medium break-words">{req.category}</div>
@@ -1483,7 +1483,7 @@ export default function ReportsTab({
             {/* Desktop Table View */}
             <table className="hidden sm:table w-full">
               <thead>
-                <tr className="border-b border-white/10">
+                <tr className="border-b border-line/10">
                   <th className="text-left py-3 px-4 text-sm font-medium text-fg-muted">Category</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-fg-muted">Requirement</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-fg-muted">Due Date</th>
@@ -1497,7 +1497,7 @@ export default function ReportsTab({
                   const delay = calculateDelay(req.dueDate, req.status)
                   const penalty = calculatePenalty(req.penalty || '', delay, req.penalty_base_amount)
                   return (
-                    <tr key={req.id} className="border-b border-white/10 hover:bg-black/50">
+                    <tr key={req.id} className="border-b border-line/10 hover:bg-black/50">
                       <td className="py-3 px-4 text-fg-primary">{req.category}</td>
                       <td className="py-3 px-4 text-fg-primary">{req.requirement}</td>
                       <td className="py-3 px-4 text-fg-muted">{req.dueDate}</td>

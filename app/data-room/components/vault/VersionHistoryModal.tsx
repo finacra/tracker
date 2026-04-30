@@ -80,7 +80,7 @@ export default function VersionHistoryModal({ isOpen, onClose, companyId, docume
                       ? 'bg-emerald-500/[0.05] border-emerald-500/20'
                       : v.deletedAt
                         ? 'bg-red-500/[0.03] border-red-500/10 opacity-60'
-                        : 'bg-white/[0.02] border-white/10'
+                        : 'bg-white/[0.02] border-line/10'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-3">
@@ -114,7 +114,7 @@ export default function VersionHistoryModal({ isOpen, onClose, companyId, docume
           <button onClick={onClose} className="text-sm text-fg-muted hover:text-fg-primary">Close</button>
           <button
             onClick={() => { onClose(); onUploadNewVersion() }}
-            className="px-4 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-bg-elevated"
+            className="px-4 py-2 bg-accent-brand text-white rounded-lg text-sm font-medium hover:bg-bg-elevated"
           >
             Upload new version
           </button>

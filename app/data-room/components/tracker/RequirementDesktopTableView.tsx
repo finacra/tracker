@@ -193,7 +193,7 @@ export default function RequirementDesktopTableView({
 
   return (
     <table className="hidden sm:table w-full">
-      <thead className="bg-black border-b border-white/10">
+      <thead className="bg-black border-b border-line/10">
         <tr>
           {canEdit && (
             <th className="px-4 py-4 text-left text-xs font-medium text-fg-muted uppercase tracking-wider w-12">
@@ -275,7 +275,7 @@ export default function RequirementDesktopTableView({
               const authority = getAuthorityForCategory(req.category)
 
               return (
-                <tr key={`${group.category}-${req.id}-${itemIndex}`} className="hover:bg-black/50 transition-colors border-t border-white/10">
+                <tr key={`${group.category}-${req.id}-${itemIndex}`} className="hover:bg-black/50 transition-colors border-t border-line/10">
                   {canEdit && (
                     <td className="px-4 py-4">
                       <input
@@ -349,7 +349,7 @@ export default function RequirementDesktopTableView({
                                 ? 'bg-yellow-500/10 text-yellow-400/90 hover:bg-yellow-500/20'
                                 : req.status === 'upcoming'
                                   ? 'bg-blue-500/10 text-blue-400/90 hover:bg-blue-500/20'
-                                  : 'bg-white/5 text-fg-muted hover:bg-white/10'
+                                  : 'bg-bg-hover text-fg-muted hover:bg-bg-hover'
                           }`}
                         style={{
                           appearance: 'none',
@@ -375,7 +375,7 @@ export default function RequirementDesktopTableView({
                                 ? 'bg-yellow-500/10 text-yellow-400/90'
                                 : req.status === 'upcoming'
                                   ? 'bg-blue-500/10 text-blue-400/90'
-                                  : 'bg-white/5 text-fg-muted'
+                                  : 'bg-bg-hover text-fg-muted'
                           }`}
                       >
                         {req.status === 'completed'
@@ -633,7 +633,7 @@ export default function RequirementDesktopTableView({
                                 value={inputVal}
                                 onChange={e => setBaseAmountInputs(prev => ({ ...prev, [req.id]: e.target.value }))}
                                 placeholder="e.g. 50000"
-                                className="w-24 px-2 py-1 text-xs bg-bg-elevated border border-line/30 rounded text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40"
+                                className="w-24 px-2 py-1 text-xs bg-bg-elevated border border-line/30 rounded text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/40"
                                 onKeyDown={async e => {
                                   if (e.key === 'Enter') {
                                     const amount = parseFloat(inputVal)
@@ -941,8 +941,8 @@ function AmountInputCell({
         focused
           ? 'border-blue-400/60 bg-bg-card/80 text-fg-primary'
           : value != null
-            ? 'border-white/10 text-fg-primary hover:border-white/25'
-            : 'border-dashed border-white/10 text-fg-muted hover:border-white/25 hover:text-fg-secondary'
+            ? 'border-line/10 text-fg-primary hover:border-line/25'
+            : 'border-dashed border-line/10 text-fg-muted hover:border-line/25 hover:text-fg-secondary'
       }`}
     />
   )

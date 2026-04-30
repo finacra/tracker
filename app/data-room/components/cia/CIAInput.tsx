@@ -49,7 +49,7 @@ export default function CIAInput({ onSend, onStop, onAttach, isStreaming, disabl
               key={i}
               onClick={() => onSend(q)}
               disabled={isStreaming || disabled}
-              className="text-xs px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-fg-secondary hover:bg-white/10 hover:border-white/20 transition-all duration-200 disabled:opacity-40"
+              className="text-xs px-3 py-1.5 rounded-full bg-bg-hover border border-line/10 text-fg-secondary hover:bg-bg-hover hover:border-line/20 transition-all duration-200 disabled:opacity-40"
             >
               {q}
             </button>
@@ -58,12 +58,12 @@ export default function CIAInput({ onSend, onStop, onAttach, isStreaming, disabl
       )}
 
       {/* Input area */}
-      <div className="relative flex items-end gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2 focus-within:border-blue-500/40 transition-colors">
+      <div className="relative flex items-end gap-2 bg-bg-hover border border-line/10 rounded-xl px-3 py-2 focus-within:border-blue-500/40 transition-colors">
         {onAttach && (
           <button
             onClick={onAttach}
             disabled={isStreaming || disabled}
-            className="flex-shrink-0 w-8 h-8 rounded-lg bg-white/5 text-fg-muted hover:bg-white/10 hover:text-fg-primary flex items-center justify-center transition-colors disabled:opacity-30 mb-0.5"
+            className="flex-shrink-0 w-8 h-8 rounded-lg bg-bg-hover text-fg-muted hover:bg-bg-hover hover:text-fg-primary flex items-center justify-center transition-colors disabled:opacity-30 mb-0.5"
             title="Upload a document"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

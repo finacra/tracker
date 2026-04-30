@@ -107,7 +107,7 @@ export default function OverviewTab({
 
   return (
     <div>
-      <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8">
+      <div className="bg-bg-card border border-line/10 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-8">
         {/* Card Header - Stack on Mobile */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-3 mb-4 sm:mb-6">
           <div className="flex items-center gap-3">
@@ -141,7 +141,7 @@ export default function OverviewTab({
           <div className="sm:ml-auto w-full sm:w-auto">
             <button
               onClick={() => router.push(`/manage-company?company_id=${currentCompany?.id || ''}`)}
-              className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-white/10 border border-white/40 text-fg-primary rounded-lg hover:bg-white/20 transition-colors text-xs sm:text-sm flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-bg-hover border border-line/40 text-fg-primary rounded-lg hover:bg-bg-hover transition-colors text-xs sm:text-sm flex items-center justify-center gap-2"
             >
               <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -154,7 +154,7 @@ export default function OverviewTab({
 
         {isLoading ? (
           <div className="py-8 sm:py-12 flex flex-col items-center justify-center">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-white/40 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-line/40 border-t-transparent rounded-full animate-spin mb-4"></div>
             <p className="text-fg-muted text-sm sm:text-base">Loading company details...</p>
           </div>
         ) : entityDetails ? (
@@ -168,7 +168,7 @@ export default function OverviewTab({
             {/* Type */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
               <label className="text-xs sm:text-sm text-fg-muted sm:w-32 sm:flex-shrink-0">Type</label>
-              <span className="inline-block bg-white text-black px-3 py-1 rounded-full text-xs sm:text-sm font-medium w-fit">
+              <span className="inline-block bg-accent-brand text-white px-3 py-1 rounded-full text-xs sm:text-sm font-medium w-fit">
                 {entityDetails.type}
               </span>
             </div>
@@ -211,7 +211,7 @@ export default function OverviewTab({
 
             {/* NIC Classification Card — derived from CIN */}
             {parsedCIN && (
-              <div className="mt-2 p-3 sm:p-4 bg-bg-card/60 border border-white/10 rounded-lg space-y-2">
+              <div className="mt-2 p-3 sm:p-4 bg-bg-card/60 border border-line/10 rounded-lg space-y-2">
                 <div className="flex items-center gap-2 mb-2">
                   <svg width="14" height="14" className="sm:w-4 sm:h-4 text-emerald-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
@@ -236,7 +236,7 @@ export default function OverviewTab({
 
                 {parsedCIN.nicDetails && (
                   <>
-                    <div className="border-t border-white/5 my-2"></div>
+                    <div className="border-t border-line/5 my-2"></div>
                     <div className="text-xs sm:text-sm font-medium text-fg-secondary mb-1">Industry Classification (NIC 2008)</div>
                     <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs sm:text-sm">
                       <span className="text-fg-muted">Section</span>
@@ -261,7 +261,7 @@ export default function OverviewTab({
 
             {/* MCA / CIN API Data */}
             {(entityDetails.authorisedCapital || entityDetails.paidUpCapital || entityDetails.rocName || entityDetails.companyStatus) && (
-              <div className="mt-2 p-3 sm:p-4 bg-bg-card/60 border border-white/10 rounded-lg">
+              <div className="mt-2 p-3 sm:p-4 bg-bg-card/60 border border-line/10 rounded-lg">
                 <div className="text-xs sm:text-sm font-medium text-fg-secondary mb-2">MCA Records</div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs sm:text-sm">
                   {entityDetails.companyStatus && (
@@ -312,7 +312,7 @@ export default function OverviewTab({
 
             {/* GST Registrations — IN-only, one card per GSTIN */}
             {currentCompany?.country_code === 'IN' && gstRegs.length > 0 && (
-              <div className="mt-2 p-3 sm:p-4 bg-bg-card/60 border border-white/10 rounded-lg">
+              <div className="mt-2 p-3 sm:p-4 bg-bg-card/60 border border-line/10 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <svg width="14" height="14" className="sm:w-4 sm:h-4 text-blue-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -337,7 +337,7 @@ export default function OverviewTab({
                   {gstRegs.map((g) => {
                     const isHome = gstHomeState && g.state && g.state.toLowerCase() === gstHomeState.toLowerCase()
                     return (
-                      <div key={g.id} className="flex items-center justify-between gap-3 px-3 py-2 bg-black/40 border border-white/5 rounded-md">
+                      <div key={g.id} className="flex items-center justify-between gap-3 px-3 py-2 bg-black/40 border border-line/5 rounded-md">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="font-mono text-xs sm:text-sm text-fg-primary tracking-wider">{g.gstin}</span>
                           {isHome && (
@@ -363,7 +363,7 @@ export default function OverviewTab({
             )}
 
             {currentCompany?.country_code === 'IN' && gstRegs.length === 0 && (
-              <div className="mt-2 p-3 sm:p-4 bg-bg-card/40 border border-dashed border-white/10 rounded-lg flex items-center justify-between">
+              <div className="mt-2 p-3 sm:p-4 bg-bg-card/40 border border-dashed border-line/10 rounded-lg flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs sm:text-sm text-fg-muted">
                   <svg width="14" height="14" className="sm:w-4 sm:h-4 text-fg-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -393,7 +393,7 @@ export default function OverviewTab({
                         e.preventDefault()
                         setSelectedDirectorId(e.target.value || null)
                       }}
-                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-black border border-white/20 rounded-lg text-fg-primary text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-black border border-line/20 rounded-lg text-fg-primary text-sm sm:text-base focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors appearance-none cursor-pointer"
                     >
                       <option value="">Select a director to view profile</option>
                       {entityDetails.directors.map((director: any) => (
@@ -403,7 +403,7 @@ export default function OverviewTab({
                       ))}
                     </select>
                   ) : (
-                    <div className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-black border border-white/20 rounded-lg text-fg-muted text-sm sm:text-base">
+                    <div className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-black border border-line/20 rounded-lg text-fg-muted text-sm sm:text-base">
                       No directors found for this company
                     </div>
                   )}
@@ -417,12 +417,12 @@ export default function OverviewTab({
                   return (
                     <div className={`p-4 sm:p-6 bg-black border rounded-lg ${director.verified
                         ? 'border-green-500/50 bg-green-500/5'
-                        : 'border-white/10'
+                        : 'border-line/10'
                       }`}>
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-4">
                         <div className="flex-1">
                           <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-bg-hover rounded-full flex items-center justify-center flex-shrink-0">
                               <span className="text-fg-primary font-semibold text-base sm:text-lg">
                                 {director.firstName?.[0] || ''}{director.lastName?.[0] || ''}
                               </span>
@@ -451,31 +451,31 @@ export default function OverviewTab({
                           {/* Director Details Grid */}
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                             {director.din && (
-                              <div className="p-3 bg-black border border-white/10 rounded-lg">
+                              <div className="p-3 bg-bg-card border border-line/10 rounded-lg">
                                 <div className="text-xs text-fg-muted mb-1">{countryConfig.labels.directorId || 'Director ID'}</div>
                                 <div className="text-fg-primary font-mono text-sm sm:text-base break-all">{director.din}</div>
                               </div>
                             )}
                             {director.pan && (
-                              <div className="p-3 bg-black border border-white/10 rounded-lg">
+                              <div className="p-3 bg-bg-card border border-line/10 rounded-lg">
                                 <div className="text-xs text-fg-muted mb-1">{countryConfig.labels.taxId}</div>
                                 <div className="text-fg-primary font-mono text-sm sm:text-base break-all">{director.pan}</div>
                               </div>
                             )}
                             {director.dob && (
-                              <div className="p-3 bg-black border border-white/10 rounded-lg">
+                              <div className="p-3 bg-bg-card border border-line/10 rounded-lg">
                                 <div className="text-xs text-fg-muted mb-1">Date of Birth</div>
                                 <div className="text-fg-primary text-sm sm:text-base">{formatDateForDisplay(director.dob)}</div>
                               </div>
                             )}
                             {director.email && (
-                              <div className="p-3 bg-black border border-white/10 rounded-lg">
+                              <div className="p-3 bg-bg-card border border-line/10 rounded-lg">
                                 <div className="text-xs text-fg-muted mb-1">Email Address</div>
                                 <div className="text-fg-primary text-sm sm:text-base break-all">{director.email}</div>
                               </div>
                             )}
                             {director.mobile && (
-                              <div className="p-3 bg-black border border-white/10 rounded-lg">
+                              <div className="p-3 bg-bg-card border border-line/10 rounded-lg">
                                 <div className="text-xs text-fg-muted mb-1">Mobile Number</div>
                                 <div className="text-fg-primary text-sm sm:text-base break-all">{director.mobile}</div>
                               </div>

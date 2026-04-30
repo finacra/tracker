@@ -105,11 +105,11 @@ export default function ReviewIngestModal({ companyId, documentId, onClose, onLi
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="bg-[#0e0e0e] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl"
+        className="bg-[#0e0e0e] border border-line/10 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-white/10 flex items-start justify-between gap-4">
+        <div className="px-6 py-4 border-b border-line/10 flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[10px] uppercase tracking-wider text-yellow-400">Review pending</span>
@@ -146,20 +146,20 @@ export default function ReviewIngestModal({ companyId, documentId, onClose, onLi
 
         {/* Reasoning (collapsible if long) */}
         {agent?.reasoning && (
-          <div className="px-6 py-3 border-b border-white/5 text-[12px] text-fg-muted bg-white/[0.02]">
+          <div className="px-6 py-3 border-b border-line/5 text-[12px] text-fg-muted bg-white/[0.02]">
             <span className="text-fg-muted">Reasoning: </span>
             {agent.reasoning}
           </div>
         )}
 
         {/* Search */}
-        <div className="px-6 py-3 border-b border-white/5">
+        <div className="px-6 py-3 border-b border-line/5">
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Filter requirements…"
-            className="w-full px-3 py-2 bg-black border border-white/10 rounded-lg text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/30"
+            className="w-full px-3 py-2 bg-bg-card border border-line/10 rounded-lg text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/30"
           />
         </div>
 
@@ -187,7 +187,7 @@ export default function ReviewIngestModal({ companyId, documentId, onClose, onLi
                       className={`w-full text-left px-4 py-2.5 rounded-lg border transition-colors ${
                         picked
                           ? 'bg-blue-500/10 border-blue-500/40'
-                          : 'border-transparent hover:bg-white/[0.04] hover:border-white/10'
+                          : 'border-transparent hover:bg-white/[0.04] hover:border-line/10'
                       }`}
                     >
                       <div className="flex items-start gap-3">
@@ -217,21 +217,21 @@ export default function ReviewIngestModal({ companyId, documentId, onClose, onLi
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-white/10 flex items-center justify-between gap-3">
+        <div className="px-6 py-3 border-t border-line/10 flex items-center justify-between gap-3">
           <span className="text-[11px] text-fg-muted">
             {pickedId ? 'Press Save to link this document.' : 'Pick a requirement to link this document to.'}
           </span>
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="px-3 py-1.5 text-xs rounded-lg border border-white/10 text-fg-secondary hover:bg-white/5"
+              className="px-3 py-1.5 text-xs rounded-lg border border-line/10 text-fg-secondary hover:bg-bg-hover"
             >
               Cancel
             </button>
             <button
               onClick={onSave}
               disabled={!pickedId || linking}
-              className="px-4 py-1.5 text-xs rounded-lg bg-white text-black hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-4 py-1.5 text-xs rounded-lg bg-accent-brand text-white hover:bg-bg-elevated disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {linking ? 'Linking…' : 'Link'}
             </button>

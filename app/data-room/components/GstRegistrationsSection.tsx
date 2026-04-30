@@ -130,7 +130,7 @@ export default function GstRegistrationsSection({ companyId }: Props) {
                 type="button"
                 onClick={handleSaveEdit}
                 disabled={busyId === r.id}
-                className="px-3 py-1 text-xs bg-white text-black rounded hover:bg-bg-elevated disabled:opacity-50"
+                className="px-3 py-1 text-xs bg-accent-brand text-white rounded hover:bg-bg-elevated disabled:opacity-50"
               >
                 Save
               </button>
@@ -202,7 +202,7 @@ export default function GstRegistrationsSection({ companyId }: Props) {
           type="button"
           onClick={handleAdd}
           disabled={busyId === '__new' || newGstin.length !== 15}
-          className="px-4 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-bg-elevated transition-colors disabled:opacity-50"
+          className="px-4 py-2 bg-accent-brand text-white rounded-lg text-sm font-medium hover:bg-bg-elevated transition-colors disabled:opacity-50"
         >
           {busyId === '__new' ? 'Adding…' : 'Add GSTIN'}
         </button>

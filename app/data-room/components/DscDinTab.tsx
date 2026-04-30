@@ -105,7 +105,7 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
                 {/* Director Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 pb-4 border-b border-line/10">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/10 flex items-center justify-center text-fg-primary font-medium text-lg sm:text-xl">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-bg-hover flex items-center justify-center text-fg-primary font-medium text-lg sm:text-xl">
                       {directorName.charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -165,7 +165,7 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
                         </div>
                       </div>
                     ) : (
-                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-line/15 rounded-lg cursor-pointer hover:border-white/40 transition-colors bg-bg-card/50">
+                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-line/15 rounded-lg cursor-pointer hover:border-line/40 transition-colors bg-bg-card/50">
                         <div className="flex flex-col items-center justify-center pt-4 pb-4 px-4">
                           <svg className="w-8 h-8 text-fg-muted mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -227,7 +227,7 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
                         </div>
                       </div>
                     ) : (
-                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-line/15 rounded-lg cursor-pointer hover:border-white/40 transition-colors bg-bg-card/50">
+                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-line/15 rounded-lg cursor-pointer hover:border-line/40 transition-colors bg-bg-card/50">
                         <div className="flex flex-col items-center justify-center pt-4 pb-4 px-4">
                           <svg className="w-8 h-8 text-fg-muted mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -276,7 +276,7 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
                   </label>
 
                   {directorData.hasCredentials && (
-                    <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                    <div className="bg-bg-hover border border-line/10 rounded-lg p-4 space-y-3">
                       <div>
                         <label className="block text-xs sm:text-sm font-medium text-fg-secondary mb-1.5">
                           Portal Email
@@ -291,7 +291,7 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
                             }))
                           }}
                           placeholder="portal@example.com"
-                          className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-fg-primary text-xs sm:text-sm placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                          className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-fg-primary text-xs sm:text-sm placeholder:text-fg-muted focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors"
                         />
                       </div>
                       <div>
@@ -308,7 +308,7 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
                             }))
                           }}
                           placeholder="Enter password"
-                          className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-fg-primary text-xs sm:text-sm placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                          className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-fg-primary text-xs sm:text-sm placeholder:text-fg-muted focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors"
                         />
                       </div>
                     </div>
@@ -330,7 +330,7 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
                           [directorId]: { ...prev[directorId] || getDefaultDirectorData(), expiryDate: e.target.value }
                         }))
                       }}
-                      className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-fg-primary text-xs sm:text-sm focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                      className="w-full px-3 py-2 bg-black border border-line/15 rounded-lg text-fg-primary text-xs sm:text-sm focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors"
                     />
                     <p className="text-[10px] sm:text-xs text-fg-muted mt-1">Default: September 30 (yearly)</p>
                   </div>
@@ -362,7 +362,7 @@ export default function DscDinTab({ entityDetails }: DscDinTabProps) {
                       // In a real implementation, this would save to the database
                       showToast('DSC/DIN data saved successfully for ' + directorName, 'success')
                     }}
-                    className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-white text-black rounded-lg hover:bg-bg-elevated transition-colors font-medium text-sm sm:text-base"
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-accent-brand text-white rounded-lg hover:bg-bg-elevated transition-colors font-medium text-sm sm:text-base"
                   >
                     Save Changes
                   </button>

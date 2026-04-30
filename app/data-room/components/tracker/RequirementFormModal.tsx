@@ -193,14 +193,14 @@ export default function RequirementFormModal({
   }
 
   const inputClass =
-    'w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors'
+    'w-full px-4 py-3 bg-black border border-line/20 rounded-lg text-fg-primary focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors'
   const labelClass = 'block text-sm font-medium text-fg-secondary mb-2'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="p-6 border-b border-white/10">
+        <div className="p-6 border-b border-line/10">
           <div className="flex items-center justify-between">
             <h3 className="text-2xl font-light text-fg-primary">
               {isEdit ? 'Edit Compliance Requirement' : 'Create Compliance Requirement'}
@@ -342,7 +342,7 @@ export default function RequirementFormModal({
           </div>
 
           {/* ── Penalty Calculator (structured config) ───────────────────────── */}
-          <div className="border border-white/10 rounded-xl p-4 space-y-4 bg-white/[0.02]">
+          <div className="border border-line/10 rounded-xl p-4 space-y-4 bg-white/[0.02]">
             <div className="flex items-center gap-2 mb-1">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-yellow-400">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
@@ -509,7 +509,7 @@ export default function RequirementFormModal({
                     }))
                   }
                 }}
-                className="flex-1 px-4 py-2 bg-black border border-white/20 rounded-lg text-fg-primary focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                className="flex-1 px-4 py-2 bg-black border border-line/20 rounded-lg text-fg-primary focus:outline-none focus:border-line/40 focus:ring-1 focus:ring-white/40 transition-colors"
                 placeholder="Type document name and press Enter or Add"
               />
               <button
@@ -523,7 +523,7 @@ export default function RequirementFormModal({
                     }))
                   }
                 }}
-                className="px-4 py-2 bg-white/10 text-fg-primary rounded-lg hover:bg-white/20 transition-colors text-sm"
+                className="px-4 py-2 bg-bg-hover text-fg-primary rounded-lg hover:bg-bg-hover transition-colors text-sm"
               >
                 Add
               </button>
@@ -585,7 +585,7 @@ export default function RequirementFormModal({
           <div className="flex items-center gap-3 pt-2">
             <button
               onClick={handleSubmit}
-              className="flex-1 bg-white text-black px-6 py-3 rounded-lg hover:bg-bg-elevated transition-colors font-medium"
+              className="flex-1 bg-accent-brand text-white px-6 py-3 rounded-lg hover:bg-bg-elevated transition-colors font-medium"
             >
               {isEdit ? 'Update' : 'Create'}
             </button>
