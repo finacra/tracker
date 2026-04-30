@@ -26,35 +26,36 @@ export default function TrackerCategoryFilters({
   }, [requirements])
 
   return (
-    <div className="flex items-center gap-2 flex-wrap overflow-x-auto pb-2 -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide">
+    <div className="flex items-center gap-1 flex-wrap overflow-x-auto pb-2 -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide">
       {(['all', 'overdue', 'critical', 'pending', 'upcoming', 'completed'] as const).map((filter) => {
         const count = counts[filter]
-        const labels: Record<string, { short: string; long: string }> = {
-          all: { short: 'All', long: 'All' },
-          overdue: { short: 'Overdue', long: 'Overdue' },
-          critical: { short: 'Critical', long: 'Critical' },
-          pending: { short: 'Pending', long: 'Pending' },
-          upcoming: { short: 'Upcoming', long: 'Upcoming' },
-          completed: { short: 'Completed', long: 'Completed' },
+        const labels: Record<string, string> = {
+          all: 'All',
+          overdue: 'Overdue',
+          critical: 'Critical',
+          pending: 'Pending',
+          upcoming: 'Upcoming',
+          completed: 'Completed',
         }
+        const isActive = categoryFilter === filter
         return (
           <button
             key={filter}
+            type="button"
             onClick={() => setCategoryFilter(filter)}
-            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg border-2 transition-colors text-xs sm:text-sm whitespace-nowrap flex-shrink-0 ${categoryFilter === filter
-                ? 'border-white/40 bg-white/10 text-white'
-                : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
-              }`}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-token-md text-xs transition-colors duration-token ease-token whitespace-nowrap flex-shrink-0 ${
+              isActive
+                ? 'bg-bg-elevated text-fg-primary border border-line/15'
+                : 'text-fg-muted hover:text-fg-primary hover:bg-bg-hover border border-transparent'
+            }`}
           >
-            <span className="capitalize">
-              {labels[filter]?.long || filter}
-            </span>
+            <span>{labels[filter] || filter}</span>
             {count > 0 && (
-              <span className={`ml-1.5 text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full ${
-                categoryFilter === filter
-                  ? 'bg-white/20 text-white'
-                  : 'bg-gray-700 text-gray-300'
-              }`}>
+              <span
+                className={`text-[10px] font-mono tabular-nums px-1.5 py-px rounded-full ${
+                  isActive ? 'bg-bg-card text-fg-secondary' : 'bg-bg-elevated text-fg-muted'
+                }`}
+              >
                 {count}
               </span>
             )}

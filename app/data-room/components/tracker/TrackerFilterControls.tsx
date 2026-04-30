@@ -64,22 +64,22 @@ export default function TrackerFilterControls({
                 setSelectedQuarter(null)
               }
             }}
-            className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors text-sm sm:text-base focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 appearance-none cursor-pointer bg-gray-900 ${selectedTrackerFY
-                ? 'border-white/40 bg-white/10 text-white'
-                : 'border-gray-700 text-white hover:border-gray-600'
+            className={`w-full sm:w-auto px-3 py-2 rounded-token-md border transition-colors duration-token ease-token text-sm focus:outline-none focus:border-accent-brand/60 focus:ring-2 focus:ring-accent-brand/25 appearance-none cursor-pointer ${selectedTrackerFY
+                ? 'bg-bg-card text-fg-primary border-line/30'
+                : 'bg-bg-card text-fg-secondary border-line/15 hover:border-line/30 hover:text-fg-primary'
               }`}
             title={selectedTrackerFY ? `Includes months: ${getFinancialYearMonths(countryCode, selectedTrackerFY).join(', ')}` : 'Select financial year'}
           >
-            <option value="" className="bg-gray-900 text-white">All Years</option>
+            <option value="" className="bg-bg-card text-fg-primary">All Years</option>
             {financialYears.map((fy) => (
-              <option key={fy} value={fy} className="bg-gray-900 text-white">
+              <option key={fy} value={fy} className="bg-bg-card text-fg-primary">
                 {fy}
               </option>
             ))}
           </select>
           {selectedTrackerFY && (
-            <div className="absolute top-full left-0 mt-1 px-2 py-1 bg-gray-900 border border-gray-700 rounded text-xs text-gray-300 z-10 whitespace-nowrap shadow-lg">
-              Months: {getFinancialYearMonths(countryCode, selectedTrackerFY).slice(0, 4).join(', ')}...
+            <div className="absolute top-full left-0 mt-1 px-2 py-1 bg-bg-card border border-line/15 rounded-token-sm text-[11px] text-fg-muted z-10 whitespace-nowrap shadow-popover">
+              Months: {getFinancialYearMonths(countryCode, selectedTrackerFY).slice(0, 4).join(', ')}…
             </div>
           )}
         </div>
@@ -91,9 +91,9 @@ export default function TrackerFilterControls({
             setIsMonthDropdownOpen(!isMonthDropdownOpen)
             setIsQuarterDropdownOpen(false)
           }}
-          className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors flex items-center justify-between sm:justify-start gap-2 text-sm sm:text-base ${selectedMonth
-              ? 'border-white/40 bg-white/10 text-white'
-              : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
+          className={`w-full sm:w-auto px-3 py-2 rounded-token-md border transition-colors duration-token ease-token flex items-center justify-between sm:justify-start gap-2 text-sm ${selectedMonth
+              ? 'bg-bg-card text-fg-primary border-line/30'
+              : 'bg-bg-card text-fg-secondary border-line/15 hover:border-line/30 hover:text-fg-primary'
             }`}
         >
           <span>{selectedMonth || 'All Months'}</span>
@@ -117,21 +117,21 @@ export default function TrackerFilterControls({
               className="fixed inset-0 z-10"
               onClick={() => setIsMonthDropdownOpen(false)}
             />
-            <div className="absolute top-full left-0 mt-2 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-20 min-w-[200px] max-h-64 overflow-y-auto">
+            <div className="absolute top-full left-0 mt-2 bg-bg-card border border-line/15 rounded-token-md shadow-popover z-20 min-w-[200px] max-h-64 overflow-y-auto">
               {/* All Months option */}
               <button
                 onClick={() => {
                   setSelectedMonth(null)
                   setIsMonthDropdownOpen(false)
                 }}
-                className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors text-sm ${selectedMonth === null
-                    ? 'bg-white/10 text-white font-medium'
-                    : 'text-gray-200'
+                className={`w-full px-4 py-2 text-left hover:bg-bg-hover transition-colors duration-token ease-token text-sm ${selectedMonth === null
+                    ? 'bg-bg-hover text-fg-primary font-medium'
+                    : 'text-fg-secondary'
                   }`}
               >
                 All Months
               </button>
-              <div className="border-t border-gray-700" />
+              <div className="border-t border-line/10" />
               {months.map((month) => (
                 <button
                   key={month}
@@ -140,9 +140,9 @@ export default function TrackerFilterControls({
                     setIsMonthDropdownOpen(false)
                     setSelectedQuarter(null) // Clear quarter when month is selected
                   }}
-                  className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors text-sm ${selectedMonth === month
-                      ? 'bg-white/10 text-white font-medium'
-                      : 'text-gray-200'
+                  className={`w-full px-4 py-2 text-left hover:bg-bg-hover transition-colors duration-token ease-token text-sm ${selectedMonth === month
+                      ? 'bg-bg-hover text-fg-primary font-medium'
+                      : 'text-fg-secondary'
                     }`}
                 >
                   {month}
@@ -159,9 +159,9 @@ export default function TrackerFilterControls({
             setIsQuarterDropdownOpen(!isQuarterDropdownOpen)
             setIsMonthDropdownOpen(false)
           }}
-          className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors flex items-center justify-between sm:justify-start gap-2 text-sm sm:text-base ${selectedQuarter
-              ? 'border-white/40 bg-white/10 text-white'
-              : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
+          className={`w-full sm:w-auto px-3 py-2 rounded-token-md border transition-colors duration-token ease-token flex items-center justify-between sm:justify-start gap-2 text-sm ${selectedQuarter
+              ? 'bg-bg-card text-fg-primary border-line/30'
+              : 'bg-bg-card text-fg-secondary border-line/15 hover:border-line/30 hover:text-fg-primary'
             }`}
         >
           <span>{selectedQuarter ? quarters.find(q => q.value === selectedQuarter)?.label.split(' - ')[0] : 'All Quarters'}</span>
@@ -185,21 +185,21 @@ export default function TrackerFilterControls({
               className="fixed inset-0 z-10"
               onClick={() => setIsQuarterDropdownOpen(false)}
             />
-            <div className="absolute top-full left-0 mt-2 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-20 min-w-[200px]">
+            <div className="absolute top-full left-0 mt-2 bg-bg-card border border-line/15 rounded-token-md shadow-popover z-20 min-w-[200px]">
               {/* All Quarters option */}
               <button
                 onClick={() => {
                   setSelectedQuarter(null)
                   setIsQuarterDropdownOpen(false)
                 }}
-                className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors text-sm ${selectedQuarter === null
-                    ? 'bg-white/10 text-white font-medium'
-                    : 'text-gray-200'
+                className={`w-full px-4 py-2 text-left hover:bg-bg-hover transition-colors duration-token ease-token text-sm ${selectedQuarter === null
+                    ? 'bg-bg-hover text-fg-primary font-medium'
+                    : 'text-fg-secondary'
                   }`}
               >
                 All Quarters
               </button>
-              <div className="border-t border-gray-700" />
+              <div className="border-t border-line/10" />
               {quarters.map((quarter) => (
                 <button
                   key={quarter.value}
@@ -208,9 +208,9 @@ export default function TrackerFilterControls({
                     setIsQuarterDropdownOpen(false)
                     setSelectedMonth(null) // Clear month when quarter is selected
                   }}
-                  className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors text-sm ${selectedQuarter === quarter.value
-                      ? 'bg-white/10 text-white font-medium'
-                      : 'text-gray-200'
+                  className={`w-full px-4 py-2 text-left hover:bg-bg-hover transition-colors duration-token ease-token text-sm ${selectedQuarter === quarter.value
+                      ? 'bg-bg-hover text-fg-primary font-medium'
+                      : 'text-fg-secondary'
                     }`}
                 >
                   {quarter.label}
@@ -228,9 +228,9 @@ export default function TrackerFilterControls({
             setIsMonthDropdownOpen(false)
             setIsQuarterDropdownOpen(false)
           }}
-          className={`w-full sm:w-auto px-3 sm:px-4 py-2 rounded-lg border-2 transition-colors flex items-center justify-between sm:justify-start gap-2 text-sm sm:text-base ${selectedCategory !== 'all'
-              ? 'border-white/40 bg-white/10 text-white'
-              : 'border-gray-700 bg-primary-dark-card text-white hover:border-gray-600'
+          className={`w-full sm:w-auto px-3 py-2 rounded-token-md border transition-colors duration-token ease-token flex items-center justify-between sm:justify-start gap-2 text-sm ${selectedCategory !== 'all'
+              ? 'bg-bg-card text-fg-primary border-line/30'
+              : 'bg-bg-card text-fg-secondary border-line/15 hover:border-line/30 hover:text-fg-primary'
             }`}
         >
           <span>{selectedCategory === 'all' ? 'All Categories' : selectedCategory}</span>
@@ -254,21 +254,21 @@ export default function TrackerFilterControls({
               className="fixed inset-0 z-10"
               onClick={() => setIsCategoryDropdownOpen(false)}
             />
-            <div className="absolute top-full left-0 mt-2 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-20 min-w-[200px] max-h-64 overflow-y-auto">
+            <div className="absolute top-full left-0 mt-2 bg-bg-card border border-line/15 rounded-token-md shadow-popover z-20 min-w-[200px] max-h-64 overflow-y-auto">
               {/* All Categories option */}
               <button
                 onClick={() => {
                   setSelectedCategory('all')
                   setIsCategoryDropdownOpen(false)
                 }}
-                className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors text-sm ${selectedCategory === 'all'
-                    ? 'bg-white/10 text-white font-medium'
-                    : 'text-gray-200'
+                className={`w-full px-4 py-2 text-left hover:bg-bg-hover transition-colors duration-token ease-token text-sm ${selectedCategory === 'all'
+                    ? 'bg-bg-hover text-fg-primary font-medium'
+                    : 'text-fg-secondary'
                   }`}
               >
                 All Categories
               </button>
-              <div className="border-t border-gray-700" />
+              <div className="border-t border-line/10" />
               {/* Get unique categories from requirements */}
               {(() => {
                 const allCategories = Array.from(new Set((regulatoryRequirements || []).map(req => req.category).filter(Boolean)))
@@ -284,9 +284,9 @@ export default function TrackerFilterControls({
                       setSelectedCategory(category)
                       setIsCategoryDropdownOpen(false)
                     }}
-                    className={`w-full px-4 py-2 text-left hover:bg-gray-800 transition-colors text-sm ${selectedCategory === category
-                        ? 'bg-white/10 text-white font-medium'
-                        : 'text-gray-200'
+                    className={`w-full px-4 py-2 text-left hover:bg-bg-hover transition-colors duration-token ease-token text-sm ${selectedCategory === category
+                        ? 'bg-bg-hover text-fg-primary font-medium'
+                        : 'text-fg-secondary'
                       }`}
                   >
                     {category}

@@ -73,7 +73,7 @@ const FREQ_ACCENT: Record<string, string> = {
   annual: 'text-green-300 bg-green-500/10 ring-green-500/25',
   'one-time': 'text-yellow-300 bg-yellow-500/10 ring-yellow-500/25',
   'event-based': 'text-fuchsia-300 bg-fuchsia-500/10 ring-fuchsia-500/25',
-  unspecified: 'text-gray-300 bg-white/5 ring-white/15',
+  unspecified: 'text-fg-secondary bg-bg-hover ring-line/15',
 }
 
 const CATEGORY_THEME: Record<string, { ring: string; bg: string; text: string; border: string }> = {
@@ -216,24 +216,24 @@ export default function TrackerCategoryAccordionView(props: Props) {
     <div className="space-y-3 sm:space-y-4">
       {/* Toolbar */}
       <div className="flex items-center justify-between px-1">
-        <div className="text-xs sm:text-sm text-gray-400">
-          <span className="text-white font-medium">{totalCount}</span> compliance
-          {totalCount === 1 ? '' : 's'} across{' '}
-          <span className="text-white font-medium">{groupedByCategory.length}</span>{' '}
+        <div className="text-xs text-fg-muted">
+          <span className="text-fg-primary font-mono tabular-nums">{totalCount}</span>{' '}
+          compliance{totalCount === 1 ? '' : 's'} across{' '}
+          <span className="text-fg-primary font-mono tabular-nums">{groupedByCategory.length}</span>{' '}
           categor{groupedByCategory.length === 1 ? 'y' : 'ies'}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={expandAll}
-            className="px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-300 hover:text-white hover:border-white/30 hover:bg-white/5 transition-colors"
+            className="px-3 py-1.5 text-xs rounded-token-md text-fg-muted hover:text-fg-primary hover:bg-bg-hover transition-colors duration-token ease-token"
           >
             Expand all
           </button>
           <button
             type="button"
             onClick={collapseAll}
-            className="px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-300 hover:text-white hover:border-white/30 hover:bg-white/5 transition-colors"
+            className="px-3 py-1.5 text-xs rounded-token-md text-fg-muted hover:text-fg-primary hover:bg-bg-hover transition-colors duration-token ease-token"
           >
             Collapse all
           </button>
@@ -250,13 +250,13 @@ export default function TrackerCategoryAccordionView(props: Props) {
           return (
             <div
               key={group.category}
-              className={`bg-black/40 border ${catOpen ? theme.border : 'border-white/10'} rounded-xl overflow-hidden transition-colors`}
+              className={`bg-bg-card border ${catOpen ? theme.border : 'border-white/10'} rounded-xl overflow-hidden transition-colors`}
             >
               {/* Category header */}
               <button
                 type="button"
                 onClick={() => toggleCategory(group.category)}
-                className="w-full flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 sm:py-4 hover:bg-white/[0.03] transition-colors text-left"
+                className="w-full flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 sm:py-4 hover:bg-bg-hover transition-colors duration-token ease-token text-left"
                 aria-expanded={catOpen}
               >
                 <div
@@ -265,7 +265,7 @@ export default function TrackerCategoryAccordionView(props: Props) {
                   {idx + 1}
                 </div>
                 <div className="flex-1 min-w-0 flex items-center gap-3 flex-wrap">
-                  <span className="text-white font-semibold text-base sm:text-lg truncate">
+                  <span className="text-fg-primary font-medium text-base sm:text-lg truncate tracking-tight">
                     {group.category}
                   </span>
                   <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full ${theme.bg} ${theme.text} font-medium`}>
@@ -276,8 +276,8 @@ export default function TrackerCategoryAccordionView(props: Props) {
                   <div className="hidden md:flex items-center gap-1.5 flex-shrink-0">
                     {freqs.map((f, i) => (
                       <React.Fragment key={f}>
-                        {i > 0 && <span className="text-gray-600 text-[10px]">·</span>}
-                        <span className="text-[11px] text-gray-400 font-mono">{f}</span>
+                        {i > 0 && <span className="text-fg-muted/60 text-[10px]">·</span>}
+                        <span className="text-[11px] text-fg-muted font-mono">{f}</span>
                       </React.Fragment>
                     ))}
                   </div>
@@ -289,7 +289,7 @@ export default function TrackerCategoryAccordionView(props: Props) {
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
-                  className={`flex-shrink-0 text-gray-400 transition-transform duration-200 ${catOpen ? 'rotate-90' : ''}`}
+                  className={`flex-shrink-0 text-fg-muted transition-transform duration-200 ${catOpen ? 'rotate-90' : ''}`}
                   aria-hidden="true"
                 >
                   <polyline points="9 18 15 12 9 6" />
@@ -298,7 +298,7 @@ export default function TrackerCategoryAccordionView(props: Props) {
 
               {/* Body — Level 2 (Frequency) sub-accordions */}
               {catOpen && (
-                <div className="border-t border-white/5 p-3 sm:p-4 space-y-2.5">
+                <div className="border-t border-line/10 p-3 sm:p-4 space-y-2.5">
                   {freqGroups.map((fg) => {
                     const freqKeyId = `${group.category}::${fg.freq}`
                     const freqOpen = openFreqs.has(freqKeyId)
@@ -307,12 +307,12 @@ export default function TrackerCategoryAccordionView(props: Props) {
                     return (
                       <div
                         key={freqKeyId}
-                        className="bg-white/[0.02] border border-white/10 rounded-lg overflow-hidden"
+                        className="bg-bg-elevated border border-line/10 rounded-lg overflow-hidden"
                       >
                         <button
                           type="button"
                           onClick={() => toggleFreq(freqKeyId)}
-                          className="w-full flex items-center gap-3 px-3 sm:px-4 py-2.5 hover:bg-white/[0.04] transition-colors text-left"
+                          className="w-full flex items-center gap-3 px-3 sm:px-4 py-2.5 hover:bg-bg-hover transition-colors duration-token ease-token text-left"
                           aria-expanded={freqOpen}
                         >
                           <span
@@ -320,8 +320,8 @@ export default function TrackerCategoryAccordionView(props: Props) {
                           >
                             {FREQ_LABEL[fg.freq]}
                           </span>
-                          <span className="text-gray-400 text-xs">
-                            <span className="text-white font-medium">{fg.items.length}</span>{' '}
+                          <span className="text-fg-muted text-xs">
+                            <span className="text-fg-primary font-mono tabular-nums">{fg.items.length}</span>{' '}
                             compliance{fg.items.length === 1 ? '' : 's'}
                           </span>
                           <span className="flex-1" />
@@ -332,7 +332,7 @@ export default function TrackerCategoryAccordionView(props: Props) {
                             fill="none"
                             stroke="currentColor"
                             strokeWidth="2"
-                            className={`flex-shrink-0 text-gray-500 transition-transform duration-200 ${freqOpen ? 'rotate-90' : ''}`}
+                            className={`flex-shrink-0 text-fg-muted transition-transform duration-200 ${freqOpen ? 'rotate-90' : ''}`}
                             aria-hidden="true"
                           >
                             <polyline points="9 18 15 12 9 6" />
@@ -341,25 +341,25 @@ export default function TrackerCategoryAccordionView(props: Props) {
 
                         {/* Body — Level 3 (Form) sub-accordions */}
                         {freqOpen && (
-                          <div className="border-t border-white/5 p-2 sm:p-3 space-y-2">
+                          <div className="border-t border-line/10 p-2 sm:p-3 space-y-2">
                             {formGroups.map((form) => {
                               const formKeyId = `${freqKeyId}::${form.form}`
                               const formOpen = openForms.has(formKeyId)
                               return (
                                 <div
                                   key={formKeyId}
-                                  className="bg-black/30 border border-white/10 rounded-md overflow-hidden"
+                                  className="bg-bg-card border border-line/10 rounded-md overflow-hidden"
                                 >
                                   <button
                                     type="button"
                                     onClick={() => toggleForm(formKeyId)}
-                                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/[0.04] transition-colors text-left"
+                                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-bg-hover transition-colors duration-token ease-token text-left"
                                     aria-expanded={formOpen}
                                   >
-                                    <span className="text-gray-200 text-sm font-medium truncate">
+                                    <span className="text-fg-primary text-sm font-medium truncate">
                                       {form.form}
                                     </span>
-                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400 font-mono">
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-bg-hover text-fg-muted font-mono">
                                       {form.items.length}
                                     </span>
                                     <span className="flex-1" />
@@ -370,14 +370,14 @@ export default function TrackerCategoryAccordionView(props: Props) {
                                       fill="none"
                                       stroke="currentColor"
                                       strokeWidth="2"
-                                      className={`flex-shrink-0 text-gray-500 transition-transform duration-200 ${formOpen ? 'rotate-90' : ''}`}
+                                      className={`flex-shrink-0 text-fg-muted transition-transform duration-200 ${formOpen ? 'rotate-90' : ''}`}
                                       aria-hidden="true"
                                     >
                                       <polyline points="9 18 15 12 9 6" />
                                     </svg>
                                   </button>
                                   {formOpen && (
-                                    <div className="border-t border-white/5">
+                                    <div className="border-t border-line/10">
                                       <div className="overflow-x-auto scrollbar-hide">
                                         <RequirementDesktopTableView
                                           {...rest}
@@ -421,12 +421,12 @@ function ShellView({ shellCategories }: { shellCategories: string[] }) {
   return (
     <div className="space-y-3 sm:space-y-4">
       <div className="flex items-center justify-between px-1">
-        <div className="text-xs sm:text-sm text-gray-500">Loading compliances…</div>
+        <div className="text-xs sm:text-sm text-fg-muted">Loading compliances…</div>
         <div className="flex items-center gap-2">
-          <span className="px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-600">
+          <span className="px-3 py-1.5 text-xs rounded-token-md border border-line/10 text-fg-muted">
             Expand all
           </span>
-          <span className="px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-600">
+          <span className="px-3 py-1.5 text-xs rounded-token-md border border-line/10 text-fg-muted">
             Collapse all
           </span>
         </div>
@@ -437,7 +437,7 @@ function ShellView({ shellCategories }: { shellCategories: string[] }) {
           return (
             <div
               key={cat}
-              className="bg-black/40 border border-white/10 rounded-xl overflow-hidden"
+              className="bg-bg-card border border-white/10 rounded-xl overflow-hidden"
             >
               <div
                 className="w-full flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3 sm:py-4 text-left select-none"
@@ -449,7 +449,7 @@ function ShellView({ shellCategories }: { shellCategories: string[] }) {
                   {idx + 1}
                 </div>
                 <div className="flex-1 min-w-0 flex items-center gap-3 flex-wrap">
-                  <span className="text-white font-semibold text-base sm:text-lg truncate">
+                  <span className="text-fg-primary font-medium text-base sm:text-lg truncate tracking-tight">
                     {cat}
                   </span>
                   <span
