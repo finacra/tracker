@@ -123,32 +123,32 @@ export default function EmailPreferencesPage() {
 
       {/* Content */}
       <main className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-line/15 overflow-hidden">
           {/* Notification Types */}
           <div className="p-6 border-b border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Email Notifications</h2>
+            <h2 className="text-lg font-semibold text-fg-primary mb-1">Email Notifications</h2>
             <p className="text-sm text-fg-muted mb-6">Choose which emails you want to receive</p>
 
             <div className="space-y-4">
               {/* All emails toggle */}
-              <label className="flex items-center justify-between p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
+              <label className="flex items-center justify-between p-4 bg-bg-elevated rounded-lg cursor-pointer hover:bg-bg-elevated transition">
                 <div>
-                  <div className="font-medium text-gray-900">Unsubscribe from all emails</div>
+                  <div className="font-medium text-fg-primary">Unsubscribe from all emails</div>
                   <div className="text-sm text-fg-muted">Stop receiving all notification emails</div>
                 </div>
                 <input
                   type="checkbox"
                   checked={preferences.unsubscribe_all}
                   onChange={() => handleToggle('unsubscribe_all')}
-                  className="w-5 h-5 rounded border-gray-300 text-[#1E3A5F] focus:ring-[#1E3A5F]"
+                  className="w-5 h-5 rounded border-line/15 text-[#1E3A5F] focus:ring-[#1E3A5F]"
                 />
               </label>
 
               <div className={preferences.unsubscribe_all ? 'opacity-50 pointer-events-none' : ''}>
                 {/* Status changes */}
-                <label className="flex items-center justify-between p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                <label className="flex items-center justify-between p-4 rounded-lg cursor-pointer hover:bg-bg-elevated transition">
                   <div>
-                    <div className="font-medium text-gray-900">Status change notifications</div>
+                    <div className="font-medium text-fg-primary">Status change notifications</div>
                     <div className="text-sm text-fg-muted">
                       Get notified when compliance items are updated
                     </div>
@@ -157,14 +157,14 @@ export default function EmailPreferencesPage() {
                     type="checkbox"
                     checked={!preferences.unsubscribe_status_changes}
                     onChange={() => handleToggle('unsubscribe_status_changes')}
-                    className="w-5 h-5 rounded border-gray-300 text-[#1E3A5F] focus:ring-[#1E3A5F]"
+                    className="w-5 h-5 rounded border-line/15 text-[#1E3A5F] focus:ring-[#1E3A5F]"
                   />
                 </label>
 
                 {/* Reminders */}
-                <label className="flex items-center justify-between p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                <label className="flex items-center justify-between p-4 rounded-lg cursor-pointer hover:bg-bg-elevated transition">
                   <div>
-                    <div className="font-medium text-gray-900">Compliance reminders</div>
+                    <div className="font-medium text-fg-primary">Compliance reminders</div>
                     <div className="text-sm text-fg-muted">
                       Receive reminders for upcoming and overdue compliances
                     </div>
@@ -173,14 +173,14 @@ export default function EmailPreferencesPage() {
                     type="checkbox"
                     checked={!preferences.unsubscribe_reminders}
                     onChange={() => handleToggle('unsubscribe_reminders')}
-                    className="w-5 h-5 rounded border-gray-300 text-[#1E3A5F] focus:ring-[#1E3A5F]"
+                    className="w-5 h-5 rounded border-line/15 text-[#1E3A5F] focus:ring-[#1E3A5F]"
                   />
                 </label>
 
                 {/* Team updates */}
-                <label className="flex items-center justify-between p-4 rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                <label className="flex items-center justify-between p-4 rounded-lg cursor-pointer hover:bg-bg-elevated transition">
                   <div>
-                    <div className="font-medium text-gray-900">Team updates</div>
+                    <div className="font-medium text-fg-primary">Team updates</div>
                     <div className="text-sm text-fg-muted">
                       Get notified about team invitations and member changes
                     </div>
@@ -189,7 +189,7 @@ export default function EmailPreferencesPage() {
                     type="checkbox"
                     checked={!preferences.unsubscribe_team_updates}
                     onChange={() => handleToggle('unsubscribe_team_updates')}
-                    className="w-5 h-5 rounded border-gray-300 text-[#1E3A5F] focus:ring-[#1E3A5F]"
+                    className="w-5 h-5 rounded border-line/15 text-[#1E3A5F] focus:ring-[#1E3A5F]"
                   />
                 </label>
               </div>
@@ -198,7 +198,7 @@ export default function EmailPreferencesPage() {
 
           {/* Digest Frequency */}
           <div className="p-6 border-b border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Digest Frequency</h2>
+            <h2 className="text-lg font-semibold text-fg-primary mb-1">Digest Frequency</h2>
             <p className="text-sm text-fg-muted mb-6">
               How often would you like to receive reminder digests?
             </p>
@@ -216,10 +216,10 @@ export default function EmailPreferencesPage() {
                   className={`p-4 rounded-lg border-2 text-left transition ${
                     preferences.digest_frequency === option.value
                       ? 'border-[#1E3A5F] bg-[#1E3A5F]/5'
-                      : 'border-gray-200 hover:border-gray-300'
+                      : 'border-line/15 hover:border-line/15'
                   }`}
                 >
-                  <div className="font-medium text-gray-900">{option.label}</div>
+                  <div className="font-medium text-fg-primary">{option.label}</div>
                   <div className="text-xs text-fg-muted mt-1">{option.desc}</div>
                 </button>
               ))}
@@ -227,7 +227,7 @@ export default function EmailPreferencesPage() {
           </div>
 
           {/* Save button */}
-          <div className="p-6 bg-gray-50 flex items-center justify-between">
+          <div className="p-6 bg-bg-elevated flex items-center justify-between">
             <div>
               {error && <p className="text-red-600 text-sm">{error}</p>}
               {saved && (

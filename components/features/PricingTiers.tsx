@@ -236,7 +236,7 @@ export default function PricingTiers() {
                     href="/contact?plan=enterprise&source=pricing"
                     className={`block w-full py-3 px-6 rounded-lg font-light transition-all text-center ${
                       tier.popular
-                        ? 'bg-bg-hover hover:bg-gray-600 text-white'
+                        ? 'bg-bg-hover hover:bg-bg-hover text-white'
                         : 'bg-transparent border border-line/15 text-fg-secondary hover:border-line/30 hover:text-white'
                     }`}
                   >
@@ -249,7 +249,7 @@ export default function PricingTiers() {
                     price={selectedPricing.price}
                     className={`w-full py-3 px-6 rounded-lg font-light transition-all ${
                       tier.popular
-                        ? 'bg-bg-hover hover:bg-gray-600 text-white'
+                        ? 'bg-bg-hover hover:bg-bg-hover text-white'
                         : 'bg-transparent border border-line/15 text-fg-secondary hover:border-line/30 hover:text-white'
                     }`}
                   />

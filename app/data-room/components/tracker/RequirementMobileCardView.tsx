@@ -138,7 +138,7 @@ export default function RequirementMobileCardView({
                           <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${formFreq === 'monthly' ? 'bg-blue-500/20 text-blue-400' :
                               formFreq === 'quarterly' ? 'bg-purple-500/20 text-purple-400' :
                                 formFreq === 'annual' ? 'bg-green-500/20 text-green-400' :
-                                  'bg-gray-500/20 text-fg-muted'
+                                  'bg-bg-hover/20 text-fg-muted'
                             }`}>
                             {formFreq.toUpperCase()}
                           </span>
@@ -222,7 +222,7 @@ export default function RequirementMobileCardView({
                           complianceType === 'annual' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
                             complianceType === 'monthly' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
                               complianceType === 'quarterly' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' :
-                                'bg-gray-500/20 text-white border border-line/40/30'
+                                'bg-bg-hover/20 text-white border border-line/40/30'
                         }`} title={
                           complianceType === 'one-time' ? 'One-time: happens once, no recurring' :
                             complianceType === 'annual' ? 'Annual: recurs every year' :

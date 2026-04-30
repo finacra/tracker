@@ -459,7 +459,7 @@ export default function DocumentsTab({
       case 'expired':
         return 'bg-red-500/20 text-red-400 border-red-500/30'
       default:
-        return 'bg-gray-500/20 text-fg-muted border-line/40/30'
+        return 'bg-bg-hover/20 text-fg-muted border-line/40/30'
     }
   }
 
@@ -2159,7 +2159,7 @@ export default function DocumentsTab({
                             
                             {/* Advanced Options */}
                             {isExpanded && (
-                              <div className="border-t border-line/10 p-3 space-y-4 bg-gray-950/50">
+                              <div className="border-t border-line/10 p-3 space-y-4 bg-bg-base/50">
                                 {/* Document Name with Dropdown */}
                                 <div>
                                   <label className="block text-xs font-medium text-fg-secondary mb-1.5">

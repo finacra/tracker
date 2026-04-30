@@ -1209,7 +1209,7 @@ export default function ReportsTab({
         <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <h3 className="text-base sm:text-lg font-medium text-fg-secondary">Not Started</h3>
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-bg-hover/20 rounded-lg flex items-center justify-center flex-shrink-0">
               <svg width="20" height="20" className="sm:w-6 sm:h-6 text-fg-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" y1="8" x2="12" y2="12" />
@@ -1288,7 +1288,7 @@ export default function ReportsTab({
               completed: { bg: 'bg-green-500/20', text: 'text-green-400', bar: 'bg-green-500' },
               pending: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', bar: 'bg-yellow-500' },
               overdue: { bg: 'bg-red-500/20', text: 'text-red-400', bar: 'bg-red-500' },
-              notStarted: { bg: 'bg-gray-500/20', text: 'text-fg-muted', bar: 'bg-gray-500' },
+              notStarted: { bg: 'bg-bg-hover/20', text: 'text-fg-muted', bar: 'bg-bg-hover' },
               upcoming: { bg: 'bg-blue-500/20', text: 'text-blue-400', bar: 'bg-blue-500' }
             }
             const colors = statusColors[status] || statusColors.notStarted

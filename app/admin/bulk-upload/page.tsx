@@ -1032,7 +1032,7 @@ function BulkUploadPage() {
               disabled={isUploading || !validation?.valid || nonEmptyRowCount === 0}
               className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 shadow-md ${
                 validation?.valid && nonEmptyRowCount > 0 && !isUploading
-                  ? 'bg-white text-[#217346] hover:bg-gray-100 hover:shadow-lg'
+                  ? 'bg-white text-[#217346] hover:bg-bg-elevated hover:shadow-lg'
                   : 'bg-white/30 text-white/50 cursor-not-allowed'
               }`}
             >
@@ -1448,8 +1448,8 @@ function BulkUploadPage() {
       {showResolveModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowResolveModal(false)}>
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Custom Error Resolver</h2>
+            <div className="px-6 py-4 border-b border-line/15">
+              <h2 className="text-xl font-semibold text-fg-primary">Custom Error Resolver</h2>
               <p className="text-sm text-fg-muted/60 mt-1">
                 Provide specific instructions for the AI to resolve errors. The AI has full access to the entire spreadsheet.
               </p>
@@ -1457,7 +1457,7 @@ function BulkUploadPage() {
             
             <div className="px-6 py-4 flex-1 overflow-y-auto">
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-fg-secondary mb-2">
                   Your Instructions <span className="text-red-500">*</span>
                 </label>
                 <textarea
@@ -1465,7 +1465,7 @@ function BulkUploadPage() {
                   onChange={(e) => setCustomInstructions(e.target.value)}
                   placeholder="Example: Fix all case sensitivity errors in the 'category' column. Convert 'gst' to 'GST', 'income tax' to 'Income Tax', etc."
                   rows={8}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none text-sm text-gray-900"
+                  className="w-full px-3 py-2 border border-line/15 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none text-sm text-fg-primary"
                 />
                 <p className="text-xs text-fg-muted mt-2">
                   Be specific about which errors to fix and how. The AI can see all {data.length} rows of data.
@@ -1473,8 +1473,8 @@ function BulkUploadPage() {
               </div>
 
               {validation && validation.errors.length > 0 && (
-                <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">Current Errors Summary:</h3>
+                <div className="bg-bg-elevated rounded-lg p-4 mb-4">
+                  <h3 className="text-sm font-medium text-fg-secondary mb-2">Current Errors Summary:</h3>
                   <div className="text-xs text-fg-muted/60 space-y-1">
                     <p>Total errors: <span className="font-semibold">{validation.errors.length}</span></p>
                     <p>Rows with errors: <span className="font-semibold">{new Set(validation.errors.map(e => e.row)).size}</span></p>
@@ -1496,14 +1496,14 @@ function BulkUploadPage() {
               )}
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+            <div className="px-6 py-4 border-t border-line/15 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => {
                   setShowResolveModal(false)
                   setCustomInstructions('')
                 }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-fg-secondary bg-white border border-line/15 rounded-lg hover:bg-bg-elevated transition-colors"
               >
                 Cancel
               </button>
@@ -1514,7 +1514,7 @@ function BulkUploadPage() {
                 className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
                   customInstructions.trim() && !isResolvingErrors
                     ? 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700'
-                    : 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-bg-hover cursor-not-allowed'
                 }`}
               >
                 {isResolvingErrors ? (

@@ -361,7 +361,7 @@ function SubscribePageInner() {
   if (authLoading || subLoading) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -551,7 +551,7 @@ function SubscribePageInner() {
                     href="/contact"
                     className={`w-full py-3 px-6 rounded-lg font-light transition-all mb-6 text-center block ${
                       tier.popular
-                        ? 'bg-bg-hover hover:bg-gray-600 text-white'
+                        ? 'bg-bg-hover hover:bg-bg-hover text-white'
                         : 'bg-transparent border border-line/15 text-fg-secondary hover:border-line/30 hover:text-white'
                     }`}
                   >
@@ -567,7 +567,7 @@ function SubscribePageInner() {
                   }
                   className={`w-full py-3 px-6 rounded-lg font-light transition-all mb-6 ${
                     tier.popular
-                      ? 'bg-bg-hover hover:bg-gray-600 text-white'
+                      ? 'bg-bg-hover hover:bg-bg-hover text-white'
                       : 'bg-transparent border border-line/15 text-fg-secondary hover:border-line/30 hover:text-white'
                   }`}
                 />
@@ -757,7 +757,7 @@ function SubscribePageInner() {
                 <button
                   onClick={handleStartTrial}
                   disabled={isStartingTrial || isCheckingCompanySubscription || isCheckingTrialEligibility}
-                  className="bg-bg-hover text-white px-8 py-3 rounded-lg font-light hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  className="bg-bg-hover text-white px-8 py-3 rounded-lg font-light hover:bg-bg-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                   {isStartingTrial ? 'Starting...' : 'Start 15-Day Trial'}
                 </button>

@@ -528,7 +528,7 @@ export default function ComplianceIntelligencePanel({
           {phase === 'loading' && (
             <>
               <span className="text-fg-muted inline-flex items-center gap-2">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-500 animate-pulse" />
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-bg-hover animate-pulse" />
                 Checking
               </span>
               <span className="text-fg-muted/60">— Determining what's next for your tracker…</span>

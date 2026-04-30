@@ -80,7 +80,7 @@ export default function ComplianceTrackerPage() {
                 key={index}
                 onClick={() => setTrackerIndex(index)}
                 className={`w-2 h-2 rounded-full transition-all ${
-                  trackerIndex === index ? 'bg-white w-6' : 'bg-gray-600'
+                  trackerIndex === index ? 'bg-white w-6' : 'bg-bg-hover'
                 }`}
                 aria-label={`Go to slide ${index + 1}`}
               />
@@ -162,7 +162,7 @@ export default function ComplianceTrackerPage() {
               <div className="mt-4 sm:mt-6 bg-[#0f0f0f] rounded-lg p-3 sm:p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs text-fg-muted font-light">Upcoming Tasks</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-bg-hover rounded-full"></div>
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
@@ -265,7 +265,7 @@ export default function ComplianceTrackerPage() {
               <div className="mt-4 sm:mt-6 bg-[#0f0f0f] rounded-lg p-3 sm:p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs text-fg-muted font-light">Team Roles</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-bg-hover rounded-full"></div>
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
@@ -315,7 +315,7 @@ export default function ComplianceTrackerPage() {
               <div className="mt-4 sm:mt-6 bg-[#0f0f0f] rounded-lg p-3 sm:p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs text-fg-muted font-light">Active Companies</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-bg-hover rounded-full"></div>
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
@@ -400,7 +400,7 @@ export default function ComplianceTrackerPage() {
               <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs text-fg-muted font-light">Upcoming Tasks</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-bg-hover rounded-full"></div>
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
@@ -500,7 +500,7 @@ export default function ComplianceTrackerPage() {
               <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs text-fg-muted font-light">Team Roles</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-bg-hover rounded-full"></div>
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
@@ -547,7 +547,7 @@ export default function ComplianceTrackerPage() {
               <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs text-fg-muted font-light">Active Companies</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-bg-hover rounded-full"></div>
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
