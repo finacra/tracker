@@ -615,7 +615,7 @@ function AdminPageInner() {
   const getVaultFrequencyBadgeColor = (frequency: string) => {
     switch (frequency) {
       case 'one-time':
-        return 'bg-gray-600'
+        return 'bg-bg-hover'
       case 'monthly':
         return 'bg-blue-600'
       case 'quarterly':
@@ -624,7 +624,7 @@ function AdminPageInner() {
       case 'annually':
         return 'bg-green-600'
       default:
-        return 'bg-gray-600'
+        return 'bg-bg-hover'
     }
   }
 
@@ -2662,7 +2662,7 @@ function AdminPageInner() {
                           setEditingVaultFolder(null)
                           setVaultFolderForm({ name: '', description: '' })
                         }}
-                        className="px-4 py-2 bg-bg-hover text-white rounded-lg hover:bg-gray-600 transition-colors"
+                        className="px-4 py-2 bg-bg-hover text-white rounded-lg hover:bg-bg-hover transition-colors"
                       >
                         Cancel
                       </button>
@@ -2763,7 +2763,7 @@ function AdminPageInner() {
                             isMandatory: false,
                           })
                         }}
-                        className="px-4 py-2 bg-bg-hover text-white rounded-lg hover:bg-gray-600 transition-colors"
+                        className="px-4 py-2 bg-bg-hover text-white rounded-lg hover:bg-bg-hover transition-colors"
                       >
                         Cancel
                       </button>
@@ -3236,7 +3236,7 @@ function TrackingSystemTab() {
               onClick={() => setChatMode(!chatMode)}
               className={`px-4 py-2 text-sm rounded-lg transition-colors ${chatMode
                 ? 'bg-blue-600 text-white'
-                : 'bg-bg-hover text-fg-secondary hover:bg-gray-600'
+                : 'bg-bg-hover text-fg-secondary hover:bg-bg-hover'
                 }`}
             >
               {chatMode ? '📊 Summary' : '💬 Chat'}
@@ -3538,7 +3538,7 @@ function TrackingSystemTab() {
                     <div className="flex justify-start">
                       <div className="bg-bg-elevated text-fg-secondary rounded-lg p-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                          <div className="w-4 h-4 border-2 border-line/30 border-t-transparent rounded-full animate-spin"></div>
                           <span>Thinking...</span>
                         </div>
                       </div>

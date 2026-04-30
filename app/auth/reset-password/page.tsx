@@ -143,7 +143,7 @@ function ResetPasswordPageInner() {
             <div className="bg-bg-card border border-line/10 rounded-xl p-10 w-full">
               {isVerifying ? (
                 <div className="text-center py-8">
-                  <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <div className="w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                   <p className="text-sm text-fg-muted font-light">Verifying reset link...</p>
                 </div>
               ) : (
@@ -235,10 +235,10 @@ function ResetPasswordPageInner() {
                 <button
                   type="submit"
                   disabled={isLoading || isVerifying}
-                  className="w-full px-6 py-3 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-light"
+                  className="w-full px-6 py-3 bg-white text-fg-primary rounded-lg hover:bg-bg-elevated transition-all disabled:opacity-50 disabled:cursor-not-allowed font-light"
                 >
                   {isLoading ? (
-                    <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <div className="w-5 h-5 border-2 border-line/30 border-t-transparent rounded-full animate-spin mx-auto"></div>
                   ) : (
                     'Reset Password'
                   )}
@@ -266,7 +266,7 @@ export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <ResetPasswordPageInner />

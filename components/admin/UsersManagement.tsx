@@ -452,7 +452,7 @@ export default function UsersManagement({ companies }: UsersManagementProps) {
           <span className="text-fg-secondary">Expired</span>
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-gray-500"></span>
+          <span className="w-2 h-2 rounded-full bg-bg-hover"></span>
           <span className="text-fg-secondary">No Subscription</span>
         </span>
       </div>

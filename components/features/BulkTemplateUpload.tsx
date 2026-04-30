@@ -363,7 +363,7 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
           <div className="flex items-center gap-2 p-3 border-b border-line/15 bg-bg-elevated/50">
             <button
               onClick={addRow}
-              className="px-3 py-1.5 bg-bg-hover hover:bg-gray-600 text-white text-sm rounded transition-colors"
+              className="px-3 py-1.5 bg-bg-hover hover:bg-bg-hover text-white text-sm rounded transition-colors"
             >
               + Add Row
             </button>
@@ -529,7 +529,7 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
           <div className="flex gap-3 justify-center">
             <button
               onClick={() => setState('editing')}
-              className="px-4 py-2 bg-bg-hover hover:bg-gray-600 text-white rounded-lg transition-colors"
+              className="px-4 py-2 bg-bg-hover hover:bg-bg-hover text-white rounded-lg transition-colors"
             >
               Back to Editor
             </button>

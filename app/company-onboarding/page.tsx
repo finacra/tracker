@@ -76,7 +76,7 @@ export default function CompanyOnboardingPage() {
                 key={index}
                 onClick={() => setOnboardingIndex(index)}
                 className={`w-2 h-2 rounded-full transition-all ${
-                  onboardingIndex === index ? 'bg-white w-6' : 'bg-gray-600'
+                  onboardingIndex === index ? 'bg-white w-6' : 'bg-bg-hover'
                 }`}
                 aria-label={`Go to slide ${index + 1}`}
               />
@@ -113,7 +113,7 @@ export default function CompanyOnboardingPage() {
               <div className="mt-4 sm:mt-6 bg-[#0f0f0f] rounded-lg p-3 sm:p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs text-fg-muted font-light">Company Details</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-bg-hover rounded-full"></div>
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
@@ -154,7 +154,7 @@ export default function CompanyOnboardingPage() {
               <div className="mt-4 sm:mt-6 bg-[#0f0f0f] rounded-lg p-3 sm:p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs text-fg-muted font-light">Directors</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-bg-hover rounded-full"></div>
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
@@ -195,7 +195,7 @@ export default function CompanyOnboardingPage() {
               <div className="mt-4 sm:mt-6 bg-[#0f0f0f] rounded-lg p-3 sm:p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs text-fg-muted font-light">Classification</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-bg-hover rounded-full"></div>
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
@@ -236,7 +236,7 @@ export default function CompanyOnboardingPage() {
               <div className="mt-4 sm:mt-6 bg-[#0f0f0f] rounded-lg p-3 sm:p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs text-fg-muted font-light">Directors</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-bg-hover rounded-full"></div>
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
@@ -277,7 +277,7 @@ export default function CompanyOnboardingPage() {
               <div className="mt-4 sm:mt-6 bg-[#0f0f0f] rounded-lg p-3 sm:p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs text-fg-muted font-light">Entity Structure</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-bg-hover rounded-full"></div>
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
@@ -320,7 +320,7 @@ export default function CompanyOnboardingPage() {
               <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs text-fg-muted font-light">Company Details</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-bg-hover rounded-full"></div>
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
@@ -358,7 +358,7 @@ export default function CompanyOnboardingPage() {
               <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs text-fg-muted font-light">Directors</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-bg-hover rounded-full"></div>
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
@@ -396,7 +396,7 @@ export default function CompanyOnboardingPage() {
               <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs text-fg-muted font-light">Classification</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-bg-hover rounded-full"></div>
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
@@ -438,7 +438,7 @@ export default function CompanyOnboardingPage() {
               <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs text-fg-muted font-light">Directors</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-bg-hover rounded-full"></div>
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
@@ -476,7 +476,7 @@ export default function CompanyOnboardingPage() {
               <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs text-fg-muted font-light">Entity Structure</div>
-                  <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-bg-hover rounded-full"></div>
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">

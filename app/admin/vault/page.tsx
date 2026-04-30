@@ -477,7 +477,7 @@ export default function VaultManagementPage() {
   const getFrequencyBadgeColor = (frequency: string) => {
     switch (frequency) {
       case 'one-time':
-        return 'bg-gray-600'
+        return 'bg-bg-hover'
       case 'monthly':
         return 'bg-blue-600'
       case 'quarterly':
@@ -485,7 +485,7 @@ export default function VaultManagementPage() {
       case 'yearly':
         return 'bg-green-600'
       default:
-        return 'bg-gray-600'
+        return 'bg-bg-hover'
     }
   }
 
@@ -761,7 +761,7 @@ export default function VaultManagementPage() {
                     setEditingFolder(null)
                     setFolderForm({ name: '', description: '' })
                   }}
-                  className="px-4 py-2 bg-bg-hover text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  className="px-4 py-2 bg-bg-hover text-white rounded-lg hover:bg-bg-hover transition-colors"
                 >
                   Cancel
                 </button>
@@ -862,7 +862,7 @@ export default function VaultManagementPage() {
                       isMandatory: false,
                     })
                   }}
-                  className="px-4 py-2 bg-bg-hover text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  className="px-4 py-2 bg-bg-hover text-white rounded-lg hover:bg-bg-hover transition-colors"
                 >
                   Cancel
                 </button>

@@ -464,7 +464,7 @@ function ShellView({ shellCategories }: { shellCategories: string[] }) {
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
-                  className="flex-shrink-0 text-gray-700"
+                  className="flex-shrink-0 text-fg-secondary"
                   aria-hidden="true"
                 >
                   <polyline points="9 18 15 12 9 6" />

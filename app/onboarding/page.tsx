@@ -182,7 +182,7 @@ export default function OnboardingPage() {
   if (loading || subLoading) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -2197,7 +2197,7 @@ export default function OnboardingPage() {
                             >
                               {isVerifyingDIN === director.id ? (
                                 <>
-                                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 border-2 border-line/30 border-t-transparent rounded-full animate-spin"></div>
                                   <span className="hidden sm:inline">Verifying...</span>
                                 </>
                               ) : (

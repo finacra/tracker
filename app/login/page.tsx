@@ -283,10 +283,10 @@ function LoginPageInner() {
               <button
                 onClick={handleGoogleSignIn}
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-3 px-6 py-4 border border-line/15 rounded-lg hover:border-line/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white hover:bg-gray-50 group"
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 border border-line/15 rounded-lg hover:border-line/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white hover:bg-bg-elevated group"
               >
                 {isLoading ? (
-                  <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-5 h-5 border-2 border-line/30 border-t-transparent rounded-full animate-spin"></div>
                 ) : (
                   <>
                     {/* Google Logo */}
@@ -308,7 +308,7 @@ function LoginPageInner() {
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                       />
                     </svg>
-                    <span className="text-gray-700 font-light text-base group-hover:text-gray-900">
+                    <span className="text-fg-secondary font-light text-base group-hover:text-fg-primary">
                       Continue with Google
                     </span>
                   </>
@@ -467,10 +467,10 @@ function LoginPageInner() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full px-6 py-3 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-light"
+                  className="w-full px-6 py-3 bg-white text-fg-primary rounded-lg hover:bg-bg-elevated transition-all disabled:opacity-50 disabled:cursor-not-allowed font-light"
                 >
                   {isLoading ? (
-                    <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <div className="w-5 h-5 border-2 border-line/30 border-t-transparent rounded-full animate-spin mx-auto"></div>
                   ) : (
                     isSignUp ? 'Sign Up' : 'Sign In'
                   )}

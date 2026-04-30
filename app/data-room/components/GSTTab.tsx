@@ -458,7 +458,7 @@ export default function GSTTab({
               {/* GSTR-3B Status Card */}
               <div className="bg-bg-card border border-line/10 rounded-xl p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 bg-gray-500/20 rounded-lg flex items-center justify-center">
+                  <div className="w-10 h-10 bg-bg-hover/20 rounded-lg flex items-center justify-center">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2">
                       <path d="M9 11l3 3L22 4" />
                       <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />

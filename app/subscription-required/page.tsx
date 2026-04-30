@@ -65,7 +65,7 @@ function SubscriptionRequiredInner() {
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -201,7 +201,7 @@ function SubscriptionRequiredInner() {
               {selectedExpiredCompany && expiredCompanies.length > 0 && (
                 <button
                   onClick={() => router.push(`/subscribe?company_id=${selectedExpiredCompany}`)}
-                  className="w-full bg-bg-hover text-white py-3 px-6 rounded-lg font-light hover:bg-gray-600 transition-colors"
+                  className="w-full bg-bg-hover text-white py-3 px-6 rounded-lg font-light hover:bg-bg-hover transition-colors"
                 >
                   Subscribe to {expiredCompanies.find(c => c.id === selectedExpiredCompany)?.name || 'Selected Company'}
                 </button>
@@ -245,7 +245,7 @@ export default function SubscriptionRequiredPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <SubscriptionRequiredInner />

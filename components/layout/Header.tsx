@@ -123,7 +123,7 @@ export default function Header() {
                   <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
                 {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-gray-600 text-white text-[10px] font-light rounded-full flex items-center justify-center">
+                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-bg-hover text-white text-[10px] font-light rounded-full flex items-center justify-center">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
@@ -139,7 +139,7 @@ export default function Header() {
                   <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
                 {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-gray-600 text-white text-[10px] font-light rounded-full flex items-center justify-center">
+                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-bg-hover text-white text-[10px] font-light rounded-full flex items-center justify-center">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
@@ -172,7 +172,7 @@ export default function Header() {
                     <div className="max-h-72 overflow-y-auto">
                       {isLoadingNotifications ? (
                         <div className="p-4 text-center text-fg-muted">
-                          <div className="animate-spin w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full mx-auto"></div>
+                          <div className="animate-spin w-6 h-6 border-2 border-line/30 border-t-transparent rounded-full mx-auto"></div>
                         </div>
                       ) : notifications.length === 0 ? (
                         <div className="p-6 text-center text-fg-muted">
@@ -256,7 +256,7 @@ export default function Header() {
                               </div>
                               {/* Unread indicator */}
                               {!notification.is_read && (
-                                <div className="w-2 h-2 bg-gray-400 rounded-full flex-shrink-0 mt-1.5"></div>
+                                <div className="w-2 h-2 bg-bg-hover rounded-full flex-shrink-0 mt-1.5"></div>
                               )}
                             </div>
                           </div>
@@ -311,7 +311,7 @@ export default function Header() {
                     <div className="overflow-y-auto flex-1">
                       {isLoadingNotifications ? (
                         <div className="p-8 flex justify-center">
-                          <div className="animate-spin w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full" />
+                          <div className="animate-spin w-6 h-6 border-2 border-line/30 border-t-transparent rounded-full" />
                         </div>
                       ) : notifications.length === 0 ? (
                         <div className="p-8 text-center text-fg-muted">
@@ -350,7 +350,7 @@ export default function Header() {
                                   {new Date(notification.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                 </p>
                               </div>
-                              {!notification.is_read && <div className="w-2 h-2 bg-gray-400 rounded-full flex-shrink-0 mt-1.5" />}
+                              {!notification.is_read && <div className="w-2 h-2 bg-bg-hover rounded-full flex-shrink-0 mt-1.5" />}
                             </div>
                           </div>
                         ))
@@ -858,7 +858,7 @@ export default function Header() {
             <div className="flex-1 overflow-y-auto p-6">
               {isLoadingNotifications ? (
                 <div className="p-8 text-center text-fg-muted">
-                  <div className="animate-spin w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full mx-auto"></div>
+                  <div className="animate-spin w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full mx-auto"></div>
                 </div>
               ) : notifications.length === 0 ? (
                 <div className="p-8 text-center text-fg-muted">
@@ -917,7 +917,7 @@ export default function Header() {
                               {notification.title}
                             </p>
                             {!notification.is_read && (
-                              <div className="w-2 h-2 bg-gray-400 rounded-full flex-shrink-0"></div>
+                              <div className="w-2 h-2 bg-bg-hover rounded-full flex-shrink-0"></div>
                             )}
                           </div>
                           <p className="text-sm text-fg-muted mt-1 line-clamp-3 font-light">

@@ -253,7 +253,7 @@ export default function NoticesTab({
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${notice.type === 'Income Tax' ? 'bg-blue-500/20 text-blue-400' :
                         notice.type === 'GST' ? 'bg-green-500/20 text-green-400' :
                           notice.type === 'MCA/RoC' ? 'bg-purple-500/20 text-purple-400' :
-                            'bg-gray-500/20 text-white'
+                            'bg-bg-hover/20 text-white'
                       }`}>
                       {notice.type}
                     </span>
@@ -293,7 +293,7 @@ export default function NoticesTab({
                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${selectedNotice.type === 'Income Tax' ? 'bg-blue-500/20' :
                             selectedNotice.type === 'GST' ? 'bg-green-500/20' :
                               selectedNotice.type === 'MCA/RoC' ? 'bg-purple-500/20' :
-                                'bg-gray-500/20'
+                                'bg-bg-hover/20'
                           }`}>
                           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={
                             selectedNotice.type === 'Income Tax' ? '#3B82F6' :
@@ -329,7 +329,7 @@ export default function NoticesTab({
                         {noticeMetadata.priority && (
                           <span className={`px-2 py-1 rounded text-xs font-medium ${noticeMetadata.priority === 'high' ? 'bg-red-500/20 text-red-400' :
                               noticeMetadata.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
-                                'bg-gray-500/20 text-fg-muted'
+                                'bg-bg-hover/20 text-fg-muted'
                             }`}>
                             {noticeMetadata.priority.toUpperCase()} Priority
                           </span>
@@ -410,7 +410,7 @@ export default function NoticesTab({
                         {selectedNotice.timeline.map((event: any, idx: number) => (
                           <div key={idx} className="flex items-start gap-3">
                             <div className="flex flex-col items-center">
-                              <div className={`w-3 h-3 rounded-full ${idx === 0 ? 'bg-white' : 'bg-gray-600'}`}></div>
+                              <div className={`w-3 h-3 rounded-full ${idx === 0 ? 'bg-white' : 'bg-bg-hover'}`}></div>
                               {idx < selectedNotice.timeline.length - 1 && (
                                 <div className="w-0.5 h-8 bg-bg-hover"></div>
                               )}

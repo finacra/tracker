@@ -19,7 +19,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: str
   overdue: { label: 'Overdue', color: 'text-red-400', bgColor: 'bg-red-500/10 border-red-500/30', iconColor: 'text-red-500' },
   pending: { label: 'Pending', color: 'text-yellow-400', bgColor: 'bg-yellow-500/10 border-yellow-500/30', iconColor: 'text-yellow-500' },
   upcoming: { label: 'Upcoming', color: 'text-blue-400', bgColor: 'bg-blue-500/10 border-blue-500/30', iconColor: 'text-blue-500' },
-  not_started: { label: 'Not Started', color: 'text-fg-muted', bgColor: 'bg-gray-500/10 border-line/40/30', iconColor: 'text-fg-muted' },
+  not_started: { label: 'Not Started', color: 'text-fg-muted', bgColor: 'bg-bg-hover/10 border-line/40/30', iconColor: 'text-fg-muted' },
 }
 
 export default function CategoryDashboard({ category, items }: CategoryDashboardProps) {

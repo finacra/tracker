@@ -1985,7 +1985,7 @@ function DataRoomPageInner() {
       case "expired":
         return "bg-red-500/20 text-red-400 border-red-500/30";
       default:
-        return "bg-gray-500/20 text-fg-muted border-line/40/30";
+        return "bg-bg-hover/20 text-fg-muted border-line/40/30";
     }
   };
 
@@ -4509,7 +4509,7 @@ function DataRoomPageInner() {
                                   ? "bg-red-500/20 text-red-400"
                                   : req.status === "pending"
                                     ? "bg-yellow-500/20 text-yellow-400"
-                                    : "bg-gray-500/20 text-fg-muted"
+                                    : "bg-bg-hover/20 text-fg-muted"
                             }`}
                           >
                             {req.status.toUpperCase()}
@@ -4528,7 +4528,7 @@ function DataRoomPageInner() {
                                     ? "bg-purple-500/20 text-purple-400"
                                     : formFreq === "annual"
                                       ? "bg-green-500/20 text-green-400"
-                                      : "bg-gray-500/20 text-fg-muted"
+                                      : "bg-bg-hover/20 text-fg-muted"
                               }`}
                             >
                               {formFreq.toUpperCase()}
@@ -4599,7 +4599,7 @@ function DataRoomPageInner() {
                                         ? "bg-purple-500/20 text-purple-400"
                                         : formFrequency[form] === "annual"
                                           ? "bg-green-500/20 text-green-400"
-                                          : "bg-gray-500/20 text-fg-muted"
+                                          : "bg-bg-hover/20 text-fg-muted"
                                   }`}
                                 >
                                   {formFrequency[form].toUpperCase()}

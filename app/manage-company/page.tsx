@@ -335,7 +335,7 @@ function ManageCompanyPageInner() {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
         <div className="text-white text-lg text-center font-light">
-          <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           Loading Company Data...
         </div>
       </div>
@@ -872,7 +872,7 @@ function ManageCompanyPageInner() {
                             >
                               {isVerifyingDIN === director.id ? (
                                 <span className="flex items-center gap-1">
-                                  <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                                  <div className="w-3 h-3 border-2 border-line/30 border-t-transparent rounded-full animate-spin"></div>
                                   Verifying...
                                 </span>
                               ) : `Verify ${countryConfig.labels.directorId}`}
@@ -940,7 +940,7 @@ function ManageCompanyPageInner() {
               >
                 {isSubmitting ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-4 h-4 border-2 border-line/30 border-t-transparent rounded-full animate-spin"></div>
                     Updating...
                   </>
                 ) : (
@@ -960,7 +960,7 @@ export default function ManageCompanyPage() {
     <Suspense fallback={
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
         <div className="text-white text-lg text-center font-light">
-          <div className="w-8 h-8 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           Loading...
         </div>
       </div>
