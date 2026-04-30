@@ -17,7 +17,7 @@ const clients = [
 
 export default function CustomersPage() {
   return (
-    <div className="min-h-screen bg-primary-dark relative overflow-hidden">
+    <div className="min-h-screen bg-bg-base relative overflow-hidden">
       <SubtleCircuitBackground />
       <PublicHeader />
       

@@ -105,7 +105,7 @@ function VerifyEmailContent() {
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
+    <div className="min-h-screen bg-bg-base flex items-center justify-center px-4">
       <div className="max-w-md w-full">
         <div className="bg-bg-card border border-line/10 rounded-xl p-8">
           {success ? (
@@ -204,7 +204,7 @@ function VerifyEmailContent() {
 export default function VerifyEmailPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
+      <div className="min-h-screen bg-bg-base flex items-center justify-center px-4">
         <div className="max-w-md w-full">
           <div className="bg-bg-card border border-line/10 rounded-xl p-8">
             <div className="flex items-center justify-center mb-6">

@@ -3944,7 +3944,7 @@ function DataRoomPageInner() {
   // 2. Initialization Error
   if (initError) {
     return (
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
+      <div className="min-h-screen bg-bg-base flex items-center justify-center px-4">
         <div className="text-center max-w-md">
           <div className="text-red-500 text-4xl mb-4">⚠️</div>
           <h2 className="text-fg-primary text-xl font-medium mb-2">Failed to initialize</h2>
@@ -3964,7 +3964,7 @@ function DataRoomPageInner() {
   const isNoCompany = companies.length === 0;
   if ((isNoCompany || (currentCompany && !hasAccess && !accessLoading)) && !isDataRoomInitLoading) {
     return (
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
         <div className="text-center max-w-md px-4">
           <div className="relative mb-6">
             <div className="w-12 h-12 border-4 border-white/30 border-t-transparent rounded-full animate-spin mx-auto" />
@@ -3986,7 +3986,7 @@ function DataRoomPageInner() {
   // If owner without access, show redirect message (redirect happens via useEffect)
   if (currentCompany && isOwner && !hasAccess && !accessLoading) {
     return (
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
         <div className="text-center max-w-md px-4">
           <div className="relative mb-6">
             <div className="w-12 h-12 border-4 border-white/30 border-t-transparent rounded-full animate-spin mx-auto" />

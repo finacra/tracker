@@ -333,7 +333,7 @@ function ManageCompanyPageInner() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
         <div className="text-fg-primary text-lg text-center font-light">
           <div className="w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           Loading Company Data...
@@ -343,7 +343,7 @@ function ManageCompanyPageInner() {
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark relative overflow-hidden">
+    <div className="min-h-screen bg-bg-base relative overflow-hidden">
       <CircuitBackground />
       <Header />
 
@@ -958,7 +958,7 @@ function ManageCompanyPageInner() {
 export default function ManageCompanyPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
         <div className="text-fg-primary text-lg text-center font-light">
           <div className="w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           Loading...

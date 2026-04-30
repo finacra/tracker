@@ -13,7 +13,7 @@ export default function PrivacyPolicyPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-primary-dark text-fg-secondary">
+    <div className="min-h-screen bg-bg-base text-fg-secondary">
       <PublicHeader />
       <div className="py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">

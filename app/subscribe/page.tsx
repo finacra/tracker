@@ -360,7 +360,7 @@ function SubscribePageInner() {
 
   if (authLoading || subLoading) {
     return (
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full animate-spin" />
       </div>
     )
@@ -375,7 +375,7 @@ function SubscribePageInner() {
   // Show trial upgrade prompt ONLY if user explicitly wants to upgrade during trial
   if (isTrial && trialDaysRemaining > 0 && showUpgrade) {
     return (
-      <div className="min-h-screen bg-primary-dark relative overflow-hidden">
+      <div className="min-h-screen bg-bg-base relative overflow-hidden">
         <SubtleCircuitBackground />
         
         {/* Back Button and Logout */}
@@ -609,7 +609,7 @@ function SubscribePageInner() {
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark relative overflow-hidden">
+    <div className="min-h-screen bg-bg-base relative overflow-hidden">
       <SubtleCircuitBackground />
       
       {/* Back Button and Logout */}
@@ -833,8 +833,8 @@ function SubscribePageInner() {
 export default function SubscribePage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-accent-brand border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <SubscribePageInner />

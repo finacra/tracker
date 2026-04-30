@@ -181,7 +181,7 @@ export default function OnboardingPage() {
   // Show loading state while checking auth or subscription
   if (loading || subLoading) {
     return (
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full animate-spin" />
       </div>
     )
@@ -198,7 +198,7 @@ export default function OnboardingPage() {
 
   if (!hasActiveAccess && currentCompanyCount === 0) {
     return (
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
+      <div className="min-h-screen bg-bg-base flex items-center justify-center px-4">
         <div className="bg-bg-card border border-line/10 rounded-xl p-8 max-w-md text-center">
           <div className="w-16 h-16 bg-bg-elevated/50 border border-line/15 rounded-full flex items-center justify-center mx-auto mb-6">
             <svg className="w-8 h-8 text-fg-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -223,7 +223,7 @@ export default function OnboardingPage() {
   // Check if user has reached company limit (only check if they have active access)
   if (hasActiveAccess && !canCreateCompany) {
     return (
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center px-4">
+      <div className="min-h-screen bg-bg-base flex items-center justify-center px-4">
         <div className="bg-bg-card border border-line/10 rounded-xl p-8 max-w-md text-center">
           <div className="w-16 h-16 bg-yellow-500/10 border border-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
             <svg className="w-8 h-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1239,7 +1239,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark relative overflow-hidden">
+    <div className="min-h-screen bg-bg-base relative overflow-hidden">
       {/* Content */}
       <div className="relative z-10 container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-4xl">
         {/* Header */}

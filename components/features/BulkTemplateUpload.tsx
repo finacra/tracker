@@ -295,7 +295,7 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
               onDrop={handleDrop}
               className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors cursor-pointer ${
                 dragOver
-                  ? 'border-primary-orange bg-primary-orange/10'
+                  ? 'border-accent-brand bg-accent-brand/10'
                   : 'border-line/30 hover:border-line/40'
               }`}
               onClick={() => fileInputRef.current?.click()}
@@ -442,7 +442,7 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
               disabled={!validation?.valid}
               className={`px-6 py-2 rounded-lg font-medium transition-colors ${
                 validation?.valid
-                  ? 'bg-primary-orange hover:bg-primary-orange/90 text-white'
+                  ? 'bg-accent-brand hover:bg-accent-brand/90 text-white'
                   : 'bg-bg-hover text-fg-muted cursor-not-allowed'
               }`}
             >
@@ -459,7 +459,7 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
         <div className="bg-bg-card border border-line/15 rounded-xl p-8 text-center">
-          <div className="animate-spin w-12 h-12 border-4 border-primary-orange border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="animate-spin w-12 h-12 border-4 border-accent-brand border-t-transparent rounded-full mx-auto mb-4"></div>
           <p className="text-fg-primary text-lg">Uploading templates...</p>
           <p className="text-fg-muted text-sm mt-2">This may take a moment</p>
         </div>
@@ -493,7 +493,7 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
           )}
           <button
             onClick={onClose}
-            className="px-6 py-2 bg-primary-orange hover:bg-primary-orange/90 text-white rounded-lg font-medium transition-colors"
+            className="px-6 py-2 bg-accent-brand hover:bg-accent-brand/90 text-white rounded-lg font-medium transition-colors"
           >
             Done
           </button>
@@ -535,7 +535,7 @@ export default function BulkTemplateUpload({ onUpload, onClose }: BulkTemplateUp
             </button>
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-primary-orange hover:bg-primary-orange/90 text-white rounded-lg font-medium transition-colors"
+              className="px-4 py-2 bg-accent-brand hover:bg-accent-brand/90 text-white rounded-lg font-medium transition-colors"
             >
               Close
             </button>

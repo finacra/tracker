@@ -120,7 +120,7 @@ export default function TransactionHistory() {
         </div>
         <div className="bg-bg-card border border-line/10 rounded-xl p-4">
           <div className="text-sm text-fg-muted mb-1">Total Revenue</div>
-          <div className="text-2xl font-light text-primary-orange">{formatCurrency(stats.totalRevenue)}</div>
+          <div className="text-2xl font-light text-accent-brand">{formatCurrency(stats.totalRevenue)}</div>
         </div>
       </div>
 
@@ -132,7 +132,7 @@ export default function TransactionHistory() {
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as any)}
-              className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+              className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-accent-brand focus:ring-1 focus:ring-accent-brand transition-colors"
             >
               <option value="all">All Status</option>
               <option value="completed">Completed</option>
@@ -146,7 +146,7 @@ export default function TransactionHistory() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+              className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-accent-brand focus:ring-1 focus:ring-accent-brand transition-colors"
             >
               <option value="date">Date</option>
               <option value="amount">Amount</option>
@@ -166,7 +166,7 @@ export default function TransactionHistory() {
               placeholder="Search by Order ID, Payment ID, Email, Company..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+              className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-accent-brand focus:ring-1 focus:ring-accent-brand transition-colors"
             />
           </div>
         </div>
@@ -179,7 +179,7 @@ export default function TransactionHistory() {
         </div>
         {isLoading ? (
           <div className="p-12 flex flex-col items-center justify-center">
-            <div className="w-10 h-10 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mb-4"></div>
+            <div className="w-10 h-10 border-4 border-accent-brand border-t-transparent rounded-full animate-spin mb-4"></div>
             <p className="text-fg-muted">Loading transactions...</p>
           </div>
         ) : filteredPayments.length === 0 ? (

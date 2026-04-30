@@ -64,14 +64,14 @@ function OwnerExpiredPageInner() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-accent-brand border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-primary-dark relative overflow-hidden">
+    <div className="min-h-screen bg-bg-base relative overflow-hidden">
       <SubtleCircuitBackground />
       
       <div className="relative z-10 flex items-center justify-center min-h-screen px-4">
@@ -102,8 +102,8 @@ function OwnerExpiredPageInner() {
             {/* Info Box */}
             <div className="bg-bg-card border border-line/15 rounded-xl p-4 mb-6">
               <div className="flex items-center gap-3 text-left">
-                <div className="w-10 h-10 bg-primary-orange/20 rounded-full flex items-center justify-center flex-shrink-0">
-                  <svg className="w-5 h-5 text-primary-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-10 h-10 bg-accent-brand/20 rounded-full flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-accent-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
@@ -139,7 +139,7 @@ function OwnerExpiredPageInner() {
           <div className="text-center mt-8">
             <p className="text-fg-muted/60 text-sm">
               Need help? Contact{' '}
-              <a href="mailto:info@finacra.com" className="text-primary-orange hover:underline">
+              <a href="mailto:info@finacra.com" className="text-accent-brand hover:underline">
                 info@finacra.com
               </a>
             </p>
@@ -153,8 +153,8 @@ function OwnerExpiredPageInner() {
 export default function OwnerSubscriptionExpiredPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-orange border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-accent-brand border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <OwnerExpiredPageInner />

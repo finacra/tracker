@@ -139,7 +139,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
   if (isLoading) {
     return (
       <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-12 flex flex-col items-center justify-center">
-        <div className="w-10 h-10 border-4 border-primary-orange border-t-transparent rounded-full animate-spin mb-4"></div>
+        <div className="w-10 h-10 border-4 border-accent-brand border-t-transparent rounded-full animate-spin mb-4"></div>
         <p className="text-fg-muted">Loading all users...</p>
       </div>
     )
@@ -187,7 +187,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
               placeholder="Search by email, ID or company..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-primary-orange w-72"
+              className="pl-10 pr-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-accent-brand w-72"
             />
           </div>
 
@@ -195,7 +195,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as any)}
-            className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-primary-orange"
+            className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-accent-brand"
           >
             <option value="all">All Users</option>
             <option value="owners">Company Owners</option>
@@ -223,10 +223,10 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
           <div className="text-xs text-fg-muted">Total Users</div>
           <div className="text-[10px] text-fg-muted mt-1">All registered users</div>
         </div>
-        <div className="bg-primary-orange/10 border border-primary-orange/30 rounded-xl p-4">
-          <div className="text-2xl font-bold text-primary-orange">{totalOwners}</div>
-          <div className="text-xs text-primary-orange/80">Company Owners</div>
-          <div className="text-[10px] text-primary-orange/60 mt-1">Created companies</div>
+        <div className="bg-accent-brand/10 border border-accent-brand/30 rounded-xl p-4">
+          <div className="text-2xl font-bold text-accent-brand">{totalOwners}</div>
+          <div className="text-xs text-accent-brand/80">Company Owners</div>
+          <div className="text-[10px] text-accent-brand/60 mt-1">Created companies</div>
         </div>
         <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
           <div className="text-2xl font-bold text-blue-400">{totalTeamOnly}</div>
@@ -314,7 +314,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
                           <div className="text-fg-muted text-xs flex items-center gap-2">
                             {user.companies_owned.length > 0 && (
                               <span className="flex items-center gap-1">
-                                <span className="w-2 h-2 bg-primary-orange rounded-full"></span>
+                                <span className="w-2 h-2 bg-accent-brand rounded-full"></span>
                                 {user.companies_owned.length} owned
                               </span>
                             )}
@@ -334,7 +334,7 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
                       <div className="flex items-center gap-4">
                         {/* User Type Badge */}
                         {user.companies_owned.length > 0 ? (
-                          <span className="px-2 py-1 rounded text-xs font-medium bg-primary-orange/20 text-primary-orange border border-primary-orange/30">
+                          <span className="px-2 py-1 rounded text-xs font-medium bg-accent-brand/20 text-accent-brand border border-accent-brand/30">
                             Owner
                           </span>
                         ) : user.team_memberships.length > 0 ? (
@@ -400,8 +400,8 @@ export default function AllUsersManagement({ companies }: AllUsersManagementProp
                                     key={company.id} 
                                     className="flex items-center gap-2 p-2 bg-bg-elevated/30 rounded-lg overflow-hidden"
                                   >
-                                    <div className="w-6 h-6 bg-primary-orange/20 rounded flex-shrink-0 flex items-center justify-center">
-                                      <svg className="w-3 h-3 text-primary-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="w-6 h-6 bg-accent-brand/20 rounded flex-shrink-0 flex items-center justify-center">
+                                      <svg className="w-3 h-3 text-accent-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                       </svg>
                                     </div>

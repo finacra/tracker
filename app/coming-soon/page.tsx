@@ -5,7 +5,7 @@ import Header from '@/components/layout/Header'
 
 export default function ComingSoonPage() {
   return (
-    <div className="min-h-screen bg-primary-dark">
+    <div className="min-h-screen bg-bg-base">
       <Header />
       <div className="flex items-center justify-center min-h-[calc(100vh-80px)] px-4">
         <div className="text-center max-w-2xl">

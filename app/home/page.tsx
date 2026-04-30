@@ -419,7 +419,7 @@ export default function HomePage() {
 
 
   return (
-    <div className="min-h-screen bg-primary-dark flex flex-col relative overflow-hidden">
+    <div className="min-h-screen bg-bg-base flex flex-col relative overflow-hidden">
       <style jsx global>{`
         @keyframes fadeInUp {
           from {

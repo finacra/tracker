@@ -13,7 +13,7 @@ export default function TermsOfServicePage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-primary-dark text-fg-secondary">
+    <div className="min-h-screen bg-bg-base text-fg-secondary">
       <PublicHeader />
       <div className="py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
@@ -97,8 +97,8 @@ export default function TermsOfServicePage() {
             <div className="grid md:grid-cols-2 gap-4">
               <div className="bg-bg-card/50 p-5 rounded-xl border border-line/10">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 bg-primary-orange/20 rounded-lg flex items-center justify-center">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary-orange">
+                  <div className="w-8 h-8 bg-accent-brand/20 rounded-lg flex items-center justify-center">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent-brand">
                       <path d="M9 12l2 2 4-4" />
                       <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
                     </svg>
@@ -109,8 +109,8 @@ export default function TermsOfServicePage() {
               </div>
               <div className="bg-bg-card/50 p-5 rounded-xl border border-line/10">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 bg-primary-orange/20 rounded-lg flex items-center justify-center">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary-orange">
+                  <div className="w-8 h-8 bg-accent-brand/20 rounded-lg flex items-center justify-center">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent-brand">
                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                       <polyline points="14 2 14 8 20 8" />
                     </svg>
