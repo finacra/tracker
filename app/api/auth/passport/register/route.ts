@@ -49,11 +49,26 @@ export async function POST(req: NextRequest) {
       )
 
       if (hasGoogleAuth) {
-        // Account exists with Google - need to verify email ownership before linking password
+        // Account exists with Google. Auto-fire the verification email
+        // immediately so the user sees one clear "check your inbox"
+        // message instead of having to click a separate "Send
+        // Verification Email" button on the login page. The email links
+        // to /api/auth/verify-email?token=… which routes to
+        // /auth/link-password when the user has Google-but-no-password.
+        sendVerificationEmail(
+          existingUser.id,
+          existingUser.primary_email,
+          existingUser.full_name,
+        ).catch((err) => {
+          console.error('[Passport Register] Failed to send linking email:', err)
+        })
+
         return NextResponse.json({
           success: false,
           requiresLinking: true,
-          message: 'This email is already registered with Google. We\'ll send a verification email to confirm you own this account, then you can link a password.',
+          emailSent: true,
+          message:
+            "This email is registered with Google. We've sent you a verification email — click the link to set a password.",
           userId: existingUser.id,
         }, { status: 200 }) // 200 because this is a valid response, not an error
       }

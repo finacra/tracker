@@ -347,38 +347,41 @@ function LoginPageInner() {
             </>
           ) : requiresLinking ? (
             <>
-              {/* Account Linking UI */}
+              {/* Account Linking UI — verification email auto-sent by the
+                  login/register endpoints, user just needs to check inbox. */}
               <div className="space-y-4">
-                <div className="p-4 bg-blue-500/10 border border-blue-500/50 rounded-lg">
-                  <p className="text-sm text-blue-400 font-light mb-3">
-                    This email is already registered with Google. To add a password to your account, we need to verify you own this email address.
+                <div className="p-4 bg-accent-info/10 border border-accent-info/30 rounded-token-md">
+                  <div className="flex items-start gap-3 mb-3">
+                    <svg className="w-5 h-5 text-accent-info flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-sm font-medium text-fg-primary">
+                      Check your inbox
+                    </p>
+                  </div>
+                  <p className="text-sm text-fg-secondary mb-1">
+                    {message || `We sent a verification link to`} <strong className="text-fg-primary">{email}</strong>.
                   </p>
-                  <p className="text-sm text-fg-muted font-light">
-                    We'll send a verification email to <strong className="text-white">{email}</strong>. After you verify your email, you can set a password.
+                  <p className="text-xs text-fg-muted mt-2">
+                    Click the link in your email to confirm ownership and set a password. The link expires in 24 hours.
                   </p>
                 </div>
 
                 {error && (
-                  <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg">
-                    <p className="text-sm text-red-400 font-light">{error}</p>
-                  </div>
-                )}
-
-                {message && (
-                  <div className="p-3 bg-green-500/10 border border-green-500/50 rounded-lg">
-                    <p className="text-sm text-green-400 font-light">{message}</p>
+                  <div className="p-3 bg-accent-danger/10 border border-accent-danger/30 rounded-token-md">
+                    <p className="text-sm text-accent-danger">{error}</p>
                   </div>
                 )}
 
                 <button
                   onClick={handleSendLinkingVerification}
                   disabled={isSendingVerification}
-                  className="w-full px-6 py-3 bg-primary-orange text-white rounded-lg hover:bg-primary-orange/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-light"
+                  className="w-full px-6 py-3 bg-bg-card border border-line/15 text-fg-secondary rounded-token-md hover:border-line/30 hover:text-fg-primary transition-colors duration-token ease-token disabled:opacity-50 text-sm"
                 >
                   {isSendingVerification ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin mx-auto"></div>
                   ) : (
-                    'Send Verification Email'
+                    'Resend email'
                   )}
                 </button>
 
@@ -390,9 +393,9 @@ function LoginPageInner() {
                     setMessage(null)
                     setPassword('')
                   }}
-                  className="w-full px-6 py-3 bg-bg-elevated text-white rounded-lg hover:bg-bg-hover transition-all font-light"
+                  className="w-full px-6 py-3 text-fg-muted hover:text-fg-primary transition-colors duration-token ease-token text-sm"
                 >
-                  Cancel
+                  Use a different email
                 </button>
               </div>
             </>
