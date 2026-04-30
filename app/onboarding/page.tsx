@@ -2416,8 +2416,12 @@ export default function OnboardingPage() {
                       if (!formData.companyType) {
                         newErrors.companyType = 'Please select a company type'
                       }
-                      if (!formData.cinNumber.trim()) {
-                        newErrors.cinNumber = 'CIN number is required'
+                      // Sole proprietorships and (general, non-LLP) partnerships
+                      // have no CIN — the field is disabled in the UI for those
+                      // entity types and `requiresCIN` is false. Without this
+                      // guard the "Next" button blocks them indefinitely.
+                      if (requiresCIN && !formData.cinNumber.trim()) {
+                        newErrors.cinNumber = `${countryConfig.labels.registrationId} is required`
                       }
                       if (formData.industries.length === 0) {
                         newErrors.industries = 'Please select at least one industry'
