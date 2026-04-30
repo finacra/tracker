@@ -37,7 +37,7 @@ export default function CIAWidget({ companyId }: Props) {
       <div className="fixed bottom-6 right-6 z-30 flex flex-col items-end gap-3">
         {/* Quick health badge on hover */}
         {showTooltip && overview && !isOpen && (
-          <div className="bg-[#0c111b] border border-white/10 rounded-xl px-4 py-3 shadow-2xl animate-fadeIn min-w-[200px]">
+          <div className="bg-bg-base border border-white/10 rounded-xl px-4 py-3 shadow-2xl animate-fadeIn min-w-[200px]">
             <div className="flex items-center gap-2 mb-2">
               <div
                 className={`w-2.5 h-2.5 rounded-full ${
@@ -52,7 +52,7 @@ export default function CIAWidget({ companyId }: Props) {
                 Health: {overview.healthScore}%
               </span>
             </div>
-            <div className="text-[10px] text-gray-400 space-y-0.5">
+            <div className="text-[10px] text-fg-muted space-y-0.5">
               <p>{overview.completedCount}/{overview.totalRequirements} completed</p>
               {overview.overdueCount > 0 && (
                 <p className="text-red-400">{overview.overdueCount} overdue</p>

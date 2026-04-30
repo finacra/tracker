@@ -16,7 +16,7 @@ export default function CIAThinkingSteps({ steps }: Props) {
           key={step.id}
           className={`flex items-center gap-2.5 text-sm transition-all duration-300 ${
             step.status === 'pending'
-              ? 'text-gray-400 opacity-50'
+              ? 'text-fg-muted opacity-50'
               : step.status === 'active'
                 ? 'text-blue-400'
                 : 'text-green-400/70'
@@ -32,7 +32,7 @@ export default function CIAThinkingSteps({ steps }: Props) {
                 <path d="M4.5 7L6.5 9L9.5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             ) : (
-              <div className="w-2 h-2 rounded-full bg-gray-500/40" />
+              <div className="w-2 h-2 rounded-full bg-fg-muted/40" />
             )}
           </div>
 

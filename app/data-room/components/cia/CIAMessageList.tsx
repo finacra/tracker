@@ -136,7 +136,7 @@ function renderMarkdown(text: string) {
       elements.push(
         <ul key={`ul-${elements.length}`} className="space-y-1 my-2 ml-1">
           {ulBuffer.map((item, i) => (
-            <li key={i} className="flex gap-2 text-gray-300">
+            <li key={i} className="flex gap-2 text-fg-secondary">
               <span className="text-blue-400/60 mt-[7px] flex-shrink-0">
                 <svg width="5" height="5"><circle cx="2.5" cy="2.5" r="2.5" fill="currentColor"/></svg>
               </span>
@@ -154,7 +154,7 @@ function renderMarkdown(text: string) {
       elements.push(
         <ol key={`ol-${elements.length}`} className="space-y-1.5 my-2 ml-1">
           {olBuffer.map((item, i) => (
-            <li key={i} className="flex gap-2.5 text-gray-300">
+            <li key={i} className="flex gap-2.5 text-fg-secondary">
               <span className="text-blue-400/80 font-medium text-[12px] mt-[1px] flex-shrink-0 w-5 text-right">{i + 1}.</span>
               <span className="flex-1">{formatInline(item)}</span>
             </li>
@@ -219,7 +219,7 @@ function renderMarkdown(text: string) {
     // Headings
     if (line.startsWith('#### ')) {
       flushAll()
-      elements.push(<h5 key={i} className="text-[13px] font-semibold text-gray-200 mt-4 mb-1.5">{formatInline(line.slice(5))}</h5>)
+      elements.push(<h5 key={i} className="text-[13px] font-semibold text-fg-secondary mt-4 mb-1.5">{formatInline(line.slice(5))}</h5>)
     } else if (line.startsWith('### ')) {
       flushAll()
       elements.push(<h4 key={i} className="text-[14px] font-semibold text-white mt-5 mb-1.5 flex items-center gap-2">{formatInline(line.slice(4))}</h4>)
@@ -259,7 +259,7 @@ function renderMarkdown(text: string) {
     // Regular paragraph
     else {
       flushAll()
-      elements.push(<p key={i} className="text-gray-300 leading-relaxed my-0.5">{formatInline(line)}</p>)
+      elements.push(<p key={i} className="text-fg-secondary leading-relaxed my-0.5">{formatInline(line)}</p>)
     }
   }
   flushAll()
@@ -272,7 +272,7 @@ function SourcePills({ sources }: { sources: { name: string; similarity: number 
   if (!sources || sources.length === 0) return null
   return (
     <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-white/[0.04]">
-      <span className="text-[10px] text-gray-500 uppercase tracking-wider mr-1 self-center">Sources</span>
+      <span className="text-[10px] text-fg-muted uppercase tracking-wider mr-1 self-center">Sources</span>
       {sources.map((s, i) => (
         <span key={i} className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg text-blue-300 border border-blue-500/15" style={{ background: 'rgba(59,130,246,0.06)' }}>
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2">

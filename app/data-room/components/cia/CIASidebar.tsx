@@ -58,7 +58,7 @@ function ConversationItem({
       className={`w-full text-left px-3 py-2 rounded-lg text-sm truncate transition-all duration-150 group relative ${
         isActive
           ? 'bg-white/10 text-white'
-          : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
+          : 'text-fg-muted hover:bg-white/5 hover:text-fg-secondary'
       }`}
     >
       <span className="truncate block pr-5">{displayName}</span>
@@ -68,7 +68,7 @@ function ConversationItem({
             e.stopPropagation()
             onDelete()
           }}
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-400 transition-colors"
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-fg-muted hover:text-red-400 transition-colors"
           title="Delete chat"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -87,7 +87,7 @@ export default function CIASidebar({ conversations, activeId, onSelect, onNew, o
       <div className="p-2">
         <button
           onClick={onNew}
-          className="w-full flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-gray-300 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all"
+          className="w-full flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm text-fg-secondary bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
             <path d="M6 2v8M2 6h8" />
@@ -99,7 +99,7 @@ export default function CIASidebar({ conversations, activeId, onSelect, onNew, o
       {/* Chat list */}
       <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-0.5 scrollbar-thin">
         {conversations.length === 0 ? (
-          <p className="text-xs text-gray-600 text-center py-4">No conversations yet</p>
+          <p className="text-xs text-fg-muted/60 text-center py-4">No conversations yet</p>
         ) : (
           conversations.map(conv => (
             <ConversationItem

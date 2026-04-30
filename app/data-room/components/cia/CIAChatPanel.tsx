@@ -130,7 +130,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
       {/* Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity"
+          className="fixed inset-0 bg-bg-elevated/40 backdrop-blur-sm z-40 transition-opacity"
           onClick={onClose}
         />
       )}
@@ -143,7 +143,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
             : 'inset-y-0 right-0 w-full sm:w-[520px]'
         } ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
-        <div className="flex-1 flex flex-col bg-[#0c111b] border-l border-white/10 shadow-2xl">
+        <div className="flex-1 flex flex-col bg-bg-base border-l border-white/10 shadow-2xl">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
             <div className="flex items-center gap-2.5">
@@ -158,7 +158,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
               </div>
               <div>
                 <h2 className="text-sm font-semibold text-white">Compliance Intelligence</h2>
-                <p className="text-[10px] text-gray-500">CIA Agent</p>
+                <p className="text-[10px] text-fg-muted">CIA Agent</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -166,7 +166,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
                 onClick={() => setIsFullscreen(v => !v)}
                 title={isFullscreen ? 'Collapse to side panel' : 'Expand to fullscreen'}
                 aria-label={isFullscreen ? 'Collapse chat' : 'Expand chat'}
-                className="w-7 h-7 rounded-md hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                className="w-7 h-7 rounded-md hover:bg-white/10 flex items-center justify-center text-fg-muted hover:text-white transition-colors"
               >
                 {isFullscreen ? (
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -181,7 +181,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
               <button
                 onClick={onClose}
                 aria-label="Close chat"
-                className="w-7 h-7 rounded-md hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                className="w-7 h-7 rounded-md hover:bg-white/10 flex items-center justify-center text-fg-muted hover:text-white transition-colors"
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                   <path d="M3 3l8 8M11 3l-8 8" />
@@ -216,7 +216,7 @@ export default function CIAChatPanel({ companyId, isOpen, onClose, suggestedQues
                     </svg>
                   </div>
                   <h3 className="text-base font-medium text-white mb-1">Ask CIA anything</h3>
-                  <p className="text-xs text-gray-500 text-center mb-6 max-w-[260px]">
+                  <p className="text-xs text-fg-muted text-center mb-6 max-w-[260px]">
                     Your compliance intelligence agent. Ask about filings, deadlines, penalties, or any uploaded document.
                   </p>
                 </div>
