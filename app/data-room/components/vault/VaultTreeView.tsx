@@ -390,7 +390,7 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
           {selected.size > 0 && (
             <button
               onClick={clearSelection}
-              className="text-[11px] px-2.5 py-1 border border-white/10 text-fg-muted rounded hover:text-white hover:border-white/20"
+              className="text-[11px] px-2.5 py-1 border border-white/10 text-fg-muted rounded hover:text-fg-primary hover:border-white/20"
             >
               Clear
             </button>
@@ -398,7 +398,7 @@ export default function VaultTreeView({ companyId, canEdit, onUploadToFolder, on
           {canEdit && (
             <button
               onClick={() => handleCreateFolder(null)}
-              className="text-[11px] px-2.5 py-1 border border-white/10 text-fg-secondary rounded hover:text-white hover:border-white/20"
+              className="text-[11px] px-2.5 py-1 border border-white/10 text-fg-secondary rounded hover:text-fg-primary hover:border-white/20"
             >
               + New folder
             </button>
@@ -540,7 +540,7 @@ function FolderNode({
       <div className="flex items-center gap-2 px-3 py-2.5 hover:bg-white/[0.02] transition-colors">
         <button
           onClick={() => onToggleExpand(folder.id)}
-          className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-fg-muted hover:text-white"
+          className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-fg-muted hover:text-fg-primary"
           aria-label={isExpanded ? 'Collapse' : 'Expand'}
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}>
@@ -557,7 +557,7 @@ function FolderNode({
           onClick={() => onToggleExpand(folder.id)}
           className="flex-1 text-left min-w-0 flex items-center gap-2"
         >
-          <span className={`text-sm ${depth === 0 ? 'text-white font-medium' : 'text-fg-secondary'} truncate`}>
+          <span className={`text-sm ${depth === 0 ? 'text-fg-primary font-medium' : 'text-fg-secondary'} truncate`}>
             {folder.name}
           </span>
           {folder.kind === 'user' && (
@@ -573,7 +573,7 @@ function FolderNode({
           {canEdit && onUploadToFolder && (
             <button
               onClick={() => onUploadToFolder(folder.id, folder.name)}
-              className="text-[11px] px-2 py-1 text-fg-muted hover:text-white"
+              className="text-[11px] px-2 py-1 text-fg-muted hover:text-fg-primary"
               title="Upload to this folder"
             >
               ↑ Upload
@@ -715,7 +715,7 @@ function DocumentRow({
 
       <button
         onClick={() => openDocumentInTab(companyId, doc.id)}
-        className="flex-1 text-left min-w-0 flex items-center gap-2 hover:text-white transition-colors"
+        className="flex-1 text-left min-w-0 flex items-center gap-2 hover:text-fg-primary transition-colors"
         title="Click to view document"
       >
         <span className="text-xs font-mono text-fg-secondary truncate">{doc.fileName || 'Unnamed document'}</span>
@@ -809,7 +809,7 @@ function DocActionsMenu({
       <button
         ref={btnRef}
         onClick={handleToggle}
-        className="w-6 h-6 flex items-center justify-center text-fg-muted hover:text-white rounded"
+        className="w-6 h-6 flex items-center justify-center text-fg-muted hover:text-fg-primary rounded"
         aria-label="Document actions"
         aria-expanded={isOpen}
       >
@@ -904,7 +904,7 @@ function FolderActionsMenu({
       <button
         ref={btnRef}
         onClick={handleToggle}
-        className="w-6 h-6 flex items-center justify-center text-fg-muted hover:text-white rounded"
+        className="w-6 h-6 flex items-center justify-center text-fg-muted hover:text-fg-primary rounded"
         aria-label="Folder actions"
         aria-expanded={isOpen}
       >

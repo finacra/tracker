@@ -382,7 +382,7 @@ function SubscribePageInner() {
         <div className="relative z-10 px-4 sm:px-6 pt-4 flex items-center justify-between">
           <Link
             href={backToDataRoomHref}
-            className="inline-flex items-center gap-2 text-fg-muted hover:text-white transition-colors font-light text-sm"
+            className="inline-flex items-center gap-2 text-fg-muted hover:text-fg-primary transition-colors font-light text-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -391,7 +391,7 @@ function SubscribePageInner() {
           </Link>
           <button
             onClick={handleSignOut}
-            className="inline-flex items-center gap-2 text-fg-muted hover:text-white transition-colors font-light text-sm"
+            className="inline-flex items-center gap-2 text-fg-muted hover:text-fg-primary transition-colors font-light text-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -408,7 +408,7 @@ function SubscribePageInner() {
                 <svg className="w-6 h-6 text-fg-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-xl font-light text-white">Trial Active</span>
+                <span className="text-xl font-light text-fg-primary">Trial Active</span>
               </div>
               <p className="text-fg-secondary mb-2 font-light">
                 You have <span className="text-fg-secondary font-light">{trialDaysRemaining} days</span> remaining in your trial.
@@ -421,7 +421,7 @@ function SubscribePageInner() {
 
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl md:text-5xl font-light mb-4 text-white">
+            <h1 className="text-4xl md:text-5xl font-light mb-4 text-fg-primary">
               Upgrade Your Plan
             </h1>
             <p className="text-fg-muted font-light">
@@ -454,7 +454,7 @@ function SubscribePageInner() {
               onClick={() => setSelectedBillingCycle(cycle.value)}
               className={`px-4 py-2 rounded-lg font-light transition-all whitespace-nowrap ${
                 selectedBillingCycle === cycle.value
-                  ? 'bg-bg-hover text-white'
+                  ? 'bg-bg-hover text-fg-primary'
                   : 'bg-bg-elevated text-fg-secondary hover:bg-bg-hover'
               }`}
             >
@@ -483,7 +483,7 @@ function SubscribePageInner() {
                 {/* Popular Badge */}
                 {tier.popular && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-bg-hover text-white px-4 py-1 rounded-full text-sm font-light">
+                    <span className="bg-bg-hover text-fg-primary px-4 py-1 rounded-full text-sm font-light">
                       Most Popular
                     </span>
                   </div>
@@ -491,14 +491,14 @@ function SubscribePageInner() {
 
                 {/* Tier Header */}
                 <div className="mb-6">
-                  <h3 className="text-2xl font-light mb-2 text-white">{tier.name}</h3>
+                  <h3 className="text-2xl font-light mb-2 text-fg-primary">{tier.name}</h3>
                   <p className="text-fg-muted text-sm mb-4 font-light">{tier.description}</p>
 
                   {/* Price - Hidden for Enterprise */}
                   {tier.id !== 'enterprise' && (
                   <div className="mb-4">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-light text-white">
+                      <span className="text-4xl font-light text-fg-primary">
                         {formatPrice(selectedPricing.price)}
                       </span>
                       {selectedBillingCycle !== 'monthly' && (
@@ -551,8 +551,8 @@ function SubscribePageInner() {
                     href="/contact"
                     className={`w-full py-3 px-6 rounded-lg font-light transition-all mb-6 text-center block ${
                       tier.popular
-                        ? 'bg-bg-hover hover:bg-bg-hover text-white'
-                        : 'bg-transparent border border-line/15 text-fg-secondary hover:border-line/30 hover:text-white'
+                        ? 'bg-bg-hover hover:bg-bg-hover text-fg-primary'
+                        : 'bg-transparent border border-line/15 text-fg-secondary hover:border-line/30 hover:text-fg-primary'
                     }`}
                   >
                     Contact Us
@@ -567,8 +567,8 @@ function SubscribePageInner() {
                   }
                   className={`w-full py-3 px-6 rounded-lg font-light transition-all mb-6 ${
                     tier.popular
-                      ? 'bg-bg-hover hover:bg-bg-hover text-white'
-                      : 'bg-transparent border border-line/15 text-fg-secondary hover:border-line/30 hover:text-white'
+                      ? 'bg-bg-hover hover:bg-bg-hover text-fg-primary'
+                      : 'bg-transparent border border-line/15 text-fg-secondary hover:border-line/30 hover:text-fg-primary'
                   }`}
                 />
                 )}
@@ -616,7 +616,7 @@ function SubscribePageInner() {
       <div className="relative z-10 px-4 sm:px-6 pt-4 flex items-center justify-between">
         <Link
           href={backToDataRoomHref}
-          className="inline-flex items-center gap-2 text-fg-muted hover:text-white transition-colors font-light text-sm"
+          className="inline-flex items-center gap-2 text-fg-muted hover:text-fg-primary transition-colors font-light text-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -625,7 +625,7 @@ function SubscribePageInner() {
         </Link>
         <button
           onClick={handleSignOut}
-          className="inline-flex items-center gap-2 text-fg-muted hover:text-white transition-colors font-light text-sm"
+          className="inline-flex items-center gap-2 text-fg-muted hover:text-fg-primary transition-colors font-light text-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -637,12 +637,12 @@ function SubscribePageInner() {
       <div className="relative z-10 container mx-auto px-4 py-12">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl md:text-5xl font-light mb-4 text-white">
+            <h1 className="text-4xl md:text-5xl font-light mb-4 text-fg-primary">
               Choose Your Plan
             </h1>
           {companyName && (
             <p className="text-fg-muted text-lg mb-2">
-              Subscribe to manage <span className="text-white font-medium">{companyName}</span>
+              Subscribe to manage <span className="text-fg-primary font-medium">{companyName}</span>
             </p>
           )}
           <p className="text-fg-muted text-sm">
@@ -667,7 +667,7 @@ function SubscribePageInner() {
                 <div className="text-[10px] uppercase tracking-[0.2em] text-emerald-400/80 font-medium mb-1">
                   System • Resolving Access
                 </div>
-                <div className="text-sm sm:text-base font-light text-white/90">
+                <div className="text-sm sm:text-base font-light text-fg-primary/90">
                   Checking your subscriptions, trial eligibility, and accessible companies…
                 </div>
               </div>
@@ -682,7 +682,7 @@ function SubscribePageInner() {
                 <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <h2 className="text-lg font-light text-white">Companies You Can Still Access</h2>
+                <h2 className="text-lg font-light text-fg-primary">Companies You Can Still Access</h2>
               </div>
               <p className="text-fg-muted text-sm font-light mb-4">
                 Your current company may need a subscription, but these companies still have valid access.
@@ -695,7 +695,7 @@ function SubscribePageInner() {
                     className="w-full text-left px-4 py-3 bg-bg-card rounded-lg text-fg-secondary hover:bg-bg-elevated transition-colors text-sm font-light flex items-center justify-between group"
                   >
                     <span className="truncate flex-1">{company.name}</span>
-                    <svg className="w-4 h-4 text-fg-muted group-hover:text-white transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-fg-muted group-hover:text-fg-primary transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
@@ -714,7 +714,7 @@ function SubscribePageInner() {
             <select
               value={selectedCompanyForSubscription || ''}
               onChange={(e) => setSelectedCompanyForSubscription(e.target.value)}
-              className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
+              className="w-full px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
             >
               {userCompanies.map((company) => (
                 <option key={company.id} value={company.id}>
@@ -738,14 +738,14 @@ function SubscribePageInner() {
                 <svg className="w-6 h-6 text-fg-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-xl font-light text-white">Not ready to commit?</span>
+                <span className="text-xl font-light text-fg-primary">Not ready to commit?</span>
               </div>
               <p className="text-fg-muted mb-2 font-light">
                 Start with a <span className="text-fg-secondary font-light">15-day free trial</span> — verify with ₹2 payment (refunded within 24 hours).
                 {currentCompanyCount === 0 ? (
                   <> You'll be able to create your first company after starting the trial.</>
                 ) : selectedCompanyForSubscription ? (
-                  <> This trial is for <span className="text-white font-medium">{userCompanies.find(c => c.id === selectedCompanyForSubscription)?.name || 'selected company'}</span> only.</>
+                  <> This trial is for <span className="text-fg-primary font-medium">{userCompanies.find(c => c.id === selectedCompanyForSubscription)?.name || 'selected company'}</span> only.</>
                 ) : (
                   <> After the trial, you can choose any plan (Starter, Professional, or Enterprise) when subscribing.</>
                 )}
@@ -757,7 +757,7 @@ function SubscribePageInner() {
                 <button
                   onClick={handleStartTrial}
                   disabled={isStartingTrial || isCheckingCompanySubscription || isCheckingTrialEligibility}
-                  className="bg-bg-hover text-white px-8 py-3 rounded-lg font-light hover:bg-bg-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  className="bg-bg-hover text-fg-primary px-8 py-3 rounded-lg font-light hover:bg-bg-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                   {isStartingTrial ? 'Starting...' : 'Start 15-Day Trial'}
                 </button>

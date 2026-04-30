@@ -27,7 +27,7 @@ export default function AdvanceTaxPanel({ financialYear }: AdvanceTaxPanelProps)
 
   return (
     <div className="bg-bg-card/50 border border-line/15/50 rounded-lg p-4">
-      <h4 className="text-sm font-medium text-white mb-3">
+      <h4 className="text-sm font-medium text-fg-primary mb-3">
         Advance Tax Calculator {financialYear && <span className="text-fg-muted font-normal">— {financialYear}</span>}
       </h4>
 
@@ -39,7 +39,7 @@ export default function AdvanceTaxPanel({ financialYear }: AdvanceTaxPanelProps)
           value={estimatedLiability}
           onChange={(e) => setEstimatedLiability(e.target.value)}
           placeholder="e.g. 1000000"
-          className="w-full sm:w-64 px-3 py-1.5 bg-bg-elevated border border-line/30 rounded text-white text-sm focus:outline-none focus:border-line/40"
+          className="w-full sm:w-64 px-3 py-1.5 bg-bg-elevated border border-line/30 rounded text-fg-primary text-sm focus:outline-none focus:border-line/40"
         />
       </div>
 
@@ -61,7 +61,7 @@ export default function AdvanceTaxPanel({ financialYear }: AdvanceTaxPanelProps)
               <tbody>
                 {summary.installments.map((inst) => (
                   <tr key={inst.quarter} className="border-b border-line/10">
-                    <td className="py-2 pr-3 text-white font-medium">
+                    <td className="py-2 pr-3 text-fg-primary font-medium">
                       {inst.quarter} ({inst.cumulativePercent}%)
                     </td>
                     <td className="py-2 pr-3 text-fg-secondary">{inst.dueDate}</td>
@@ -72,7 +72,7 @@ export default function AdvanceTaxPanel({ financialYear }: AdvanceTaxPanelProps)
                         value={payments[inst.quarter]}
                         onChange={(e) => setPayments(prev => ({ ...prev, [inst.quarter]: e.target.value }))}
                         placeholder="0"
-                        className="w-24 px-2 py-1 bg-bg-elevated border border-line/30 rounded text-white text-right text-xs focus:outline-none focus:border-line/40"
+                        className="w-24 px-2 py-1 bg-bg-elevated border border-line/30 rounded text-fg-primary text-right text-xs focus:outline-none focus:border-line/40"
                       />
                     </td>
                     <td className={`py-2 pr-3 text-right ${inst.shortfall > 0 ? 'text-red-400' : 'text-green-400'}`}>
@@ -90,9 +90,9 @@ export default function AdvanceTaxPanel({ financialYear }: AdvanceTaxPanelProps)
               </tbody>
               <tfoot>
                 <tr className="border-t border-line/30">
-                  <td colSpan={2} className="py-2 text-white font-medium">Total</td>
-                  <td className="py-2 text-right text-white font-medium">{formatINR(summary.estimatedLiability)}</td>
-                  <td className="py-2 text-right text-white font-medium">{formatINR(summary.totalPaid)}</td>
+                  <td colSpan={2} className="py-2 text-fg-primary font-medium">Total</td>
+                  <td className="py-2 text-right text-fg-primary font-medium">{formatINR(summary.estimatedLiability)}</td>
+                  <td className="py-2 text-right text-fg-primary font-medium">{formatINR(summary.totalPaid)}</td>
                   <td className={`py-2 text-right font-medium ${summary.totalShortfall > 0 ? 'text-red-400' : 'text-green-400'}`}>
                     {summary.totalShortfall > 0 ? formatINR(summary.totalShortfall) : '—'}
                   </td>

@@ -334,7 +334,7 @@ function ManageCompanyPageInner() {
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="text-white text-lg text-center font-light">
+        <div className="text-fg-primary text-lg text-center font-light">
           <div className="w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           Loading Company Data...
         </div>
@@ -357,7 +357,7 @@ function ManageCompanyPageInner() {
               </svg>
             </div>
             <div>
-              <h1 className="text-3xl font-light text-white">Manage Company</h1>
+              <h1 className="text-3xl font-light text-fg-primary">Manage Company</h1>
               <p className="text-fg-muted text-sm font-light mt-1">Edit your company profile and compliance details</p>
             </div>
           </div>
@@ -374,7 +374,7 @@ function ManageCompanyPageInner() {
                   name="companyName"
                   value={formData.companyName}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
+                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                 />
               </div>
               <div>
@@ -464,7 +464,7 @@ function ManageCompanyPageInner() {
                   value={formData.panNumber}
                   onChange={handleInputChange}
                   required={countryCode === 'IN'}
-                  className={`w-full px-4 py-3 bg-bg-card border rounded-lg text-white font-light focus:outline-none focus:ring-1 transition-colors ${
+                  className={`w-full px-4 py-3 bg-bg-card border rounded-lg text-fg-primary font-light focus:outline-none focus:ring-1 transition-colors ${
                     !formData.panNumber.trim() && countryCode === 'IN'
                       ? 'border-amber-500/60 focus:border-amber-400 focus:ring-amber-400'
                       : 'border-line/15 focus:border-line/30 focus:ring-gray-600'
@@ -478,7 +478,7 @@ function ManageCompanyPageInner() {
                   name="phoneNumber"
                   value={formData.phoneNumber}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
+                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                 />
               </div>
             </div>
@@ -491,7 +491,7 @@ function ManageCompanyPageInner() {
                 value={formData.address}
                 onChange={handleInputChange}
                 rows={3}
-                className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
+                className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
               />
             </div>
 
@@ -503,7 +503,7 @@ function ManageCompanyPageInner() {
                   name="city"
                   value={formData.city}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
+                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                 />
               </div>
               <div>
@@ -513,7 +513,7 @@ function ManageCompanyPageInner() {
                   name="state"
                   value={formData.state}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
+                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                 />
               </div>
               <div>
@@ -525,7 +525,7 @@ function ManageCompanyPageInner() {
                   name="pinCode"
                   value={formData.pinCode}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
+                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                 />
               </div>
             </div>
@@ -555,7 +555,7 @@ function ManageCompanyPageInner() {
             {countryCode === 'IN' && (
               <div className="border border-line/15/50 rounded-xl p-5 bg-bg-card/30 space-y-5">
                 <div>
-                  <h4 className="text-white font-medium text-sm mb-1">Compliance Profile</h4>
+                  <h4 className="text-fg-primary font-medium text-sm mb-1">Compliance Profile</h4>
                   <p className="text-fg-muted text-xs">These fields help determine which regulatory compliances apply to your company. The more you fill, the more accurate the compliance tracker becomes.</p>
                 </div>
 
@@ -570,7 +570,7 @@ function ManageCompanyPageInner() {
                       onChange={handleInputChange}
                       placeholder="e.g. 25"
                       min="0"
-                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
+                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                     />
                     <p className="text-fg-muted/60 text-[10px] mt-1">Determines PF (20+), ESI (10+), POSH (10+), Gratuity (10+)</p>
                   </div>
@@ -584,7 +584,7 @@ function ManageCompanyPageInner() {
                       placeholder="e.g. 500 for ₹5 Crore"
                       min="0"
                       step="0.01"
-                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
+                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                     />
                     <p className="text-fg-muted/60 text-[10px] mt-1">Determines Tax Audit (100L+), E-Invoicing (500L+), GST Audit (500L+)</p>
                   </div>
@@ -602,7 +602,7 @@ function ManageCompanyPageInner() {
                       placeholder="e.g. 10"
                       min="0"
                       step="0.01"
-                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
+                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                     />
                     <p className="text-fg-muted/60 text-[10px] mt-1">Determines CSR (500Cr+), CARO thresholds</p>
                   </div>
@@ -657,7 +657,7 @@ function ManageCompanyPageInner() {
                                 }}
                                 placeholder="22AAAAA0000A1Z5"
                                 maxLength={15}
-                                className="flex-1 px-3 py-2 bg-bg-card border border-line/15 rounded-lg text-white text-sm font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors uppercase"
+                                className="flex-1 px-3 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors uppercase"
                               />
                               <div className="w-40 px-3 py-2 bg-bg-card/50 border border-line/10 rounded-lg text-fg-muted text-xs flex items-center justify-between">
                                 <span className="truncate">{reg.state || '—'}</span>
@@ -692,7 +692,7 @@ function ManageCompanyPageInner() {
                             ...prev,
                             gstRegistrations: [...prev.gstRegistrations, { gstin: '', state: '' }],
                           }))}
-                          className="text-xs text-fg-muted hover:text-white transition-colors"
+                          className="text-xs text-fg-muted hover:text-fg-primary transition-colors"
                         >
                           + Add another GSTIN
                         </button>
@@ -709,7 +709,7 @@ function ManageCompanyPageInner() {
                       name="isMsme"
                       value={formData.isMsme}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
+                      className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                     >
                       <option value="">Not sure / Not applicable</option>
                       <option value="yes">Yes — MSME Registered</option>
@@ -723,7 +723,7 @@ function ManageCompanyPageInner() {
                         name="msmeCategory"
                         value={formData.msmeCategory}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
+                        className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                       >
                         <option value="">Select category</option>
                         <option value="micro">Micro</option>
@@ -765,7 +765,7 @@ function ManageCompanyPageInner() {
                 <button
                   type="button"
                   onClick={() => setShowAddDirector(!showAddDirector)}
-                  className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors text-sm flex items-center gap-2 font-light"
+                  className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors text-sm flex items-center gap-2 font-light"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="12" y1="5" x2="12" y2="19" />
@@ -787,13 +787,13 @@ function ManageCompanyPageInner() {
                         setErrors((prev) => ({ ...prev, newDirectorDIN: '' }))
                       }}
                       placeholder={`Enter ${countryConfig.labels.directorId} number`}
-                      className="flex-1 px-4 py-2 bg-bg-elevated border border-line/15 rounded-lg text-white text-sm placeholder:text-fg-muted font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
+                      className="flex-1 px-4 py-2 bg-bg-elevated border border-line/15 rounded-lg text-fg-primary text-sm placeholder:text-fg-muted font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors"
                     />
                     <button
                       type="button"
                       onClick={handleAddDirectorByDIN}
                       disabled={!newDirectorDIN.trim() || isVerifyingDIN !== null}
-                      className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-light"
+                      className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-light"
                     >
                       {isVerifyingDIN ? 'Verifying...' : 'Verify & Add'}
                     </button>
@@ -803,7 +803,7 @@ function ManageCompanyPageInner() {
                         setShowAddDirector(false)
                         setNewDirectorDIN('')
                       }}
-                      className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors text-sm font-light"
+                      className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors text-sm font-light"
                     >
                       Cancel
                     </button>
@@ -828,7 +828,7 @@ function ManageCompanyPageInner() {
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2 mb-2">
-                            <h4 className="text-white font-light text-sm">
+                            <h4 className="text-fg-primary font-light text-sm">
                               {director.firstName} {director.middleName} {director.lastName}
                             </h4>
                             {director.verified && (
@@ -868,7 +868,7 @@ function ManageCompanyPageInner() {
                               type="button"
                               onClick={() => handleDINVerification(director.id, director.din)}
                               disabled={isVerifyingDIN === director.id}
-                              className="px-3 py-1.5 border border-line/15 text-fg-secondary rounded text-xs hover:border-line/30 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-light"
+                              className="px-3 py-1.5 border border-line/15 text-fg-secondary rounded text-xs hover:border-line/30 hover:text-fg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-light"
                             >
                               {isVerifyingDIN === director.id ? (
                                 <span className="flex items-center gap-1">
@@ -917,7 +917,7 @@ function ManageCompanyPageInner() {
                 onChange={(e) => setExDirectors(e.target.value)}
                 placeholder="Enter ex-director names separated by commas or new lines"
                 rows={4}
-                className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm placeholder:text-fg-muted font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors resize-y"
+                className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm placeholder:text-fg-muted font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors resize-y"
               />
               <p className="mt-1 text-xs text-fg-muted font-light">
                 You can enter multiple names separated by commas or one per line.
@@ -929,14 +929,14 @@ function ManageCompanyPageInner() {
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="px-6 py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors font-light"
+                className="px-6 py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors font-light"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-6 py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-light"
+                className="px-6 py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-light"
               >
                 {isSubmitting ? (
                   <>
@@ -959,7 +959,7 @@ export default function ManageCompanyPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-primary-dark flex items-center justify-center">
-        <div className="text-white text-lg text-center font-light">
+        <div className="text-fg-primary text-lg text-center font-light">
           <div className="w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           Loading...
         </div>

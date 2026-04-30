@@ -21,7 +21,7 @@ export default function TermsOfServicePage() {
         <div className="mb-12">
           <Link 
             href="/home" 
-            className="text-fg-muted hover:text-white mb-6 inline-flex items-center gap-2 transition-colors font-light"
+            className="text-fg-muted hover:text-fg-primary mb-6 inline-flex items-center gap-2 transition-colors font-light"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -37,7 +37,7 @@ export default function TermsOfServicePage() {
                 <line x1="16" y1="17" x2="8" y2="17" />
               </svg>
             </div>
-            <h1 className="text-5xl font-light text-white">Terms of Service</h1>
+            <h1 className="text-5xl font-light text-fg-primary">Terms of Service</h1>
           </div>
           <p className="text-fg-muted text-lg font-light">Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
         </div>
@@ -45,17 +45,17 @@ export default function TermsOfServicePage() {
         {/* Content */}
         <div className="space-y-8 bg-bg-card p-8 md:p-12 rounded-xl border border-line/10">
           <section className="space-y-4">
-            <h2 className="text-3xl font-light text-white mb-4 flex items-center gap-3">
+            <h2 className="text-3xl font-light text-fg-primary mb-4 flex items-center gap-3">
               <span className="w-8 h-8 bg-bg-elevated border border-line/15 rounded-lg flex items-center justify-center text-fg-muted text-lg font-light">1</span>
               Agreement to Terms
             </h2>
             <p className="text-fg-secondary leading-relaxed text-lg font-light">
-              By accessing our website and using our services, you agree to be bound by these Terms of Service and to comply with all applicable laws and regulations. If you do not agree with these terms, you are prohibited from using or accessing this site or using any other services provided by <span className="text-white font-light">Finacra AI</span>.
+              By accessing our website and using our services, you agree to be bound by these Terms of Service and to comply with all applicable laws and regulations. If you do not agree with these terms, you are prohibited from using or accessing this site or using any other services provided by <span className="text-fg-primary font-light">Finacra AI</span>.
             </p>
           </section>
 
           <section className="space-y-4 pt-8 border-t border-line/10">
-            <h2 className="text-3xl font-light text-white mb-4 flex items-center gap-3">
+            <h2 className="text-3xl font-light text-fg-primary mb-4 flex items-center gap-3">
               <span className="w-8 h-8 bg-bg-elevated border border-line/15 rounded-lg flex items-center justify-center text-fg-muted text-lg font-light">2</span>
               Use License
             </h2>
@@ -87,7 +87,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section className="space-y-4 pt-8 border-t border-line/10">
-            <h2 className="text-3xl font-light text-white mb-4 flex items-center gap-3">
+            <h2 className="text-3xl font-light text-fg-primary mb-4 flex items-center gap-3">
               <span className="w-8 h-8 bg-bg-elevated border border-line/15 rounded-lg flex items-center justify-center text-fg-muted text-lg font-light">3</span>
               Service Description
             </h2>
@@ -103,7 +103,7 @@ export default function TermsOfServicePage() {
                       <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" />
                     </svg>
                   </div>
-                  <h3 className="text-white font-light">Compliance Tracking</h3>
+                  <h3 className="text-fg-primary font-light">Compliance Tracking</h3>
                 </div>
                 <p className="text-fg-muted text-sm font-light">Regulatory deadline tracking and management</p>
               </div>
@@ -115,7 +115,7 @@ export default function TermsOfServicePage() {
                       <polyline points="14 2 14 8 20 8" />
                     </svg>
                   </div>
-                  <h3 className="text-white font-light">Document Management</h3>
+                  <h3 className="text-fg-primary font-light">Document Management</h3>
                 </div>
                 <p className="text-fg-muted text-sm font-light">Secure document storage and organization</p>
               </div>
@@ -129,7 +129,7 @@ export default function TermsOfServicePage() {
                       <line x1="16" y1="17" x2="8" y2="17" />
                     </svg>
                   </div>
-                  <h3 className="text-white font-light">Reporting</h3>
+                  <h3 className="text-fg-primary font-light">Reporting</h3>
                 </div>
                 <p className="text-fg-muted text-sm font-light">AI-powered compliance reports and insights</p>
               </div>
@@ -141,7 +141,7 @@ export default function TermsOfServicePage() {
                       <line x1="1" y1="10" x2="23" y2="10" />
                     </svg>
                   </div>
-                  <h3 className="text-white font-light">GST Integration</h3>
+                  <h3 className="text-fg-primary font-light">GST Integration</h3>
                 </div>
                 <p className="text-fg-muted text-sm font-light">Automated GST return management</p>
               </div>
@@ -149,7 +149,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section className="space-y-4 pt-8 border-t border-line/10">
-            <h2 className="text-3xl font-light text-white mb-4 flex items-center gap-3">
+            <h2 className="text-3xl font-light text-fg-primary mb-4 flex items-center gap-3">
               <span className="w-8 h-8 bg-bg-elevated border border-line/15 rounded-lg flex items-center justify-center text-fg-muted text-lg font-light">4</span>
               Disclaimer
             </h2>
@@ -164,7 +164,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section className="space-y-4 pt-8 border-t border-line/10">
-            <h2 className="text-3xl font-light text-white mb-4 flex items-center gap-3">
+            <h2 className="text-3xl font-light text-fg-primary mb-4 flex items-center gap-3">
               <span className="w-8 h-8 bg-bg-elevated border border-line/15 rounded-lg flex items-center justify-center text-fg-muted text-lg font-light">5</span>
               Limitations
             </h2>
@@ -174,13 +174,13 @@ export default function TermsOfServicePage() {
           </section>
 
           <section className="space-y-4 pt-8 border-t border-line/10">
-            <h2 className="text-3xl font-light text-white mb-4 flex items-center gap-3">
+            <h2 className="text-3xl font-light text-fg-primary mb-4 flex items-center gap-3">
               <span className="w-8 h-8 bg-bg-elevated border border-line/15 rounded-lg flex items-center justify-center text-fg-muted text-lg font-light">6</span>
               Account Responsibilities
             </h2>
             <div className="space-y-3">
               <div className="bg-bg-card/50 p-4 rounded-lg border border-line/10">
-                <p className="text-white font-light mb-2">You are responsible for:</p>
+                <p className="text-fg-primary font-light mb-2">You are responsible for:</p>
                 <ul className="space-y-2 text-fg-secondary text-sm list-disc list-inside font-light">
                   <li>Maintaining the confidentiality of your account credentials</li>
                   <li>All activities that occur under your account</li>
@@ -192,7 +192,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section className="space-y-4 pt-8 border-t border-line/10">
-            <h2 className="text-3xl font-light text-white mb-4 flex items-center gap-3">
+            <h2 className="text-3xl font-light text-fg-primary mb-4 flex items-center gap-3">
               <span className="w-8 h-8 bg-bg-elevated border border-line/15 rounded-lg flex items-center justify-center text-fg-muted text-lg font-light">7</span>
               Governing Law
             </h2>
@@ -202,7 +202,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section className="space-y-4 pt-8 border-t border-line/10">
-            <h2 className="text-3xl font-light text-white mb-4 flex items-center gap-3">
+            <h2 className="text-3xl font-light text-fg-primary mb-4 flex items-center gap-3">
               <span className="w-8 h-8 bg-bg-elevated border border-line/15 rounded-lg flex items-center justify-center text-fg-muted text-lg font-light">8</span>
               Contact Us
             </h2>
@@ -210,8 +210,8 @@ export default function TermsOfServicePage() {
               If you have any questions about these Terms of Service, please contact us:
             </p>
             <div className="bg-bg-elevated/50 border border-line/15 p-6 rounded-xl">
-              <p className="text-white font-light mb-2">Email:</p>
-              <a href="mailto:support@finnovate.ai" className="text-fg-muted hover:text-white transition-colors text-lg font-light">
+              <p className="text-fg-primary font-light mb-2">Email:</p>
+              <a href="mailto:support@finnovate.ai" className="text-fg-muted hover:text-fg-primary transition-colors text-lg font-light">
                 support@finnovate.ai
               </a>
             </div>

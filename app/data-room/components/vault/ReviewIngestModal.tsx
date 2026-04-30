@@ -119,7 +119,7 @@ export default function ReviewIngestModal({ companyId, documentId, onClose, onLi
                 </span>
               )}
             </div>
-            <h2 className="text-base font-medium text-white truncate" title={fileName || ''}>
+            <h2 className="text-base font-medium text-fg-primary truncate" title={fileName || ''}>
               {fileName || 'Document'}
             </h2>
             {agent && (agent.documentType || agent.periodFY || agent.periodKey) && (
@@ -134,7 +134,7 @@ export default function ReviewIngestModal({ companyId, documentId, onClose, onLi
           </div>
           <button
             onClick={onClose}
-            className="text-fg-muted hover:text-white transition-colors flex-shrink-0"
+            className="text-fg-muted hover:text-fg-primary transition-colors flex-shrink-0"
             aria-label="Close"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -159,7 +159,7 @@ export default function ReviewIngestModal({ companyId, documentId, onClose, onLi
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Filter requirements…"
-            className="w-full px-3 py-2 bg-black border border-white/10 rounded-lg text-sm text-white placeholder:text-fg-muted focus:outline-none focus:border-white/30"
+            className="w-full px-3 py-2 bg-black border border-white/10 rounded-lg text-sm text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/30"
           />
         </div>
 
@@ -192,7 +192,7 @@ export default function ReviewIngestModal({ companyId, documentId, onClose, onLi
                     >
                       <div className="flex items-start gap-3">
                         <div className="min-w-0 flex-1">
-                          <div className="text-sm text-white truncate" title={c.requirement}>
+                          <div className="text-sm text-fg-primary truncate" title={c.requirement}>
                             {c.requirement}
                           </div>
                           <div className="text-[11px] text-fg-muted flex items-center gap-2 mt-0.5">

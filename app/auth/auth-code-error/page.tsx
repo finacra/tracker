@@ -27,7 +27,7 @@ export default function AuthCodeErrorPage() {
           </div>
         </div>
         
-        <h1 className="text-4xl font-light text-white mb-4">
+        <h1 className="text-4xl font-light text-fg-primary mb-4">
           Authentication Error
         </h1>
         <p className="text-fg-muted mb-8 font-light">
@@ -36,7 +36,7 @@ export default function AuthCodeErrorPage() {
         
         <button
           onClick={() => router.push('/')}
-          className="px-8 py-4 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors font-light"
+          className="px-8 py-4 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors font-light"
         >
           Return to Sign In
         </button>

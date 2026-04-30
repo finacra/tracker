@@ -48,7 +48,7 @@ export default function PricingTiers() {
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* Header */}
       <div className="text-center mb-12">
-        <h2 className="text-4xl md:text-5xl font-light mb-4 text-white">
+        <h2 className="text-4xl md:text-5xl font-light mb-4 text-fg-primary">
           Choose Your Plan
         </h2>
         <p className="text-fg-muted text-lg mb-8 font-light">
@@ -63,7 +63,7 @@ export default function PricingTiers() {
               onClick={() => updateBillingCycle(cycle.value)}
               className={`px-4 py-2 rounded-lg font-light transition-all whitespace-nowrap ${
                 selectedBillingCycle === cycle.value
-                  ? 'bg-bg-hover text-white'
+                  ? 'bg-bg-hover text-fg-primary'
                   : 'bg-bg-elevated text-fg-secondary hover:bg-bg-hover'
               }`}
             >
@@ -105,7 +105,7 @@ export default function PricingTiers() {
               {/* Popular Badge */}
               {tier.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-bg-hover text-white px-4 py-1 rounded-full text-sm font-light">
+                  <span className="bg-bg-hover text-fg-primary px-4 py-1 rounded-full text-sm font-light">
                     Most Popular
                   </span>
                 </div>
@@ -114,7 +114,7 @@ export default function PricingTiers() {
               {/* Tier Header */}
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-2xl font-light text-white">{tier.name}</h3>
+                  <h3 className="text-2xl font-light text-fg-primary">{tier.name}</h3>
                   {tier.id === 'enterprise' ? (
                     <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-xs font-semibold">
                       User-First
@@ -145,7 +145,7 @@ export default function PricingTiers() {
                   {tier.id !== 'enterprise' ? (
                     <>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-4xl font-light text-white">
+                    <span className="text-4xl font-light text-fg-primary">
                       {formatPrice(selectedPricing.price)}
                     </span>
                     {selectedBillingCycle !== 'monthly' && (
@@ -236,8 +236,8 @@ export default function PricingTiers() {
                     href="/contact?plan=enterprise&source=pricing"
                     className={`block w-full py-3 px-6 rounded-lg font-light transition-all text-center ${
                       tier.popular
-                        ? 'bg-bg-hover hover:bg-bg-hover text-white'
-                        : 'bg-transparent border border-line/15 text-fg-secondary hover:border-line/30 hover:text-white'
+                        ? 'bg-bg-hover hover:bg-bg-hover text-fg-primary'
+                        : 'bg-transparent border border-line/15 text-fg-secondary hover:border-line/30 hover:text-fg-primary'
                     }`}
                   >
                     Contact Sales Team
@@ -249,8 +249,8 @@ export default function PricingTiers() {
                     price={selectedPricing.price}
                     className={`w-full py-3 px-6 rounded-lg font-light transition-all ${
                       tier.popular
-                        ? 'bg-bg-hover hover:bg-bg-hover text-white'
-                        : 'bg-transparent border border-line/15 text-fg-secondary hover:border-line/30 hover:text-white'
+                        ? 'bg-bg-hover hover:bg-bg-hover text-fg-primary'
+                        : 'bg-transparent border border-line/15 text-fg-secondary hover:border-line/30 hover:text-fg-primary'
                     }`}
                   />
                 )}
@@ -262,14 +262,14 @@ export default function PricingTiers() {
 
       {/* Feature Comparison Table */}
       <div className="mt-16">
-        <h3 className="text-2xl font-light text-center mb-8 text-white">Feature Comparison</h3>
+        <h3 className="text-2xl font-light text-center mb-8 text-fg-primary">Feature Comparison</h3>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b border-line/15">
                 <th className="text-left p-4 text-fg-muted font-light">Feature</th>
                 {PRICING_TIERS.map((tier) => (
-                  <th key={tier.id} className="text-center p-4 font-light text-white">
+                  <th key={tier.id} className="text-center p-4 font-light text-fg-primary">
                     {tier.name}
                   </th>
                 ))}
@@ -405,7 +405,7 @@ export default function PricingTiers() {
       {/* Subscription Model Explanation */}
       <div className="mt-16 max-w-4xl mx-auto">
         <div className="bg-bg-card rounded-xl p-8 border border-line/10">
-          <h3 className="text-2xl font-light mb-6 text-center text-white">Understanding Our Subscription Models</h3>
+          <h3 className="text-2xl font-light mb-6 text-center text-fg-primary">Understanding Our Subscription Models</h3>
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-bg-card/50 rounded-lg p-6 border border-line/15">
               <div className="flex items-center gap-2 mb-3">
@@ -452,41 +452,41 @@ export default function PricingTiers() {
 
       {/* FAQ Section */}
       <div className="mt-16">
-        <h3 className="text-2xl font-light text-center mb-8 text-white">Frequently Asked Questions</h3>
+        <h3 className="text-2xl font-light text-center mb-8 text-fg-primary">Frequently Asked Questions</h3>
         <div className="max-w-3xl mx-auto space-y-4">
           <div className="bg-bg-card rounded-lg p-6 border border-line/10">
-            <h4 className="font-light mb-2 text-white">What's the difference between Company-First and User-First?</h4>
+            <h4 className="font-light mb-2 text-fg-primary">What's the difference between Company-First and User-First?</h4>
             <p className="text-fg-muted text-sm font-light">
               <strong className="font-light">Company-First (Starter):</strong> Each company needs its own subscription. You subscribe per company, so if you have 3 companies, you'll need 3 subscriptions.<br/><br/>
               <strong className="font-light">User-First (Enterprise):</strong> One subscription covers all your companies (up to 100). You pay once and can manage all your companies under that subscription.
             </p>
           </div>
           <div className="bg-bg-card rounded-lg p-6 border border-line/10">
-            <h4 className="font-light mb-2 text-white">Do invited team members need their own subscription?</h4>
+            <h4 className="font-light mb-2 text-fg-primary">Do invited team members need their own subscription?</h4>
             <p className="text-fg-muted text-sm font-light">
               No! Invited team members get free access to companies in both subscription models. As long as the company owner has an active subscription, all invited members can access that company at no additional cost.
             </p>
           </div>
           <div className="bg-bg-card rounded-lg p-6 border border-line/10">
-            <h4 className="font-light mb-2 text-white">Can I change my plan later?</h4>
+            <h4 className="font-light mb-2 text-fg-primary">Can I change my plan later?</h4>
             <p className="text-fg-muted text-sm font-light">
               Yes, you can upgrade or downgrade your plan at any time. Changes will be prorated. For Company-First plans, you can upgrade individual companies. For Enterprise, you can upgrade your user subscription.
             </p>
           </div>
           <div className="bg-bg-card rounded-lg p-6 border border-line/10">
-            <h4 className="font-light mb-2 text-white">What payment methods do you accept?</h4>
+            <h4 className="font-light mb-2 text-fg-primary">What payment methods do you accept?</h4>
             <p className="text-fg-muted text-sm font-light">
               We accept all major credit cards, debit cards, UPI, and bank transfers through our secure payment gateway.
             </p>
           </div>
           <div className="bg-bg-card rounded-lg p-6 border border-line/10">
-            <h4 className="font-light mb-2 text-white">Is there a free trial?</h4>
+            <h4 className="font-light mb-2 text-fg-primary">Is there a free trial?</h4>
             <p className="text-fg-muted text-sm font-light">
               Yes! We offer a 15-day free trial for all plans. No credit card required. For Company-First plans, you can start a trial for each company. For Enterprise, one trial covers all your companies.
             </p>
           </div>
           <div className="bg-bg-card rounded-lg p-6 border border-line/10">
-            <h4 className="font-light mb-2 text-white">What happens if I exceed my plan limits?</h4>
+            <h4 className="font-light mb-2 text-fg-primary">What happens if I exceed my plan limits?</h4>
             <p className="text-fg-muted text-sm font-light">
               We'll notify you when you're approaching your limits. For Company-First plans, you can subscribe for additional companies. For Enterprise, you can upgrade to a higher tier or contact us for custom solutions.
             </p>

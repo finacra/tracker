@@ -10,7 +10,7 @@ export default function ComingSoonPage() {
       <div className="flex items-center justify-center min-h-[calc(100vh-80px)] px-4">
         <div className="text-center max-w-2xl">
           <div className="mb-8">
-            <h1 className="text-5xl sm:text-6xl md:text-7xl font-light text-white mb-4">
+            <h1 className="text-5xl sm:text-6xl md:text-7xl font-light text-fg-primary mb-4">
               Coming Soon
             </h1>
             <p className="text-xl sm:text-2xl text-fg-muted font-light mb-8">

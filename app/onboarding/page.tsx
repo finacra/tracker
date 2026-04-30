@@ -205,13 +205,13 @@ export default function OnboardingPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-light text-white mb-4">Subscription Required</h1>
+          <h1 className="text-2xl font-light text-fg-primary mb-4">Subscription Required</h1>
           <p className="text-fg-muted mb-6 font-light">
             You need an active subscription or trial to create companies. Start with a free 15-day trial!
           </p>
           <button
             onClick={() => router.push('/subscribe')}
-            className="w-full border border-line/15 text-fg-secondary px-6 py-3 rounded-lg font-light hover:border-line/30 hover:text-white transition-colors"
+            className="w-full border border-line/15 text-fg-secondary px-6 py-3 rounded-lg font-light hover:border-line/30 hover:text-fg-primary transition-colors"
           >
             Choose a Plan
           </button>
@@ -230,9 +230,9 @@ export default function OnboardingPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-light text-white mb-4">Company Limit Reached</h1>
+          <h1 className="text-2xl font-light text-fg-primary mb-4">Company Limit Reached</h1>
           <p className="text-fg-muted mb-2 font-light">
-            You've created <span className="text-white font-light">{currentCompanyCount}</span> of <span className="text-white font-light">{companyLimit}</span> companies allowed on your plan.
+            You've created <span className="text-fg-primary font-light">{currentCompanyCount}</span> of <span className="text-fg-primary font-light">{companyLimit}</span> companies allowed on your plan.
           </p>
           <p className="text-fg-muted text-sm mb-6 font-light">
             Upgrade to a higher plan to add more companies.
@@ -240,13 +240,13 @@ export default function OnboardingPage() {
           <div className="flex flex-col gap-3">
             <button
               onClick={() => router.push('/subscribe')}
-              className="w-full border border-line/15 text-fg-secondary px-6 py-3 rounded-lg font-light hover:border-line/30 hover:text-white transition-colors"
+              className="w-full border border-line/15 text-fg-secondary px-6 py-3 rounded-lg font-light hover:border-line/30 hover:text-fg-primary transition-colors"
             >
               Upgrade Plan
             </button>
             <button
               onClick={() => router.push('/data-room')}
-              className="w-full border border-line/15 text-fg-secondary px-6 py-3 rounded-lg font-light hover:border-line/30 hover:text-white transition-colors"
+              className="w-full border border-line/15 text-fg-secondary px-6 py-3 rounded-lg font-light hover:border-line/30 hover:text-fg-primary transition-colors"
             >
               Go to Data Room
             </button>
@@ -1285,7 +1285,7 @@ export default function OnboardingPage() {
               </svg>
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-light text-white">Create New Company</h1>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-light text-fg-primary">Create New Company</h1>
               <p className="text-fg-muted text-xs sm:text-sm mt-1 font-light">
                 Add another company to your account
               </p>
@@ -1298,15 +1298,15 @@ export default function OnboardingPage() {
           <div className="space-y-4 sm:space-y-6">
             {/* Step Indicator */}
             <div className="flex items-center justify-center gap-2 mb-4 sm:mb-6">
-              <div className={`flex items-center gap-2 ${currentStep === 1 ? 'text-white' : 'text-fg-muted'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${currentStep === 1 ? 'bg-bg-elevated border-line/30 text-white' : 'bg-bg-card border-line/15 text-fg-muted'}`}>
+              <div className={`flex items-center gap-2 ${currentStep === 1 ? 'text-fg-primary' : 'text-fg-muted'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${currentStep === 1 ? 'bg-bg-elevated border-line/30 text-fg-primary' : 'bg-bg-card border-line/15 text-fg-muted'}`}>
                   1
                 </div>
                 <span className="text-xs sm:text-sm font-light">Company Details</span>
               </div>
               <div className="w-8 sm:w-12 h-0.5 bg-bg-hover"></div>
-              <div className={`flex items-center gap-2 ${currentStep === 2 ? 'text-white' : 'text-fg-muted'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${currentStep === 2 ? 'bg-bg-elevated border-line/30 text-white' : 'bg-bg-card border-line/15 text-fg-muted'}`}>
+              <div className={`flex items-center gap-2 ${currentStep === 2 ? 'text-fg-primary' : 'text-fg-muted'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${currentStep === 2 ? 'bg-bg-elevated border-line/30 text-fg-primary' : 'bg-bg-card border-line/15 text-fg-muted'}`}>
                   2
                 </div>
                 <span className="text-xs sm:text-sm font-light">Documents</span>
@@ -1344,14 +1344,14 @@ export default function OnboardingPage() {
                         : 'Leave blank — not registered with MCA'
                       }
                       disabled={!requiresCIN}
-                      className={`flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light ${!requiresCIN ? 'opacity-40 cursor-not-allowed' : ''}`}
+                      className={`flex-1 px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light ${!requiresCIN ? 'opacity-40 cursor-not-allowed' : ''}`}
                     />
                     {hasAPISupport && requiresCIN && (
                     <button
                       type="button"
                       onClick={handleCINVerification}
                       disabled={isVerifyingCIN || !formData.cinNumber.trim()}
-                      className="px-4 sm:px-6 py-2 sm:py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap font-light"
+                      className="px-4 sm:px-6 py-2 sm:py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap font-light"
                     >
                       {isVerifyingCIN ? (
                         <>
@@ -1453,7 +1453,7 @@ export default function OnboardingPage() {
                 value={formData.companyName}
                 onChange={handleInputChange}
                 placeholder="Enter company name"
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
               />
               {errors.companyName && (
                 <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.companyName}</p>
@@ -1479,7 +1479,7 @@ export default function OnboardingPage() {
                 name="companyType"
                 value={formData.companyType}
                 onChange={handleInputChange}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none font-light cursor-pointer"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none font-light cursor-pointer"
               >
                 <option value="">Select company type</option>
                 {countryConfig.onboarding.entityTypes.map((entityType) => (
@@ -1504,7 +1504,7 @@ export default function OnboardingPage() {
                   value={formData.panNumber}
                   onChange={handleInputChange}
                   placeholder={`Enter ${countryConfig.labels.taxId}`}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.panNumber && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.panNumber}</p>
@@ -1611,7 +1611,7 @@ export default function OnboardingPage() {
                     value={formData.otherIndustryCategory}
                     onChange={handleInputChange}
                     placeholder="Enter industry category"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                   />
                   {errors.otherIndustryCategory && (
                     <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.otherIndustryCategory}</p>
@@ -1646,7 +1646,7 @@ export default function OnboardingPage() {
                       }
                     }
                   }}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors cursor-pointer pr-10 font-light"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors cursor-pointer pr-10 font-light"
                 />
               <input
                 type="date"
@@ -1694,7 +1694,7 @@ export default function OnboardingPage() {
                 name="yearType"
                 value={formData.yearType}
                 onChange={handleInputChange}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
               >
                 <option value="FY">Financial Year (India) - Q1: Apr-Jun, Q2: Jul-Sep, Q3: Oct-Dec, Q4: Jan-Mar</option>
                 <option value="CY">Calendar Year (Gulf/USA) - Q1: Jan-Mar, Q2: Apr-Jun, Q3: Jul-Sep, Q4: Oct-Dec</option>
@@ -1715,7 +1715,7 @@ export default function OnboardingPage() {
                 onChange={handleInputChange}
                 placeholder="Enter complete address"
                 rows={3}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors resize-y font-light"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors resize-y font-light"
               />
               {errors.address && (
                 <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.address}</p>
@@ -1734,7 +1734,7 @@ export default function OnboardingPage() {
                   value={formData.city}
                   onChange={handleInputChange}
                   placeholder="City"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.city && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.city}</p>
@@ -1750,7 +1750,7 @@ export default function OnboardingPage() {
                   value={formData.state}
                   onChange={handleInputChange}
                   placeholder="State"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.state && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.state}</p>
@@ -1766,7 +1766,7 @@ export default function OnboardingPage() {
                   value={formData.pinCode}
                   onChange={handleInputChange}
                   placeholder={countryConfig.labels.postalCode}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.pinCode && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.pinCode}</p>
@@ -1782,7 +1782,7 @@ export default function OnboardingPage() {
                 </label>
                 <div className="px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <span className="text-white text-sm sm:text-base">{entityDetection.companyStage}</span>
+                    <span className="text-fg-primary text-sm sm:text-base">{entityDetection.companyStage}</span>
                     <span className="text-[10px] sm:text-xs text-fg-muted bg-bg-elevated border border-line/15 px-2 py-0.5 rounded w-fit font-light">
                       {entityDetection.confidenceScore} Confidence
                     </span>
@@ -1802,7 +1802,7 @@ export default function OnboardingPage() {
                   name="phoneNumber"
                   value={formData.phoneNumber}
                   onChange={handleInputChange}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.phoneNumber && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.phoneNumber}</p>
@@ -1818,7 +1818,7 @@ export default function OnboardingPage() {
                   value={formData.email}
                   onChange={handleInputChange}
                   placeholder="company@example.com"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
                 {errors.email && (
                   <p className="mt-1 text-xs sm:text-sm text-red-400">{errors.email}</p>
@@ -1834,7 +1834,7 @@ export default function OnboardingPage() {
                   value={formData.landline}
                   onChange={handleInputChange}
                   placeholder="Enter landline number"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                 />
               </div>
             </div>
@@ -1850,14 +1850,14 @@ export default function OnboardingPage() {
                 value={formData.other}
                 onChange={handleInputChange}
                 placeholder="Enter any other information"
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
               />
             </div>
 
             {/* Compliance Profile Section */}
             <div className="space-y-4 pt-2">
               <div className="border-t border-line/15/60 pt-4">
-                <h4 className="text-white font-medium text-sm mb-1">Compliance Profile</h4>
+                <h4 className="text-fg-primary font-medium text-sm mb-1">Compliance Profile</h4>
                 <p className="text-fg-muted text-xs mb-4">These fields help determine which regulatory compliances apply to your company. Fill what you can — you can update later.</p>
               </div>
 
@@ -1872,7 +1872,7 @@ export default function OnboardingPage() {
                     onChange={handleInputChange}
                     placeholder="e.g. 25"
                     min="0"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                   />
                   <p className="text-fg-muted/60 text-[10px] mt-1">Determines PF (20+), ESI (10+), POSH (10+), Gratuity (10+)</p>
                 </div>
@@ -1886,7 +1886,7 @@ export default function OnboardingPage() {
                     placeholder="e.g. 500 for 5 Crore"
                     min="0"
                     step="0.01"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                   />
                   <p className="text-fg-muted/60 text-[10px] mt-1">Determines Tax Audit (100L+), E-Invoicing (500L+), GST Audit (500L+)</p>
                 </div>
@@ -1904,7 +1904,7 @@ export default function OnboardingPage() {
                     placeholder="e.g. 10"
                     min="0"
                     step="0.01"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                   />
                   <p className="text-fg-muted/60 text-[10px] mt-1">Determines CSR (500Cr+), CARO thresholds</p>
                 </div>
@@ -1966,7 +1966,7 @@ export default function OnboardingPage() {
                           }
                           setIsLookingUpGST(false)
                         }}
-                        className="px-3 py-2 bg-bg-elevated border border-line/30 rounded-lg text-fg-secondary text-xs hover:bg-bg-hover hover:text-white transition-colors whitespace-nowrap disabled:opacity-50"
+                        className="px-3 py-2 bg-bg-elevated border border-line/30 rounded-lg text-fg-secondary text-xs hover:bg-bg-hover hover:text-fg-primary transition-colors whitespace-nowrap disabled:opacity-50"
                       >
                         {isLookingUpGST ? (
                           <span className="flex items-center gap-1.5">
@@ -2011,7 +2011,7 @@ export default function OnboardingPage() {
                               }}
                               placeholder="22AAAAA0000A1Z5"
                               maxLength={15}
-                              className="flex-1 px-3 py-2 bg-bg-card border border-line/15 rounded-lg text-white text-sm font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors uppercase"
+                              className="flex-1 px-3 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm font-light focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors uppercase"
                             />
                             <div className="w-40 px-3 py-2 bg-bg-card/50 border border-line/10 rounded-lg text-fg-muted text-xs flex items-center justify-between">
                               <span className="truncate">{reg.state || '—'}</span>
@@ -2046,7 +2046,7 @@ export default function OnboardingPage() {
                           ...prev,
                           gstRegistrations: [...prev.gstRegistrations, { gstin: '', state: '' }],
                         }))}
-                        className="text-xs text-fg-muted hover:text-white transition-colors"
+                        className="text-xs text-fg-muted hover:text-fg-primary transition-colors"
                       >
                         + Add another GSTIN
                       </button>
@@ -2063,7 +2063,7 @@ export default function OnboardingPage() {
                     name="isMsme"
                     value={formData.isMsme}
                     onChange={handleInputChange}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none font-light cursor-pointer"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none font-light cursor-pointer"
                   >
                     <option value="">Not sure / Not applicable</option>
                     <option value="yes">Yes — MSME Registered</option>
@@ -2077,7 +2077,7 @@ export default function OnboardingPage() {
                       name="msmeCategory"
                       value={formData.msmeCategory}
                       onChange={handleInputChange}
-                      className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none font-light cursor-pointer"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors appearance-none font-light cursor-pointer"
                     >
                       <option value="">Select category</option>
                       <option value="micro">Micro</option>
@@ -2120,7 +2120,7 @@ export default function OnboardingPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddDirector(!showAddDirector)}
-                  className="px-3 sm:px-4 py-1.5 sm:py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors text-xs sm:text-sm flex items-center justify-center gap-2 w-full sm:w-auto font-light"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors text-xs sm:text-sm flex items-center justify-center gap-2 w-full sm:w-auto font-light"
                 >
                   <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="12" y1="5" x2="12" y2="19" />
@@ -2146,13 +2146,13 @@ export default function OnboardingPage() {
                         setErrors((prev) => ({ ...prev, newDirectorDIN: '' }))
                       }}
                       placeholder={`Enter ${countryConfig.labels.directorId}`}
-                      className="flex-1 px-3 sm:px-4 py-2 bg-bg-elevated border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
+                      className="flex-1 px-3 sm:px-4 py-2 bg-bg-elevated border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors font-light"
                     />
                     <button
                       type="button"
                       onClick={handleAddDirectorByDIN}
                       disabled={!newDirectorDIN.trim()}
-                      className="px-3 sm:px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-light"
+                      className="px-3 sm:px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-light"
                     >
                       {hasAPISupport ? 'Verify & Add' : 'Add'}
                     </button>
@@ -2196,7 +2196,7 @@ export default function OnboardingPage() {
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-2 sm:mb-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2 mb-2">
-                            <h4 className="text-white font-light text-sm sm:text-base break-words">
+                            <h4 className="text-fg-primary font-light text-sm sm:text-base break-words">
                               {director.firstName} {director.middleName} {director.lastName}
                             </h4>
                             {director.verified && (
@@ -2253,7 +2253,7 @@ export default function OnboardingPage() {
                               type="button"
                               onClick={() => handleDINVerification(director.id, director.din)}
                               disabled={isVerifyingDIN === director.id}
-                              className="px-2 sm:px-3 py-1 sm:py-1.5 border border-line/15 text-fg-secondary rounded text-xs sm:text-sm hover:border-line/30 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 font-light"
+                              className="px-2 sm:px-3 py-1 sm:py-1.5 border border-line/15 text-fg-secondary rounded text-xs sm:text-sm hover:border-line/30 hover:text-fg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 font-light"
                             >
                               {isVerifyingDIN === director.id ? (
                                 <>
@@ -2317,7 +2317,7 @@ export default function OnboardingPage() {
                 onChange={(e) => setExDirectors(e.target.value)}
                 placeholder="Enter ex-director names separated by commas or new lines (e.g., John Doe, Jane Smith or one per line)"
                 rows={4}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors resize-y font-light"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors resize-y font-light"
               />
               <p className="mt-1 text-[10px] sm:text-xs text-fg-muted">
                 You can enter multiple names separated by commas or one per line. This information will be stored for reference.
@@ -2351,7 +2351,7 @@ export default function OnboardingPage() {
                         <div
                           className={`px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border rounded-lg transition-colors flex items-center justify-between ${
                             formData.documents[docType]
-                              ? 'border-line/30 text-white'
+                              ? 'border-line/30 text-fg-primary'
                               : 'border-line/15 text-fg-muted hover:border-line/30'
                           }`}
                         >
@@ -2361,7 +2361,7 @@ export default function OnboardingPage() {
                                 <svg
                                   width="14"
                                   height="14"
-                                  className="sm:w-4 sm:h-4 flex-shrink-0 text-white"
+                                  className="sm:w-4 sm:h-4 flex-shrink-0 text-fg-primary"
                                   viewBox="0 0 24 24"
                                   fill="none"
                                 >
@@ -2380,7 +2380,7 @@ export default function OnboardingPage() {
                                     strokeLinejoin="round"
                                   />
                                 </svg>
-                                <span className="text-white text-xs sm:text-sm truncate">
+                                <span className="text-fg-primary text-xs sm:text-sm truncate">
                                   {formData.documents[docType]?.name}
                                 </span>
                               </>
@@ -2455,7 +2455,7 @@ export default function OnboardingPage() {
                   <button
                     type="button"
                     onClick={() => router.back()}
-                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors text-sm sm:text-base"
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors text-sm sm:text-base"
                   >
                     Cancel
                   </button>
@@ -2507,7 +2507,7 @@ export default function OnboardingPage() {
                         setCurrentStep(2)
                       }
                     }}
-                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors flex items-center justify-center gap-2 text-sm sm:text-base font-light"
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors flex items-center justify-center gap-2 text-sm sm:text-base font-light"
                   >
                     Update and Next
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2520,21 +2520,21 @@ export default function OnboardingPage() {
                   <button
                     type="button"
                     onClick={() => setCurrentStep(1)}
-                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors text-sm sm:text-base"
+                    className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors text-sm sm:text-base"
                   >
                     Back
                   </button>
               <button
                 type="button"
                 onClick={() => router.back()}
-                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors text-sm sm:text-base"
+                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-transparent border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors text-sm sm:text-base"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base font-light min-w-[260px]"
+                className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base font-light min-w-[260px]"
                 title={isSubmitting ? submitStatusMessage : undefined}
               >
                 {isSubmitting ? (

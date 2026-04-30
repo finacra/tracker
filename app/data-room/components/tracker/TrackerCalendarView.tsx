@@ -54,7 +54,7 @@ export default function TrackerCalendarView({
           <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-4">
             <button
               onClick={() => setCalendarYear(calendarYear - 1)}
-              className="p-1.5 sm:p-2 hover:bg-bg-elevated rounded-lg transition-colors text-fg-muted hover:text-white"
+              className="p-1.5 sm:p-2 hover:bg-bg-elevated rounded-lg transition-colors text-fg-muted hover:text-fg-primary"
               title="Previous Year"
             >
               <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -71,14 +71,14 @@ export default function TrackerCalendarView({
                   setCalendarMonth(calendarMonth - 1)
                 }
               }}
-              className="p-1.5 sm:p-2 hover:bg-bg-elevated rounded-lg transition-colors text-fg-muted hover:text-white"
+              className="p-1.5 sm:p-2 hover:bg-bg-elevated rounded-lg transition-colors text-fg-muted hover:text-fg-primary"
               title="Previous Month"
             >
               <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="15 18 9 12 15 6" />
               </svg>
             </button>
-            <h3 className="text-base sm:text-xl font-semibold text-white min-w-[140px] sm:min-w-[200px] text-center">
+            <h3 className="text-base sm:text-xl font-semibold text-fg-primary min-w-[140px] sm:min-w-[200px] text-center">
               {months[calendarMonth]} {calendarYear}
             </h3>
             <button
@@ -90,7 +90,7 @@ export default function TrackerCalendarView({
                   setCalendarMonth(calendarMonth + 1)
                 }
               }}
-              className="p-1.5 sm:p-2 hover:bg-bg-elevated rounded-lg transition-colors text-fg-muted hover:text-white"
+              className="p-1.5 sm:p-2 hover:bg-bg-elevated rounded-lg transition-colors text-fg-muted hover:text-fg-primary"
               title="Next Month"
             >
               <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -99,7 +99,7 @@ export default function TrackerCalendarView({
             </button>
             <button
               onClick={() => setCalendarYear(calendarYear + 1)}
-              className="p-1.5 sm:p-2 hover:bg-bg-elevated rounded-lg transition-colors text-fg-muted hover:text-white"
+              className="p-1.5 sm:p-2 hover:bg-bg-elevated rounded-lg transition-colors text-fg-muted hover:text-fg-primary"
               title="Next Year"
             >
               <svg width="16" height="16" className="sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -138,7 +138,7 @@ export default function TrackerCalendarView({
               className={`min-h-[60px] sm:min-h-[120px] border border-line/15 rounded sm:rounded-lg p-1 sm:p-2 bg-bg-card/50 ${isToday ? 'ring-1 sm:ring-2 ring-white/40' : ''
                 }`}
             >
-              <div className={`text-xs sm:text-sm mb-1 sm:mb-2 font-medium ${isToday ? 'text-white font-bold' : 'text-fg-secondary'}`}>
+              <div className={`text-xs sm:text-sm mb-1 sm:mb-2 font-medium ${isToday ? 'text-fg-primary font-bold' : 'text-fg-secondary'}`}>
                 {day}
               </div>
               <div className="space-y-1 sm:space-y-1.5 overflow-y-auto max-h-[45px] sm:max-h-[90px]">

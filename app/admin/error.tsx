@@ -24,7 +24,7 @@ export default function AdminError({
           </svg>
         </div>
 
-        <h1 className="text-2xl font-light text-white mb-2">Admin panel error</h1>
+        <h1 className="text-2xl font-light text-fg-primary mb-2">Admin panel error</h1>
         <p className="text-fg-muted text-sm font-light mb-8 leading-relaxed">
           An error occurred in the admin panel. Please try again or return to the dashboard.
         </p>
@@ -32,7 +32,7 @@ export default function AdminError({
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={reset}
-            className="px-6 py-2.5 rounded-xl bg-[#1E3A5F] hover:bg-[#1E3A5F]/80 text-white text-sm font-medium transition-colors"
+            className="px-6 py-2.5 rounded-xl bg-[#1E3A5F] hover:bg-[#1E3A5F]/80 text-fg-primary text-sm font-medium transition-colors"
           >
             Try again
           </button>

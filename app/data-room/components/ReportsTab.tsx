@@ -1055,7 +1055,7 @@ export default function ReportsTab({
       {/* Header */}
       <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-3 sm:mb-4">
-          <h2 className="text-xl sm:text-2xl font-light text-white">Compliance Reports</h2>
+          <h2 className="text-xl sm:text-2xl font-light text-fg-primary">Compliance Reports</h2>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
             <button
               onClick={exportPDFReport}
@@ -1086,7 +1086,7 @@ export default function ReportsTab({
             </button>
             <button
               onClick={exportComplianceReport}
-              className="px-3 sm:px-4 py-2 bg-white/10 border border-white/40 text-white rounded-lg hover:bg-white/20 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+              className="px-3 sm:px-4 py-2 bg-white/10 border border-white/40 text-fg-primary rounded-lg hover:bg-white/20 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
             >
               <svg width="14" height="14" className="sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -1116,12 +1116,12 @@ export default function ReportsTab({
           {isGeneratingEnhancedPDF && (
             <div className="mt-4 p-4 bg-white/5 border border-white/40/30 rounded-lg">
               <div className="flex items-center gap-3">
-                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin h-5 w-5 text-fg-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
                 <div className="flex-1">
-                  <div className="text-white text-sm font-medium">{pdfGenerationProgress.step}</div>
+                  <div className="text-fg-primary text-sm font-medium">{pdfGenerationProgress.step}</div>
                   {pdfGenerationProgress.total > 0 && (
                     <div className="text-fg-muted text-xs mt-1">
                       {pdfGenerationProgress.current} of {pdfGenerationProgress.total} items enriched
@@ -1151,7 +1151,7 @@ export default function ReportsTab({
               </svg>
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{totalCompliances}</div>
+          <div className="text-2xl sm:text-3xl font-light text-fg-primary mb-1 sm:mb-2">{totalCompliances}</div>
           <p className="text-xs sm:text-sm text-fg-muted">All compliance requirements</p>
         </div>
 
@@ -1165,7 +1165,7 @@ export default function ReportsTab({
               </svg>
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{completed}</div>
+          <div className="text-2xl sm:text-3xl font-light text-fg-primary mb-1 sm:mb-2">{completed}</div>
           <p className="text-xs sm:text-sm text-fg-muted">
             {totalCompliances > 0 ? `${Math.round((completed / totalCompliances) * 100)}% completion rate` : 'No compliances'}
           </p>
@@ -1183,7 +1183,7 @@ export default function ReportsTab({
               </svg>
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{overdue}</div>
+          <div className="text-2xl sm:text-3xl font-light text-fg-primary mb-1 sm:mb-2">{overdue}</div>
           <p className="text-xs sm:text-sm text-fg-muted">
             {totalCompliances > 0 ? `${Math.round((overdue / totalCompliances) * 100)}% overdue rate` : 'No compliances'}
           </p>
@@ -1201,7 +1201,7 @@ export default function ReportsTab({
               </svg>
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{pending}</div>
+          <div className="text-2xl sm:text-3xl font-light text-fg-primary mb-1 sm:mb-2">{pending}</div>
           <p className="text-xs sm:text-sm text-fg-muted">In progress</p>
         </div>
 
@@ -1217,7 +1217,7 @@ export default function ReportsTab({
               </svg>
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">{notStarted}</div>
+          <div className="text-2xl sm:text-3xl font-light text-fg-primary mb-1 sm:mb-2">{notStarted}</div>
           <p className="text-xs sm:text-sm text-fg-muted">Awaiting action</p>
         </div>
 
@@ -1228,7 +1228,7 @@ export default function ReportsTab({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsComplianceScoreModalOpen(true)}
-                className="text-fg-muted hover:text-white transition-colors"
+                className="text-fg-muted hover:text-fg-primary transition-colors"
                 title="Learn more about compliance score"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1247,7 +1247,7 @@ export default function ReportsTab({
             </div>
           </div>
           <div className="flex items-baseline gap-2 mb-1">
-            <div className="text-2xl sm:text-3xl font-light text-white">
+            <div className="text-2xl sm:text-3xl font-light text-fg-primary">
               {totalCompliances === 0 ? '—' : `${complianceScore}`}
             </div>
             {totalCompliances > 0 && (
@@ -1271,7 +1271,7 @@ export default function ReportsTab({
               </svg>
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-light text-white mb-1 sm:mb-2">
+          <div className="text-2xl sm:text-3xl font-light text-fg-primary mb-1 sm:mb-2">
             {totalPenalty > 0 ? formatCurrency(totalPenalty, countryCode) : formatCurrency(0, countryCode)}
           </div>
           <p className="text-xs sm:text-sm text-fg-muted">Accumulated penalties</p>
@@ -1280,7 +1280,7 @@ export default function ReportsTab({
 
       {/* Status Breakdown Chart */}
       <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
-        <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Status Breakdown</h3>
+        <h3 className="text-lg sm:text-xl font-light text-fg-primary mb-4 sm:mb-6">Status Breakdown</h3>
         <div className="space-y-3 sm:space-y-4">
           {Object.entries(statusBreakdown).map(([status, count]) => {
             const percentage = totalCompliances > 0 ? (count / totalCompliances) * 100 : 0
@@ -1314,7 +1314,7 @@ export default function ReportsTab({
 
       {/* Category Breakdown */}
       <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
-        <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Category Breakdown</h3>
+        <h3 className="text-lg sm:text-xl font-light text-fg-primary mb-4 sm:mb-6">Category Breakdown</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {Object.entries(categoryBreakdown)
             .sort(([, a], [, b]) => (b as number) - (a as number))
@@ -1323,8 +1323,8 @@ export default function ReportsTab({
               return (
                 <div key={category} className="border border-white/10 rounded-lg p-3 sm:p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-white font-medium text-sm sm:text-base break-words">{category}</span>
-                    <span className="text-white font-semibold text-sm sm:text-base flex-shrink-0 ml-2">{count}</span>
+                    <span className="text-fg-primary font-medium text-sm sm:text-base break-words">{category}</span>
+                    <span className="text-fg-primary font-semibold text-sm sm:text-base flex-shrink-0 ml-2">{count}</span>
                   </div>
                   <div className="w-full bg-bg-elevated rounded-full h-1 sm:h-1.5">
                     <div
@@ -1341,7 +1341,7 @@ export default function ReportsTab({
 
       {/* Compliance Type Breakdown */}
       <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
-        <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Compliance Type Breakdown</h3>
+        <h3 className="text-lg sm:text-xl font-light text-fg-primary mb-4 sm:mb-6">Compliance Type Breakdown</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {Object.entries(complianceTypeBreakdown)
             .filter(([, data]) => data.total > 0)
@@ -1366,7 +1366,7 @@ export default function ReportsTab({
                 <div key={type} className={`border ${colors.border} rounded-lg p-3 sm:p-4 ${colors.bg}`}>
                   <div className="flex items-center justify-between mb-2 sm:mb-3">
                     <h4 className={`font-semibold text-sm sm:text-base ${colors.text}`}>{typeLabels[type]}</h4>
-                    <span className="text-white font-bold text-base sm:text-lg flex-shrink-0 ml-2">{data.total}</span>
+                    <span className="text-fg-primary font-bold text-base sm:text-lg flex-shrink-0 ml-2">{data.total}</span>
                   </div>
                   <div className="space-y-1.5 sm:space-y-2">
                     <div className="flex items-center justify-between text-xs sm:text-sm">
@@ -1407,7 +1407,7 @@ export default function ReportsTab({
       {/* Financial Year Breakdown */}
       {Object.keys(fyBreakdown).length > 0 && (
         <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
-          <h3 className="text-lg sm:text-xl font-light text-white mb-4 sm:mb-6">Financial Year Breakdown</h3>
+          <h3 className="text-lg sm:text-xl font-light text-fg-primary mb-4 sm:mb-6">Financial Year Breakdown</h3>
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {Object.entries(fyBreakdown)
               .sort(([a], [b]) => {
@@ -1421,7 +1421,7 @@ export default function ReportsTab({
               })
               .map(([fy, count]) => (
                 <div key={fy} className="border border-white/10 rounded-lg p-3 sm:p-4 text-center">
-                  <div className="text-xl sm:text-2xl font-light text-white mb-1">{count}</div>
+                  <div className="text-xl sm:text-2xl font-light text-fg-primary mb-1">{count}</div>
                   <div className="text-xs sm:text-sm text-fg-muted break-words">{fy}</div>
                 </div>
               ))}
@@ -1433,7 +1433,7 @@ export default function ReportsTab({
       {overdueCompliances.length > 0 && (
         <div className="bg-black border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
-            <h3 className="text-lg sm:text-xl font-light text-white">Overdue Compliances</h3>
+            <h3 className="text-lg sm:text-xl font-light text-fg-primary">Overdue Compliances</h3>
             <span className="px-2 sm:px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-xs sm:text-sm font-medium w-fit">
               {overdueCompliances.length} items
             </span>
@@ -1448,11 +1448,11 @@ export default function ReportsTab({
                   <div key={req.id} className="bg-black border border-white/10 rounded-lg p-3 space-y-2">
                     <div>
                       <div className="text-xs text-fg-muted mb-1">Category</div>
-                      <div className="text-white text-sm font-medium break-words">{req.category}</div>
+                      <div className="text-fg-primary text-sm font-medium break-words">{req.category}</div>
                     </div>
                     <div>
                       <div className="text-xs text-fg-muted mb-1">Requirement</div>
-                      <div className="text-white text-sm break-words">{req.requirement}</div>
+                      <div className="text-fg-primary text-sm break-words">{req.requirement}</div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div>
@@ -1498,8 +1498,8 @@ export default function ReportsTab({
                   const penalty = calculatePenalty(req.penalty || '', delay, req.penalty_base_amount)
                   return (
                     <tr key={req.id} className="border-b border-white/10 hover:bg-black/50">
-                      <td className="py-3 px-4 text-white">{req.category}</td>
-                      <td className="py-3 px-4 text-white">{req.requirement}</td>
+                      <td className="py-3 px-4 text-fg-primary">{req.category}</td>
+                      <td className="py-3 px-4 text-fg-primary">{req.requirement}</td>
                       <td className="py-3 px-4 text-fg-muted">{req.dueDate}</td>
                       <td className="py-3 px-4">
                         <span className="text-red-400 font-medium">{delay || 0} days</span>

@@ -39,7 +39,7 @@ export default function CategoryDashboard({ category, items }: CategoryDashboard
     <div className="mb-4">
       {/* Category header */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-white/90">{category} Dashboard</h3>
+        <h3 className="text-sm font-semibold text-fg-primary/90">{category} Dashboard</h3>
         <span className="text-xs text-fg-muted">
           {completionRate}% complete ({counts.completed}/{total})
         </span>

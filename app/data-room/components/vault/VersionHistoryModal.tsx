@@ -59,10 +59,10 @@ export default function VersionHistoryModal({ isOpen, onClose, companyId, docume
       <div className="w-full max-w-xl bg-bg-card border border-line/10 rounded-2xl shadow-2xl max-h-[80vh] overflow-hidden flex flex-col">
         <div className="p-5 border-b border-line/10 flex items-start justify-between">
           <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold text-white truncate">Version history</h2>
+            <h2 className="text-base font-semibold text-fg-primary truncate">Version history</h2>
             <p className="text-xs text-fg-muted mt-0.5 truncate">{documentName}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 text-fg-muted hover:text-white ml-3">✕</button>
+          <button onClick={onClose} className="p-1.5 text-fg-muted hover:text-fg-primary ml-3">✕</button>
         </div>
 
         <div className="p-4 overflow-y-auto flex-1">
@@ -111,7 +111,7 @@ export default function VersionHistoryModal({ isOpen, onClose, companyId, docume
         </div>
 
         <div className="p-4 border-t border-line/10 flex items-center justify-between">
-          <button onClick={onClose} className="text-sm text-fg-muted hover:text-white">Close</button>
+          <button onClick={onClose} className="text-sm text-fg-muted hover:text-fg-primary">Close</button>
           <button
             onClick={() => { onClose(); onUploadNewVersion() }}
             className="px-4 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-bg-elevated"

@@ -54,7 +54,7 @@ export default function CompanyOnboardingPage() {
       <div className="relative z-10 px-4 sm:px-6 pt-4">
         <Link
           href="/home"
-          className="inline-flex items-center gap-2 text-fg-muted hover:text-white transition-colors font-light text-sm"
+          className="inline-flex items-center gap-2 text-fg-muted hover:text-fg-primary transition-colors font-light text-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -65,7 +65,7 @@ export default function CompanyOnboardingPage() {
       
       <div className="relative z-10 px-4 sm:px-6 py-8 sm:py-20 md:py-32">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-4 sm:mb-12 text-center px-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-fg-primary mb-4 sm:mb-12 text-center px-4">
             Company Onboarding Engine
           </h2>
           
@@ -96,17 +96,17 @@ export default function CompanyOnboardingPage() {
             <div className="w-full flex-shrink-0">
               <div className="bg-bg-card border border-line/15/30 rounded-xl p-4 sm:p-6 md:p-8 min-h-[350px] sm:min-h-[500px] flex flex-col hover:border-line/15/50 transition-all duration-300">
               <div className="mb-3 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">CIN Verification</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-fg-primary mb-2">CIN Verification</div>
                 <p className="text-fg-muted font-light text-xs sm:text-sm">MCA auto-fill</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Auto-Fill</div>
-                  <div className="text-white text-sm font-light">Automatically fetch and populate company details from MCA database using CIN.</div>
+                  <div className="text-fg-primary text-sm font-light">Automatically fetch and populate company details from MCA database using CIN.</div>
                 </div>
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Verification</div>
-                  <div className="text-white text-sm font-light">Verify company authenticity and retrieve comprehensive registration information.</div>
+                  <div className="text-fg-primary text-sm font-light">Verify company authenticity and retrieve comprehensive registration information.</div>
                 </div>
               </div>
               {/* UI Preview */}
@@ -117,15 +117,15 @@ export default function CompanyOnboardingPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">CIN: U12345MH2020PTC</div>
+                    <div className="text-xs text-fg-primary font-light">CIN: U12345MH2020PTC</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Status: Verified</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">Company Name</div>
+                    <div className="text-xs text-fg-primary font-light">Company Name</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Auto-filled from MCA</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50 opacity-60">
-                    <div className="text-xs text-white font-light">Registration Date</div>
+                    <div className="text-xs text-fg-primary font-light">Registration Date</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">15 Jan 2020</div>
                   </div>
                 </div>
@@ -137,17 +137,17 @@ export default function CompanyOnboardingPage() {
             <div className="w-full flex-shrink-0">
               <div className="bg-bg-card border border-line/15/30 rounded-xl p-4 sm:p-6 md:p-8 min-h-[350px] sm:min-h-[500px] flex flex-col hover:border-line/15/50 transition-all duration-300">
               <div className="mb-3 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">DIN Verification</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-fg-primary mb-2">DIN Verification</div>
                 <p className="text-fg-muted font-light text-xs sm:text-sm">Director identification</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Director Details</div>
-                  <div className="text-white text-sm font-light">Verify director DIN and automatically fetch director information from MCA records.</div>
+                  <div className="text-fg-primary text-sm font-light">Verify director DIN and automatically fetch director information from MCA records.</div>
                 </div>
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Identity Check</div>
-                  <div className="text-white text-sm font-light">Ensure director authenticity and validate their association with the company.</div>
+                  <div className="text-fg-primary text-sm font-light">Ensure director authenticity and validate their association with the company.</div>
                 </div>
               </div>
               {/* UI Preview */}
@@ -158,15 +158,15 @@ export default function CompanyOnboardingPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">John Doe</div>
+                    <div className="text-xs text-fg-primary font-light">John Doe</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">DIN: 01234567</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">Jane Smith</div>
+                    <div className="text-xs text-fg-primary font-light">Jane Smith</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">DIN: 01234568</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50 opacity-60">
-                    <div className="text-xs text-white font-light">Robert Brown</div>
+                    <div className="text-xs text-fg-primary font-light">Robert Brown</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">DIN: 01234569</div>
                   </div>
                 </div>
@@ -178,17 +178,17 @@ export default function CompanyOnboardingPage() {
             <div className="w-full flex-shrink-0">
               <div className="bg-bg-card border border-line/15/30 rounded-xl p-4 sm:p-6 md:p-8 min-h-[350px] sm:min-h-[500px] flex flex-col hover:border-line/15/50 transition-all duration-300">
               <div className="mb-3 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Auto-Detection</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-fg-primary mb-2">Auto-Detection</div>
                 <p className="text-fg-muted font-light text-xs sm:text-sm">Company type & industry</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Type Detection</div>
-                  <div className="text-white text-sm font-light">Automatically identify company type (Pvt Ltd, LLP, Public Ltd) from registration data.</div>
+                  <div className="text-fg-primary text-sm font-light">Automatically identify company type (Pvt Ltd, LLP, Public Ltd) from registration data.</div>
                 </div>
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Industry Classification</div>
-                  <div className="text-white text-sm font-light">Detect and classify industry category based on business activities and registration details.</div>
+                  <div className="text-fg-primary text-sm font-light">Detect and classify industry category based on business activities and registration details.</div>
                 </div>
               </div>
               {/* UI Preview */}
@@ -199,15 +199,15 @@ export default function CompanyOnboardingPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">Type: Private Limited</div>
+                    <div className="text-xs text-fg-primary font-light">Type: Private Limited</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Detected from CIN</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">Industry: Technology</div>
+                    <div className="text-xs text-fg-primary font-light">Industry: Technology</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Software Development</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50 opacity-60">
-                    <div className="text-xs text-white font-light">Category: IT Services</div>
+                    <div className="text-xs text-fg-primary font-light">Category: IT Services</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Auto-classified</div>
                   </div>
                 </div>
@@ -219,17 +219,17 @@ export default function CompanyOnboardingPage() {
             <div className="w-full flex-shrink-0">
               <div className="bg-bg-card border border-line/15/30 rounded-xl p-4 sm:p-6 md:p-8 min-h-[350px] sm:min-h-[500px] flex flex-col hover:border-line/15/50 transition-all duration-300">
               <div className="mb-3 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Director Management</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-fg-primary mb-2">Director Management</div>
                 <p className="text-fg-muted font-light text-xs sm:text-sm">Comprehensive director tracking</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Director Profiles</div>
-                  <div className="text-white text-sm font-light">Maintain detailed director information including designation, appointment date, and contact details.</div>
+                  <div className="text-fg-primary text-sm font-light">Maintain detailed director information including designation, appointment date, and contact details.</div>
                 </div>
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Role Assignment</div>
-                  <div className="text-white text-sm font-light">Assign and track director roles, responsibilities, and designations within the company structure.</div>
+                  <div className="text-fg-primary text-sm font-light">Assign and track director roles, responsibilities, and designations within the company structure.</div>
                 </div>
               </div>
               {/* UI Preview */}
@@ -240,15 +240,15 @@ export default function CompanyOnboardingPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">Managing Director</div>
+                    <div className="text-xs text-fg-primary font-light">Managing Director</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">John Doe • Active</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">Director</div>
+                    <div className="text-xs text-fg-primary font-light">Director</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Jane Smith • Active</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50 opacity-60">
-                    <div className="text-xs text-white font-light">Director</div>
+                    <div className="text-xs text-fg-primary font-light">Director</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Robert Brown • Active</div>
                   </div>
                 </div>
@@ -260,17 +260,17 @@ export default function CompanyOnboardingPage() {
             <div className="w-full flex-shrink-0">
               <div className="bg-bg-card border border-line/15/30 rounded-xl p-4 sm:p-6 md:p-8 min-h-[350px] sm:min-h-[500px] flex flex-col hover:border-line/15/50 transition-all duration-300">
               <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Entity Structuring</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-fg-primary mb-2">Entity Structuring</div>
                 <p className="text-fg-muted font-light text-xs sm:text-sm">Organize company hierarchy</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Hierarchy Management</div>
-                  <div className="text-white text-sm font-light">Create and manage complex entity structures with parent-subsidiary relationships and group hierarchies.</div>
+                  <div className="text-fg-primary text-sm font-light">Create and manage complex entity structures with parent-subsidiary relationships and group hierarchies.</div>
                 </div>
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Relationship Mapping</div>
-                  <div className="text-white text-sm font-light">Visualize and track relationships between entities, subsidiaries, and associated companies.</div>
+                  <div className="text-fg-primary text-sm font-light">Visualize and track relationships between entities, subsidiaries, and associated companies.</div>
                 </div>
               </div>
               {/* UI Preview */}
@@ -281,15 +281,15 @@ export default function CompanyOnboardingPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">Parent Company</div>
+                    <div className="text-xs text-fg-primary font-light">Parent Company</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Acme Holdings Pvt Ltd</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50 ml-4">
-                    <div className="text-xs text-white font-light">Subsidiary</div>
+                    <div className="text-xs text-fg-primary font-light">Subsidiary</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Acme Corp Pvt Ltd</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50 ml-4 opacity-60">
-                    <div className="text-xs text-white font-light">Subsidiary</div>
+                    <div className="text-xs text-fg-primary font-light">Subsidiary</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Tech Solutions LLP</div>
                   </div>
                 </div>
@@ -304,17 +304,17 @@ export default function CompanyOnboardingPage() {
             {/* CIN Verification Card */}
             <div className="bg-bg-card border border-line/15/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-line/15/50 transition-all duration-300">
               <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">CIN Verification</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-fg-primary mb-2">CIN Verification</div>
                 <p className="text-fg-muted font-light text-xs sm:text-sm">MCA auto-fill</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Auto-Fill</div>
-                  <div className="text-white text-sm font-light">Automatically fetch and populate company details from MCA database using CIN.</div>
+                  <div className="text-fg-primary text-sm font-light">Automatically fetch and populate company details from MCA database using CIN.</div>
                 </div>
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Verification</div>
-                  <div className="text-white text-sm font-light">Verify company authenticity and retrieve comprehensive registration information.</div>
+                  <div className="text-fg-primary text-sm font-light">Verify company authenticity and retrieve comprehensive registration information.</div>
                 </div>
               </div>
               <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
@@ -324,15 +324,15 @@ export default function CompanyOnboardingPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">CIN: U12345MH2020PTC</div>
+                    <div className="text-xs text-fg-primary font-light">CIN: U12345MH2020PTC</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Status: Verified</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">Company Name</div>
+                    <div className="text-xs text-fg-primary font-light">Company Name</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Auto-filled from MCA</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50 opacity-60">
-                    <div className="text-xs text-white font-light">Registration Date</div>
+                    <div className="text-xs text-fg-primary font-light">Registration Date</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">15 Jan 2020</div>
                   </div>
                 </div>
@@ -342,17 +342,17 @@ export default function CompanyOnboardingPage() {
             {/* DIN Verification Card */}
             <div className="bg-bg-card border border-line/15/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-line/15/50 transition-all duration-300">
               <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">DIN Verification</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-fg-primary mb-2">DIN Verification</div>
                 <p className="text-fg-muted font-light text-xs sm:text-sm">Director identification</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Director Details</div>
-                  <div className="text-white text-sm font-light">Verify director DIN and automatically fetch director information from MCA records.</div>
+                  <div className="text-fg-primary text-sm font-light">Verify director DIN and automatically fetch director information from MCA records.</div>
                 </div>
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Identity Check</div>
-                  <div className="text-white text-sm font-light">Ensure director authenticity and validate their association with the company.</div>
+                  <div className="text-fg-primary text-sm font-light">Ensure director authenticity and validate their association with the company.</div>
                 </div>
               </div>
               <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
@@ -362,15 +362,15 @@ export default function CompanyOnboardingPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">John Doe</div>
+                    <div className="text-xs text-fg-primary font-light">John Doe</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">DIN: 01234567</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">Jane Smith</div>
+                    <div className="text-xs text-fg-primary font-light">Jane Smith</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">DIN: 01234568</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50 opacity-60">
-                    <div className="text-xs text-white font-light">Robert Brown</div>
+                    <div className="text-xs text-fg-primary font-light">Robert Brown</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">DIN: 01234569</div>
                   </div>
                 </div>
@@ -380,17 +380,17 @@ export default function CompanyOnboardingPage() {
             {/* Auto-Detection Card */}
             <div className="bg-bg-card border border-line/15/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-line/15/50 transition-all duration-300">
               <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Auto-Detection</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-fg-primary mb-2">Auto-Detection</div>
                 <p className="text-fg-muted font-light text-xs sm:text-sm">Company type & industry</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Type Detection</div>
-                  <div className="text-white text-sm font-light">Automatically identify company type (Pvt Ltd, LLP, Public Ltd) from registration data.</div>
+                  <div className="text-fg-primary text-sm font-light">Automatically identify company type (Pvt Ltd, LLP, Public Ltd) from registration data.</div>
                 </div>
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Industry Classification</div>
-                  <div className="text-white text-sm font-light">Detect and classify industry category based on business activities and registration details.</div>
+                  <div className="text-fg-primary text-sm font-light">Detect and classify industry category based on business activities and registration details.</div>
                 </div>
               </div>
               <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
@@ -400,15 +400,15 @@ export default function CompanyOnboardingPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">Type: Private Limited</div>
+                    <div className="text-xs text-fg-primary font-light">Type: Private Limited</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Detected from CIN</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">Industry: Technology</div>
+                    <div className="text-xs text-fg-primary font-light">Industry: Technology</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Software Development</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50 opacity-60">
-                    <div className="text-xs text-white font-light">Category: IT Services</div>
+                    <div className="text-xs text-fg-primary font-light">Category: IT Services</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Auto-classified</div>
                   </div>
                 </div>
@@ -422,17 +422,17 @@ export default function CompanyOnboardingPage() {
             {/* Director Management Card */}
             <div className="bg-bg-card border border-line/15/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-line/15/50 transition-all duration-300 w-full max-w-[400px]">
               <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Director Management</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-fg-primary mb-2">Director Management</div>
                 <p className="text-fg-muted font-light text-xs sm:text-sm">Comprehensive director tracking</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Director Profiles</div>
-                  <div className="text-white text-sm font-light">Maintain detailed director information including designation, appointment date, and contact details.</div>
+                  <div className="text-fg-primary text-sm font-light">Maintain detailed director information including designation, appointment date, and contact details.</div>
                 </div>
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Role Assignment</div>
-                  <div className="text-white text-sm font-light">Assign and track director roles, responsibilities, and designations within the company structure.</div>
+                  <div className="text-fg-primary text-sm font-light">Assign and track director roles, responsibilities, and designations within the company structure.</div>
                 </div>
               </div>
               <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
@@ -442,15 +442,15 @@ export default function CompanyOnboardingPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">Managing Director</div>
+                    <div className="text-xs text-fg-primary font-light">Managing Director</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">John Doe • Active</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">Director</div>
+                    <div className="text-xs text-fg-primary font-light">Director</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Jane Smith • Active</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50 opacity-60">
-                    <div className="text-xs text-white font-light">Director</div>
+                    <div className="text-xs text-fg-primary font-light">Director</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Robert Brown • Active</div>
                   </div>
                 </div>
@@ -460,17 +460,17 @@ export default function CompanyOnboardingPage() {
             {/* Entity Structuring Card */}
             <div className="bg-bg-card border border-line/15/30 rounded-xl p-5 sm:p-6 md:p-8 min-h-[400px] sm:min-h-[500px] flex flex-col hover:border-line/15/50 transition-all duration-300 w-full max-w-[400px]">
               <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Entity Structuring</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-fg-primary mb-2">Entity Structuring</div>
                 <p className="text-fg-muted font-light text-xs sm:text-sm">Organize company hierarchy</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Hierarchy Management</div>
-                  <div className="text-white text-sm font-light">Create and manage complex entity structures with parent-subsidiary relationships and group hierarchies.</div>
+                  <div className="text-fg-primary text-sm font-light">Create and manage complex entity structures with parent-subsidiary relationships and group hierarchies.</div>
                 </div>
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Relationship Mapping</div>
-                  <div className="text-white text-sm font-light">Visualize and track relationships between entities, subsidiaries, and associated companies.</div>
+                  <div className="text-fg-primary text-sm font-light">Visualize and track relationships between entities, subsidiaries, and associated companies.</div>
                 </div>
               </div>
               <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
@@ -480,15 +480,15 @@ export default function CompanyOnboardingPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">Parent Company</div>
+                    <div className="text-xs text-fg-primary font-light">Parent Company</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Acme Holdings Pvt Ltd</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50 ml-4">
-                    <div className="text-xs text-white font-light">Subsidiary</div>
+                    <div className="text-xs text-fg-primary font-light">Subsidiary</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Acme Corp Pvt Ltd</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50 ml-4 opacity-60">
-                    <div className="text-xs text-white font-light">Subsidiary</div>
+                    <div className="text-xs text-fg-primary font-light">Subsidiary</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Tech Solutions LLP</div>
                   </div>
                 </div>

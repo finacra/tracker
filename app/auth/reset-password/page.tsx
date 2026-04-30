@@ -113,13 +113,13 @@ function ResetPasswordPageInner() {
           <div className="flex items-center gap-8">
             <Link 
               href="/home"
-              className="text-sm font-light transition-colors text-fg-muted hover:text-white"
+              className="text-sm font-light transition-colors text-fg-muted hover:text-fg-primary"
             >
               Home
             </Link>
             <Link 
               href="/login"
-              className="text-sm font-light transition-colors text-fg-muted hover:text-white"
+              className="text-sm font-light transition-colors text-fg-muted hover:text-fg-primary"
             >
               Sign In
             </Link>
@@ -132,7 +132,7 @@ function ResetPasswordPageInner() {
         <div className="flex items-center justify-center px-4 py-20">
           <div className="relative z-10 w-full max-w-md">
             {/* Title */}
-            <h1 className="text-4xl md:text-5xl font-light text-white mb-3 text-center tracking-tight">
+            <h1 className="text-4xl md:text-5xl font-light text-fg-primary mb-3 text-center tracking-tight">
               Reset Password
             </h1>
             <p className="text-fg-muted mb-12 text-center font-light">
@@ -159,7 +159,7 @@ function ResetPasswordPageInner() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="w-full px-4 py-3 pr-12 bg-bg-card border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
+                      className="w-full px-4 py-3 pr-12 bg-bg-card border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
                       placeholder="Enter new password (min. 6 characters)"
                       disabled={isLoading || isVerifying}
                       minLength={6}
@@ -167,7 +167,7 @@ function ResetPasswordPageInner() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-white transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-fg-primary transition-colors"
                       tabIndex={-1}
                     >
                       {showPassword ? (
@@ -195,7 +195,7 @@ function ResetPasswordPageInner() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
-                      className="w-full px-4 py-3 pr-12 bg-bg-card border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
+                      className="w-full px-4 py-3 pr-12 bg-bg-card border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-line/30 transition-colors font-light"
                       placeholder="Confirm new password"
                       disabled={isLoading || isVerifying}
                       minLength={6}
@@ -203,7 +203,7 @@ function ResetPasswordPageInner() {
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-white transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-muted hover:text-fg-primary transition-colors"
                       tabIndex={-1}
                     >
                       {showConfirmPassword ? (
@@ -249,7 +249,7 @@ function ResetPasswordPageInner() {
               <div className="mt-6 text-center">
                 <Link
                   href="/login"
-                  className="text-sm text-fg-muted hover:text-white transition-colors font-light"
+                  className="text-sm text-fg-muted hover:text-fg-primary transition-colors font-light"
                 >
                   ← Back to Sign In
                 </Link>

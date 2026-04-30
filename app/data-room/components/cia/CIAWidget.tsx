@@ -48,7 +48,7 @@ export default function CIAWidget({ companyId }: Props) {
                       : 'bg-red-400'
                 }`}
               />
-              <span className="text-xs font-medium text-white">
+              <span className="text-xs font-medium text-fg-primary">
                 Health: {overview.healthScore}%
               </span>
             </div>

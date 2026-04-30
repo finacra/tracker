@@ -137,7 +137,7 @@ export default function NoticesTab({
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-light text-white mb-1">Government Notices</h2>
+            <h2 className="text-2xl font-light text-fg-primary mb-1">Government Notices</h2>
             <p className="text-fg-muted">Track and respond to regulatory notices from various departments</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -145,7 +145,7 @@ export default function NoticesTab({
             <select
               value={noticesFilter}
               onChange={(e) => setNoticesFilter(e.target.value as any)}
-              className="px-4 py-2 bg-black border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:border-white/40"
+              className="px-4 py-2 bg-black border border-white/20 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-white/40"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
@@ -156,7 +156,7 @@ export default function NoticesTab({
             <select
               value={noticesTypeFilter}
               onChange={(e) => setNoticesTypeFilter(e.target.value)}
-              className="px-4 py-2 bg-black border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:border-white/40"
+              className="px-4 py-2 bg-black border border-white/20 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-white/40"
             >
               <option value="all">All Types</option>
               {complianceCategories.map((category) => (
@@ -187,7 +187,7 @@ export default function NoticesTab({
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-light text-white">{demoNotices.filter(n => n.status === 'pending').length}</p>
+                <p className="text-2xl font-light text-fg-primary">{demoNotices.filter(n => n.status === 'pending').length}</p>
                 <p className="text-fg-muted text-xs">Pending Response</p>
               </div>
             </div>
@@ -201,7 +201,7 @@ export default function NoticesTab({
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-light text-white">{demoNotices.filter(n => n.status === 'responded').length}</p>
+                <p className="text-2xl font-light text-fg-primary">{demoNotices.filter(n => n.status === 'responded').length}</p>
                 <p className="text-fg-muted text-xs">Awaiting Decision</p>
               </div>
             </div>
@@ -215,7 +215,7 @@ export default function NoticesTab({
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-light text-white">{demoNotices.filter(n => n.status === 'resolved').length}</p>
+                <p className="text-2xl font-light text-fg-primary">{demoNotices.filter(n => n.status === 'resolved').length}</p>
                 <p className="text-fg-muted text-xs">Resolved</p>
               </div>
             </div>
@@ -229,7 +229,7 @@ export default function NoticesTab({
                 </svg>
               </div>
               <div>
-                <p className="text-2xl font-light text-white">{demoNotices.length}</p>
+                <p className="text-2xl font-light text-fg-primary">{demoNotices.length}</p>
                 <p className="text-fg-muted text-xs">Total Notices</p>
               </div>
             </div>
@@ -253,7 +253,7 @@ export default function NoticesTab({
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${notice.type === 'Income Tax' ? 'bg-blue-500/20 text-blue-400' :
                         notice.type === 'GST' ? 'bg-green-500/20 text-green-400' :
                           notice.type === 'MCA/RoC' ? 'bg-purple-500/20 text-purple-400' :
-                            'bg-bg-hover/20 text-white'
+                            'bg-bg-hover/20 text-fg-primary'
                       }`}>
                       {notice.type}
                     </span>
@@ -268,7 +268,7 @@ export default function NoticesTab({
                     {notice.status.charAt(0).toUpperCase() + notice.status.slice(1)}
                   </span>
                 </div>
-                <h4 className="text-white text-sm font-medium mb-1 line-clamp-2">{notice.subject}</h4>
+                <h4 className="text-fg-primary text-sm font-medium mb-1 line-clamp-2">{notice.subject}</h4>
                 <div className="flex items-center justify-between text-xs text-fg-muted">
                   <span>{notice.id}</span>
                   <span>Due: {new Date(notice.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
@@ -309,7 +309,7 @@ export default function NoticesTab({
                         </div>
                         <div>
                           <p className="text-fg-muted text-sm">{selectedNotice.id}</p>
-                          <h3 className="text-white text-lg font-medium">{selectedNotice.subType}</h3>
+                          <h3 className="text-fg-primary text-lg font-medium">{selectedNotice.subType}</h3>
                         </div>
                       </div>
                       <span className={`px-3 py-1 rounded-lg text-sm font-medium ${selectedNotice.status === 'pending' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
@@ -342,11 +342,11 @@ export default function NoticesTab({
                       </div>
                     )}
 
-                    <h2 className="text-white text-xl mb-2">{selectedNotice.subject}</h2>
+                    <h2 className="text-fg-primary text-xl mb-2">{selectedNotice.subject}</h2>
                     <div className="flex flex-wrap items-center gap-4 text-sm">
                       {noticeMetadata?.section ? (
                         <span className="text-fg-muted">
-                          <span className="text-fg-muted">Legal Section:</span> <span className="text-white">{noticeMetadata.section}</span>
+                          <span className="text-fg-muted">Legal Section:</span> <span className="text-fg-primary">{noticeMetadata.section}</span>
                         </span>
                       ) : selectedNotice.section ? (
                         <span className="text-fg-muted">
@@ -355,7 +355,7 @@ export default function NoticesTab({
                       ) : null}
                       {authority && (
                         <span className="text-fg-muted">
-                          <span className="text-fg-muted">Authority:</span> <span className="text-white">{authority}</span>
+                          <span className="text-fg-muted">Authority:</span> <span className="text-fg-primary">{authority}</span>
                         </span>
                       )}
                       <span className="text-fg-muted">
@@ -382,7 +382,7 @@ export default function NoticesTab({
                     {/* Description */}
                     <div>
                       <h4 className="text-fg-muted text-sm font-medium mb-2">Notice Description</h4>
-                      <p className="text-white text-sm leading-relaxed bg-black border border-white/10 p-4 rounded-lg">
+                      <p className="text-fg-primary text-sm leading-relaxed bg-black border border-white/10 p-4 rounded-lg">
                         {selectedNotice.description}
                       </p>
                     </div>
@@ -417,7 +417,7 @@ export default function NoticesTab({
                             </div>
                             <div className="flex-1 pb-2">
                               <div className="flex items-center justify-between">
-                                <p className="text-white text-sm">{event.action}</p>
+                                <p className="text-fg-primary text-sm">{event.action}</p>
                                 <span className="text-fg-muted text-xs">{new Date(event.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
                               </div>
                               <p className="text-fg-muted text-xs">by {event.by}</p>
@@ -436,7 +436,7 @@ export default function NoticesTab({
                           onChange={(e) => setNoticeResponse(e.target.value)}
                           placeholder="Enter your response or remarks..."
                           rows={4}
-                          className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors resize-none"
+                          className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors resize-none"
                         />
                         <div className="flex items-center justify-between mt-4">
                           <button className="px-4 py-2 bg-bg-elevated text-fg-secondary rounded-lg hover:bg-bg-hover transition-colors flex items-center gap-2 text-sm">
@@ -517,7 +517,7 @@ export default function NoticesTab({
                     <line x1="16" y1="17" x2="8" y2="17" />
                   </svg>
                 </div>
-                <h3 className="text-white text-lg font-medium mb-2">Select a Notice</h3>
+                <h3 className="text-fg-primary text-lg font-medium mb-2">Select a Notice</h3>
                 <p className="text-fg-muted text-sm">Click on a notice from the list to view details</p>
               </div>
             )}
@@ -532,7 +532,7 @@ export default function NoticesTab({
             {/* Modal Header */}
             <div className="sticky top-0 bg-black border-b border-white/10 p-6 flex items-center justify-between z-10">
               <div>
-                <h2 className="text-2xl font-light text-white mb-1">Add New Notice</h2>
+                <h2 className="text-2xl font-light text-fg-primary mb-1">Add New Notice</h2>
                 <p className="text-fg-muted text-sm">Enter the details of the government notice received</p>
               </div>
               <button
@@ -572,7 +572,7 @@ export default function NoticesTab({
                   <select
                     value={newNoticeForm.type}
                     onChange={(e) => setNewNoticeForm({ ...newNoticeForm, type: e.target.value })}
-                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                   >
                     {/* Country-aware notice types based on compliance categories */}
                     {countryConfig?.compliance?.defaultCategories?.map((category: string) => (
@@ -598,7 +598,7 @@ export default function NoticesTab({
                     value={newNoticeForm.subType}
                     onChange={(e) => setNewNoticeForm({ ...newNoticeForm, subType: e.target.value })}
                     placeholder="e.g., Scrutiny Notice, Show Cause Notice"
-                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                   />
                 </div>
               </div>
@@ -614,7 +614,7 @@ export default function NoticesTab({
                     value={newNoticeForm.section}
                     onChange={(e) => setNewNoticeForm({ ...newNoticeForm, section: e.target.value })}
                     placeholder="e.g., Section 143(2), Section 73"
-                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                   />
                 </div>
 
@@ -625,7 +625,7 @@ export default function NoticesTab({
                   <select
                     value={newNoticeForm.priority}
                     onChange={(e) => setNewNoticeForm({ ...newNoticeForm, priority: e.target.value as any })}
-                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                   >
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
@@ -645,7 +645,7 @@ export default function NoticesTab({
                   value={newNoticeForm.subject}
                   onChange={(e) => setNewNoticeForm({ ...newNoticeForm, subject: e.target.value })}
                   placeholder="Enter the notice subject/title"
-                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                 />
               </div>
 
@@ -660,7 +660,7 @@ export default function NoticesTab({
                     value={newNoticeForm.issuedBy}
                     onChange={(e) => setNewNoticeForm({ ...newNoticeForm, issuedBy: e.target.value })}
                     placeholder="e.g., Income Tax Department"
-                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                    className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                   />
                 </div>
 
@@ -684,7 +684,7 @@ export default function NoticesTab({
                         }
                       }}
                       placeholder="Select date"
-                      className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors cursor-pointer pr-10"
+                      className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors cursor-pointer pr-10"
                     />
                     <input
                       type="date"
@@ -725,7 +725,7 @@ export default function NoticesTab({
                         }
                       }}
                       placeholder="Select date"
-                      className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors cursor-pointer pr-10"
+                      className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors cursor-pointer pr-10"
                     />
                     <input
                       type="date"
@@ -757,7 +757,7 @@ export default function NoticesTab({
                   onChange={(e) => setNewNoticeForm({ ...newNoticeForm, description: e.target.value })}
                   placeholder="Enter the full notice description and requirements..."
                   rows={5}
-                  className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors resize-none"
+                  className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors resize-none"
                 />
               </div>
 
@@ -812,7 +812,7 @@ export default function NoticesTab({
                         }
                       }}
                       placeholder="Enter document name and press Enter"
-                      className="flex-1 px-4 py-2 bg-black border border-white/20 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                      className="flex-1 px-4 py-2 bg-black border border-white/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                     />
                     <button
                       onClick={() => {

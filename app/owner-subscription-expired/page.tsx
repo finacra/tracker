@@ -87,13 +87,13 @@ function OwnerExpiredPageInner() {
 
           {/* Card */}
           <div className="bg-bg-card border border-line/10 rounded-2xl shadow-2xl p-8 text-center">
-            <h1 className="text-2xl font-bold text-white mb-4">
+            <h1 className="text-2xl font-bold text-fg-primary mb-4">
               Subscription Expired
             </h1>
             
             <p className="text-fg-muted mb-6">
               The subscription for{' '}
-              <span className="text-white font-semibold">
+              <span className="text-fg-primary font-semibold">
                 {ownerInfo?.companyName || 'this company'}
               </span>{' '}
               has expired. Please contact the company owner to renew their subscription.
@@ -109,7 +109,7 @@ function OwnerExpiredPageInner() {
                 </div>
                 <div>
                   <p className="text-xs text-fg-muted uppercase tracking-wider">Company Owner</p>
-                  <p className="text-white text-sm font-medium">
+                  <p className="text-fg-primary text-sm font-medium">
                     Contact your administrator
                   </p>
                 </div>

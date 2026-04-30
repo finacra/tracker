@@ -77,7 +77,7 @@ export default function RequirementMobileCardView({
         <div key={group.category}>
           {/* Category Header */}
           <div className="mb-2">
-            <h3 className="text-white font-semibold text-base">
+            <h3 className="text-fg-primary font-semibold text-base">
               {group.category}
             </h3>
             {groupIndex > 0 && (
@@ -111,7 +111,7 @@ export default function RequirementMobileCardView({
                           }
                           setSelectedRequirements(() => newSelected)
                         }}
-                        className="mt-1 w-4 h-4 rounded border-line/30 bg-bg-elevated text-white focus:ring-white/40 focus:ring-2 cursor-pointer"
+                        className="mt-1 w-4 h-4 rounded border-line/30 bg-bg-elevated text-fg-primary focus:ring-white/40 focus:ring-2 cursor-pointer"
                       />
                     )}
                     {(req.isCritical || req.status === 'overdue') && (
@@ -133,7 +133,7 @@ export default function RequirementMobileCardView({
                     )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <div className="text-white font-medium text-sm break-words">{req.requirement}</div>
+                        <div className="text-fg-primary font-medium text-sm break-words">{req.requirement}</div>
                         {formFreq && (
                           <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${formFreq === 'monthly' ? 'bg-blue-500/20 text-blue-400' :
                               formFreq === 'quarterly' ? 'bg-purple-500/20 text-purple-400' :
@@ -222,7 +222,7 @@ export default function RequirementMobileCardView({
                           complianceType === 'annual' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
                             complianceType === 'monthly' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
                               complianceType === 'quarterly' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' :
-                                'bg-bg-hover/20 text-white border border-line/40/30'
+                                'bg-bg-hover/20 text-fg-primary border border-line/40/30'
                         }`} title={
                           complianceType === 'one-time' ? 'One-time: happens once, no recurring' :
                             complianceType === 'annual' ? 'Annual: recurs every year' :
@@ -238,7 +238,7 @@ export default function RequirementMobileCardView({
                   </div>
 
                   {/* Due Date */}
-                  <div className="flex items-center gap-1.5 text-white">
+                  <div className="flex items-center gap-1.5 text-fg-primary">
                     <svg
                       width="14"
                       height="14"

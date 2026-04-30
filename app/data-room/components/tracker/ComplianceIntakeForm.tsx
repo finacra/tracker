@@ -219,7 +219,7 @@ export default function ComplianceIntakeForm({ companyId, financialYear, initial
   return (
     <div className="max-w-2xl mx-auto p-6">
       <div className="mb-6">
-        <h3 className="text-xl font-light text-white">Tell us about your business</h3>
+        <h3 className="text-xl font-light text-fg-primary">Tell us about your business</h3>
         <p className="text-sm text-fg-muted mt-1">
           {initial.hasPrefill
             ? 'We pre-filled what you already shared during onboarding — confirm or update below.'
@@ -330,7 +330,7 @@ export default function ComplianceIntakeForm({ companyId, financialYear, initial
       <div className="mt-8 flex items-center justify-between">
         <button
           onClick={() => onComplete([])}
-          className="text-sm text-fg-muted hover:text-white"
+          className="text-sm text-fg-muted hover:text-fg-primary"
         >
           Skip for now
         </button>
@@ -360,14 +360,14 @@ function Question({ label, value, onChange, hint }: {
         <button
           type="button"
           onClick={() => onChange(true)}
-          className={`px-4 py-1.5 rounded text-sm transition-colors ${value === true ? 'bg-white text-black' : 'bg-bg-elevated text-fg-muted hover:text-white'}`}
+          className={`px-4 py-1.5 rounded text-sm transition-colors ${value === true ? 'bg-white text-black' : 'bg-bg-elevated text-fg-muted hover:text-fg-primary'}`}
         >
           Yes
         </button>
         <button
           type="button"
           onClick={() => onChange(false)}
-          className={`px-4 py-1.5 rounded text-sm transition-colors ${value === false ? 'bg-white text-black' : 'bg-bg-elevated text-fg-muted hover:text-white'}`}
+          className={`px-4 py-1.5 rounded text-sm transition-colors ${value === false ? 'bg-white text-black' : 'bg-bg-elevated text-fg-muted hover:text-fg-primary'}`}
         >
           No
         </button>
@@ -392,7 +392,7 @@ function AmountField({ label, value, onChange, placeholder, hint }: {
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="mt-2 w-full max-w-xs px-3 py-2 bg-bg-card border border-line/15 rounded-lg text-white text-sm focus:outline-none focus:border-line/40"
+        className="mt-2 w-full max-w-xs px-3 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm focus:outline-none focus:border-line/40"
       />
     </div>
   )

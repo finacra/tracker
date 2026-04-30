@@ -346,7 +346,7 @@ export default function TeamPage() {
         </div>
 
         {/* Page Title */}
-        <h1 className="text-2xl sm:text-4xl font-light text-white mb-4 sm:mb-6">Team</h1>
+        <h1 className="text-2xl sm:text-4xl font-light text-fg-primary mb-4 sm:mb-6">Team</h1>
 
         <div className="space-y-4 sm:space-y-6">
           {/* Subscription Status - Superadmin Only */}
@@ -382,7 +382,7 @@ export default function TeamPage() {
                     )}
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-white">
+                    <div className="text-sm font-medium text-fg-primary">
                       {subscription.is_trial ? 'Trial' : subscription.tier.charAt(0).toUpperCase() + subscription.tier.slice(1)} Plan
                     </div>
                     <div className={`text-xs ${
@@ -413,7 +413,7 @@ export default function TeamPage() {
                       max="365"
                       value={extendDays}
                       onChange={(e) => setExtendDays(parseInt(e.target.value) || 15)}
-                      className="w-16 px-2 py-1.5 bg-bg-card border border-line/15 rounded-lg text-white text-sm text-center focus:outline-none focus:border-primary-orange"
+                      className="w-16 px-2 py-1.5 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm text-center focus:outline-none focus:border-primary-orange"
                     />
                     <button
                       onClick={handleExtendTrial}
@@ -462,7 +462,7 @@ export default function TeamPage() {
                     max="365"
                     value={extendDays}
                     onChange={(e) => setExtendDays(parseInt(e.target.value) || 15)}
-                    className="w-16 px-2 py-1.5 bg-bg-card border border-line/15 rounded-lg text-white text-sm text-center focus:outline-none focus:border-primary-orange"
+                    className="w-16 px-2 py-1.5 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm text-center focus:outline-none focus:border-primary-orange"
                     placeholder="Days"
                   />
                   <button
@@ -499,7 +499,7 @@ export default function TeamPage() {
                     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                   </svg>
                 </div>
-                <h2 className="text-lg sm:text-xl font-light text-white">Invite Team Member</h2>
+                <h2 className="text-lg sm:text-xl font-light text-fg-primary">Invite Team Member</h2>
               </div>
               <p className="text-fg-muted text-xs sm:text-sm mb-4 sm:mb-6 ml-0 sm:ml-11">
                 Invite a teammate by email. They can accept even if they don’t have an account yet.
@@ -515,7 +515,7 @@ export default function TeamPage() {
                     type="email"
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     placeholder="colleague@example.com"
                   />
                 </div>
@@ -529,7 +529,7 @@ export default function TeamPage() {
                     type="text"
                     value={inviteName}
                     onChange={(e) => setInviteName(e.target.value)}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base placeholder:text-fg-muted focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                     placeholder="John Doe"
                   />
                 </div>
@@ -539,7 +539,7 @@ export default function TeamPage() {
                   <label className="block text-xs sm:text-sm font-medium text-fg-secondary mb-2">Role</label>
                   <button
                     onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-white text-sm sm:text-base text-left flex items-center justify-between focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm sm:text-base text-left flex items-center justify-between focus:outline-none focus:border-primary-orange focus:ring-1 focus:ring-primary-orange transition-colors"
                   >
                     <span className="truncate">{roles.find((r) => r.value === inviteRole)?.label}</span>
                     <svg
@@ -656,7 +656,7 @@ export default function TeamPage() {
                   <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
               </div>
-              <h2 className="text-lg sm:text-xl font-light text-white">
+              <h2 className="text-lg sm:text-xl font-light text-fg-primary">
                 Team Members ({teamMembers.length})
               </h2>
             </div>
@@ -714,7 +714,7 @@ export default function TeamPage() {
                         </svg>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="text-white font-medium text-sm sm:text-base break-words">{member.user_name}</div>
+                        <div className="text-fg-primary font-medium text-sm sm:text-base break-words">{member.user_name}</div>
                         <div className="text-fg-muted text-xs sm:text-sm break-words">{member.user_email}</div>
                         <div className="text-fg-muted text-[10px] sm:text-xs mt-1">
                           Joined {formatDate(member.created_at)}

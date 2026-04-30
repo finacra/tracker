@@ -27,7 +27,7 @@ export default function EmbeddedPricing() {
             onClick={() => setSelectedBillingCycle(cycle.value)}
             className={`px-4 py-2 rounded-lg font-light text-sm transition-all whitespace-nowrap ${
               selectedBillingCycle === cycle.value
-                ? 'bg-bg-elevated text-white border border-line/15'
+                ? 'bg-bg-elevated text-fg-primary border border-line/15'
                 : 'bg-transparent text-fg-muted border border-line/10 hover:border-line/15 hover:text-fg-secondary'
             }`}
           >
@@ -51,7 +51,7 @@ export default function EmbeddedPricing() {
             >
               {/* Tier Header */}
               <div className="mb-6">
-                <h3 className="text-3xl font-light text-white mb-4">{tier.name}</h3>
+                <h3 className="text-3xl font-light text-fg-primary mb-4">{tier.name}</h3>
                 <p className="text-fg-muted mb-6 font-light text-lg">{tier.description}</p>
                 
                 {/* Price - Only show for non-enterprise plans */}
@@ -60,7 +60,7 @@ export default function EmbeddedPricing() {
                   {tier.id !== 'enterprise' ? (
                     <>
                       <div className="flex items-baseline gap-2 mb-2">
-                        <span className="text-4xl font-light text-white">
+                        <span className="text-4xl font-light text-fg-primary">
                           {formatPrice(selectedPricing.price)}
                         </span>
                         {selectedBillingCycle !== 'monthly' && (
@@ -163,14 +163,14 @@ export default function EmbeddedPricing() {
                 {tier.id === 'enterprise' ? (
                   <Link
                     href="/contact?plan=enterprise&source=pricing"
-                    className="block w-full px-6 py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors text-center font-light"
+                    className="block w-full px-6 py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors text-center font-light"
                   >
                     Contact Sales Team
                   </Link>
                 ) : (
                   <Link
                     href={`/pricing?plan=${tier.id}&billing=${selectedBillingCycle}`}
-                    className="block w-full px-6 py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-colors text-center font-light"
+                    className="block w-full px-6 py-3 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-colors text-center font-light"
                   >
                     Get Started
                   </Link>

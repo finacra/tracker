@@ -111,11 +111,11 @@ export default function GstRegistrationsSection({ companyId }: Props) {
             value={editing!.gstin}
             onChange={(e) => setEditing({ id: r.id, gstin: e.target.value.toUpperCase().slice(0, 15) })}
             maxLength={15}
-            className="flex-1 px-3 py-2 bg-bg-card border border-line/15 rounded text-white text-sm font-mono uppercase focus:outline-none focus:border-line/40"
+            className="flex-1 px-3 py-2 bg-bg-card border border-line/15 rounded text-fg-primary text-sm font-mono uppercase focus:outline-none focus:border-line/40"
             autoFocus
           />
         ) : (
-          <span className="flex-1 font-mono text-sm text-white tracking-wider">{r.gstin}</span>
+          <span className="flex-1 font-mono text-sm text-fg-primary tracking-wider">{r.gstin}</span>
         )}
         <span className="w-40 text-sm text-fg-secondary truncate">{r.state || '—'}</span>
         {klass && (
@@ -137,7 +137,7 @@ export default function GstRegistrationsSection({ companyId }: Props) {
               <button
                 type="button"
                 onClick={() => setEditing(null)}
-                className="px-3 py-1 text-xs text-fg-muted hover:text-white"
+                className="px-3 py-1 text-xs text-fg-muted hover:text-fg-primary"
               >
                 Cancel
               </button>
@@ -147,7 +147,7 @@ export default function GstRegistrationsSection({ companyId }: Props) {
               <button
                 type="button"
                 onClick={() => setEditing({ id: r.id, gstin: r.gstin })}
-                className="px-2 py-1 text-xs text-fg-muted hover:text-white transition-colors"
+                className="px-2 py-1 text-xs text-fg-muted hover:text-fg-primary transition-colors"
                 aria-label={`Edit ${r.gstin}`}
               >
                 Edit
@@ -174,7 +174,7 @@ export default function GstRegistrationsSection({ companyId }: Props) {
     <div className="bg-bg-card border border-line/10 rounded-2xl p-6 space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xl font-light text-white">GST Registrations</h3>
+          <h3 className="text-xl font-light text-fg-primary">GST Registrations</h3>
           <p className="text-fg-muted text-sm mt-1">
             {rows.length === 0
               ? 'No GSTINs yet. Add one below.'
@@ -192,7 +192,7 @@ export default function GstRegistrationsSection({ companyId }: Props) {
           onChange={(e) => setNewGstin(e.target.value.toUpperCase().slice(0, 15))}
           placeholder="22AAAAA0000A1Z5"
           maxLength={15}
-          className="flex-1 px-3 py-2 bg-bg-card border border-line/15 rounded-lg text-white text-sm font-mono uppercase focus:outline-none focus:border-line/40"
+          className="flex-1 px-3 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-sm font-mono uppercase focus:outline-none focus:border-line/40"
           onKeyDown={(e) => { if (e.key === 'Enter') handleAdd() }}
         />
         <div className="w-40 px-3 py-2 text-xs text-fg-muted truncate">

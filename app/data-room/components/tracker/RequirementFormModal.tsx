@@ -193,7 +193,7 @@ export default function RequirementFormModal({
   }
 
   const inputClass =
-    'w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors'
+    'w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors'
   const labelClass = 'block text-sm font-medium text-fg-secondary mb-2'
 
   return (
@@ -202,10 +202,10 @@ export default function RequirementFormModal({
         {/* Header */}
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-light text-white">
+            <h3 className="text-2xl font-light text-fg-primary">
               {isEdit ? 'Edit Compliance Requirement' : 'Create Compliance Requirement'}
             </h3>
-            <button onClick={onClose} className="text-fg-muted hover:text-white transition-colors">
+            <button onClick={onClose} className="text-fg-muted hover:text-fg-primary transition-colors">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
@@ -347,7 +347,7 @@ export default function RequirementFormModal({
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-yellow-400">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
               </svg>
-              <span className="text-sm font-medium text-white">Penalty Calculator</span>
+              <span className="text-sm font-medium text-fg-primary">Penalty Calculator</span>
               <span className="text-xs text-fg-muted">(optional — enables automatic penalty calculation)</span>
             </div>
 
@@ -438,7 +438,7 @@ export default function RequirementFormModal({
                     const value = e.target.value === '' ? null : parseFloat(e.target.value)
                     setRequirementForm((prev) => ({ ...prev, penalty_base_amount: value }))
                   }}
-                  className="w-full px-4 py-3 bg-black border border-yellow-500/40 rounded-lg text-white focus:outline-none focus:border-yellow-500/70 focus:ring-1 focus:ring-yellow-500/50 transition-colors"
+                  className="w-full px-4 py-3 bg-black border border-yellow-500/40 rounded-lg text-fg-primary focus:outline-none focus:border-yellow-500/70 focus:ring-1 focus:ring-yellow-500/50 transition-colors"
                   placeholder={
                     configFields.base === 'turnover' ? 'e.g., 5000000 (annual turnover)'
                     : configFields.base === 'income' ? 'e.g., 1200000 (taxable income)'
@@ -509,7 +509,7 @@ export default function RequirementFormModal({
                     }))
                   }
                 }}
-                className="flex-1 px-4 py-2 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                className="flex-1 px-4 py-2 bg-black border border-white/20 rounded-lg text-fg-primary focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                 placeholder="Type document name and press Enter or Add"
               />
               <button
@@ -523,7 +523,7 @@ export default function RequirementFormModal({
                     }))
                   }
                 }}
-                className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors text-sm"
+                className="px-4 py-2 bg-white/10 text-fg-primary rounded-lg hover:bg-white/20 transition-colors text-sm"
               >
                 Add
               </button>
@@ -574,7 +574,7 @@ export default function RequirementFormModal({
               id="is_critical"
               checked={requirementForm.is_critical}
               onChange={(e) => setRequirementForm((prev) => ({ ...prev, is_critical: e.target.checked }))}
-              className="w-4 h-4 text-white bg-bg-card border-line/15 rounded focus:ring-white/40"
+              className="w-4 h-4 text-fg-primary bg-bg-card border-line/15 rounded focus:ring-white/40"
             />
             <label htmlFor="is_critical" className="text-sm font-medium text-fg-secondary">
               Mark as Critical

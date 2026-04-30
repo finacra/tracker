@@ -553,7 +553,7 @@ export default function HomePage() {
             {/* Left: Content */}
             <div className="max-w-2xl mx-auto md:mx-0 text-center md:text-left animate-slide-in-left" style={{ animationDelay: '0.2s', opacity: 0, animationFillMode: 'forwards' }}>
               <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-light mb-4 sm:mb-6 leading-[1.05] tracking-tight">
-                <span className="text-white">
+                <span className="text-fg-primary">
                   Introducing your
                 </span>
                 <br />
@@ -577,7 +577,7 @@ export default function HomePage() {
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center md:justify-start animate-fade-in" style={{ animationDelay: '0.6s', opacity: 0, animationFillMode: 'forwards' }}>
                 <Link
                   href="/subscribe"
-                  className="px-5 sm:px-6 py-2.5 sm:py-3 bg-black border border-line/10 text-white rounded-lg hover:bg-bg-card transition-colors font-light text-xs sm:text-sm flex items-center justify-center gap-2 min-h-[44px]"
+                  className="px-5 sm:px-6 py-2.5 sm:py-3 bg-black border border-line/10 text-fg-primary rounded-lg hover:bg-bg-card transition-colors font-light text-xs sm:text-sm flex items-center justify-center gap-2 min-h-[44px]"
                 >
                   Start Trial for free
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="hidden sm:block">
@@ -588,7 +588,7 @@ export default function HomePage() {
                   href="https://order.finacra.com/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-5 sm:px-6 py-2.5 sm:py-3 text-white hover:text-fg-secondary transition-colors font-light text-xs sm:text-sm flex items-center justify-center gap-2 min-h-[44px]"
+                  className="px-5 sm:px-6 py-2.5 sm:py-3 text-fg-primary hover:text-fg-secondary transition-colors font-light text-xs sm:text-sm flex items-center justify-center gap-2 min-h-[44px]"
                 >
                   Buy Compliance
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="hidden sm:block">
@@ -616,7 +616,7 @@ export default function HomePage() {
           <p className="text-sm uppercase tracking-wider text-fg-muted mb-8 font-light">
             COMPLIANCE FOR THE ENTERPRISE
           </p>
-          <h2 className="text-4xl md:text-6xl font-light text-white mb-6">
+          <h2 className="text-4xl md:text-6xl font-light text-fg-primary mb-6">
             Finacra also serves
           </h2>
           <p className="text-lg text-fg-muted leading-relaxed font-light max-w-2xl mx-auto mb-8 sm:mb-12">
@@ -627,23 +627,23 @@ export default function HomePage() {
           <div className="overflow-hidden relative">
             <div className="flex items-center gap-4 sm:gap-8 md:gap-16 animate-scroll">
               {/* First set */}
-              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">CA Muneer & Associates</div>
-              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">RAZR Business</div>
-              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">CaterKraft</div>
-              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">IcePulse</div>
-              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">Dine Desk</div>
-              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">Ureserve</div>
-              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">Radiant Sage Ventures</div>
-              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">GTM</div>
+              <div className="text-fg-primary text-sm sm:text-base font-light whitespace-nowrap">CA Muneer & Associates</div>
+              <div className="text-fg-primary text-sm sm:text-base font-light whitespace-nowrap">RAZR Business</div>
+              <div className="text-fg-primary text-sm sm:text-base font-light whitespace-nowrap">CaterKraft</div>
+              <div className="text-fg-primary text-sm sm:text-base font-light whitespace-nowrap">IcePulse</div>
+              <div className="text-fg-primary text-sm sm:text-base font-light whitespace-nowrap">Dine Desk</div>
+              <div className="text-fg-primary text-sm sm:text-base font-light whitespace-nowrap">Ureserve</div>
+              <div className="text-fg-primary text-sm sm:text-base font-light whitespace-nowrap">Radiant Sage Ventures</div>
+              <div className="text-fg-primary text-sm sm:text-base font-light whitespace-nowrap">GTM</div>
               {/* Duplicate set for seamless loop */}
-              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">CA Muneer & Associates</div>
-              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">RAZR Business</div>
-              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">CaterKraft</div>
-              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">IcePulse</div>
-              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">Dine Desk</div>
-              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">Ureserve</div>
-              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">Radiant Sage Ventures</div>
-              <div className="text-white text-sm sm:text-base font-light whitespace-nowrap">GTM</div>
+              <div className="text-fg-primary text-sm sm:text-base font-light whitespace-nowrap">CA Muneer & Associates</div>
+              <div className="text-fg-primary text-sm sm:text-base font-light whitespace-nowrap">RAZR Business</div>
+              <div className="text-fg-primary text-sm sm:text-base font-light whitespace-nowrap">CaterKraft</div>
+              <div className="text-fg-primary text-sm sm:text-base font-light whitespace-nowrap">IcePulse</div>
+              <div className="text-fg-primary text-sm sm:text-base font-light whitespace-nowrap">Dine Desk</div>
+              <div className="text-fg-primary text-sm sm:text-base font-light whitespace-nowrap">Ureserve</div>
+              <div className="text-fg-primary text-sm sm:text-base font-light whitespace-nowrap">Radiant Sage Ventures</div>
+              <div className="text-fg-primary text-sm sm:text-base font-light whitespace-nowrap">GTM</div>
             </div>
           </div>
         </div>
@@ -656,7 +656,7 @@ export default function HomePage() {
         className={`relative z-10 px-4 sm:px-6 pt-8 sm:pt-12 md:pt-16 pb-0 sm:pb-2 md:pb-4 border-t border-line/10 ${visibleSections.has('products') ? 'section-visible' : 'section-hidden'}`}
       >
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-6 sm:mb-8 md:mb-10 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('products') ? 1 : 0 }}>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-fg-primary mb-6 sm:mb-8 md:mb-10 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('products') ? 1 : 0 }}>
             Our Products
           </h2>
           <div className="space-y-0">
@@ -675,7 +675,7 @@ export default function HomePage() {
               >
                 <div className={`grid ${(clickedProduct === 'compliance' || hoveredProduct === 'compliance') ? 'md:grid-cols-2' : ''} gap-4 md:gap-6 lg:gap-8 items-start`}>
                   <div>
-                    <h3 className="text-xl sm:text-2xl font-light text-white mb-2 sm:mb-3">
+                    <h3 className="text-xl sm:text-2xl font-light text-fg-primary mb-2 sm:mb-3">
                       Compliance Tracker
                     </h3>
                     <p className="text-sm sm:text-base text-fg-muted leading-relaxed font-light mb-3">
@@ -690,7 +690,7 @@ export default function HomePage() {
                     <Link href="/compliance-tracker">
                       <button 
                         onClick={() => trackButtonClick('Learn More - Compliance Tracker', '/home')}
-                        className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-all duration-300 font-light text-sm"
+                        className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-all duration-300 font-light text-sm"
                       >
                         Learn More
                       </button>
@@ -740,7 +740,7 @@ export default function HomePage() {
               >
                 <div className={`grid ${(clickedProduct === 'vault' || hoveredProduct === 'vault') ? 'md:grid-cols-2' : ''} gap-4 md:gap-6 lg:gap-8 items-start`}>
                   <div>
-                    <h3 className="text-xl sm:text-2xl font-light text-white mb-2 sm:mb-3">
+                    <h3 className="text-xl sm:text-2xl font-light text-fg-primary mb-2 sm:mb-3">
                       Document Vault
                     </h3>
                     <p className="text-sm sm:text-base text-fg-muted leading-relaxed font-light mb-3">
@@ -797,7 +797,7 @@ export default function HomePage() {
               >
                 <div className={`grid ${(clickedProduct === 'services' || hoveredProduct === 'services') ? 'md:grid-cols-2' : ''} gap-4 md:gap-6 lg:gap-8 items-start`}>
                   <div>
-                    <h3 className="text-xl sm:text-2xl font-light text-white mb-2 sm:mb-3">
+                    <h3 className="text-xl sm:text-2xl font-light text-fg-primary mb-2 sm:mb-3">
                       Finacra Web Services <span className="text-xs sm:text-sm text-fg-muted font-light">(Coming Soon)</span>
                     </h3>
                     <p className="text-sm sm:text-base text-fg-muted leading-relaxed font-light mb-3">
@@ -810,7 +810,7 @@ export default function HomePage() {
                       </div>
                     )}
                     <Link href="/company-onboarding">
-                      <button className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-all duration-300 font-light text-sm">
+                      <button className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-all duration-300 font-light text-sm">
                         Learn More
                       </button>
                     </Link>
@@ -859,7 +859,7 @@ export default function HomePage() {
               >
                 <div className={`grid ${(clickedProduct === 'einvoicing' || hoveredProduct === 'einvoicing') ? 'md:grid-cols-2' : ''} gap-4 md:gap-6 lg:gap-8 items-start`}>
                   <div>
-                    <h3 className="text-xl sm:text-2xl font-light text-white mb-2 sm:mb-3">
+                    <h3 className="text-xl sm:text-2xl font-light text-fg-primary mb-2 sm:mb-3">
                       E-Invoicing <span className="text-xs sm:text-sm text-fg-muted font-light">(Coming Soon)</span>
                     </h3>
                     <p className="text-sm sm:text-base text-fg-muted leading-relaxed font-light mb-3">
@@ -916,7 +916,7 @@ export default function HomePage() {
               >
                 <div className={`grid ${(clickedProduct === 'filing' || hoveredProduct === 'filing') ? 'md:grid-cols-2' : ''} gap-4 md:gap-6 lg:gap-8 items-start`}>
                   <div>
-                    <h3 className="text-xl sm:text-2xl font-light text-white mb-2 sm:mb-3">
+                    <h3 className="text-xl sm:text-2xl font-light text-fg-primary mb-2 sm:mb-3">
                       Filing & Notices <span className="text-xs sm:text-sm text-fg-muted font-light">(Coming Soon)</span>
                     </h3>
                     <p className="text-sm sm:text-base text-fg-muted leading-relaxed font-light mb-3">
@@ -973,7 +973,7 @@ export default function HomePage() {
               >
                 <div className={`grid ${(clickedProduct === 'ai' || hoveredProduct === 'ai') ? 'md:grid-cols-2' : ''} gap-4 md:gap-6 lg:gap-8 items-start`}>
                   <div>
-                    <h3 className="text-xl sm:text-2xl font-light text-white mb-2 sm:mb-3">
+                    <h3 className="text-xl sm:text-2xl font-light text-fg-primary mb-2 sm:mb-3">
                       Finacra AI <span className="text-xs sm:text-sm text-fg-muted font-light">(Coming Soon)</span>
                     </h3>
                     <p className="text-sm sm:text-base text-fg-muted leading-relaxed font-light mb-3">
@@ -1026,7 +1026,7 @@ export default function HomePage() {
         className={`relative z-10 px-4 sm:px-6 pt-8 sm:pt-12 md:pt-24 pb-8 sm:pb-20 md:pb-32 border-t border-line/10 ${visibleSections.has('solution') ? 'section-visible' : 'section-hidden'}`}
       >
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-6 sm:mb-8 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('solution') ? 1 : 0 }}>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-fg-primary mb-6 sm:mb-8 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('solution') ? 1 : 0 }}>
             The Finacra Solution
           </h2>
           <p className="text-base sm:text-lg md:text-xl text-fg-muted mb-4 sm:mb-12 md:mb-16 text-center font-light max-w-3xl mx-auto px-4 animate-fade-in-up" style={{ animationDelay: '0.2s', opacity: visibleSections.has('solution') ? 1 : 0 }}>
@@ -1063,7 +1063,7 @@ export default function HomePage() {
               style={{ transitionDelay: visibleSections.has('solution') ? '0.3s' : '0s' }}
             >
               <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-fg-primary mb-2">
                   Companies
                 </div>
                 <p className="text-fg-muted font-light text-xs sm:text-sm">Multi-entity management</p>
@@ -1071,16 +1071,16 @@ export default function HomePage() {
               <div className="flex-1 space-y-3 sm:space-y-4">
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Entity Structure</div>
-                  <div className="text-white text-sm font-light">Manage multiple companies under a unified dashboard with structured hierarchies and relationships.</div>
+                  <div className="text-fg-primary text-sm font-light">Manage multiple companies under a unified dashboard with structured hierarchies and relationships.</div>
                 </div>
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Company Profiles</div>
-                  <div className="text-white text-sm font-light">Auto-fill company details from MCA, track directors, and maintain comprehensive entity records.</div>
+                  <div className="text-fg-primary text-sm font-light">Auto-fill company details from MCA, track directors, and maintain comprehensive entity records.</div>
                 </div>
               </div>
               <div className="mt-4">
                 <Link href="/company-onboarding">
-                  <button className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-all duration-300 font-light text-sm">
+                  <button className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-all duration-300 font-light text-sm">
                     Learn More
                   </button>
                 </Link>
@@ -1093,15 +1093,15 @@ export default function HomePage() {
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">Acme Corp Pvt Ltd</div>
+                    <div className="text-xs text-fg-primary font-light">Acme Corp Pvt Ltd</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">CIN: U12345MH2020PTC123456</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">Tech Solutions LLP</div>
+                    <div className="text-xs text-fg-primary font-light">Tech Solutions LLP</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">LLPIN: AAB-1234</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50 opacity-60">
-                    <div className="text-xs text-white font-light">Global Industries Ltd</div>
+                    <div className="text-xs text-fg-primary font-light">Global Industries Ltd</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">CIN: U67890DL2021PLC789012</div>
                   </div>
                   </div>
@@ -1116,17 +1116,17 @@ export default function HomePage() {
               style={{ transitionDelay: visibleSections.has('solution') ? '0.4s' : '0s' }}
             >
               <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Documents</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-fg-primary mb-2">Documents</div>
                 <p className="text-fg-muted font-light text-xs sm:text-sm">Secure storage</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Document Vault</div>
-                  <div className="text-white text-sm font-light">Organize financial and legal documents with structured folders, categories, and metadata.</div>
+                  <div className="text-fg-primary text-sm font-light">Organize financial and legal documents with structured folders, categories, and metadata.</div>
                 </div>
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Access Control</div>
-                  <div className="text-white text-sm font-light">Role-based permissions ensure secure access with viewer, editor, and admin level controls.</div>
+                  <div className="text-fg-primary text-sm font-light">Role-based permissions ensure secure access with viewer, editor, and admin level controls.</div>
                 </div>
               </div>
               {/* Document Vault UI Preview */}
@@ -1140,7 +1140,7 @@ export default function HomePage() {
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-bg-hover rounded"></div>
                       <div className="flex-1">
-                        <div className="text-xs text-white font-light">ITR_2024-25.pdf</div>
+                        <div className="text-xs text-fg-primary font-light">ITR_2024-25.pdf</div>
                         <div className="text-[10px] text-fg-muted mt-0.5">Income Tax • 2.3 MB</div>
                       </div>
                     </div>
@@ -1149,7 +1149,7 @@ export default function HomePage() {
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-bg-hover rounded"></div>
                       <div className="flex-1">
-                        <div className="text-xs text-white font-light">GST_Returns_Q4.pdf</div>
+                        <div className="text-xs text-fg-primary font-light">GST_Returns_Q4.pdf</div>
                         <div className="text-[10px] text-fg-muted mt-0.5">GST • 1.8 MB</div>
                       </div>
                     </div>
@@ -1158,7 +1158,7 @@ export default function HomePage() {
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-bg-hover rounded"></div>
                       <div className="flex-1">
-                        <div className="text-xs text-white font-light">AOC-4_Form.pdf</div>
+                        <div className="text-xs text-fg-primary font-light">AOC-4_Form.pdf</div>
                         <div className="text-[10px] text-fg-muted mt-0.5">RoC • 956 KB</div>
                       </div>
                       </div>
@@ -1175,7 +1175,7 @@ export default function HomePage() {
               style={{ transitionDelay: visibleSections.has('solution') ? '0.5s' : '0s' }}
             >
               <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-fg-primary mb-2">
                   Compliance
                 </div>
                 <p className="text-fg-muted font-light text-xs sm:text-sm">Regulatory tracking</p>
@@ -1183,16 +1183,16 @@ export default function HomePage() {
               <div className="flex-1 space-y-3 sm:space-y-4">
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Due Date Tracking</div>
-                  <div className="text-white text-sm font-light">Monitor upcoming, pending, and overdue compliance tasks across GST, Income Tax, RoC, and more.</div>
+                  <div className="text-fg-primary text-sm font-light">Monitor upcoming, pending, and overdue compliance tasks across GST, Income Tax, RoC, and more.</div>
                 </div>
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Status Management</div>
-                  <div className="text-white text-sm font-light">Track filing status, penalty risks, and compliance health with automated alerts and reminders.</div>
+                  <div className="text-fg-primary text-sm font-light">Track filing status, penalty risks, and compliance health with automated alerts and reminders.</div>
                 </div>
               </div>
               <div className="mt-4">
                 <Link href="/compliance-tracker">
-                  <button className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-all duration-300 font-light text-sm">
+                  <button className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-all duration-300 font-light text-sm">
                     Learn More
                   </button>
                 </Link>
@@ -1210,21 +1210,21 @@ export default function HomePage() {
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
                     <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">GSTR-3B</div>
+                      <div className="text-xs text-fg-primary font-light">GSTR-3B</div>
                       <div className="px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded text-[10px]">✓</div>
                     </div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Due: 20 Jan 2025</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
                     <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">TDS Return</div>
+                      <div className="text-xs text-fg-primary font-light">TDS Return</div>
                       <div className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-[10px]">⏳</div>
                     </div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Due: 31 Jan 2025</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-red-800/30">
                     <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">AOC-4 Filing</div>
+                      <div className="text-xs text-fg-primary font-light">AOC-4 Filing</div>
                       <div className="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px]">!</div>
                     </div>
                     <div className="text-[10px] text-red-400 mt-0.5">Overdue: 15 Jan 2025</div>
@@ -1244,7 +1244,7 @@ export default function HomePage() {
               style={{ transitionDelay: visibleSections.has('solution') ? '0.3s' : '0s' }}
             >
               <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-fg-primary mb-2">
                   Companies
                 </div>
                 <p className="text-fg-muted font-light text-xs sm:text-sm">Multi-entity management</p>
@@ -1252,16 +1252,16 @@ export default function HomePage() {
               <div className="flex-1 space-y-3 sm:space-y-4">
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Entity Structure</div>
-                  <div className="text-white text-sm font-light">Manage multiple companies under a unified dashboard with structured hierarchies and relationships.</div>
+                  <div className="text-fg-primary text-sm font-light">Manage multiple companies under a unified dashboard with structured hierarchies and relationships.</div>
                 </div>
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Company Profiles</div>
-                  <div className="text-white text-sm font-light">Auto-fill company details from MCA, track directors, and maintain comprehensive entity records.</div>
+                  <div className="text-fg-primary text-sm font-light">Auto-fill company details from MCA, track directors, and maintain comprehensive entity records.</div>
                 </div>
               </div>
               <div className="mt-4">
                 <Link href="/company-onboarding">
-                  <button className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-all duration-300 font-light text-sm">
+                  <button className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-all duration-300 font-light text-sm">
                     Learn More
                   </button>
                 </Link>
@@ -1273,15 +1273,15 @@ export default function HomePage() {
                 </div>
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">Acme Corp Pvt Ltd</div>
+                    <div className="text-xs text-fg-primary font-light">Acme Corp Pvt Ltd</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">CIN: U12345MH2020PTC123456</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
-                    <div className="text-xs text-white font-light">Tech Solutions LLP</div>
+                    <div className="text-xs text-fg-primary font-light">Tech Solutions LLP</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">LLPIN: AAB-1234</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50 opacity-60">
-                    <div className="text-xs text-white font-light">Global Industries Ltd</div>
+                    <div className="text-xs text-fg-primary font-light">Global Industries Ltd</div>
                     <div className="text-[10px] text-fg-muted mt-0.5">CIN: U67890DL2021PLC789012</div>
                   </div>
                 </div>
@@ -1294,17 +1294,17 @@ export default function HomePage() {
               style={{ transitionDelay: visibleSections.has('solution') ? '0.4s' : '0s' }}
             >
               <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">Documents</div>
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-fg-primary mb-2">Documents</div>
                 <p className="text-fg-muted font-light text-xs sm:text-sm">Secure storage</p>
               </div>
               <div className="flex-1 space-y-3 sm:space-y-4">
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Document Vault</div>
-                  <div className="text-white text-sm font-light">Organize financial and legal documents with structured folders, categories, and metadata.</div>
+                  <div className="text-fg-primary text-sm font-light">Organize financial and legal documents with structured folders, categories, and metadata.</div>
                 </div>
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Access Control</div>
-                  <div className="text-white text-sm font-light">Role-based permissions ensure secure access with viewer, editor, and admin level controls.</div>
+                  <div className="text-fg-primary text-sm font-light">Role-based permissions ensure secure access with viewer, editor, and admin level controls.</div>
                 </div>
               </div>
               <div className="mt-6 bg-[#0f0f0f] rounded-lg p-4 border border-line/10/30">
@@ -1317,7 +1317,7 @@ export default function HomePage() {
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-bg-hover rounded"></div>
                       <div className="flex-1">
-                        <div className="text-xs text-white font-light">ITR_2024-25.pdf</div>
+                        <div className="text-xs text-fg-primary font-light">ITR_2024-25.pdf</div>
                         <div className="text-[10px] text-fg-muted mt-0.5">Income Tax • 2.3 MB</div>
                       </div>
                     </div>
@@ -1326,7 +1326,7 @@ export default function HomePage() {
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-bg-hover rounded"></div>
                       <div className="flex-1">
-                        <div className="text-xs text-white font-light">GST_Returns_Q4.pdf</div>
+                        <div className="text-xs text-fg-primary font-light">GST_Returns_Q4.pdf</div>
                         <div className="text-[10px] text-fg-muted mt-0.5">GST • 1.8 MB</div>
                       </div>
                     </div>
@@ -1335,7 +1335,7 @@ export default function HomePage() {
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-bg-hover rounded"></div>
                       <div className="flex-1">
-                        <div className="text-xs text-white font-light">AOC-4_Form.pdf</div>
+                        <div className="text-xs text-fg-primary font-light">AOC-4_Form.pdf</div>
                         <div className="text-[10px] text-fg-muted mt-0.5">RoC • 956 KB</div>
                       </div>
                     </div>
@@ -1350,7 +1350,7 @@ export default function HomePage() {
               style={{ transitionDelay: visibleSections.has('solution') ? '0.5s' : '0s' }}
             >
               <div className="mb-4 sm:mb-6">
-                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-white mb-2">
+                <div className="text-2xl sm:text-3xl md:text-4xl font-light text-fg-primary mb-2">
                   Compliance
                 </div>
                 <p className="text-fg-muted font-light text-xs sm:text-sm">Regulatory tracking</p>
@@ -1358,16 +1358,16 @@ export default function HomePage() {
               <div className="flex-1 space-y-3 sm:space-y-4">
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Due Date Tracking</div>
-                  <div className="text-white text-sm font-light">Monitor upcoming, pending, and overdue compliance tasks across GST, Income Tax, RoC, and more.</div>
+                  <div className="text-fg-primary text-sm font-light">Monitor upcoming, pending, and overdue compliance tasks across GST, Income Tax, RoC, and more.</div>
                 </div>
                 <div className="bg-[#252525] rounded-lg p-4 border border-line/10/50">
                   <div className="text-xs text-fg-muted uppercase mb-2 font-light">Status Management</div>
-                  <div className="text-white text-sm font-light">Track filing status, penalty risks, and compliance health with automated alerts and reminders.</div>
+                  <div className="text-fg-primary text-sm font-light">Track filing status, penalty risks, and compliance health with automated alerts and reminders.</div>
                 </div>
               </div>
               <div className="mt-4">
                 <Link href="/compliance-tracker">
-                  <button className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-all duration-300 font-light text-sm">
+                  <button className="px-4 py-2 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-all duration-300 font-light text-sm">
                     Learn More
                   </button>
                 </Link>
@@ -1384,21 +1384,21 @@ export default function HomePage() {
                 <div className="space-y-2">
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
                     <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">GSTR-3B</div>
+                      <div className="text-xs text-fg-primary font-light">GSTR-3B</div>
                       <div className="px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded text-[10px]">✓</div>
                     </div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Due: 20 Jan 2025</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-line/10/50">
                     <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">TDS Return</div>
+                      <div className="text-xs text-fg-primary font-light">TDS Return</div>
                       <div className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 rounded text-[10px]">⏳</div>
                     </div>
                     <div className="text-[10px] text-fg-muted mt-0.5">Due: 31 Jan 2025</div>
                   </div>
                   <div className="bg-bg-card rounded px-3 py-2 border border-red-800/30">
                     <div className="flex items-center justify-between">
-                      <div className="text-xs text-white font-light">AOC-4 Filing</div>
+                      <div className="text-xs text-fg-primary font-light">AOC-4 Filing</div>
                       <div className="px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px]">!</div>
                     </div>
                     <div className="text-[10px] text-red-400 mt-0.5">Overdue: 15 Jan 2025</div>
@@ -1420,7 +1420,7 @@ export default function HomePage() {
         className={`relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32 border-t border-line/10 ${visibleSections.has('plans') ? 'section-visible' : 'section-hidden'}`}
       >
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-8 sm:mb-12 md:mb-16 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('plans') ? 1 : 0 }}>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-fg-primary mb-8 sm:mb-12 md:mb-16 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('plans') ? 1 : 0 }}>
             Plans
           </h2>
           <EmbeddedPricing />
@@ -1433,7 +1433,7 @@ export default function HomePage() {
         className={`relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32 border-t border-line/10 ${visibleSections.has('whats-next') ? 'section-visible' : 'section-hidden'}`}
       >
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-4 sm:mb-6 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('whats-next') ? 1 : 0 }}>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-fg-primary mb-4 sm:mb-6 text-center px-4 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('whats-next') ? 1 : 0 }}>
             What's Next??
           </h2>
           <p className="text-base sm:text-lg md:text-xl text-fg-muted mb-8 sm:mb-12 md:mb-16 text-center font-light px-4 animate-fade-in-up" style={{ animationDelay: '0.2s', opacity: visibleSections.has('whats-next') ? 1 : 0 }}>
@@ -1453,7 +1453,7 @@ export default function HomePage() {
                 className={`bg-bg-card border border-line/10 rounded-xl p-5 sm:p-6 md:p-8 card-hidden hover:border-line/15 transition-all duration-300 ${visibleSections.has('whats-next') ? 'card-visible' : ''}`}
                 style={{ transitionDelay: visibleSections.has('whats-next') ? `${0.3 + index * 0.08}s` : '0s' }}
               >
-                <h3 className="text-lg sm:text-xl font-light text-white mb-2 sm:mb-3">{item.title}</h3>
+                <h3 className="text-lg sm:text-xl font-light text-fg-primary mb-2 sm:mb-3">{item.title}</h3>
                 <p className="text-fg-muted text-xs sm:text-sm font-light">{item.desc}</p>
               </div>
             ))}
@@ -1468,19 +1468,19 @@ export default function HomePage() {
         className={`relative z-10 px-4 sm:px-6 py-12 sm:py-20 md:py-32 border-t border-line/10 ${visibleSections.has('cta') ? 'section-visible' : 'section-hidden'}`}
       >
         <div className="max-w-4xl mx-auto text-center px-4">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white mb-8 sm:mb-12 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('cta') ? 1 : 0 }}>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-fg-primary mb-8 sm:mb-12 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: visibleSections.has('cta') ? 1 : 0 }}>
             Automate compliance. Structure your financial operations. Reduce dependency on manual tracking.
           </h2>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center animate-fade-in-up" style={{ animationDelay: '0.3s', opacity: visibleSections.has('cta') ? 1 : 0 }}>
             <Link
               href="/subscribe"
-              className="px-6 sm:px-8 py-3 sm:py-4 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-all duration-300 font-light text-sm sm:text-base min-h-[44px] flex items-center justify-center"
+              className="px-6 sm:px-8 py-3 sm:py-4 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-all duration-300 font-light text-sm sm:text-base min-h-[44px] flex items-center justify-center"
             >
               Start Trial for free
             </Link>
             <Link
               href="/contact"
-              className="px-6 sm:px-8 py-3 sm:py-4 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-white transition-all duration-300 font-light text-sm sm:text-base min-h-[44px] flex items-center justify-center"
+              className="px-6 sm:px-8 py-3 sm:py-4 border border-line/15 text-fg-secondary rounded-lg hover:border-line/30 hover:text-fg-primary transition-all duration-300 font-light text-sm sm:text-base min-h-[44px] flex items-center justify-center"
             >
               Talk to Us
             </Link>
@@ -1496,14 +1496,14 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-6 sm:gap-8 md:gap-12 mb-6 sm:mb-8 md:mb-12">
             <div>
-              <h3 className="text-white text-base sm:text-lg font-light mb-3 sm:mb-4">India</h3>
+              <h3 className="text-fg-primary text-base sm:text-lg font-light mb-3 sm:mb-4">India</h3>
               <p className="text-fg-secondary text-xs sm:text-sm font-light mb-2">Finnogenius Consulting Private Limited</p>
               <p className="text-fg-muted text-xs sm:text-sm font-light mb-4">
                 4th Floor, Downtown Mall,<br />
                 Lakdikapul, Khairatabad,<br />
                 Hyderabad - 500004, India
               </p>
-              <h3 className="text-white text-base sm:text-lg font-light mb-3 sm:mb-4 mt-6">USA</h3>
+              <h3 className="text-fg-primary text-base sm:text-lg font-light mb-3 sm:mb-4 mt-6">USA</h3>
               <p className="text-fg-secondary text-xs sm:text-sm font-light mb-2">RAZR CAPITAL LLC</p>
               <p className="text-fg-muted text-xs sm:text-sm font-light mb-3">
                 2302 Stillbrooke Lane,<br />
@@ -1514,7 +1514,7 @@ export default function HomePage() {
                   href="https://www.instagram.com/finacra.ai/" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-fg-muted hover:text-white transition-colors"
+                  className="text-fg-muted hover:text-fg-primary transition-colors"
                   aria-label="Instagram"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -1525,7 +1525,7 @@ export default function HomePage() {
                   href="https://www.linkedin.com/company/finacra/posts/?feedView=all" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-fg-muted hover:text-white transition-colors"
+                  className="text-fg-muted hover:text-fg-primary transition-colors"
                   aria-label="LinkedIn"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -1536,7 +1536,7 @@ export default function HomePage() {
                   href="https://www.facebook.com/share/178PDtw15R/?mibextid=wwXIfr" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-fg-muted hover:text-white transition-colors"
+                  className="text-fg-muted hover:text-fg-primary transition-colors"
                   aria-label="Facebook"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -1547,7 +1547,7 @@ export default function HomePage() {
                   href="https://x.com/Finacraco" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-fg-muted hover:text-white transition-colors"
+                  className="text-fg-muted hover:text-fg-primary transition-colors"
                   aria-label="X (Twitter)"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -1557,35 +1557,35 @@ export default function HomePage() {
               </div>
             </div>
             <div>
-              <h4 className="text-white text-sm sm:text-base font-light mb-3 sm:mb-4">Contact</h4>
+              <h4 className="text-fg-primary text-sm sm:text-base font-light mb-3 sm:mb-4">Contact</h4>
               <p className="text-fg-muted text-xs sm:text-sm font-light mb-2">
-                <a href="mailto:info@finacra.com" className="hover:text-white transition-colors">
+                <a href="mailto:info@finacra.com" className="hover:text-fg-primary transition-colors">
                   info@finacra.com
                 </a>
               </p>
               <p className="text-fg-muted text-xs sm:text-sm font-light mb-2">
-                <a href="tel:+16693097426" className="hover:text-white transition-colors">
+                <a href="tel:+16693097426" className="hover:text-fg-primary transition-colors">
                   +1 (669) 309-7426
                 </a>
                 <span className="text-fg-muted ml-1">- Global</span>
               </p>
               <p className="text-fg-muted text-xs sm:text-sm font-light">
-                <a href="tel:+918790622663" className="hover:text-white transition-colors">
+                <a href="tel:+918790622663" className="hover:text-fg-primary transition-colors">
                   +91 8790622663
                 </a>
                 <span className="text-fg-muted ml-1">- India</span>
               </p>
             </div>
             <div>
-              <h4 className="text-white text-sm sm:text-base font-light mb-3 sm:mb-4">Quick Links</h4>
+              <h4 className="text-fg-primary text-sm sm:text-base font-light mb-3 sm:mb-4">Quick Links</h4>
               <div className="flex flex-col gap-2">
-                <Link href="/home#plans" className="text-fg-muted text-xs sm:text-sm font-light hover:text-white transition-colors">
+                <Link href="/home#plans" className="text-fg-muted text-xs sm:text-sm font-light hover:text-fg-primary transition-colors">
                   Pricing
                 </Link>
-                <Link href="/contact" className="text-fg-muted text-xs sm:text-sm font-light hover:text-white transition-colors">
+                <Link href="/contact" className="text-fg-muted text-xs sm:text-sm font-light hover:text-fg-primary transition-colors">
                   Contact Us
                 </Link>
-                <Link href="/home#products" className="text-fg-muted text-xs sm:text-sm font-light hover:text-white transition-colors">
+                <Link href="/home#products" className="text-fg-muted text-xs sm:text-sm font-light hover:text-fg-primary transition-colors">
                   Products
                 </Link>
               </div>
@@ -1597,10 +1597,10 @@ export default function HomePage() {
                 © 2026 FinacraAI. All rights reserved.
               </span>
               <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs sm:text-sm">
-                <Link href="/privacy-policy" className="text-fg-muted hover:text-white transition-colors font-light">
+                <Link href="/privacy-policy" className="text-fg-muted hover:text-fg-primary transition-colors font-light">
                   Privacy Policy
                 </Link>
-                <Link href="/terms-of-service" className="text-fg-muted hover:text-white transition-colors font-light">
+                <Link href="/terms-of-service" className="text-fg-muted hover:text-fg-primary transition-colors font-light">
                   Terms of Service
                 </Link>
               </div>

@@ -49,9 +49,9 @@ export default function GSTTab({
             {/* Header */}
             <div className="text-center mb-8">
               <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/20">
-                <span className="text-3xl font-bold text-white">GST</span>
+                <span className="text-3xl font-bold text-fg-primary">GST</span>
               </div>
-              <h2 className="text-2xl font-light text-white mb-2">Connect Your GST Account</h2>
+              <h2 className="text-2xl font-light text-fg-primary mb-2">Connect Your GST Account</h2>
               <p className="text-fg-muted">Link your GST portal credentials to fetch returns automatically</p>
             </div>
 
@@ -59,7 +59,7 @@ export default function GSTTab({
             <div className="flex items-center justify-center gap-4 mb-8">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-black text-sm font-bold">1</div>
-                <span className="text-white text-sm">Connect</span>
+                <span className="text-fg-primary text-sm">Connect</span>
               </div>
               <div className="h-px w-12 bg-bg-hover"></div>
               <div className="flex items-center gap-2">
@@ -85,7 +85,7 @@ export default function GSTTab({
                   onChange={(e) => setGstCredentials({ ...gstCredentials, gstin: e.target.value.toUpperCase() })}
                   placeholder="Enter your 15-digit GSTIN"
                   maxLength={15}
-                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors font-mono tracking-wider"
+                  className="w-full px-4 py-3 bg-bg-card border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors font-mono tracking-wider"
                 />
                 <p className="mt-1 text-xs text-fg-muted">Example: 27AQOPD9471C3ZM</p>
               </div>
@@ -99,7 +99,7 @@ export default function GSTTab({
                   value={gstCredentials.gstUsername}
                   onChange={(e) => setGstCredentials({ ...gstCredentials, gstUsername: e.target.value })}
                   placeholder="Enter your GST portal username"
-                  className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-white placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                  className="w-full px-4 py-3 bg-black border border-white/20 rounded-lg text-fg-primary placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                 />
               </div>
 
@@ -127,7 +127,7 @@ export default function GSTTab({
                   setGstStep('otp')
                 }}
                 disabled={isGstLoading}
-                className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-green-500/20"
+                className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-fg-primary rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-green-500/20"
               >
                 {isGstLoading ? (
                   <>
@@ -164,7 +164,7 @@ export default function GSTTab({
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-light text-white mb-2">Verify OTP</h2>
+              <h2 className="text-2xl font-light text-fg-primary mb-2">Verify OTP</h2>
               <p className="text-fg-muted">Enter the OTP sent to your registered mobile number</p>
             </div>
 
@@ -181,7 +181,7 @@ export default function GSTTab({
               <div className="h-px w-12 bg-green-500"></div>
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-black text-sm font-bold">2</div>
-                <span className="text-white text-sm">Verify OTP</span>
+                <span className="text-fg-primary text-sm">Verify OTP</span>
               </div>
               <div className="h-px w-12 bg-bg-hover"></div>
               <div className="flex items-center gap-2">
@@ -197,7 +197,7 @@ export default function GSTTab({
                   <span className="text-green-400 font-bold text-sm">GST</span>
                 </div>
                 <div>
-                  <p className="text-white font-medium">{gstCredentials.gstin}</p>
+                  <p className="text-fg-primary font-medium">{gstCredentials.gstin}</p>
                   <p className="text-fg-muted text-sm">{gstCredentials.gstUsername}</p>
                 </div>
               </div>
@@ -215,10 +215,10 @@ export default function GSTTab({
                   onChange={(e) => setGstOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="Enter 6-digit OTP"
                   maxLength={6}
-                  className="w-full px-4 py-4 bg-bg-card border border-line/15 rounded-lg text-white text-center text-2xl font-mono tracking-[0.5em] placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
+                  className="w-full px-4 py-4 bg-bg-card border border-line/15 rounded-lg text-fg-primary text-center text-2xl font-mono tracking-[0.5em] placeholder:text-fg-muted focus:outline-none focus:border-white/40 focus:ring-1 focus:ring-white/40 transition-colors"
                 />
                 <p className="mt-2 text-center text-xs text-fg-muted">
-                  OTP expires in <span className="text-white">5:00</span> minutes
+                  OTP expires in <span className="text-fg-primary">5:00</span> minutes
                 </p>
               </div>
 
@@ -292,7 +292,7 @@ export default function GSTTab({
                     setGstStep('dashboard')
                   }}
                   disabled={isGstLoading || gstOtp.length !== 6}
-                  className="flex-1 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-green-500/20"
+                  className="flex-1 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-fg-primary rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-green-500/20"
                 >
                   {isGstLoading ? (
                     <>
@@ -311,7 +311,7 @@ export default function GSTTab({
                 </button>
               </div>
 
-              <button className="w-full text-center text-sm text-white hover:text-white/80 transition-colors">
+              <button className="w-full text-center text-sm text-fg-primary hover:text-fg-primary/80 transition-colors">
                 Didn't receive OTP? Resend
               </button>
             </div>
@@ -326,10 +326,10 @@ export default function GSTTab({
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-500/20">
-                  <span className="text-xl font-bold text-white">GST</span>
+                  <span className="text-xl font-bold text-fg-primary">GST</span>
                 </div>
                 <div>
-                  <h2 className="text-2xl font-light text-white">{gstData.tradeName}</h2>
+                  <h2 className="text-2xl font-light text-fg-primary">{gstData.tradeName}</h2>
                   <p className="text-fg-muted font-mono">{gstData.gstin}</p>
                   <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-green-500/20 text-green-400 rounded text-xs">
                     <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
@@ -341,7 +341,7 @@ export default function GSTTab({
                 <select
                   value={selectedGstPeriod}
                   onChange={(e) => setSelectedGstPeriod(e.target.value)}
-                  className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-white focus:outline-none focus:border-white/40"
+                  className="px-4 py-2 bg-bg-card border border-line/15 rounded-lg text-fg-primary focus:outline-none focus:border-white/40"
                 >
                   <option value="012026">January 2026</option>
                   <option value="122025">December 2025</option>
@@ -379,7 +379,7 @@ export default function GSTTab({
                 onClick={() => setGstActiveSection(tab.id as any)}
                 className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap ${gstActiveSection === tab.id
                     ? 'bg-white text-black'
-                    : 'bg-bg-elevated text-fg-muted hover:text-white hover:bg-bg-hover'
+                    : 'bg-bg-elevated text-fg-muted hover:text-fg-primary hover:bg-bg-hover'
                   }`}
               >
                 <span>{tab.icon}</span>
@@ -402,7 +402,7 @@ export default function GSTTab({
                   </div>
                   <span className="text-fg-muted text-sm">Cash Balance</span>
                 </div>
-                <p className="text-2xl font-light text-white mb-2">
+                <p className="text-2xl font-light text-fg-primary mb-2">
                   ₹{(gstData.cashBalance.igst + gstData.cashBalance.cgst + gstData.cashBalance.sgst).toLocaleString('en-IN')}
                 </p>
                 <div className="text-xs text-fg-muted space-y-1">
@@ -422,7 +422,7 @@ export default function GSTTab({
                   </div>
                   <span className="text-fg-muted text-sm">ITC Balance</span>
                 </div>
-                <p className="text-2xl font-light text-white mb-2">
+                <p className="text-2xl font-light text-fg-primary mb-2">
                   ₹{(gstData.itcBalance.igst + gstData.itcBalance.cgst + gstData.itcBalance.sgst).toLocaleString('en-IN')}
                 </p>
                 <div className="text-xs text-fg-muted space-y-1">
@@ -451,7 +451,7 @@ export default function GSTTab({
                   </span>
                   <span className="text-fg-muted text-xs">{gstData.gstr1.filedDate}</span>
                 </div>
-                <p className="text-lg font-light text-white">₹{gstData.gstr1.totalValue.toLocaleString('en-IN')}</p>
+                <p className="text-lg font-light text-fg-primary">₹{gstData.gstr1.totalValue.toLocaleString('en-IN')}</p>
                 <p className="text-xs text-fg-muted">{gstData.gstr1.totalInvoices} invoices</p>
               </div>
 
@@ -472,7 +472,7 @@ export default function GSTTab({
                   </span>
                   <span className="text-fg-muted text-xs">{gstData.gstr3b.filedDate}</span>
                 </div>
-                <p className="text-lg font-light text-white">₹{gstData.gstr3b.taxPaid.toLocaleString('en-IN')}</p>
+                <p className="text-lg font-light text-fg-primary">₹{gstData.gstr3b.taxPaid.toLocaleString('en-IN')}</p>
                 <p className="text-xs text-fg-muted">Tax paid</p>
               </div>
             </div>
@@ -483,7 +483,7 @@ export default function GSTTab({
             <div className="bg-bg-card border border-line/10 rounded-2xl p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="text-xl font-light text-white">GSTR-1 - Outward Supplies</h3>
+                  <h3 className="text-xl font-light text-fg-primary">GSTR-1 - Outward Supplies</h3>
                   <p className="text-fg-muted text-sm">Return period: December 2025</p>
                 </div>
                 <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm">Filed on {gstData.gstr1.filedDate}</span>
@@ -493,23 +493,23 @@ export default function GSTTab({
               <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                 <div className="bg-bg-card/50 rounded-lg p-4">
                   <p className="text-fg-muted text-xs mb-1">Total Value</p>
-                  <p className="text-white text-lg font-light">₹{gstData.gstr1.totalValue.toLocaleString('en-IN')}</p>
+                  <p className="text-fg-primary text-lg font-light">₹{gstData.gstr1.totalValue.toLocaleString('en-IN')}</p>
                 </div>
                 <div className="bg-bg-card/50 rounded-lg p-4">
                   <p className="text-fg-muted text-xs mb-1">IGST</p>
-                  <p className="text-white text-lg font-light">₹{gstData.gstr1.igst.toLocaleString('en-IN')}</p>
+                  <p className="text-fg-primary text-lg font-light">₹{gstData.gstr1.igst.toLocaleString('en-IN')}</p>
                 </div>
                 <div className="bg-bg-card/50 rounded-lg p-4">
                   <p className="text-fg-muted text-xs mb-1">CGST</p>
-                  <p className="text-white text-lg font-light">₹{gstData.gstr1.cgst.toLocaleString('en-IN')}</p>
+                  <p className="text-fg-primary text-lg font-light">₹{gstData.gstr1.cgst.toLocaleString('en-IN')}</p>
                 </div>
                 <div className="bg-bg-card/50 rounded-lg p-4">
                   <p className="text-fg-muted text-xs mb-1">SGST</p>
-                  <p className="text-white text-lg font-light">₹{gstData.gstr1.sgst.toLocaleString('en-IN')}</p>
+                  <p className="text-fg-primary text-lg font-light">₹{gstData.gstr1.sgst.toLocaleString('en-IN')}</p>
                 </div>
                 <div className="bg-bg-card/50 rounded-lg p-4">
                   <p className="text-fg-muted text-xs mb-1">Invoices</p>
-                  <p className="text-white text-lg font-light">{gstData.gstr1.totalInvoices}</p>
+                  <p className="text-fg-primary text-lg font-light">{gstData.gstr1.totalInvoices}</p>
                 </div>
               </div>
 
@@ -534,10 +534,10 @@ export default function GSTTab({
                       { inv: 'INV-2025-005', date: '25-12-2025', ctin: '19AAECI3797E1ZO', val: 175000, tax: 31500 }
                     ].map((row, idx) => (
                       <tr key={idx} className="border-b border-line/10/50 hover:bg-bg-card/30">
-                        <td className="py-3 px-4 text-white font-mono text-sm">{row.inv}</td>
+                        <td className="py-3 px-4 text-fg-primary font-mono text-sm">{row.inv}</td>
                         <td className="py-3 px-4 text-fg-secondary text-sm">{row.date}</td>
                         <td className="py-3 px-4 text-fg-secondary font-mono text-sm">{row.ctin}</td>
-                        <td className="py-3 px-4 text-white text-sm text-right">₹{row.val.toLocaleString('en-IN')}</td>
+                        <td className="py-3 px-4 text-fg-primary text-sm text-right">₹{row.val.toLocaleString('en-IN')}</td>
                         <td className="py-3 px-4 text-green-400 text-sm text-right">₹{row.tax.toLocaleString('en-IN')}</td>
                       </tr>
                     ))}
@@ -552,7 +552,7 @@ export default function GSTTab({
             <div className="bg-bg-card border border-line/10 rounded-2xl p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="text-xl font-light text-white">GSTR-2A - Auto-drafted Inward Supplies</h3>
+                  <h3 className="text-xl font-light text-fg-primary">GSTR-2A - Auto-drafted Inward Supplies</h3>
                   <p className="text-fg-muted text-sm">Return period: December 2025</p>
                 </div>
               </div>
@@ -560,19 +560,19 @@ export default function GSTTab({
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div className="bg-bg-card/50 rounded-lg p-4">
                   <p className="text-fg-muted text-xs mb-1">Total ITC Available</p>
-                  <p className="text-white text-lg font-light">₹412,500</p>
+                  <p className="text-fg-primary text-lg font-light">₹412,500</p>
                 </div>
                 <div className="bg-bg-card/50 rounded-lg p-4">
                   <p className="text-fg-muted text-xs mb-1">B2B Invoices</p>
-                  <p className="text-white text-lg font-light">89</p>
+                  <p className="text-fg-primary text-lg font-light">89</p>
                 </div>
                 <div className="bg-bg-card/50 rounded-lg p-4">
                   <p className="text-fg-muted text-xs mb-1">Credit Notes</p>
-                  <p className="text-white text-lg font-light">12</p>
+                  <p className="text-fg-primary text-lg font-light">12</p>
                 </div>
                 <div className="bg-bg-card/50 rounded-lg p-4">
                   <p className="text-fg-muted text-xs mb-1">Amendments</p>
-                  <p className="text-white text-lg font-light">3</p>
+                  <p className="text-fg-primary text-lg font-light">3</p>
                 </div>
               </div>
 
@@ -596,9 +596,9 @@ export default function GSTTab({
                     ].map((row, idx) => (
                       <tr key={idx} className="border-b border-line/10/50 hover:bg-bg-card/30">
                         <td className="py-3 px-4 text-fg-secondary font-mono text-sm">{row.gstin}</td>
-                        <td className="py-3 px-4 text-white text-sm">{row.name}</td>
+                        <td className="py-3 px-4 text-fg-primary text-sm">{row.name}</td>
                         <td className="py-3 px-4 text-fg-secondary text-sm">{row.inv}</td>
-                        <td className="py-3 px-4 text-white text-sm text-right">₹{row.val.toLocaleString('en-IN')}</td>
+                        <td className="py-3 px-4 text-fg-primary text-sm text-right">₹{row.val.toLocaleString('en-IN')}</td>
                         <td className="py-3 px-4 text-green-400 text-sm text-right">₹{row.itc.toLocaleString('en-IN')}</td>
                       </tr>
                     ))}
@@ -613,7 +613,7 @@ export default function GSTTab({
             <div className="bg-bg-card border border-line/10 rounded-2xl p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="text-xl font-light text-white">GSTR-2B - ITC Statement</h3>
+                  <h3 className="text-xl font-light text-fg-primary">GSTR-2B - ITC Statement</h3>
                   <p className="text-fg-muted text-sm">Return period: December 2025</p>
                 </div>
                 <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm">Generated on 14-01-2026</span>
@@ -626,15 +626,15 @@ export default function GSTTab({
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-fg-muted text-xs mb-1">IGST</p>
-                      <p className="text-white text-lg">₹156,250</p>
+                      <p className="text-fg-primary text-lg">₹156,250</p>
                     </div>
                     <div>
                       <p className="text-fg-muted text-xs mb-1">CGST</p>
-                      <p className="text-white text-lg">₹128,125</p>
+                      <p className="text-fg-primary text-lg">₹128,125</p>
                     </div>
                     <div>
                       <p className="text-fg-muted text-xs mb-1">SGST</p>
-                      <p className="text-white text-lg">₹128,125</p>
+                      <p className="text-fg-primary text-lg">₹128,125</p>
                     </div>
                     <div>
                       <p className="text-fg-muted text-xs mb-1">Total</p>
@@ -649,15 +649,15 @@ export default function GSTTab({
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-fg-muted text-xs mb-1">IGST</p>
-                      <p className="text-white text-lg">₹12,500</p>
+                      <p className="text-fg-primary text-lg">₹12,500</p>
                     </div>
                     <div>
                       <p className="text-fg-muted text-xs mb-1">CGST</p>
-                      <p className="text-white text-lg">₹6,250</p>
+                      <p className="text-fg-primary text-lg">₹6,250</p>
                     </div>
                     <div>
                       <p className="text-fg-muted text-xs mb-1">SGST</p>
-                      <p className="text-white text-lg">₹6,250</p>
+                      <p className="text-fg-primary text-lg">₹6,250</p>
                     </div>
                     <div>
                       <p className="text-fg-muted text-xs mb-1">Total</p>
@@ -674,7 +674,7 @@ export default function GSTTab({
             <div className="bg-bg-card border border-line/10 rounded-2xl p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="text-xl font-light text-white">GSTR-3B - Summary Return</h3>
+                  <h3 className="text-xl font-light text-fg-primary">GSTR-3B - Summary Return</h3>
                   <p className="text-fg-muted text-sm">Return period: December 2025</p>
                 </div>
                 <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm">Filed on {gstData.gstr3b.filedDate}</span>
@@ -684,7 +684,7 @@ export default function GSTTab({
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 <div className="bg-bg-card/50 rounded-xl p-6">
                   <h4 className="text-fg-muted text-sm mb-4">Tax Liability</h4>
-                  <p className="text-3xl font-light text-white mb-2">₹{gstData.gstr3b.totalLiability.toLocaleString('en-IN')}</p>
+                  <p className="text-3xl font-light text-fg-primary mb-2">₹{gstData.gstr3b.totalLiability.toLocaleString('en-IN')}</p>
                   <div className="text-xs text-fg-muted space-y-1">
                     <div className="flex justify-between"><span>IGST</span><span>₹287,650</span></div>
                     <div className="flex justify-between"><span>CGST</span><span>₹143,825</span></div>
@@ -704,7 +704,7 @@ export default function GSTTab({
 
                 <div className="bg-white/5 border border-white/40/30 rounded-xl p-6">
                   <h4 className="text-fg-muted text-sm mb-4">Tax Paid</h4>
-                  <p className="text-3xl font-light text-white mb-2">₹{gstData.gstr3b.taxPaid.toLocaleString('en-IN')}</p>
+                  <p className="text-3xl font-light text-fg-primary mb-2">₹{gstData.gstr3b.taxPaid.toLocaleString('en-IN')}</p>
                   <div className="text-xs text-fg-muted space-y-1">
                     <div className="flex justify-between"><span>Cash</span><span>₹81,400</span></div>
                     <div className="flex justify-between"><span>ITC</span><span>₹81,400</span></div>
@@ -719,7 +719,7 @@ export default function GSTTab({
             <div className="space-y-6">
               {/* Cash Ledger */}
               <div className="bg-bg-card border border-line/10 rounded-2xl p-6">
-                <h3 className="text-xl font-light text-white mb-6">Cash Ledger</h3>
+                <h3 className="text-xl font-light text-fg-primary mb-6">Cash Ledger</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -740,11 +740,11 @@ export default function GSTTab({
                       ].map((row, idx) => (
                         <tr key={idx} className="border-b border-line/10/50 hover:bg-bg-card/30">
                           <td className="py-3 px-4 text-fg-secondary text-sm">{row.date}</td>
-                          <td className="py-3 px-4 text-white text-sm">{row.desc}</td>
+                          <td className="py-3 px-4 text-fg-primary text-sm">{row.desc}</td>
                           <td className="py-3 px-4 text-fg-muted font-mono text-sm">{row.ref}</td>
                           <td className="py-3 px-4 text-green-400 text-sm text-right">{row.cr > 0 ? `₹${row.cr.toLocaleString('en-IN')}` : '-'}</td>
                           <td className="py-3 px-4 text-red-400 text-sm text-right">{row.dr > 0 ? `₹${row.dr.toLocaleString('en-IN')}` : '-'}</td>
-                          <td className="py-3 px-4 text-white text-sm text-right font-medium">₹{row.bal.toLocaleString('en-IN')}</td>
+                          <td className="py-3 px-4 text-fg-primary text-sm text-right font-medium">₹{row.bal.toLocaleString('en-IN')}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -754,7 +754,7 @@ export default function GSTTab({
 
               {/* ITC Ledger */}
               <div className="bg-bg-card border border-line/10 rounded-2xl p-6">
-                <h3 className="text-xl font-light text-white mb-6">ITC Ledger</h3>
+                <h3 className="text-xl font-light text-fg-primary mb-6">ITC Ledger</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -775,11 +775,11 @@ export default function GSTTab({
                       ].map((row, idx) => (
                         <tr key={idx} className="border-b border-line/10/50 hover:bg-bg-card/30">
                           <td className="py-3 px-4 text-fg-secondary text-sm">{row.date}</td>
-                          <td className="py-3 px-4 text-white text-sm">{row.desc}</td>
+                          <td className="py-3 px-4 text-fg-primary text-sm">{row.desc}</td>
                           <td className="py-3 px-4 text-fg-muted text-sm">{row.period}</td>
                           <td className="py-3 px-4 text-green-400 text-sm text-right">{row.cr > 0 ? `₹${row.cr.toLocaleString('en-IN')}` : '-'}</td>
                           <td className="py-3 px-4 text-red-400 text-sm text-right">{row.dr > 0 ? `₹${row.dr.toLocaleString('en-IN')}` : '-'}</td>
-                          <td className="py-3 px-4 text-white text-sm text-right font-medium">₹{row.bal.toLocaleString('en-IN')}</td>
+                          <td className="py-3 px-4 text-fg-primary text-sm text-right font-medium">₹{row.bal.toLocaleString('en-IN')}</td>
                         </tr>
                       ))}
                     </tbody>
