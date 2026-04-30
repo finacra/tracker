@@ -54,12 +54,12 @@ export default function TrackerEmptyState({
     const hasNoRequirements = displayRequirements.length === 0 && regulatoryRequirements.length === 0
 
     return (
-      <div className="py-8 sm:py-12 flex flex-col items-center justify-center">
-        <div className="w-12 h-12 sm:w-16 sm:h-16 border-2 border-gray-700 rounded-full flex items-center justify-center mb-4">
+      <div className="py-12 sm:py-16 flex flex-col items-center justify-center">
+        <div className="w-14 h-14 border border-line/15 bg-bg-card rounded-full flex items-center justify-center mb-4">
           <svg
-            width="24"
-            height="24"
-            className="sm:w-8 sm:h-8 text-gray-600"
+            width="22"
+            height="22"
+            className="text-fg-muted"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -72,8 +72,8 @@ export default function TrackerEmptyState({
         </div>
         {hasActiveFilters ? (
           <>
-            <p className="text-gray-400 text-sm sm:text-base font-medium mb-2">No requirements match your filters</p>
-            <p className="text-gray-500 text-xs sm:text-sm mb-4 text-center px-4">
+            <p className="text-fg-primary text-sm font-medium mb-1.5">No requirements match your filters</p>
+            <p className="text-fg-muted text-xs mb-5 text-center px-4">
               Try adjusting your search or filters to see more results
             </p>
             <button
@@ -85,18 +85,18 @@ export default function TrackerEmptyState({
                 setCategoryFilter('all')
                 setSelectedCategory('all')
               }}
-              className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+              className="px-4 py-2 bg-bg-card border border-line/15 text-fg-secondary hover:border-line/30 hover:text-fg-primary rounded-token-md transition-colors duration-token ease-token text-xs font-medium"
             >
-              Clear All Filters
+              Clear all filters
             </button>
           </>
         ) : hasNoRequirements ? (
           <>
-            <p className="text-gray-400 text-sm sm:text-base font-medium mb-2">No regulatory requirements yet</p>
-            <p className="text-gray-500 text-xs sm:text-sm mb-4 text-center px-4">
+            <p className="text-fg-primary text-sm font-medium mb-1.5">No regulatory requirements yet</p>
+            <p className="text-fg-muted text-xs mb-5 text-center max-w-md px-4 leading-relaxed">
               {canEdit
-                ? "Get started by adding your first compliance requirement. Requirements are automatically generated based on your company profile, or you can add custom ones."
-                : "No compliance requirements have been set up for this company yet."}
+                ? 'Get started by adding your first compliance requirement. Requirements are automatically generated based on your company profile, or you can add custom ones.'
+                : 'No compliance requirements have been set up for this company yet.'}
             </p>
             {canEdit && (
               <button
@@ -116,18 +116,18 @@ export default function TrackerEmptyState({
                   })
                   setIsCreateModalOpen(true)
                 }}
-                className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium flex items-center gap-2"
+                className="px-4 py-2 bg-accent-brand text-white rounded-token-md hover:opacity-90 shadow-sm shadow-accent-brand/20 transition-opacity duration-token ease-token text-xs font-medium flex items-center gap-2"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="12" y1="5" x2="12" y2="19" />
                   <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
-                Add First Requirement
+                Add first requirement
               </button>
             )}
           </>
         ) : (
-          <p className="text-gray-500 text-sm sm:text-base">No regulatory requirements found</p>
+          <p className="text-fg-muted text-sm">No regulatory requirements found</p>
         )}
       </div>
     )
@@ -142,15 +142,12 @@ function TrackerLoadingState() {
     messages: COMPLIANCE_TRACKER_LOADING_MESSAGES,
   })
   return (
-    <div className="py-8 sm:py-12 flex flex-col items-center justify-center">
-      <div className="relative mb-6">
-        <div className="w-12 h-12 sm:w-14 sm:h-14 border-4 border-white/30 border-t-transparent rounded-full animate-spin"></div>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-6 h-6 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-full animate-pulse"></div>
-        </div>
+    <div className="py-12 sm:py-16 flex flex-col items-center justify-center">
+      <div className="relative mb-5">
+        <div className="w-10 h-10 border-2 border-accent-brand/30 border-t-accent-brand rounded-full animate-spin" />
       </div>
-      <p className="text-gray-300 text-sm sm:text-base font-medium mb-1">Loading Compliance Tracker</p>
-      <p className="text-gray-500 text-xs sm:text-sm" key={message}>{message}</p>
+      <p className="text-fg-primary text-sm font-medium mb-1">Loading compliance tracker</p>
+      <p className="text-fg-muted text-xs" key={message}>{message}</p>
     </div>
   )
 }

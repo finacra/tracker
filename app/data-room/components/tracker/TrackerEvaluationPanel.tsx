@@ -164,19 +164,22 @@ export default function TrackerEvaluationPanel({ companyId, financialYear }: Pro
   // ── Compact strip when nothing is pending ──────────────────────────────
   if (!hasAnything) {
     return (
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-900/40 border border-white/5 rounded-lg">
-        <div className="flex items-center gap-2 text-xs text-gray-400">
-          <svg className="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="flex items-center justify-between px-4 py-2 bg-bg-elevated border border-line/10 rounded-token-md">
+        <div className="flex items-center gap-2 text-xs text-fg-muted">
+          <svg className="w-3.5 h-3.5 text-accent-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
           </svg>
-          <span>Compliance applicability is up to date for {financialYear}.</span>
+          <span>
+            Compliance applicability is up to date for{' '}
+            <span className="font-mono tabular-nums text-fg-secondary">{financialYear}</span>.
+          </span>
         </div>
         <button
           onClick={() => handleEvaluate()}
           disabled={running}
-          className="text-xs text-gray-400 hover:text-white disabled:opacity-50"
+          className="text-xs text-fg-muted hover:text-fg-primary disabled:opacity-50 transition-colors duration-token ease-token"
         >
-          {running ? 'Running...' : 'Re-evaluate'}
+          {running ? 'Running…' : 'Re-evaluate'}
         </button>
       </div>
     )
@@ -184,22 +187,22 @@ export default function TrackerEvaluationPanel({ companyId, financialYear }: Pro
 
   // ── Active banner with review queue + intake CTA ───────────────────────
   return (
-    <div className="bg-amber-500/[0.03] border border-amber-500/20 rounded-xl overflow-hidden">
+    <div className="bg-accent-warn/[0.05] border border-accent-warn/25 rounded-token-md overflow-hidden">
       <button
         type="button"
         onClick={() => setCollapsed(c => !c)}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-amber-500/[0.05] transition-colors"
+        className="w-full px-4 py-3 flex items-center justify-between hover:bg-accent-warn/10 transition-colors duration-token ease-token"
       >
         <div className="flex items-center gap-2.5 text-left">
-          <svg className="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-accent-warn flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <div>
-            <span className="text-sm font-medium text-amber-200">
-              {pendingCount} item{pendingCount === 1 ? '' : 's'} need your input
+            <span className="text-sm font-medium text-fg-primary">
+              <span className="font-mono tabular-nums">{pendingCount}</span> item{pendingCount === 1 ? '' : 's'} need your input
             </span>
-            <span className="ml-2 text-[11px] text-amber-400/70">
-              to finalise your tracker for FY {financialYear}
+            <span className="ml-2 text-[11px] text-fg-muted">
+              to finalise your tracker for FY <span className="font-mono tabular-nums">{financialYear}</span>
             </span>
           </div>
         </div>
@@ -207,12 +210,12 @@ export default function TrackerEvaluationPanel({ companyId, financialYear }: Pro
           <span
             role="button"
             onClick={(e) => { e.stopPropagation(); handleEvaluate() }}
-            className={`text-[11px] px-2.5 py-1 rounded border border-white/10 text-gray-300 hover:border-white/20 hover:text-white ${running ? 'opacity-50' : ''}`}
+            className={`text-[11px] px-2.5 py-1 rounded-token-sm border border-line/15 text-fg-secondary hover:border-line/30 hover:text-fg-primary transition-colors duration-token ease-token ${running ? 'opacity-50' : ''}`}
           >
-            {running ? 'Running...' : 'Re-evaluate'}
+            {running ? 'Running…' : 'Re-evaluate'}
           </span>
           <svg
-            className={`w-4 h-4 text-amber-300/60 transition-transform ${collapsed ? '' : 'rotate-180'}`}
+            className={`w-4 h-4 text-fg-muted transition-transform duration-token ease-token ${collapsed ? '' : 'rotate-180'}`}
             fill="none" stroke="currentColor" viewBox="0 0 24 24"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -221,7 +224,7 @@ export default function TrackerEvaluationPanel({ companyId, financialYear }: Pro
       </button>
 
       {!collapsed && (
-        <div className="border-t border-amber-500/15 divide-y divide-amber-500/10">
+        <div className="border-t border-accent-warn/20 divide-y divide-accent-warn/15">
           {/* Intake CTA removed — CIP owns it now. Review queue only. */}
 
           {reviewItems.map(item => (
@@ -235,7 +238,7 @@ export default function TrackerEvaluationPanel({ companyId, financialYear }: Pro
           ))}
 
           {loading && (
-            <div className="px-4 py-2 text-[11px] text-gray-500">Loading…</div>
+            <div className="px-4 py-2 text-[11px] text-fg-muted">Loading…</div>
           )}
         </div>
       )}
@@ -329,35 +332,35 @@ function ReviewRow({
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm text-white">{item.rule.name}</span>
-            <span className="text-[10px] text-amber-400/70 border border-amber-500/20 px-1.5 py-0.5 rounded">
+            <span className="text-sm text-fg-primary font-medium">{item.rule.name}</span>
+            <span className="text-[10px] font-mono tabular-nums text-accent-warn border border-accent-warn/25 bg-accent-warn/10 px-1.5 py-0.5 rounded-full">
               {confidencePct}%
             </span>
-            <span className="text-[10px] text-gray-500">{item.rule.category}</span>
+            <span className="text-[10px] text-fg-muted uppercase tracking-wider">{item.rule.category}</span>
           </div>
           {question ? (
             <>
-              <p className="text-xs text-gray-400 mt-1">{question.question}</p>
+              <p className="text-xs text-fg-muted mt-1">{question.question}</p>
               <div className="flex items-center gap-2 mt-2">
-                <span className="text-gray-500 text-sm">₹</span>
+                <span className="text-fg-muted text-sm">₹</span>
                 <input
                   type="number"
                   value={value}
                   onChange={e => setValue(e.target.value)}
                   placeholder={question.placeholder}
-                  className="w-40 px-2.5 py-1 bg-black border border-white/10 rounded text-white text-sm focus:outline-none focus:border-amber-400"
+                  className="w-40 px-2.5 py-1 bg-bg-card border border-line/15 rounded-token-sm text-fg-primary text-sm font-mono tabular-nums focus:outline-none focus:border-accent-brand/60 focus:ring-2 focus:ring-accent-brand/25 transition-colors duration-token ease-token"
                   onKeyDown={e => { if (e.key === 'Enter') handleSaveAmount() }}
                 />
                 <button
                   onClick={handleSaveAmount}
                   disabled={!value.trim()}
-                  className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black rounded text-[11px] font-medium disabled:opacity-50"
+                  className="px-3 py-1 bg-accent-brand text-white rounded-token-sm text-[11px] font-medium hover:opacity-90 disabled:opacity-50 transition-opacity duration-token ease-token"
                 >
                   Save
                 </button>
                 <button
                   onClick={() => handleOverride(false)}
-                  className="text-[11px] text-gray-400 hover:text-red-300 ml-1"
+                  className="text-[11px] text-fg-muted hover:text-accent-danger ml-1 transition-colors duration-token ease-token"
                 >
                   Not applicable
                 </button>
@@ -365,16 +368,16 @@ function ReviewRow({
             </>
           ) : (
             <div className="flex items-center gap-2 mt-2">
-              <span className="text-xs text-gray-400">Does this apply to your company?</span>
+              <span className="text-xs text-fg-muted">Does this apply to your company?</span>
               <button
                 onClick={() => handleOverride(true)}
-                className="px-2.5 py-1 text-[11px] border border-emerald-500/40 text-emerald-300 rounded hover:bg-emerald-500/10"
+                className="px-2.5 py-1 text-[11px] border border-accent-success/40 text-accent-success rounded-token-sm hover:bg-accent-success/10 transition-colors duration-token ease-token"
               >
                 Yes
               </button>
               <button
                 onClick={() => handleOverride(false)}
-                className="px-2.5 py-1 text-[11px] border border-red-500/40 text-red-300 rounded hover:bg-red-500/10"
+                className="px-2.5 py-1 text-[11px] border border-accent-danger/40 text-accent-danger rounded-token-sm hover:bg-accent-danger/10 transition-colors duration-token ease-token"
               >
                 No
               </button>
