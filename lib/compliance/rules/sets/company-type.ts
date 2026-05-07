@@ -20,8 +20,8 @@ export const COMPANY_TYPE_RULES: ComplianceRule[] = [
     section: 'Section 137',
     authority: 'Ministry of Corporate Affairs (MCA)',
     frequency: 'annual',
-    dueDateFormula: 'months_after_fy_end:6,day:30', // 30th October for March FY
-    dueDescription: 'Within 30 days of AGM (6 months from FY end)',
+    dueDateFormula: 'months_after_fy_end:7,day:30', // 30th October for March FY (30 days after AGM)
+    dueDescription: 'Within 30 days of AGM (7 months from FY end)',
     penalty: '₹100/day per default (company) + ₹100/day per director (max ₹10L each). Additional ₹1,000/day after first default.',
     isCritical: true,
     documentsRequired: ['Audited Financial Statements', 'Board Report', 'Auditor Report', 'Digital Signature'],
@@ -263,7 +263,7 @@ export const COMPANY_TYPE_RULES: ComplianceRule[] = [
     section: 'Section 34(3)',
     authority: 'Ministry of Corporate Affairs (MCA)',
     frequency: 'annual',
-    dueDateFormula: 'months_after_fy_end:6,day:30',
+    dueDateFormula: 'months_after_fy_end:7,day:30',
     dueDescription: '30th October (within 30 days from 6 months after FY end)',
     penalty: '₹100/day per designated partner. LLP can be struck off.',
     isCritical: true,
