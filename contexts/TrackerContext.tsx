@@ -232,6 +232,8 @@ export function TrackerContextProvider({
         amount_payable: req.amount_payable,
         amount_paid: req.amount_paid,
         filing_document_id: req.filing_document_id,
+        period_key: (req as any).period_key ?? null,
+        period_label: (req as any).period_label ?? null,
       }))
 
     const duration = performance.now() - startTime

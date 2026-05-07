@@ -3870,6 +3870,8 @@ function DataRoomPageInner() {
         filed_on: req.filed_on,
         filed_by: req.filed_by,
         status_reason: req.status_reason,
+        period_key: (req as any).period_key ?? null,
+        period_label: (req as any).period_label ?? null,
       }));
   }, [regulatoryRequirements, hiddenCompliances, formatDate]);
 

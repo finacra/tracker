@@ -16,6 +16,14 @@ async function openDocInNewTab(companyId: string, documentId: string) {
   window.open(res.url, '_blank', 'noopener,noreferrer')
 }
 
+// Render the period a filing covers (e.g. "Apr 2026", "Q1 2026", "FY2025-26").
+// Falls back to the period_key when the label is missing.
+function formatFilingPeriod(periodLabel?: string | null, periodKey?: string | null): string {
+  const raw = (periodLabel || periodKey || '').trim()
+  if (!raw) return ''
+  return raw.replace(/^For\s+/i, '')
+}
+
 interface Requirement {
   id: string
   requirement: string
@@ -215,6 +223,9 @@ export default function RequirementDesktopTableView({
             REQUIREMENT
           </th>
           <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
+            FILING MONTH
+          </th>
+          <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
             STATUS
           </th>
           <th className="px-6 py-4 text-left text-xs font-medium text-fg-muted uppercase tracking-wider">
@@ -263,7 +274,7 @@ export default function RequirementDesktopTableView({
             {/* Visual Separator between categories */}
             {groupIndex > 0 && (
               <tr>
-                <td colSpan={canEdit ? 14 : 13} className="px-0 py-0">
+                <td colSpan={canEdit ? 15 : 14} className="px-0 py-0">
                   <div className="h-0.5 bg-gradient-to-r from-transparent via-white/30 to-transparent my-2"></div>
                 </td>
               </tr>
@@ -335,6 +346,19 @@ export default function RequirementDesktopTableView({
                         )}
                       </div>
                     </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    {(() => {
+                      const filingPeriod = formatFilingPeriod(req.period_label, req.period_key)
+                      if (!filingPeriod) {
+                        return <span className="text-fg-muted text-sm">—</span>
+                      }
+                      return (
+                        <span className="text-fg-primary text-sm font-mono tabular-nums whitespace-nowrap">
+                          {filingPeriod}
+                        </span>
+                      )
+                    })()}
                   </td>
                   <td className="px-6 py-4">
                     {canEdit ? (
