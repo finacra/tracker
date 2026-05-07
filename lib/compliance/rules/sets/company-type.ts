@@ -264,7 +264,7 @@ export const COMPANY_TYPE_RULES: ComplianceRule[] = [
     authority: 'Ministry of Corporate Affairs (MCA)',
     frequency: 'annual',
     dueDateFormula: 'months_after_fy_end:7,day:30',
-    dueDescription: '30th October (within 30 days from 6 months after FY end)',
+    dueDescription: '30th October (within 30 days of AGM, 7 months from FY end)',
     penalty: '₹100/day per designated partner. LLP can be struck off.',
     isCritical: true,
     documentsRequired: ['Form 8', 'Statement of Account', 'Solvency Statement', 'Digital Signature of Designated Partners'],
