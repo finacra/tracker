@@ -304,6 +304,8 @@ export class PrismaRequirementRepository implements RequirementRepository {
       amount_payable: row.amount_payable != null ? Number(row.amount_payable) : null,
       amount_paid: row.amount_paid != null ? Number(row.amount_paid) : null,
       filing_document_id: row.filing_document_id ?? null,
+      period_key: row.period_key ?? null,
+      period_label: row.period_label ?? null,
       created_at: row.created_at ? (row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at)) : new Date().toISOString(),
       updated_at: row.updated_at ? (row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at)) : new Date().toISOString(),
       created_by: row.created_by ?? null,

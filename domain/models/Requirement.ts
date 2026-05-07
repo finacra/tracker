@@ -29,4 +29,6 @@ export interface Requirement {
   amount_payable?: number | null
   amount_paid?: number | null
   filing_document_id?: string | null
+  period_key?: string | null
+  period_label?: string | null
 }
