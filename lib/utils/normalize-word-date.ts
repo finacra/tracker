@@ -116,8 +116,12 @@ export function normalizeWordDate(input: string | null | undefined): string | nu
     const [, d, monStr, y] = monMatch
     const monthNum = MONTH_WORDS[monStr.toLowerCase()]
     const yearNum = parseInt(y, 10)
-    if (monthNum && yearNum >= 1900 && yearNum <= 2100) {
-      return `${y}-${String(monthNum).padStart(2, '0')}-${d.padStart(2, '0')}`
+    const dayNum = parseInt(d, 10)
+    if (
+      monthNum && yearNum >= 1900 && yearNum <= 2100 &&
+      dayNum >= 1 && dayNum <= 31
+    ) {
+      return `${y}-${String(monthNum).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`
     }
   }
 
@@ -127,8 +131,12 @@ export function normalizeWordDate(input: string | null | undefined): string | nu
     const [, monStr, d, y] = monFirst
     const monthNum = MONTH_WORDS[monStr.toLowerCase()]
     const yearNum = parseInt(y, 10)
-    if (monthNum && yearNum >= 1900 && yearNum <= 2100) {
-      return `${y}-${String(monthNum).padStart(2, '0')}-${d.padStart(2, '0')}`
+    const dayNum = parseInt(d, 10)
+    if (
+      monthNum && yearNum >= 1900 && yearNum <= 2100 &&
+      dayNum >= 1 && dayNum <= 31
+    ) {
+      return `${y}-${String(monthNum).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`
     }
   }
 

@@ -349,7 +349,19 @@ export async function analyzeDocument(options: {
     return { suggestion: null, errors }
   }
 
-  console.log('[document-agent] LLM raw response (first 2k chars):', raw.slice(0, 2000))
+  // Always log non-sensitive metadata so length-related bugs (truncation,
+  // empty response, malformed JSON) are diagnosable. The full raw body
+  // contains user document content (PII — director names, addresses on
+  // COI/MOA) so it's gated behind an explicit env flag for live debugging.
+  console.log('[document-agent] LLM response', {
+    documentId: options.documentId,
+    rawLength: raw.length,
+    firstChar: raw[0],
+    lastChar: raw[raw.length - 1],
+  })
+  if (process.env.DEBUG_DOCUMENT_AGENT === '1') {
+    console.log('[document-agent] LLM raw response (first 2k chars):', raw.slice(0, 2000))
+  }
 
   const first = raw.indexOf('{')
   const last = raw.lastIndexOf('}')
@@ -406,16 +418,23 @@ export async function analyzeDocument(options: {
       : 0.6,
     reasoning: parsed.reasoning ?? '',
     candidateSupersedesDocumentId,
+    // Normalise each fact's periodStart/End. Drop the fact entirely when
+    // either side won't normalise — preserving the un-parseable string
+    // would let "Twenty-Fifth day of March, …" reach `new Date()` in
+    // smart-ingest and produce Invalid Date rows. Same null-on-failure
+    // policy as the top-level date fields above.
     facts: Array.isArray(parsed.facts) ? parsed.facts
       .filter((f: any) =>
         typeof f?.kind === 'string' &&
         typeof f?.confidence === 'number' && f.confidence >= 0.6
       )
-      .map((f: any) => ({
-        ...f,
-        periodStart: normalizeWordDate(f.periodStart) ?? f.periodStart ?? '',
-        periodEnd: normalizeWordDate(f.periodEnd) ?? f.periodEnd ?? '',
-      })) : [],
+      .map((f: any) => {
+        const ps = normalizeWordDate(f.periodStart)
+        const pe = normalizeWordDate(f.periodEnd)
+        if (!ps || !pe) return null
+        return { ...f, periodStart: ps, periodEnd: pe }
+      })
+      .filter((f: any): f is NonNullable<typeof f> => f !== null) : [],
   }
   return { suggestion, errors }
 }
