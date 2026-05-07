@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { EMPTY_REQUIREMENT_FORM, type RequirementForm } from '@/app/data-room/components/tracker/RequirementFormModal'
 import { isInFinancialYear as isInFinancialYearUtil } from '@/lib/utils/financial-year'
+import { periodKeyInFY } from '@/lib/utils/period-key-fy'
 import { performanceLogger } from '@/lib/utils/performance-logger'
 
 // ─── External data shape (passed in from page.tsx) ───────────────────────────
@@ -269,6 +270,17 @@ export function TrackerContextProvider({
     if (selectedTrackerFY) {
       try {
         filtered = filtered.filter((req) => {
+          // Recurring rows have a period_key set by the deadline engine
+          // (e.g. "2027-03" for the March-coverage TDS row whose
+          // due_date is April 7 2027). Filter by THAT — filtering by
+          // due_date FY put March-coverage rows into the next FY and
+          // hid them from the user. Annual rows like GSTR-9 / AOC-4 had
+          // the same problem (deadline lands in calendar year past FY
+          // end). Fall back to due_date FY only for one-time
+          // obligations that have no period_key.
+          if (req.period_key) {
+            return periodKeyInFY(req.period_key, selectedTrackerFY)
+          }
           if (!req.dueDate) return false
           return isInFY(parseDate(req.dueDate), selectedTrackerFY)
         })
@@ -381,7 +393,12 @@ export function TrackerContextProvider({
     }
     let filtered = displayRequirements
     if (selectedTrackerFY) {
-      filtered = filtered.filter((req) => req.dueDate && isInFY(parseDate(req.dueDate), selectedTrackerFY))
+      filtered = filtered.filter((req) => {
+        // Mirror filteredRequirements: prefer period_key for recurring
+        // rows, fall back to due_date FY for one-time obligations.
+        if (req.period_key) return periodKeyInFY(req.period_key, selectedTrackerFY)
+        return Boolean(req.dueDate) && isInFY(parseDate(req.dueDate), selectedTrackerFY)
+      })
     }
     if (selectedMonth) {
       const monthIndex = MONTHS.indexOf(selectedMonth)
