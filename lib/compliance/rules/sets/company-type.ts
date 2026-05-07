@@ -188,7 +188,11 @@ export const COMPANY_TYPE_RULES: ComplianceRule[] = [
     section: 'Rule 16A of Companies (Acceptance of Deposits) Rules, 2014',
     authority: 'Ministry of Corporate Affairs (MCA)',
     frequency: 'annual',
-    dueDateFormula: 'fixed:jun30',
+    // Anchored to FY-end so period_key carries the COVERED FY ("FY2025-26"
+    // for the row due 30 Jun 2026). 3 months after FY end = 30 June (Indian
+    // FY ends Mar 31). Was `fixed:jun30` which set period_key to a
+    // calendar month and broke FY-bucketing in the UI.
+    dueDateFormula: 'months_after_fy_end:3,day:30',
     dueDescription: '30th June every year (for previous FY)',
     penalty: '₹10,000–₹50,000 on company. ₹2,000–₹5,000 on every officer in default.',
     isCritical: true,

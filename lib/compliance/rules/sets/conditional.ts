@@ -279,7 +279,10 @@ export const CONDITIONAL_RULES: ComplianceRule[] = [
     section: 'Section 35(5) read with Section 44',
     authority: 'GSTN / CBIC',
     frequency: 'annual',
-    dueDateFormula: 'fixed:dec31',
+    // Anchored to FY-end so period_key carries the COVERED FY ("FY2025-26"
+    // for the row due 31 Dec 2026). Was `fixed:dec31` which set
+    // period_key to the calendar month and broke FY-bucketing in the UI.
+    dueDateFormula: 'months_after_fy_end:9,day:31',
     dueDescription: '31st December of the following financial year',
     penalty: '₹200/day (₹100 CGST + ₹100 SGST), max 0.25% of turnover',
     isCritical: false,
@@ -356,7 +359,10 @@ export const CONDITIONAL_RULES: ComplianceRule[] = [
     section: 'Section 44',
     authority: 'GSTN / CBIC',
     frequency: 'annual',
-    dueDateFormula: 'fixed:dec31',
+    // Anchored to FY-end so period_key carries the COVERED FY ("FY2025-26"
+    // for the row due 31 Dec 2026). Was `fixed:dec31` which set
+    // period_key to the calendar month and broke FY-bucketing in the UI.
+    dueDateFormula: 'months_after_fy_end:9,day:31',
     dueDescription: '31st December of the following financial year',
     penalty: '₹200/day (₹100 CGST + ₹100 SGST), max 0.25% of turnover in the state/UT',
     isCritical: true,
@@ -384,7 +390,11 @@ export const CONDITIONAL_RULES: ComplianceRule[] = [
     section: 'Section 37 read with Notification 83/2020',
     authority: 'GSTN / CBIC',
     frequency: 'quarterly',
-    dueDateFormula: 'quarterly:apr13,jul13,oct13,jan13',
+    // 13th of the month after each quarter ends. quarterly_offset emits
+    // 4 deadlines per FY with the COVERAGE quarter as period_key (e.g.
+    // "2026-Q1" for the Apr-Jun work due Jul 13). Was a flat
+    // `quarterly:` formula that labelled rows by deadline month.
+    dueDateFormula: 'quarterly_offset:day:13',
     dueDescription: '13th of the month following the quarter end (QRMP taxpayers)',
     penalty: '₹50/day (₹25 CGST + ₹25 SGST), max ₹5,000.',
     isCritical: false,
@@ -409,7 +419,9 @@ export const CONDITIONAL_RULES: ComplianceRule[] = [
     section: 'Section 39 read with Notification 84/2020',
     authority: 'GSTN / CBIC',
     frequency: 'quarterly',
-    dueDateFormula: 'quarterly:apr22,jul22,oct22,jan22',
+    // 22nd of the month after each quarter ends. period_key carries the
+    // COVERAGE quarter (e.g. "2026-Q1" for Apr-Jun work due Jul 22).
+    dueDateFormula: 'quarterly_offset:day:22',
     dueDescription: '22nd/24th of the month following the quarter end (varies by state)',
     penalty: '₹50/day (₹25 CGST + ₹25 SGST), max ₹5,000. Interest @ 18% p.a. on tax paid late.',
     isCritical: false,
