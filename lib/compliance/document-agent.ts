@@ -6,6 +6,19 @@ import { getRulesInForce, fyPeriod } from './catalogue'
 import { currentIndianFY } from './facts'
 import { processDocumentContent } from '@/lib/utils/document-processor'
 import { applyGuardrails } from './agent-guardrails'
+import { normalizeWordDate } from '@/lib/utils/normalize-word-date'
+
+// Entity documents (COI / MOA / AOA / Share Cert / LLP Agreement) carry
+// far more structured content than monthly returns — directors, share
+// classes, object clauses — so they get a higher token ceiling and a
+// larger input window. Detected by keyword presence in the first ~2k
+// chars (header / title region).
+const ENTITY_DOC_PATTERNS =
+  /\b(memorandum of association|articles of association|certificate of incorporation|share certificate|llp agreement|incorporation certificate)\b/i
+
+function isEntityDoc(rawText: string): boolean {
+  return ENTITY_DOC_PATTERNS.test(rawText.slice(0, 2000))
+}
 
 /**
  * Document Intelligence Agent — v1
@@ -166,10 +179,20 @@ If unsure, pick the BEST match and return confidence 0.6 — do NOT invent a fol
 FIELD COMPLETION RULES — fill EVERY field, think holistically:
 - periodKey: for annual filings use the FY label (e.g., "2024-25"); for quarterly
   use "YYYY-Q1" through "Q4"; for monthly use "YYYY-MM".
+- DATE FORMAT — every date field MUST be strict ISO YYYY-MM-DD:
+  * If a date appears in WORDS ("Twenty-Fifth day of March, Two Thousand
+    Twenty-Three", "the 5th day of November 2024"), CONVERT it to YYYY-MM-DD.
+    Never return word-format dates.
+  * Numeric formats on Indian documents are DD/MM/YYYY (NOT US MM/DD/YYYY).
+    "05/03/2024" means 5 March 2024 → "2024-03-05".
+  * "DD-Mon-YYYY" / "DD Month YYYY" → convert ("25-Mar-2023" → "2023-03-25").
+  * If only month + year given ("March 2024"), use the 1st → "2024-03-01".
+  * If only year given ("2024"), use Jan 1 → "2024-01-01".
 - registrationDate: the date the document was FILED / signed / issued / stamped.
   Look for: MCA filing date, SRN date, digital signature date, "Date of filing",
-  "Date of signing", acknowledgement date, certificate issue date. If absent,
-  use the document's creation date or the earliest date mentioned.
+  "Date of signing", acknowledgement date, certificate issue date, or for COI
+  the "dated this Nth day of <Month> <Year>" line. If absent, use the document's
+  creation date or the earliest date mentioned.
 - expiryDate: when this document's validity or compliance window ENDS. Rules:
   * For annual compliances (MGT-7/7A, AOC-4, DIR-KYC, ITR, tax audit, GSTR-9):
     one day before the next year's due date.
@@ -195,20 +218,68 @@ the same kinds used elsewhere. Permitted kinds:
     rent.monthly_payment, contractor.annual_spend, salary.annual_bill,
     headcount.total, turnover.annual, gst.registered_state,
     director.remuneration, imports.annual_value, exports.annual_value
-  Entity facts (PAN/GST/COI/MOA cert OCR — populate from the cert
-  itself, not the prompt context):
-    entity.pan                — PAN string (10 chars), payload: { value: "ABCPK1234R" }
-    entity.gstn               — GSTN string (15 chars), payload: { value: "29AABCX1234R1ZM" }
-    entity.cin                — CIN string (21 chars), payload: { value: "U72200KA2019PTC123456" }
-    entity.tan                — TAN string (10 chars), payload: { value: "BLRA12345A" }
+  Entity facts (PAN/GST/COI/MOA/AOA OCR — populate from the document
+  itself, not the prompt context). For COI/MOA/AOA, extract EVERY
+  field present — directors, shareholders, capital, addresses, objects.
+  Identifiers:
+    entity.pan                — payload: { value: "ABCPK1234R" }       (10 chars)
+    entity.gstn               — payload: { value: "29AABCX1234R1ZM" } (15 chars)
+    entity.cin                — payload: { value: "U72200KA2019PTC123456" } (21 chars)
+    entity.tan                — payload: { value: "BLRA12345A" }      (10 chars)
+    entity.llpin              — payload: { value: "AAB-1234" }        (LLPs only)
+  Dates and capital:
     entity.incorporation_date — periodStart = the date itself, payload: {}
     entity.authorized_capital — amount in rupees, unit: "rupees", payload: {}
     entity.paid_up_capital    — amount in rupees, unit: "rupees", payload: {}
+    entity.face_value         — amount in rupees per share, unit: "rupees_per_share",
+                                payload: { share_class: "equity" | "preference" }
+    entity.share_capital_breakdown — payload: { class, total_shares, face_value, voting_rights }
+                                   (one fact per share class)
+  Address and contact:
+    entity.registered_office_address — payload: { value: "<full address>",
+                                                  state: "Karnataka",
+                                                  city: "Bengaluru",
+                                                  pincode: "560001" }
     entity.registered_state   — payload: { value: "Karnataka" }
+    entity.email              — payload: { value: "info@example.com" }
+    entity.phone              — payload: { value: "+91-80-12345678" }
+    entity.website            — payload: { value: "https://example.com" }
+  Governance — emit ONE fact per person (don't bundle into arrays):
+    entity.director           — payload: { name, din,
+                                          designation: "Director" | "Managing Director"
+                                                      | "Whole-time Director" | "Independent Director"
+                                                      | "Nominee Director",
+                                          appointed_on: "YYYY-MM-DD" | null,
+                                          is_independent: boolean,
+                                          nationality: "Indian" | string }
+    entity.shareholder        — payload: { name,
+                                          holding_pct: number | null,
+                                          share_count: number | null,
+                                          share_class: "equity" | "preference",
+                                          pan: string | null,
+                                          relation: "promoter" | "non-promoter" | null }
+    entity.subscriber         — payload: { name, share_count, address }
+                                (MOA subscribers — original incorporators)
+    entity.signatory          — payload: { name, role, signed_on: "YYYY-MM-DD" | null }
+                                (people who actually signed the document)
+  Constitutional content (MOA / AOA):
+    entity.main_object        — payload: { value: "<object clause text>",
+                                          clause_no: "III(A)(1)" | null }
+                                (one fact per object — emit all of them)
+    entity.ancillary_object   — payload: { value: "<text>", clause_no }
+                                (Object Clause III(B), things "necessary for attaining the main objects")
+    entity.other_object       — payload: { value, clause_no }
+                                (Object Clause III(C) on older MOAs)
+    entity.aoa_clause         — payload: { value: "<full clause text>",
+                                          clause_no: "12(a)" | null,
+                                          topic: "share-transfer" | "board-meetings" | "voting" | string }
+                                (only emit material clauses — share transfer, voting, borrowing limits)
 For entity.* facts that aren't period-bound, set periodStart and periodEnd
 to the document's registrationDate (or today if absent). Don't fabricate
-entity facts — only emit when the document literally contains them.
-Return { ..., "facts": [] } if nothing extractable.`
+entity facts — only emit when the document literally contains them. For
+COI/MOA/AOA: aim for completeness — emit every director, every subscriber,
+every main object you can find. Return { ..., "facts": [] } only if NOTHING
+is extractable.`
 
 function rulesForPrompt(rules: Awaited<ReturnType<typeof getRulesInForce>>): string {
   // Compact listing — enough for the model to map docs to rules without
@@ -236,7 +307,13 @@ export async function analyzeDocument(options: {
     errors.push('no_text_available')
     return { suggestion: null, errors }
   }
-  const truncated = text.length > 24000 ? text.slice(0, 24000) : text
+
+  // Entity docs get a larger window + higher token ceiling — directors,
+  // share classes, and full object clauses don't fit in the 2.5k default.
+  const entityDoc = isEntityDoc(text)
+  const truncationLimit = entityDoc ? 40000 : 24000
+  const maxTokens = entityDoc ? 6000 : 2500
+  const truncated = text.length > truncationLimit ? text.slice(0, truncationLimit) : text
 
   // Rules in force for this company's current FY. We scope to current FY
   // because most docs pertain to the current year; users can correct
@@ -251,17 +328,28 @@ export async function analyzeDocument(options: {
     options.companyState ?? null,
   )
 
+  console.log('[document-agent] LLM call', {
+    documentId: options.documentId,
+    entityDoc,
+    textLength: text.length,
+    truncationLimit,
+    maxTokens,
+  })
+
   const raw = await chatCompletion(
     [
       { role: 'system', content: system },
-      { role: 'user', content: `Document text (truncated to first 24k chars):\n\n${truncated}` },
+      { role: 'user', content: `Document text (truncated to first ${truncationLimit} chars):\n\n${truncated}` },
     ],
-    { maxTokens: 2500 },  // JSON with folder, period, requirement, 0-30 facts ≈ 400-1500 tokens
+    { maxTokens },
   )
   if (!raw) {
+    console.error('[document-agent] llm_unavailable', { documentId: options.documentId })
     errors.push('llm_unavailable')
     return { suggestion: null, errors }
   }
+
+  console.log('[document-agent] LLM raw response (first 2k chars):', raw.slice(0, 2000))
 
   const first = raw.indexOf('{')
   const last = raw.lastIndexOf('}')
@@ -296,6 +384,9 @@ export async function analyzeDocument(options: {
     if (candidate) candidateSupersedesDocumentId = candidate.id
   }
 
+  // Normalise every date field — the LLM is instructed to return ISO,
+  // but defence-in-depth handles word-format ("Twenty-Fifth day of...")
+  // and Indian DD/MM/YYYY that occasionally slip through.
   const suggestion: DocumentAgentSuggestion = {
     name: parsed.name ?? null,
     folderSlug: parsed.folderSlug ?? null,
@@ -304,21 +395,27 @@ export async function analyzeDocument(options: {
     periodType: parsed.periodType ?? null,
     periodFY: parsed.periodFY ?? null,
     periodKey: parsed.periodKey ?? null,
-    periodStart: parsed.periodStart ?? null,
-    periodEnd: parsed.periodEnd ?? null,
+    periodStart: normalizeWordDate(parsed.periodStart),
+    periodEnd: normalizeWordDate(parsed.periodEnd),
     frequency: parsed.frequency ?? null,
     requirementId: parsed.requirementId ?? null,
-    registrationDate: parsed.registrationDate ?? null,
-    expiryDate: parsed.expiryDate ?? null,
+    registrationDate: normalizeWordDate(parsed.registrationDate),
+    expiryDate: normalizeWordDate(parsed.expiryDate),
     confidence: typeof parsed.confidence === 'number'
       ? Math.max(0, Math.min(1, parsed.confidence))
       : 0.6,
     reasoning: parsed.reasoning ?? '',
     candidateSupersedesDocumentId,
-    facts: Array.isArray(parsed.facts) ? parsed.facts.filter((f: any) =>
-      typeof f?.kind === 'string' &&
-      typeof f?.confidence === 'number' && f.confidence >= 0.6
-    ) : [],
+    facts: Array.isArray(parsed.facts) ? parsed.facts
+      .filter((f: any) =>
+        typeof f?.kind === 'string' &&
+        typeof f?.confidence === 'number' && f.confidence >= 0.6
+      )
+      .map((f: any) => ({
+        ...f,
+        periodStart: normalizeWordDate(f.periodStart) ?? f.periodStart ?? '',
+        periodEnd: normalizeWordDate(f.periodEnd) ?? f.periodEnd ?? '',
+      })) : [],
   }
   return { suggestion, errors }
 }
