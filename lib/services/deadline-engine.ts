@@ -278,8 +278,17 @@ function daysInMonth(year: number, month: number): number {
 }
 
 function addMonths(date: Date, months: number): Date {
-  const d = new Date(date)
-  d.setMonth(d.getMonth() + months)
+  // Naive `setMonth(getMonth() + N)` rolls end-of-month dates into the
+  // following month: setMonth on Mar 31 + 6 → Sep 31 → rolls to Oct 1.
+  // For Indian FY anchored on Mar 31, formulas like
+  // `months_after_fy_end:6` (tax audit, AGM, CSR) and `:8` (MGT-7) then
+  // landed in Oct / Dec instead of Sep / Nov. Build the target month
+  // explicitly and clamp the day to that month's length.
+  const targetYear = date.getFullYear()
+  const targetMonth = date.getMonth() + months
+  const sourceDay = date.getDate()
+  const d = new Date(targetYear, targetMonth, 1)
+  d.setDate(Math.min(sourceDay, daysInMonth(d.getFullYear(), d.getMonth())))
   return d
 }
 
