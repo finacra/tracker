@@ -141,26 +141,29 @@ export default function TrackerCategoryAccordionView(props: Props) {
     return <ShellView shellCategories={shellCategories} />
   }
 
-  // Open-state sets keyed independently per level so toggling one doesn't
-  // collapse the others. Keys:
-  //   category          → "<cat>"
-  //   frequency bucket  → "<cat>::<freq>"
-  //   form bucket       → "<cat>::<freq>::<form>"
-  const [openCategories, setOpenCategories] = useState<Set<string>>(() => {
-    const first = groupedByCategory[0]?.category
-    return new Set(first ? [first] : [])
-  })
+  // Top-level category is single-open accordion: opening one category
+  // auto-closes whichever category was previously open. Frequency and
+  // form sub-buckets remain multi-open within the active category — they
+  // describe parallel filings (monthly + quarterly + annual) the user
+  // tends to scan together once they've drilled into a category.
+  // Keys:
+  //   category          → "<cat>"            (single, string | null)
+  //   frequency bucket  → "<cat>::<freq>"    (multi, Set<string>)
+  //   form bucket       → "<cat>::<freq>::<form>"  (multi, Set<string>)
+  const [openCategory, setOpenCategory] = useState<string | null>(
+    () => groupedByCategory[0]?.category ?? null
+  )
   const [openFreqs, setOpenFreqs] = useState<Set<string>>(new Set())
   const [openForms, setOpenForms] = useState<Set<string>>(new Set())
 
-  // When the data shape changes (filter applied), prune open keys that no
-  // longer correspond to anything; ensure at least one category remains open.
+  // When the data shape changes (filter applied), if the open category
+  // no longer exists fall back to the first one so the user always has
+  // something visible.
   useEffect(() => {
-    setOpenCategories((prev) => {
-      const cats = new Set(groupedByCategory.map((g) => g.category))
-      const next = new Set([...prev].filter((c) => cats.has(c)))
-      if (next.size === 0 && groupedByCategory.length > 0) next.add(groupedByCategory[0].category)
-      return next
+    setOpenCategory((prev) => {
+      if (groupedByCategory.length === 0) return null
+      const exists = prev && groupedByCategory.some((g) => g.category === prev)
+      return exists ? prev : groupedByCategory[0].category
     })
     // Frequency / form keys auto-prune lazily: they just won't render if
     // their parent cat/freq isn't in the data — no need to clear them here,
@@ -168,11 +171,7 @@ export default function TrackerCategoryAccordionView(props: Props) {
   }, [groupedByCategory])
 
   const toggleCategory = (cat: string) =>
-    setOpenCategories((prev) => {
-      const next = new Set(prev)
-      next.has(cat) ? next.delete(cat) : next.add(cat)
-      return next
-    })
+    setOpenCategory((prev) => (prev === cat ? null : cat))
 
   const toggleFreq = (key: string) =>
     setOpenFreqs((prev) => {
@@ -189,20 +188,21 @@ export default function TrackerCategoryAccordionView(props: Props) {
     })
 
   const expandAll = () => {
-    const cats = new Set<string>()
+    // Single-open category — pick the first one (or keep current if
+    // already open) and expand every freq bucket across all categories
+    // so when the user switches categories the sub-buckets are already
+    // open. Forms stay collapsed to avoid wall-of-rows.
     const freqs = new Set<string>()
     for (const g of groupedByCategory) {
-      cats.add(g.category)
       for (const fg of groupByFrequency(g.items)) {
         freqs.add(`${g.category}::${fg.freq}`)
       }
     }
-    setOpenCategories(cats)
+    setOpenCategory((prev) => prev ?? groupedByCategory[0]?.category ?? null)
     setOpenFreqs(freqs)
-    // Don't auto-open forms — too noisy. User can drill in per form.
   }
   const collapseAll = () => {
-    setOpenCategories(new Set())
+    setOpenCategory(null)
     setOpenFreqs(new Set())
     setOpenForms(new Set())
   }
@@ -244,7 +244,7 @@ export default function TrackerCategoryAccordionView(props: Props) {
       <div className="space-y-3">
         {groupedByCategory.map((group, idx) => {
           const theme = themeFor(group.category)
-          const catOpen = openCategories.has(group.category)
+          const catOpen = openCategory === group.category
           const freqs = summariseFrequencies(group.items)
           const freqGroups = catOpen ? groupByFrequency(group.items) : []
           return (
