@@ -437,11 +437,23 @@ export default function MagicalIntake({ onComplete, onUnregisteredComplete, onSk
               onChange={(e) => {
                 setCinValue(e.target.value)
                 setErrorMsg(null)
+                // Reset verification when the user edits the CIN after a
+                // successful verify. Clears every field that was prefilled
+                // from the previous CIN so the next Verify gets a clean slate.
+                if (phase !== 'cin' && phase !== 'cin-verifying') {
+                  setPhase('cin')
+                  setCompanyName('')
+                  setPanValue('')
+                  panAutoFiredRef.current = false
+                  cinPayloadRef.current = null
+                }
               }}
               placeholder="L17110MH1973PLC019786 or AAA-1234"
               maxLength={21}
               autoFocus
-              disabled={phase !== 'cin' && phase !== 'cin-verifying'}
+              // Lock during the verify round-trip only — once verified the
+              // user can edit again to correct a typo or switch CINs.
+              disabled={phase === 'cin-verifying'}
               spellCheck={false}
               autoComplete="off"
               className="w-full font-mono tabular-nums tracking-wide text-base text-fg-primary bg-bg-card border border-line/10 rounded-token-md px-4 py-3 outline-none focus:border-accent-brand focus:ring-2 focus:ring-accent-brand/30 transition-colors duration-token ease-token disabled:opacity-70"
