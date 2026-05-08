@@ -99,6 +99,12 @@ export default function MagicalIntake({ onComplete, onUnregisteredComplete, onSk
   } | null>(null)
   // Guards against the auto-fire firing twice if the user types past 10 chars.
   const panAutoFiredRef = useRef(false)
+  // Generation counter — bumped whenever the user resets after a successful
+  // verify. Any in-flight runPrefill captures the generation at entry and
+  // bails after every await if it has been superseded. Without this, the
+  // GST lookup (several seconds) can resolve AFTER the user has edited the
+  // CIN, causing onComplete to fire with the OLD CIN's data.
+  const prefillGenRef = useRef(0)
 
   const cinFormatted = cinValue.toUpperCase().trim()
   const panFormatted = panValue.toUpperCase().trim()
@@ -165,6 +171,15 @@ export default function MagicalIntake({ onComplete, onUnregisteredComplete, onSk
 
   const runPrefill = async () => {
     if (!cinPayloadRef.current) return
+    // Snapshot the generation at entry. Every state mutation / callback
+    // below an await must compare against this — if the user reset the
+    // CIN since, the snapshot is stale and we silently abort.
+    const myGen = prefillGenRef.current
+    // Snapshot the CIN/PAN values at entry so the closure doesn't read
+    // a refreshed value if the user starts typing during the GST wait.
+    const cinSnapshot = cinFormatted
+    const panSnapshot = panFormatted
+
     setPhase('revealing')
     const { parsed, companyData, directorData } = cinPayloadRef.current
 
@@ -174,8 +189,8 @@ export default function MagicalIntake({ onComplete, onUnregisteredComplete, onSk
     const gstPromise = companyNameForGST
       ? lookupGST({
           companyName: companyNameForGST,
-          cin: cinFormatted,
-          pan: panFormatted,
+          cin: cinSnapshot,
+          pan: panSnapshot,
         }).catch((err) => {
           console.warn('[MagicalIntake] GST lookup failed:', err)
           return null as GSTLookupResult | null
@@ -183,13 +198,15 @@ export default function MagicalIntake({ onComplete, onUnregisteredComplete, onSk
       : Promise.resolve(null as GSTLookupResult | null)
 
     const gstResult = await gstPromise
+    if (myGen !== prefillGenRef.current) return  // user reset — drop result
 
     setPhase('done')
     // Tiny tick so the ✨ "Pre-filled" line is visible before the unmount.
     setTimeout(() => {
+      if (myGen !== prefillGenRef.current) return  // reset hit during the 350ms tick
       onComplete({
-        cin: cinFormatted,
-        pan: panFormatted,
+        cin: cinSnapshot,
+        pan: panSnapshot,
         parsed,
         companyData,
         directorData,
@@ -437,11 +454,27 @@ export default function MagicalIntake({ onComplete, onUnregisteredComplete, onSk
               onChange={(e) => {
                 setCinValue(e.target.value)
                 setErrorMsg(null)
+                // Reset verification when the user edits the CIN after a
+                // successful verify. Clears every field that was prefilled
+                // from the previous CIN so the next Verify gets a clean slate.
+                if (phase !== 'cin' && phase !== 'cin-verifying') {
+                  setPhase('cin')
+                  setCompanyName('')
+                  setPanValue('')
+                  panAutoFiredRef.current = false
+                  cinPayloadRef.current = null
+                  // Bump the generation so any in-flight runPrefill bails
+                  // out after its next await instead of calling onComplete
+                  // with the now-stale CIN/PAN.
+                  prefillGenRef.current++
+                }
               }}
               placeholder="L17110MH1973PLC019786 or AAA-1234"
               maxLength={21}
               autoFocus
-              disabled={phase !== 'cin' && phase !== 'cin-verifying'}
+              // Lock during the verify round-trip only — once verified the
+              // user can edit again to correct a typo or switch CINs.
+              disabled={phase === 'cin-verifying'}
               spellCheck={false}
               autoComplete="off"
               className="w-full font-mono tabular-nums tracking-wide text-base text-fg-primary bg-bg-card border border-line/10 rounded-token-md px-4 py-3 outline-none focus:border-accent-brand focus:ring-2 focus:ring-accent-brand/30 transition-colors duration-token ease-token disabled:opacity-70"
