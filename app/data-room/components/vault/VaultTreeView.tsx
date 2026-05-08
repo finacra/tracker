@@ -736,18 +736,37 @@ function DocumentRow({
       <span className="text-[10px] text-fg-muted flex-shrink-0">{formatted}</span>
 
       {canEdit && (
-        <DocActionsMenu
-          doc={doc}
-          companyId={companyId}
-          isOpen={menuOpen}
-          onToggle={() => setMenuOpen(o => !o)}
-          onClose={() => setMenuOpen(false)}
-          onUploadNewVersion={onUploadNewVersion}
-          onShowVersions={onShowVersions}
-          onRename={onRename}
-          onMove={onMove}
-          onDelete={onDelete}
-        />
+        <>
+          {/* Direct trash button — Delete was previously buried in the
+              kebab menu and CAs couldn't find it. Keep the kebab too
+              for the other actions (rename / move / versions). */}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onDelete(doc) }}
+            className="w-6 h-6 flex items-center justify-center text-fg-muted hover:text-red-300 rounded transition-colors"
+            aria-label="Delete document"
+            title="Delete document"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              <path d="M10 11v6M14 11v6" />
+              <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+            </svg>
+          </button>
+          <DocActionsMenu
+            doc={doc}
+            companyId={companyId}
+            isOpen={menuOpen}
+            onToggle={() => setMenuOpen(o => !o)}
+            onClose={() => setMenuOpen(false)}
+            onUploadNewVersion={onUploadNewVersion}
+            onShowVersions={onShowVersions}
+            onRename={onRename}
+            onMove={onMove}
+            onDelete={onDelete}
+          />
+        </>
       )}
     </div>
   )
