@@ -1,4 +1,5 @@
 import 'server-only'
+import { randomUUID } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { SYSTEM_TAXONOMY, LEGACY_FOLDER_MAP, type SystemFolderDef } from './taxonomy'
 
@@ -16,6 +17,22 @@ const EXPECTED_SYSTEM_FOLDER_COUNT = (() => {
   return count(SYSTEM_TAXONOMY)
 })()
 
+/**
+ * Seed every system folder for a company in TWO database roundtrips:
+ *   1. findMany — read whatever's already there.
+ *   2. createMany — insert everything missing in a single batch.
+ *
+ * Children can reference parents in the same INSERT because we generate
+ * UUIDs in code upfront (Postgres' uuid_generate_v4 produces RFC 4122 v4
+ * UUIDs; randomUUID() from node:crypto produces the same shape — they're
+ * interchangeable from the DB's perspective).
+ *
+ * Previous implementation did N sequential prisma.vaultFolder.create()
+ * calls (one per missing folder, ~18 in a fresh company). With Vercel in
+ * iad1 and Supabase in ap-south-1, every create round-trip cost ~250 ms,
+ * so a fresh onboarding paid ~4.5 s just for folder seeding. This drops
+ * that to ~500 ms total (one findMany + one createMany).
+ */
 export async function ensureSystemFolders(companyId: string): Promise<void> {
   // Single query: pull id + slug + parent_id for every existing system row.
   const existing = await prisma.vaultFolder.findMany({
@@ -30,33 +47,56 @@ export async function ensureSystemFolders(companyId: string): Promise<void> {
   const idByKey = new Map<string, string>()
   for (const r of existing) idByKey.set(keyFor(r.slug, r.parent_id), r.id)
 
+  // Walk the taxonomy once, queueing missing nodes for batch insert. Each
+  // new node gets a UUID generated in code so its children (which we
+  // encounter later in the same walk) can reference it via parent_id
+  // even though Postgres hasn't seen the parent row yet — the whole tree
+  // lands in one createMany.
+  type FolderInsert = {
+    id: string
+    company_id: string
+    parent_id: string | null
+    slug: string
+    name: string
+    kind: string
+    sort_order: number
+  }
+  const toInsert: FolderInsert[] = []
+
   let sort = 0
-  const insertTree = async (nodes: SystemFolderDef[], parentId: string | null) => {
+  const collect = (nodes: SystemFolderDef[], parentId: string | null) => {
     for (const node of nodes) {
       const key = keyFor(node.slug, parentId)
       let folderId = idByKey.get(key)
       if (!folderId) {
-        const row = await prisma.vaultFolder.create({
-          data: {
-            company_id: companyId,
-            parent_id: parentId,
-            slug: node.slug,
-            name: node.name,
-            kind: 'system',
-            sort_order: sort++,
-          },
-          select: { id: true },
-        })
-        folderId = row.id
+        folderId = randomUUID()
         idByKey.set(key, folderId)
+        toInsert.push({
+          id: folderId,
+          company_id: companyId,
+          parent_id: parentId,
+          slug: node.slug,
+          name: node.name,
+          kind: 'system',
+          sort_order: sort++,
+        })
       }
       if (node.children?.length) {
-        await insertTree(node.children, folderId)
+        collect(node.children, folderId)
       }
     }
   }
+  collect(SYSTEM_TAXONOMY, null)
 
-  await insertTree(SYSTEM_TAXONOMY, null)
+  if (toInsert.length > 0) {
+    // skipDuplicates handles the race where two concurrent onboardings
+    // for the same companyId try to seed at once (rare but possible —
+    // see CLAUDE.md §12, can't wrap in interactive $transaction).
+    await prisma.vaultFolder.createMany({
+      data: toInsert,
+      skipDuplicates: true,
+    })
+  }
 }
 
 /**
