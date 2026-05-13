@@ -210,45 +210,51 @@ export async function completeOnboarding(
     })
     .filter((r): r is { gstin: string; state: string | null } => r !== null && validateGSTN(r.gstin))
 
-  if (normalizedGstRegistrations.length > 0) {
-    await prisma.gstRegistration.createMany({
-      data: normalizedGstRegistrations.map((r) => ({
-        company_id: company.id,
-        gstin: r.gstin,
-        state: r.state,
-      })),
-      skipDuplicates: true,
-    })
-  }
+  // ─── Post-create writes, fanned out in parallel ──────────────────────
+  // Everything below only needs company.id (which we have) — so they're
+  // all independent and race-safe across DIFFERENT tables. Wrapping them
+  // in Promise.all collapses 5–6 sequential 250 ms round-trips (Vercel
+  // iad1 ↔ Supabase ap-south-1) into one parallel batch.
+  //
+  // Each task catches its own error so a single failure doesn't void the
+  // whole company create — preserves the prior per-step try/catch
+  // semantics (role / folder / facts were all "non-fatal log and
+  // continue" before). createMany rejections still surface for GST /
+  // directors / docs templates because those are user-typed data and
+  // silent loss there would be worse than failing the onboarding loudly.
+  // ──────────────────────────────────────────────────────────────────────
+  await Promise.all([
+    // 1a. GST registrations (skipped if user added none).
+    normalizedGstRegistrations.length > 0
+      ? prisma.gstRegistration.createMany({
+          data: normalizedGstRegistrations.map((r) => ({
+            company_id: company.id,
+            gstin: r.gstin,
+            state: r.state,
+          })),
+          skipDuplicates: true,
+        })
+      : Promise.resolve(),
 
-  // 1b. Assign admin role to the company creator
-  try {
-    // For Passport users, use app_user_id (user.id) and set user_id to NULL
-    await companyMembershipRepository.addRole(
-      user.id,
-      company.id,
-      'admin',
-      user.id // Pass user.id as app_user_id for Passport users
-    )
-  } catch (roleError) {
-    console.error('Role assignment error:', roleError)
-    // Don't throw - the company owner can still access via user_id on companies table
-  }
+    // 1b. Admin role for the creator. Non-fatal — owner still has access
+    // via the companies.user_id back-reference if this fails.
+    companyMembershipRepository
+      .addRole(user.id, company.id, 'admin', user.id)
+      .catch((roleError) => {
+        console.error('Role assignment error:', roleError)
+      }),
 
-  // 1d. Seed the five system top-level folders + their nested sub-folders
-  // (PRD §2.2 / §3.1). Idempotent; safe to call again later if a company
-  // onboarded before this rollout.
-  try {
-    await ensureSystemFolders(company.id)
-  } catch (folderErr) {
-    console.error('[onboarding] Vault folder seed failed (non-fatal):', folderErr instanceof Error ? folderErr.message : folderErr)
-  }
+    // 1d. Seed system vault folders. Already a single createMany after
+    // PR-31 — see lib/vault/folders.ts. Non-fatal.
+    ensureSystemFolders(company.id).catch((folderErr) => {
+      console.error(
+        '[onboarding] Vault folder seed failed (non-fatal):',
+        folderErr instanceof Error ? folderErr.message : folderErr,
+      )
+    }),
 
-  // 1c. Record declared facts into the fact store so the new applicability
-  // engine can reason over them alongside document-extracted evidence.
-  // Non-blocking — a failure here must not prevent company creation.
-  try {
-    await recordOnboardingFacts({
+    // 1c. Onboarding facts → applicability engine. Non-fatal but loud.
+    recordOnboardingFacts({
       companyId: company.id,
       createdBy: user.id,
       employeeCount: formData.employeeCount ? parseInt(formData.employeeCount, 10) : null,
@@ -263,36 +269,34 @@ export async function completeOnboarding(
       msmeCategory: formData.msmeCategory || null,
       hasImportsExports: formData.hasImportsExports ?? null,
       isStartupDpiit: formData.isStartupDpiit ?? null,
-    })
-  } catch (factErr) {
-    // Non-fatal but loud: a silent swallow here is exactly what made
-    // intake re-prompt for users who DID fill onboarding — facts never
-    // landed and refreshIntakeStatus correctly reported needsIntake=true.
-    // Log full stack so the failure mode is debuggable next time.
-    console.error('[onboarding] recordOnboardingFacts failed (non-fatal, but intake will re-prompt):',
-      factErr instanceof Error ? factErr.message : factErr,
-      factErr instanceof Error ? factErr.stack : '')
-  }
+    }).catch((factErr) => {
+      console.error(
+        '[onboarding] recordOnboardingFacts failed (non-fatal, but intake will re-prompt):',
+        factErr instanceof Error ? factErr.message : factErr,
+        factErr instanceof Error ? factErr.stack : '',
+      )
+    }),
 
-  // 2. Insert Directors
-  if (directors.length > 0) {
-    await directorRepository.createMany(
-      directors.map((dir) => ({
-        companyId: company.id,
-        firstName: dir.firstName,
-        lastName: dir.lastName,
-        middleName: dir.middleName || null,
-        din: dir.din || null,
-        designation: dir.designation || null,
-        dob: dir.dob || null,
-        pan: dir.pan || null,
-        email: dir.email || null,
-        mobile: dir.mobile || null,
-        isVerified: dir.verified || false,
-        source: dir.source || 'manual'
-      }))
-    )
-  }
+    // 2. Directors (skipped if user added none).
+    directors.length > 0
+      ? directorRepository.createMany(
+          directors.map((dir) => ({
+            companyId: company.id,
+            firstName: dir.firstName,
+            lastName: dir.lastName,
+            middleName: dir.middleName || null,
+            din: dir.din || null,
+            designation: dir.designation || null,
+            dob: dir.dob || null,
+            pan: dir.pan || null,
+            email: dir.email || null,
+            mobile: dir.mobile || null,
+            isVerified: dir.verified || false,
+            source: dir.source || 'manual',
+          })),
+        )
+      : Promise.resolve(),
+  ])
 
   // 3. Insert document metadata into internal table
   if (formData.documents.length > 0) {
@@ -322,12 +326,18 @@ export async function completeOnboarding(
       })
     )
 
-    // Background process: Extract text content from each PDF for AI understanding
-    if (insertedDocs) {
+    // Background process: Extract text content from each PDF for AI
+    // understanding + queue OCR-based fact ingest. Both are
+    // fire-and-forget so they don't block the response.
+    //
+    // Hoist the ingest-worker import OUT of the loop: it used to be
+    // re-resolved on every iteration. With cold module cache that adds
+    // a measurable hit on the first onboarding submit of each lambda.
+    if (insertedDocs && insertedDocs.length > 0) {
+      const { enqueueIngestJob } = await import('@/lib/compliance/ingest-worker')
       for (const doc of insertedDocs) {
-        // We don't await this so the user doesn't wait for parsing
-        processDocumentContent(doc.id, company.id, doc.filePath).catch(err =>
-          console.error(`Async processing failed for ${doc.id}:`, err)
+        processDocumentContent(doc.id, company.id, doc.filePath).catch((err) =>
+          console.error(`Async processing failed for ${doc.id}:`, err),
         )
 
         // Smart-ingest queue: PAN / GST / COI / MOA-AOA / etc. cert
@@ -338,16 +348,16 @@ export async function completeOnboarding(
         // already in `company_facts` carry `confidence=1.0,
         // sourceKind=user_declared` — the reader prefers typed on
         // conflict, so OCR fills gaps without overriding correct
-        // entries. Fire-and-forget; failure logs but doesn't block
-        // onboarding completion.
-        const { enqueueIngestJob } = await import('@/lib/compliance/ingest-worker')
+        // entries.
         enqueueIngestJob({
           documentId: doc.id,
           companyId: company.id,
           source: 'onboarding',
-        }).catch(err => {
-          console.error(`Onboarding ingest enqueue failed for ${doc.id}:`,
-            err instanceof Error ? err.message : err)
+        }).catch((err) => {
+          console.error(
+            `Onboarding ingest enqueue failed for ${doc.id}:`,
+            err instanceof Error ? err.message : err,
+          )
         })
       }
     }
