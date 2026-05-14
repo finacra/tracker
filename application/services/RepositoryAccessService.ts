@@ -4,6 +4,12 @@ import type { AppRole } from '@/domain/types/Role'
 import type { CompanyMembershipRepository } from '@/application/interfaces/CompanyMembershipRepository'
 import type { SubscriptionRepository } from '@/application/interfaces/SubscriptionRepository'
 import type { CompanyRepository } from '@/application/interfaces/CompanyRepository'
+// PR-41: temporary boundary break to mirror the data-room CTE's funded-
+// access gate exactly. SubscriptionRepository's hasSubscription mapping
+// uses end_date as a fallback for trials, which diverges from the CTE's
+// strict trial_ends_at check. Until we move this gate into a dedicated
+// repository method, run the same SQL the CTE runs.
+import { prisma } from '@/lib/prisma'
 
 export class RepositoryAccessService implements AccessService {
     constructor(
@@ -197,40 +203,59 @@ export class RepositoryAccessService implements AccessService {
                     company.ownerAppUserId !== userId,
             )
 
-            // Mirror the data-room CTE's acc_ids gate: a team-member
-            // role grants data-room access only when the company has
-            // its own active subscription OR the owner has an active
-            // personal subscription. Without this check the /subscribe
-            // page listed invited-but-unfunded companies under
-            // "Companies You Can Still Access", users clicked through,
-            // and /data-room then bounced them right back — confusing
-            // dead-end UX. Keeping the gate identical in both places
-            // means the listing and the navigation target agree.
-            //
-            // Fan out the per-company subscription checks in parallel;
-            // typical user has only a handful of invited companies so
-            // the cost is bounded and stays under one RTT window.
-            const invitedSubscriptionResults = await Promise.all(
-                invitedNotOwned.map(async (company) => {
-                    const ownerId = company.ownerAppUserId || company.ownerUserId
-                    const [companySub, ownerSub] = await Promise.all([
-                        this.subscriptionRepository.getCompanySubscriptionState(company.id),
-                        ownerId
-                            ? this.subscriptionRepository.getUserSubscriptionState(ownerId)
-                            : Promise.resolve(null),
-                    ])
-                    const hasFundedAccess = Boolean(
-                        companySub?.hasSubscription || ownerSub?.hasSubscription,
-                    )
-                    return { companyId: company.id, hasFundedAccess }
-                }),
-            )
+            if (invitedNotOwned.length > 0) {
+                // Mirror the data-room CTE's acc_ids gate EXACTLY — a
+                // team-member role grants data-room access only when
+                // the company has its own active+unexpired subscription
+                // OR the owner has an active+unexpired personal sub.
+                //
+                // PR-40 first tried this with
+                // getCompanySubscriptionState / getUserSubscriptionState,
+                // but those map a trial sub's expiration as
+                // `trial_ends_at || end_date` — falling back to end_date
+                // when trial_ends_at is NULL or in the past. The
+                // data-room CTE doesn't fall back: it strictly requires
+                // `trial_ends_at > NOW()` for trials. That divergence
+                // let unfunded invited companies through this listing
+                // even though /data-room would then reject them on
+                // click, producing the JRS bounce loop reported on prod.
+                //
+                // This $queryRaw uses the *same* expiry logic the CTE
+                // does, so the listing and the navigation target now
+                // agree by construction.
+                const invitedIdList = invitedNotOwned.map((c) => c.id)
+                const fundedRows = await prisma.$queryRaw<Array<{ id: string }>>`
+                    SELECT DISTINCT c.id
+                    FROM companies c
+                    LEFT JOIN subscriptions s_company ON
+                        s_company.company_id::uuid = c.id
+                        AND s_company.subscription_type = 'company'
+                        AND (s_company.status = 'active' OR s_company.is_trial = true)
+                        AND (
+                            (s_company.is_trial = true AND s_company.trial_ends_at > NOW())
+                            OR
+                            ((s_company.is_trial = false OR s_company.is_trial IS NULL) AND s_company.end_date > NOW())
+                        )
+                    LEFT JOIN subscriptions s_owner ON
+                        (s_owner.app_user_id = c.app_user_id OR s_owner.user_id = c.user_id)
+                        AND s_owner.subscription_type = 'user'
+                        AND (s_owner.status = 'active' OR s_owner.is_trial = true)
+                        AND (
+                            (s_owner.is_trial = true AND s_owner.trial_ends_at > NOW())
+                            OR
+                            ((s_owner.is_trial = false OR s_owner.is_trial IS NULL) AND s_owner.end_date > NOW())
+                        )
+                    WHERE c.id::uuid = ANY(${invitedIdList}::uuid[])
+                      AND (s_company.id IS NOT NULL OR s_owner.id IS NOT NULL)
+                `
 
-            invitedSubscriptionResults.forEach((result) => {
-                if (result.hasFundedAccess && !accessibleIds.includes(result.companyId)) {
-                    accessibleIds.push(result.companyId)
-                }
-            })
+                const fundedIds = new Set(fundedRows.map((r) => r.id))
+                invitedNotOwned.forEach((company) => {
+                    if (fundedIds.has(company.id) && !accessibleIds.includes(company.id)) {
+                        accessibleIds.push(company.id)
+                    }
+                })
+            }
         }
 
         if (userSub?.hasSubscription) {
