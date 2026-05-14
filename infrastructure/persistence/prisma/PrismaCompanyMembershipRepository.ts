@@ -20,19 +20,28 @@ export class PrismaCompanyMembershipRepository implements CompanyMembershipRepos
     }
 
     async getAdminUserIds(companyId: string): Promise<string[]> {
-        // Get admin user IDs - for Passport users, use app_user_id; for legacy, use user_id
-        const rows = await prisma.userRole.findMany({
+        // Cached via Prisma Accelerate (60s TTL + 30s SWR). The admin
+        // roster for a company is stable across hours — additions and
+        // removals are rare ops. This query fires on every team-invite
+        // email, comment notification, and audit-event broadcast to
+        // pick recipients. Auto-invalidates when userRole rows are
+        // written (addRole/upsertRole/updateRole/removeRole below all
+        // go through Prisma, so Accelerate sees them).
+        const rows = await (prisma.userRole.findMany({
             where: {
                 company_id: companyId,
                 role: { in: ['admin', 'superadmin'] },
             },
-            select: { 
+            select: {
                 user_id: true,
                 app_user_id: true
-            }
-        })
+            },
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        }) as any).cacheStrategy({ ttl: 60, swr: 30 })
         // Return app_user_id for Passport users, user_id for legacy users
-        return rows.map((row) => row.app_user_id || row.user_id).filter((id): id is string => id !== null)
+        return rows
+          .map((row: { user_id: string | null; app_user_id: string | null }) => row.app_user_id || row.user_id)
+          .filter((id: string | null): id is string => id !== null)
     }
 
     async getRoles(companyId?: string | null): Promise<(CompanyMembership & { appUserId?: string | null })[]> {

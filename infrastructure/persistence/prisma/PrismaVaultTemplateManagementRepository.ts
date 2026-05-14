@@ -30,14 +30,20 @@ export class PrismaVaultTemplateManagementRepository implements VaultTemplateMan
     }
 
     async getById(id: string): Promise<VaultTemplateDetails | null> {
-        const row = await prisma.documentTemplate.findUnique({
+        // Cached via Prisma Accelerate (5 min TTL + 2 min SWR). Template
+        // metadata is admin-controlled, static across user sessions, and
+        // queried on every document-requirement breadcrumb render.
+        // Auto-invalidates when documentTemplate rows are written via
+        // this same repository's create/update/delete methods.
+        const row = await (prisma.documentTemplate.findUnique({
             where: { id },
             select: {
                 id: true,
                 document_name: true,
                 folder_name: true,
             },
-        })
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        }) as any).cacheStrategy({ ttl: 300, swr: 120 })
 
         if (!row) return null
 

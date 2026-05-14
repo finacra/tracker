@@ -8,9 +8,15 @@ import { prisma } from '@/lib/prisma'
 
 export class PrismaEmailPreferenceRepository implements EmailPreferenceRepository {
     async getByUserId(userId: string): Promise<EmailPreferenceRecord | null> {
-        const row = await prisma.emailPreference.findUnique({
+        // Cached via Prisma Accelerate (60s TTL + 30s SWR). User
+        // preferences change rarely (settings UI edit, maybe once a
+        // month) but this fires on every notification-routing decision
+        // and team-update broadcast. Auto-invalidates on saveForUser's
+        // upsert below.
+        const row = await (prisma.emailPreference.findUnique({
             where: { user_id: userId },
-        })
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        }) as any).cacheStrategy({ ttl: 60, swr: 30 })
 
         if (!row) return null
 
