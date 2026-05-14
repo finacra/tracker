@@ -1185,11 +1185,30 @@ function DataRoomPageInner({
   const setActiveTab = useCallback((tab: string) => {
     setActiveTabLocal(tab);
     setStoredTab(tab as import("@/lib/store/appStore").DataRoomTab);
-    // Reflect in URL without adding to browser history
-    const params = new URLSearchParams(window.location.search);
-    params.set("tab", tab);
-    router.replace(`?${params.toString()}`, { scroll: false });
-  }, [setStoredTab, router]);
+    // Reflect in URL without triggering a Next.js RSC re-fetch.
+    //
+    // Previously this used `router.replace(?tab=...)`. Because PR-44's
+    // streaming-SSR page.tsx reads searchParams in its RSC and awaits
+    // getDataRoomInitState before rendering, a router-driven URL
+    // change with new query params caused Next to re-execute page.tsx
+    // (5+ seconds on a cold lambda), repopulate the prop, and ripple
+    // into a cascade of post-mount server actions — 9 sequential
+    // POST /data-room calls totalling ~30-44s on every Overview →
+    // Tracker click (measured).
+    //
+    // history.replaceState updates the address-bar URL synchronously
+    // without involving Next.js's router or RSC payload. Tab state is
+    // purely a client concern (read from URL on first mount, then
+    // owned by React state + Zustand below), so bypassing the router
+    // is safe — refreshing the page still lands on the right tab via
+    // searchParams.get("tab") at component init.
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      params.set("tab", tab);
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      window.history.replaceState(window.history.state, '', newUrl);
+    }
+  }, [setStoredTab]);
 
   // GST Integration States
   // GST tab state moved to GSTTab component
