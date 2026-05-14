@@ -3442,7 +3442,18 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     const atomicStart = performance.now()
     // OPTIMIZATION: Use a single parameterized query with reduced CTE complexity
     // This reduces planning time by minimizing InitPlans and CTE scans
-    const pulseRaw = await prisma.$queryRaw<any[]>`
+    //
+    // PR-38 profiling: fire a trivial `SELECT 1` in parallel via
+    // Promise.all so its duration measures pure iad1↔ap-south-1 RTT
+    // with no Postgres execution cost. Comparing it to atomicDuration
+    // tells us whether the CTE is bottlenecked on network or on
+    // server-side query execution — informs Phase 4.1 (split CTE into
+    // parallel queries). Promise.all means the ping doesn't add wall
+    // time; it rides the same connection pool window as the main
+    // query.
+    const pingStart = performance.now()
+    const [pulseRaw, pingRaw] = await Promise.all([
+      prisma.$queryRaw<any[]>`
       WITH 
         -- Single param reference (reduces InitPlans)
         uid_param AS (SELECT ${userId}::uuid as uid),
@@ -3589,9 +3600,19 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
           INNER JOIN target_owner o ON (s.app_user_id = o.app_user_id OR s.user_id = o.user_id)
           WHERE s.subscription_type = 'user'
         )) as has_owner_sub
-    `
+    `,
+      prisma.$queryRaw<any[]>`SELECT 1 as ping`,
+    ])
     const pulse = pulseRaw[0] || {}
     const atomicDuration = performance.now() - atomicStart
+    const pingDuration = performance.now() - pingStart
+    // Server execution time = atomicDuration - pingDuration. If
+    // they're close, the CTE is RTT-bound and splitting it into N
+    // parallel queries would multiply the RTT cost instead of dividing
+    // the execution cost. If atomicDuration >> pingDuration, the CTE
+    // is server-execution-bound and a split could win.
+    const estimatedServerExecMs = Math.max(0, atomicDuration - pingDuration)
+    void pingRaw // suppress unused-var lint — we only need its timing
 
     if (!pulse.user) throw new Error('User record not found')
     
@@ -3740,7 +3761,13 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
     }))
 
     const totalDuration = performance.now() - initStartTime
-    console.log(`[InitAction] ⚛️ ATOMIC PULSE COMPLETE: ${totalDuration.toFixed(2)}ms (DB: ${atomicDuration.toFixed(0)}ms, side: ${sideFetchDuration.toFixed(0)}ms)`)
+    console.log(
+      `[InitAction] ⚛️ ATOMIC PULSE COMPLETE: ${totalDuration.toFixed(2)}ms ` +
+      `(DB: ${atomicDuration.toFixed(0)}ms, ` +
+      `RTT≈${pingDuration.toFixed(0)}ms, ` +
+      `serverExec≈${estimatedServerExecMs.toFixed(0)}ms, ` +
+      `side: ${sideFetchDuration.toFixed(0)}ms)`
+    )
 
     return {
       success: true,
@@ -3782,7 +3809,15 @@ export async function getDataRoomInitState(preferredCompanyId: string | null = n
         currentCompanyAccessStatus,
         _debug: {
             authProvider: 'passport',
-            timings: { atomic: atomicDuration, side: sideFetchDuration },
+            timings: {
+              atomic: atomicDuration,
+              side: sideFetchDuration,
+              // PR-38: ping is a parallel `SELECT 1` measuring pure
+              // iad1↔ap-south-1 RTT. serverExec is the residual after
+              // subtracting RTT from atomic — informs Phase 4.1.
+              pingRtt: pingDuration,
+              serverExec: estimatedServerExecMs,
+            },
             totalDuration
         }
       }
