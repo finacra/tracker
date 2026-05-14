@@ -24,6 +24,13 @@ export async function createSession(user: PassportSessionUser): Promise<string> 
     appUserId: user.appUserId,
     email: user.email,
     googleId: user.googleId,
+    // PR-36: ship verification status with the signed session so the
+    // proxy middleware can gate access without a round trip to
+    // ap-south-1 Postgres on every protected request. Old tokens from
+    // PR-32 and earlier won't carry this claim; verifySession() below
+    // defaults missing claims to false, which keeps the existing DB
+    // fallback path correct until the JWT rotates on next sign-in.
+    emailVerified: user.emailVerified,
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -45,6 +52,11 @@ export async function verifySession(token: string): Promise<PassportSessionUser 
       appUserId: payload.appUserId as string,
       email: payload.email as string,
       googleId: payload.googleId as string,
+      // Default to false when the claim is missing (pre-PR-36 tokens).
+      // The proxy middleware's existing DB fallback then runs, and the
+      // user's next session creation (login/OAuth/link-password) will
+      // mint a fresh JWT carrying the actual value.
+      emailVerified: payload.emailVerified === true,
     }
   } catch (error) {
     return null

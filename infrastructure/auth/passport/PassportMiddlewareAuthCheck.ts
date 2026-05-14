@@ -52,6 +52,7 @@ export class PassportMiddlewareAuthCheck implements MiddlewareAuthCheck {
         result: {
           authenticated: true,
           userId: session.appUserId,
+          emailVerified: session.emailVerified,
         },
         response,
       }

@@ -120,11 +120,13 @@ export async function POST(req: NextRequest) {
       })
     })
 
-    await setSessionInResponse(user, response)
-    // Pre-populate the proxy middleware's verification cache so the
-    // next request (redirect target after login) doesn't pay the
-    // ~250 ms Vercel iad1 ↔ Supabase ap-south-1 DB query just to check
-    // email_verified. We already know the value from line 98 above.
+    // PR-36 carries emailVerified inside the JWT itself, so the proxy
+    // middleware no longer needs the separate email_verified cookie for
+    // freshly-issued sessions. We still call setVerificationCookies for
+    // belt-and-braces compatibility — old code paths that pre-date PR-36
+    // may continue to read the cookie until the next rotate-out.
+    const userWithVerified = { ...user, emailVerified }
+    await setSessionInResponse(userWithVerified, response)
     setVerificationCookiesInResponse(response, {
       userId: user.appUserId,
       verified: emailVerified,
