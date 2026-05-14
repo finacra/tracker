@@ -20,14 +20,24 @@ export class PrismaUserRepository implements UserRepository {
 
   async getById(userId: string): Promise<AppUser | null> {
     // 1. Try finding by canonical id first (FASTEST for Passport and modern app logic)
-    const appUserRow = await prisma.appUser.findUnique({
+    //
+    // PR-34: when DATABASE_URL is set to a Prisma Accelerate URL, this
+    // query result is cached at the edge for 60s with stale-while-
+    // revalidate. This call fires on EVERY server action via
+    // requireCurrentUser, plus once per page render via the layout RSC
+    // resolver (PR-33). At ~250ms RTT to ap-south-1 Supabase, caching
+    // saves that hit on every request after the first within the TTL
+    // window. .cacheStrategy is a no-op when DATABASE_URL points at
+    // plain Postgres — Accelerate ignores it.
+    const appUserRow = await (prisma.appUser.findUnique({
       where: { id: userId },
       select: {
         id: true,
         primary_email: true,
         full_name: true,
       },
-    })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any).cacheStrategy({ ttl: 60, swr: 30 })
 
     if (appUserRow) {
       return this.mapCanonicalUser(appUserRow, 'supabase', null)
