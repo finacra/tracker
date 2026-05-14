@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { verifyEmailToken } from '@/lib/email/verification'
-import { setSessionInResponse } from '@/lib/auth/passport-session'
+import { setSessionInResponse, setVerificationCookiesInResponse } from '@/lib/auth/passport-session'
 import type { PassportSessionUser } from '@/lib/auth/passport-config'
 import { handleAPIError } from '@/lib/errors/handle-error'
 
@@ -106,6 +106,13 @@ export async function POST(req: NextRequest) {
     })
 
     await setSessionInResponse(sessionUser, response)
+    // verifyEmailToken set email_verified=true on app_users; mirror
+    // that into the proxy middleware's cookie cache so the redirect
+    // after this response doesn't pay the ~250 ms DB lookup.
+    setVerificationCookiesInResponse(response, {
+      userId: updatedUser.id,
+      verified: true,
+    })
 
     return response
   } catch (error) {
