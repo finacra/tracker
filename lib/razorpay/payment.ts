@@ -59,7 +59,8 @@ export async function loadRazorpayScript(): Promise<void> {
 export async function createRazorpayOrder(
   tier: string,
   billingCycle: string,
-  companyId?: string
+  companyId?: string,
+  discountCode?: string,
 ): Promise<{ orderId: string; amount: number; currency: string; keyId: string }> {
   const response = await fetch('/api/payments/create-order', {
     method: 'POST',
@@ -70,6 +71,10 @@ export async function createRazorpayOrder(
       tier,
       billingCycle,
       companyId,
+      // The server validates the code against an allow-list in
+      // lib/pricing/discount-codes.ts. Unrecognized codes are
+      // silently ignored — never trust the client to apply a price.
+      discountCode: discountCode?.trim() || undefined,
     }),
   })
 

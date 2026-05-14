@@ -10,10 +10,17 @@ interface PaymentButtonProps {
   billingCycle: BillingCycle
   price: number
   companyId?: string
+  /**
+   * Optional discount code the user typed on /subscribe. Passed
+   * through to the server; the server validates against an
+   * allow-list and silently ignores unknown codes — the value here
+   * never affects the price client-side.
+   */
+  discountCode?: string
   className?: string
 }
 
-export default function PaymentButton({ tier, billingCycle, price, companyId, className }: PaymentButtonProps) {
+export default function PaymentButton({ tier, billingCycle, price, companyId, discountCode, className }: PaymentButtonProps) {
   const { user, displayName, displayEmail } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [isScriptLoaded, setIsScriptLoaded] = useState(false)
@@ -40,8 +47,9 @@ export default function PaymentButton({ tier, billingCycle, price, companyId, cl
     setIsLoading(true)
 
     try {
-      // Create order
-      const orderData = await createRazorpayOrder(tier, billingCycle, companyId)
+      // Create order — server-side rules validate `discountCode` and
+      // decide whether to override the amount.
+      const orderData = await createRazorpayOrder(tier, billingCycle, companyId, discountCode)
 
       // Open Razorpay checkout
       openRazorpayCheckout({
