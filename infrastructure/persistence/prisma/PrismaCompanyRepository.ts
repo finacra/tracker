@@ -3,7 +3,7 @@ import type {
   CompanyRecord,
   CompanyRepository,
 } from '@/application/interfaces/CompanyRepository'
-import { prisma } from '@/lib/prisma'
+import { prisma, cached } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 import { parseFlexibleDate } from '@/lib/utils/parse-date'
 
@@ -262,11 +262,13 @@ export class PrismaCompanyRepository implements CompanyRepository {
     // afterwards. This fires on every regulatory-requirement query
     // (~250 ms iad1↔ap-south-1 RTT) to drive country-specific deadline
     // calculations. Auto-invalidates if a company is updated via Prisma.
-    const row = await (prisma.company.findUnique({
-      where: { id: companyId },
-      select: { country_code: true },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    }) as any).cacheStrategy({ ttl: 300, swr: 120 })
+    const row = await cached(
+      prisma.company.findUnique({
+        where: { id: companyId },
+        select: { country_code: true },
+      }),
+      { ttl: 300, swr: 120 },
+    )
     return row?.country_code ?? null
   }
 

@@ -4,7 +4,7 @@ import type {
     VaultTemplateManagementRepository,
     VaultTemplateMutationInput,
 } from '@/application/interfaces/VaultTemplateManagementRepository'
-import { prisma } from '@/lib/prisma'
+import { prisma, cached } from '@/lib/prisma'
 
 export class PrismaVaultTemplateManagementRepository implements VaultTemplateManagementRepository {
     private mapRow(row: any): VaultTemplateManagementRecord {
@@ -35,15 +35,17 @@ export class PrismaVaultTemplateManagementRepository implements VaultTemplateMan
         // queried on every document-requirement breadcrumb render.
         // Auto-invalidates when documentTemplate rows are written via
         // this same repository's create/update/delete methods.
-        const row = await (prisma.documentTemplate.findUnique({
-            where: { id },
-            select: {
-                id: true,
-                document_name: true,
-                folder_name: true,
-            },
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        }) as any).cacheStrategy({ ttl: 300, swr: 120 })
+        const row = await cached(
+            prisma.documentTemplate.findUnique({
+                where: { id },
+                select: {
+                    id: true,
+                    document_name: true,
+                    folder_name: true,
+                },
+            }),
+            { ttl: 300, swr: 120 },
+        )
 
         if (!row) return null
 

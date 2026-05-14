@@ -3,7 +3,7 @@ import type {
     CompanyMembershipRepository,
 } from '@/application/interfaces/CompanyMembershipRepository'
 import type { AppRole } from '@/domain/types/Role'
-import { prisma } from '@/lib/prisma'
+import { prisma, cached } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 
 export class PrismaCompanyMembershipRepository implements CompanyMembershipRepository {
@@ -27,21 +27,23 @@ export class PrismaCompanyMembershipRepository implements CompanyMembershipRepos
         // pick recipients. Auto-invalidates when userRole rows are
         // written (addRole/upsertRole/updateRole/removeRole below all
         // go through Prisma, so Accelerate sees them).
-        const rows = await (prisma.userRole.findMany({
-            where: {
-                company_id: companyId,
-                role: { in: ['admin', 'superadmin'] },
-            },
-            select: {
-                user_id: true,
-                app_user_id: true
-            },
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        }) as any).cacheStrategy({ ttl: 60, swr: 30 })
+        const rows = await cached(
+            prisma.userRole.findMany({
+                where: {
+                    company_id: companyId,
+                    role: { in: ['admin', 'superadmin'] },
+                },
+                select: {
+                    user_id: true,
+                    app_user_id: true
+                },
+            }),
+            { ttl: 60, swr: 30 },
+        )
         // Return app_user_id for Passport users, user_id for legacy users
         return rows
-          .map((row: { user_id: string | null; app_user_id: string | null }) => row.app_user_id || row.user_id)
-          .filter((id: string | null): id is string => id !== null)
+          .map((row) => row.app_user_id || row.user_id)
+          .filter((id): id is string => id !== null)
     }
 
     async getRoles(companyId?: string | null): Promise<(CompanyMembership & { appUserId?: string | null })[]> {

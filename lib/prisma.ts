@@ -51,3 +51,37 @@ declare const globalThis: {
 export const prisma: PrismaClient = globalThis.prismaGlobal ?? prismaClientSingleton()
 
 if (process.env.NODE_ENV !== 'production') globalThis.prismaGlobal = prisma
+
+/**
+ * Runtime-safe wrapper for Prisma Accelerate's `.cacheStrategy(...)`.
+ *
+ * The earlier PRs (#125, #127) claimed the extension was a no-op when
+ * DATABASE_URL points at plain Postgres. That was wrong — `withAccelerate()`
+ * only attaches `.cacheStrategy` to query promises when the underlying
+ * connection actually goes through the Accelerate proxy. With a plain
+ * Postgres URL the method is missing and every annotated call site threw
+ * `TypeError: cacheStrategy is not a function`, hosing every server action
+ * that ran through `requireCurrentUser` in production.
+ *
+ * Wrap the query promise in this helper so the call site looks the same
+ * but tolerates both worlds:
+ *
+ *   const row = await cached(prisma.appUser.findUnique({...}), { ttl: 60, swr: 30 })
+ *
+ * When the method exists → cache strategy is applied as intended.
+ * When it doesn't → the bare query is awaited, no perf change, no crash.
+ *
+ * Once DATABASE_URL is flipped to the Accelerate proxy URL, every call
+ * site automatically picks up caching with no further code change.
+ */
+export function cached<T>(
+  queryPromise: Promise<T>,
+  options: { ttl: number; swr?: number },
+): Promise<T> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const maybeStrategy = (queryPromise as any).cacheStrategy
+  if (typeof maybeStrategy === 'function') {
+    return maybeStrategy.call(queryPromise, options) as Promise<T>
+  }
+  return queryPromise
+}

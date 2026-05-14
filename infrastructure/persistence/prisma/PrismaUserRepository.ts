@@ -1,6 +1,6 @@
 import type { UserRepository } from '@/application/interfaces/UserRepository'
 import type { AppUser } from '@/domain/models/AppUser'
-import { prisma } from '@/lib/prisma'
+import { prisma, cached } from '@/lib/prisma'
 
 export class PrismaUserRepository implements UserRepository {
   private mapCanonicalUser(
@@ -33,15 +33,17 @@ export class PrismaUserRepository implements UserRepository {
     // Auto-invalidation: Accelerate invalidates AppUser cache entries
     // on .update / .create / .delete from the same model, so a profile
     // update doesn't leave stale reads beyond a single roundtrip.
-    const appUserRow = await (prisma.appUser.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        primary_email: true,
-        full_name: true,
-      },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    }) as any).cacheStrategy({ ttl: 60, swr: 30 })
+    const appUserRow = await cached(
+      prisma.appUser.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          primary_email: true,
+          full_name: true,
+        },
+      }),
+      { ttl: 60, swr: 30 },
+    )
 
     if (appUserRow) {
       return this.mapCanonicalUser(appUserRow, 'supabase', null)
