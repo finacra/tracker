@@ -4,7 +4,7 @@ import type {
     EmailPreferenceRepository,
     SaveEmailPreferenceInput,
 } from '@/application/interfaces/EmailPreferenceRepository'
-import { prisma } from '@/lib/prisma'
+import { prisma, cached } from '@/lib/prisma'
 
 export class PrismaEmailPreferenceRepository implements EmailPreferenceRepository {
     async getByUserId(userId: string): Promise<EmailPreferenceRecord | null> {
@@ -13,10 +13,12 @@ export class PrismaEmailPreferenceRepository implements EmailPreferenceRepositor
         // month) but this fires on every notification-routing decision
         // and team-update broadcast. Auto-invalidates on saveForUser's
         // upsert below.
-        const row = await (prisma.emailPreference.findUnique({
-            where: { user_id: userId },
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        }) as any).cacheStrategy({ ttl: 60, swr: 30 })
+        const row = await cached(
+            prisma.emailPreference.findUnique({
+                where: { user_id: userId },
+            }),
+            { ttl: 60, swr: 30 },
+        )
 
         if (!row) return null
 
