@@ -188,12 +188,47 @@ export class RepositoryAccessService implements AccessService {
             const invitedCompanies = await Promise.all(
                 invitedCompanyIds.map(id => this.companyRepository.getById(id))
             )
-            
-            invitedCompanies.forEach((company) => {
-                if (company && company.ownerUserId !== userId && company.ownerAppUserId !== userId) {
-                    if (!accessibleIds.includes(company.id)) {
-                        accessibleIds.push(company.id)
-                    }
+
+            // Only count companies the user is invited to (not owns).
+            const invitedNotOwned = invitedCompanies.filter(
+                (company): company is NonNullable<typeof company> =>
+                    !!company &&
+                    company.ownerUserId !== userId &&
+                    company.ownerAppUserId !== userId,
+            )
+
+            // Mirror the data-room CTE's acc_ids gate: a team-member
+            // role grants data-room access only when the company has
+            // its own active subscription OR the owner has an active
+            // personal subscription. Without this check the /subscribe
+            // page listed invited-but-unfunded companies under
+            // "Companies You Can Still Access", users clicked through,
+            // and /data-room then bounced them right back — confusing
+            // dead-end UX. Keeping the gate identical in both places
+            // means the listing and the navigation target agree.
+            //
+            // Fan out the per-company subscription checks in parallel;
+            // typical user has only a handful of invited companies so
+            // the cost is bounded and stays under one RTT window.
+            const invitedSubscriptionResults = await Promise.all(
+                invitedNotOwned.map(async (company) => {
+                    const ownerId = company.ownerAppUserId || company.ownerUserId
+                    const [companySub, ownerSub] = await Promise.all([
+                        this.subscriptionRepository.getCompanySubscriptionState(company.id),
+                        ownerId
+                            ? this.subscriptionRepository.getUserSubscriptionState(ownerId)
+                            : Promise.resolve(null),
+                    ])
+                    const hasFundedAccess = Boolean(
+                        companySub?.hasSubscription || ownerSub?.hasSubscription,
+                    )
+                    return { companyId: company.id, hasFundedAccess }
+                }),
+            )
+
+            invitedSubscriptionResults.forEach((result) => {
+                if (result.hasFundedAccess && !accessibleIds.includes(result.companyId)) {
+                    accessibleIds.push(result.companyId)
                 }
             })
         }
