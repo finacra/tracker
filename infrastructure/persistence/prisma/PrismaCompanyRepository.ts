@@ -257,10 +257,16 @@ export class PrismaCompanyRepository implements CompanyRepository {
   }
 
   async getCountryCode(companyId: string): Promise<string | null> {
-    const row = await prisma.company.findUnique({
+    // Cached via Prisma Accelerate (5 min TTL + 2 min SWR). Country
+    // code is set at company creation and effectively immutable
+    // afterwards. This fires on every regulatory-requirement query
+    // (~250 ms iad1↔ap-south-1 RTT) to drive country-specific deadline
+    // calculations. Auto-invalidates if a company is updated via Prisma.
+    const row = await (prisma.company.findUnique({
       where: { id: companyId },
-      select: { country_code: true }
-    })
+      select: { country_code: true },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any).cacheStrategy({ ttl: 300, swr: 120 })
     return row?.country_code ?? null
   }
 
