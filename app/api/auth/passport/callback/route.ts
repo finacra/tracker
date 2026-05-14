@@ -166,11 +166,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Create session
+    // Create session. Google has verified the email, so we mint the JWT
+    // with emailVerified=true so the proxy middleware skips its DB
+    // gating query on every subsequent request.
     await setSession({
       appUserId: appUser.id,
       email: appUser.email,
       googleId,
+      emailVerified: true,
     })
 
     // Track login

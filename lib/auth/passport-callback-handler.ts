@@ -260,12 +260,15 @@ export async function handlePassportCallback(
     // Create redirect response and set session cookie
     let response = NextResponse.redirect(redirectUrl)
     
-    // Set session in response
+    // Set session in response — Google has verified the email, so the
+    // JWT carries emailVerified=true and the proxy middleware skips its
+    // DB gating query on every subsequent request.
     response = await setSessionInResponse(
       {
         appUserId: appUser.id,
         email: appUser.email,
         googleId,
+        emailVerified: true,
       },
       response
     )

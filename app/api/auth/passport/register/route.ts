@@ -110,6 +110,11 @@ export async function POST(req: NextRequest) {
       appUserId: user.id,
       email: user.primary_email,
       googleId: '',
+      // Fresh email/password signup — verification email just sent,
+      // claim starts false. The proxy will keep redirecting them to
+      // /verify-email until they click the link, at which point a fresh
+      // session (carrying emailVerified=true) is minted.
+      emailVerified: false,
     }
 
     const response = NextResponse.json({ 

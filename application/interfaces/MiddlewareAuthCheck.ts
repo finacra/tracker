@@ -10,6 +10,14 @@ import type { NextRequest } from 'next/server'
 export interface MiddlewareAuthResult {
   authenticated: boolean
   userId: string | null
+  /**
+   * Optional verification flag surfaced from the session token itself.
+   * When true, proxy middleware can skip its DB gating query (PR-36 —
+   * shaves ~250 ms iad1↔ap-south-1 RTT on every protected request).
+   * When false/undefined, fall back to the existing DB check (old JWTs
+   * without the claim default to undefined here).
+   */
+  emailVerified?: boolean
 }
 
 export interface MiddlewareAuthCheck {

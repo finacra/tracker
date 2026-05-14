@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyEmailToken, peekVerificationToken, resendVerificationEmail } from '@/lib/email/verification'
 import { prisma } from '@/lib/prisma'
 import { handleAPIError } from '@/lib/errors/handle-error'
-import { setVerificationCookiesInResponse } from '@/lib/auth/passport-session'
+import {
+  setVerificationCookiesInResponse,
+  setSessionInResponse,
+  verifySession,
+} from '@/lib/auth/passport-session'
 
 /**
  * Email verification endpoint
@@ -111,6 +115,22 @@ export async function GET(request: NextRequest) {
         userId: nowVerifiedUserId,
         verified: true,
       })
+      // PR-36: if the verifying user has an active JWT session on this
+      // device, rotate the cookie so emailVerified=true is baked into
+      // the signed claim. Subsequent requests skip the proxy DB gating
+      // query entirely instead of relying on the email_verified cookie
+      // fallback. Other devices stay on the cookie fallback until they
+      // next sign in (then the new JWT is minted with the live value).
+      const existingToken = request.cookies.get('passport_session')?.value
+      if (existingToken) {
+        const existing = await verifySession(existingToken)
+        if (existing && existing.appUserId === nowVerifiedUserId) {
+          await setSessionInResponse(
+            { ...existing, emailVerified: true },
+            response,
+          )
+        }
+      }
     }
 
     return response

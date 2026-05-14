@@ -88,11 +88,14 @@ export async function POST(req: NextRequest) {
       data: { password_hash: hash } as any
     })
 
-    // 4. Create session
+    // 4. Create session. verifyEmailToken flipped email_verified=true on
+    // app_users, so mint the JWT with the matching claim — proxy
+    // middleware skips the DB gating query on every subsequent request.
     const sessionUser: PassportSessionUser = {
       appUserId: updatedUser.id,
       email: updatedUser.primary_email,
       googleId: '',
+      emailVerified: true,
     }
 
     const response = NextResponse.json({ 

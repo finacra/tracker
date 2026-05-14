@@ -112,11 +112,15 @@ export async function POST(req: NextRequest) {
       await companyMembershipRepository.upsertRole(user.id, invite.companyId, invite.role, user.id)
     }
 
-    // 5. Create session
+    // 5. Create session — fresh invite signup, verification email just
+    // sent, claim starts false. Proxy will redirect to /verify-email
+    // until they click the link, at which point a fresh session
+    // (carrying emailVerified=true) is minted.
     const sessionUser: PassportSessionUser = {
       appUserId: user.id,
       email: user.primary_email,
       googleId: '',
+      emailVerified: false,
     }
 
     const response = NextResponse.json({

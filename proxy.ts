@@ -57,7 +57,19 @@ export default async function proxy(request: NextRequest) {
   ]
   
   if (result.authenticated && result.userId && !excludedFromVerificationCheck.includes(pathname)) {
-    // Check if we've already verified this session (cached in cookie)
+    // PR-36 fast path: the session JWT itself carries emailVerified.
+    // When it's true, we trust it and skip both the cookie fallback and
+    // the ~250 ms DB gating query entirely. The JWT is freshly signed
+    // by us at every session-creation site (login, OAuth callback,
+    // link-password, verify-email re-issue), so it's the authoritative
+    // value at session-creation time.
+    if (result.emailVerified === true) {
+      return response
+    }
+
+    // Fallback path for tokens that pre-date PR-36 (the claim defaults
+    // to undefined for them). Check if we've already verified this
+    // session via the legacy email_verified cookie.
     const verificationCookie = request.cookies.get('email_verified')
     const cachedVerificationStatus = verificationCookie?.value === 'true'
     const cachedUserId = request.cookies.get('email_verified_user_id')?.value

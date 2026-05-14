@@ -29,6 +29,20 @@ export interface PassportSessionUser {
   appUserId: string // Canonical app_users.id
   email: string
   googleId: string // Google user ID (sub)
+  /**
+   * Email verification status, embedded in the session JWT so the proxy
+   * middleware can short-circuit its DB check (~250 ms Vercel iad1 ↔
+   * Supabase ap-south-1 RTT). PR-32 cached this in a separate cookie;
+   * PR-36 hoists it into the JWT payload itself so a single signed
+   * artifact carries everything we need to decide gate access.
+   *
+   * Set true at every session-creation site where the email is known to
+   * be verified (Google OAuth, post-link-password, login for verified
+   * accounts, verify-email consume). Set false for fresh email/password
+   * signups — middleware then falls through to the existing DB check,
+   * which still works as before.
+   */
+  emailVerified: boolean
 }
 
 /**
@@ -71,10 +85,20 @@ export function initializePassport() {
       const identities = await authIdentityRepository.findByAppUserId(appUser.id)
       const passportIdentity = identities.find((id) => id.provider === 'passport')
 
+      // Pull current email_verified so deserialization reflects DB truth.
+      // This path runs rarely (passport.deserializeUser is mostly unused
+      // in the App Router flow — we go through verifySession + JWT) so
+      // the extra read is a non-issue.
+      const appUserRow = await prisma.appUser.findUnique({
+        where: { id: appUser.id },
+        select: { email_verified: true },
+      })
+
       const sessionUser: PassportSessionUser = {
         appUserId: appUser.id,
         email: appUser.email,
         googleId: passportIdentity?.legacyAuthId || appUser.legacyAuthId || '',
+        emailVerified: appUserRow?.email_verified === true,
       }
 
       done(null, sessionUser)
@@ -114,6 +138,8 @@ export function initializePassport() {
               appUserId: appUser.id,
               email: appUser.email,
               googleId,
+              // Google has confirmed the email — verified for the proxy gate.
+              emailVerified: true,
             }
 
             return done(null, sessionUser)
@@ -141,6 +167,7 @@ export function initializePassport() {
               appUserId: appUser.id,
               email: appUser.email,
               googleId,
+              emailVerified: true,
             }
 
             return done(null, sessionUser)
@@ -173,6 +200,7 @@ export function initializePassport() {
             appUserId: newAppUserRow.id,
             email: newAppUserRow.primary_email,
             googleId,
+            emailVerified: true,
           }
 
           return done(null, sessionUser)
@@ -218,6 +246,7 @@ export function initializePassport() {
                 appUserId: appUserRow.id,
                 email: appUserRow.primary_email,
                 googleId: '', // No google ID for local
+                emailVerified: userWithHash.email_verified === true,
               }
               return done(null, sessionUser)
             } else {
