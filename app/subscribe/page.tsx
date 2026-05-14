@@ -40,6 +40,11 @@ function SubscribePageInner() {
   
   const [companyName, setCompanyName] = useState<string>('')
   const [selectedBillingCycle, setSelectedBillingCycle] = useState<BillingCycle>('annual')
+  // Discount code state. Server-side allow-list in
+  // lib/pricing/discount-codes.ts decides whether to apply an
+  // override on /api/payments/create-order — this field's value is
+  // purely a passthrough to that server endpoint.
+  const [discountCode, setDiscountCode] = useState<string>('')
   const [isStartingTrial, setIsStartingTrial] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [userCompanies, setUserCompanies] = useState<Array<{ id: string; name: string }>>([])
@@ -463,6 +468,29 @@ function SubscribePageInner() {
           ))}
         </div>
 
+        {/* Discount Code */}
+        <div className="max-w-md mx-auto mb-8">
+          <label
+            htmlFor="discount-code"
+            className="block text-xs uppercase tracking-[0.15em] text-fg-muted mb-2 text-center"
+          >
+            Have a code?
+          </label>
+          <input
+            id="discount-code"
+            type="text"
+            value={discountCode}
+            onChange={(e) => setDiscountCode(e.target.value)}
+            placeholder="Enter discount code"
+            autoComplete="off"
+            spellCheck={false}
+            className="w-full px-4 py-2.5 bg-bg-card border border-line/15 rounded-lg text-fg-primary placeholder:text-fg-muted/60 font-light text-center tracking-wide focus:outline-none focus:border-line/30 focus:ring-1 focus:ring-gray-600 transition-colors uppercase"
+          />
+          <p className="text-xs text-fg-muted/70 mt-2 text-center font-light">
+            Applied at checkout. Codes are case-insensitive.
+          </p>
+        </div>
+
         {/* Pricing Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto">
           {PRICING_TIERS.map((tier) => {
@@ -565,6 +593,7 @@ function SubscribePageInner() {
                   companyId={
                       selectedCompanyForSubscription || companyId || undefined
                   }
+                  discountCode={discountCode}
                   className={`w-full py-3 px-6 rounded-lg font-light transition-all mb-6 ${
                     tier.popular
                       ? 'bg-bg-hover hover:bg-bg-hover text-fg-primary'

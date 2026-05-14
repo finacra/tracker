@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createServerContainer } from '@/lib/composition/server-container'
 import { getRazorpayInstance } from '@/lib/razorpay/client'
 import { calculatePricing, getTierById, type BillingCycle, type PricingTier } from '@/lib/pricing/tiers'
+import { resolveDiscountCode } from '@/lib/pricing/discount-codes'
 import { checkRateLimit, getClientIp } from '@/lib/utils/rate-limiter'
 import { handleAPIError } from '@/lib/errors/handle-error'
 
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { tier, billingCycle, companyId } = body
+    const { tier, billingCycle, companyId, discountCode } = body
 
     // Get company country_code for currency
     let countryCode = 'IN'
@@ -58,7 +59,24 @@ export async function POST(request: NextRequest) {
     }
 
     const pricing = calculatePricing(tierConfig, billingCycle as BillingCycle, countryCode)
-    const amountInPaise = Math.round(pricing.price * 100) // Convert to paise
+    const computedAmountInPaise = Math.round(pricing.price * 100) // Convert to paise
+
+    // Server-side discount-code resolution. The client may pass a
+    // `discountCode` in the body; we ignore anything we don't
+    // explicitly recognize in the server-side registry. Never trust
+    // a client-supplied price — only the registry decides the
+    // override. The applied code is stamped onto the Razorpay order
+    // notes and the Payment row's audit notes so finance can
+    // reconcile heavily-discounted orders without scanning logs.
+    const matchedDiscount = resolveDiscountCode(typeof discountCode === 'string' ? discountCode : null)
+    const amountInPaise = matchedDiscount?.overrideAmountPaise ?? computedAmountInPaise
+    const finalAmountRupees = amountInPaise / 100
+    if (matchedDiscount) {
+      console.log(
+        `[create-order] discount code applied: ${matchedDiscount.code} ` +
+        `(${tier}/${billingCycle}: ₹${pricing.price} → ₹${finalAmountRupees})`,
+      )
+    }
 
     // Validate Razorpay credentials
     if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
@@ -89,7 +107,15 @@ export async function POST(request: NextRequest) {
         company_id: companyId || '',
         tier: tier,
         billing_cycle: billingCycle,
+        // Keep the ORIGINAL (un-discounted) tier price for audit
+        // history. The actual charged amount is order.amount in
+        // paise above. Finance can compare these to reconcile any
+        // discounted order without scanning server logs.
         amount_rupees: pricing.price.toString(),
+        final_amount_rupees: finalAmountRupees.toString(),
+        ...(matchedDiscount
+          ? { discount_code: matchedDiscount.code }
+          : {}),
       },
     })
 
@@ -101,7 +127,10 @@ export async function POST(request: NextRequest) {
         companyId: companyId || null,
         providerOrderId: order.id,
         paymentProvider: 'razorpay',
-        amount: pricing.price,
+        // Record what the user actually paid (post-discount), not the
+        // sticker tier price. Finance can recover the original via
+        // notes.amount_rupees if needed.
+        amount: finalAmountRupees,
         currency: pricing.currency || 'INR',
         tier: tier as PricingTier,
         billingCycle: billingCycle as BillingCycle,
