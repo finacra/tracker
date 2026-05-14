@@ -9,11 +9,31 @@ import { AuthProvider, type AuthContextValue } from '@/contexts/AuthContext'
 import type { AppUser } from '@/domain/models/AppUser'
 import { useAppStore } from '@/lib/store/appStore'
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({
+  children,
+  initialAppUser = null,
+}: {
+  children: React.ReactNode
+  /**
+   * Pre-resolved AppUser from the server-rendered layout. When this is
+   * provided (Phase 1.5), the initial useEffect skips the client-side
+   * getSession() + fetch('/api/auth/profile') chain — both have already
+   * happened on the server during the initial page render. Saves
+   * ~250 ms of visible "shell-then-fill" flash on every page mount.
+   *
+   * When null (unauthenticated visitor OR server-side resolution
+   * failed), Providers falls back to the original two-step client
+   * dance — preserves the existing behavior for those paths.
+   */
+  initialAppUser?: AppUser | null
+}) {
   const queryClient = useQueryClient()
-  const [appUser, setAppUser] = useState<AppUser | null>(null)
-  const [loading, setLoading] = useState(true)
-  
+  const [appUser, setAppUser] = useState<AppUser | null>(initialAppUser)
+  // Seed loading=false when we already have the user — the page can
+  // render its full auth-gated state immediately. Otherwise stay
+  // loading until the client-side fetch chain resolves.
+  const [loading, setLoading] = useState(!initialAppUser)
+
   // Choose auth provider based on environment variable (default to Supabase for backward compatibility)
   // Composition: Only use Passport now
   const authAdapter = useMemo(() => {
@@ -21,7 +41,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [])
   const trackedLoginUserIdRef = useRef<string | null>(null)
   const appUserRequestIdRef = useRef(0)
-  const resolvedAppUserIdRef = useRef<string | null>(null)
+  // If we have an initialAppUser, seed resolvedAppUserIdRef so syncAppUser's
+  // "already resolved" short-circuit (line 75) kicks in immediately on any
+  // subsequent onAuthStateChange call for the same user.
+  const resolvedAppUserIdRef = useRef<string | null>(
+    initialAppUser?.id ?? null,
+  )
   // Track which user.id we've already resolved superadmin status for —
   // this lives in providers (mounted once at app root) instead of
   // Header.tsx so that Header unmount/remount cycles (e.g. /data-room
@@ -114,17 +139,41 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let initialLoadDone = false
 
-    // Initial load: wait for session AND app profile before releasing loading state
-    authAdapter.getSession().then(async (session) => {
-      const resolvedUser = await syncAppUser(session)
+    if (initialAppUser) {
+      // Server-rendered seed (Phase 1.5): the user is already known and
+      // the React state is already populated. Skip the client-side
+      // getSession + /api/auth/profile two-step entirely — they would
+      // just re-fetch what the layout already gave us, costing
+      // ~250 ms × 2 round-trips on every page mount.
+      //
+      // Mark initialLoadDone=true synchronously BEFORE we attach the
+      // onAuthStateChange listener, so the listener's "skip if not
+      // initial-load-done" gate (Rule 10) opens immediately for any
+      // subsequent SIGN_OUT/TOKEN_REFRESHED that fires.
       initialLoadDone = true
-      setLoading(false)
-      await trackLoginOnce(session, undefined, resolvedUser)
-    }).catch(err => {
-      console.error('[PROVIDERS] getSession error:', err)
-      initialLoadDone = true
-      setLoading(false)
-    })
+      // Fire-and-forget the login tracker. trackedLoginUserIdRef
+      // de-dupes — same user.id won't trigger a second POST. The
+      // accessToken is unused by trackLoginOnce / track-login API
+      // (they only need userId + appUser), so passing null is safe.
+      void trackLoginOnce(
+        { userId: initialAppUser.id, email: initialAppUser.email, accessToken: null },
+        undefined,
+        initialAppUser,
+      )
+    } else {
+      // No server-side seed (logged out OR layout resolver failed).
+      // Fall back to the original two-step dance.
+      authAdapter.getSession().then(async (session) => {
+        const resolvedUser = await syncAppUser(session)
+        initialLoadDone = true
+        setLoading(false)
+        await trackLoginOnce(session, undefined, resolvedUser)
+      }).catch(err => {
+        console.error('[PROVIDERS] getSession error:', err)
+        initialLoadDone = true
+        setLoading(false)
+      })
+    }
 
     const { unsubscribe } = authAdapter.onAuthStateChange(async (_event, session) => {
       // Skip if initial load hasn't finished — avoid racing with getSession above
