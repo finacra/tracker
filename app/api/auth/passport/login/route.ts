@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPassport } from '@/lib/auth/passport-config'
-import { setSessionInResponse } from '@/lib/auth/passport-session'
+import { setSessionInResponse, setVerificationCookiesInResponse } from '@/lib/auth/passport-session'
 import type { PassportSessionUser } from '@/lib/auth/passport-config'
 import { prisma } from '@/lib/prisma'
 import { handleAPIError } from '@/lib/errors/handle-error'
@@ -121,6 +121,14 @@ export async function POST(req: NextRequest) {
     })
 
     await setSessionInResponse(user, response)
+    // Pre-populate the proxy middleware's verification cache so the
+    // next request (redirect target after login) doesn't pay the
+    // ~250 ms Vercel iad1 ↔ Supabase ap-south-1 DB query just to check
+    // email_verified. We already know the value from line 98 above.
+    setVerificationCookiesInResponse(response, {
+      userId: user.appUserId,
+      verified: emailVerified,
+    })
 
     return response
   } catch (error) {

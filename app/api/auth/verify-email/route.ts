@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyEmailToken, peekVerificationToken, resendVerificationEmail } from '@/lib/email/verification'
 import { prisma } from '@/lib/prisma'
 import { handleAPIError } from '@/lib/errors/handle-error'
+import { setVerificationCookiesInResponse } from '@/lib/auth/passport-session'
 
 /**
  * Email verification endpoint
@@ -60,6 +61,10 @@ export async function GET(request: NextRequest) {
 
     // Create response
     let response: NextResponse
+    // Track whether we just flipped the user to verified, so we can
+    // populate the proxy middleware's cookie cache and skip the
+    // ~250 ms DB lookup on the redirect that follows.
+    let nowVerifiedUserId: string | null = null
     if (needsPasswordLinking) {
       // Don't consume the token here — link-password endpoint will.
       const origin = new URL(request.url).origin
@@ -73,6 +78,10 @@ export async function GET(request: NextRequest) {
         : NextResponse.redirect(
             new URL(`/auth/link-password?token=${encodeURIComponent(token)}`, origin)
           )
+      // Don't set verified cookie here: the user IS now verified on the
+      // app_users row (link-password POST will set it), but until they
+      // submit the form they don't even have a session. The cookie
+      // would be orphaned. link-password's own response sets it.
     } else {
       // Regular verification — consume the token now (DELETEs row +
       // marks user.email_verified=true).
@@ -94,12 +103,15 @@ export async function GET(request: NextRequest) {
         : NextResponse.redirect(
             new URL(`/verify-email?success=true&email=${encodeURIComponent(consumed.email || '')}`, origin)
           )
+      nowVerifiedUserId = consumed.userId ?? null
     }
 
-    // Clear verification cache cookie so next request will check fresh status
-    // The proxy will set a new cookie with verified=true on the next request
-    response.cookies.delete('email_verified')
-    response.cookies.delete('email_verified_user_id')
+    if (nowVerifiedUserId) {
+      setVerificationCookiesInResponse(response, {
+        userId: nowVerifiedUserId,
+        verified: true,
+      })
+    }
 
     return response
   } catch (error) {

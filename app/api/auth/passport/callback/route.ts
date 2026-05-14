@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getPassport } from '@/lib/auth/passport-config'
-import { setSession, clearSession } from '@/lib/auth/passport-session'
+import { setSession, clearSession, setVerificationCookiesInResponse } from '@/lib/auth/passport-session'
 import { createServerContainer } from '@/lib/composition/server-container'
 import { GetRootDestination } from '@/application/use-cases/navigation/GetRootDestination'
 import { resolvePostAuthRedirect } from '@/application/use-cases/navigation/resolvePostAuthRedirect'
@@ -198,6 +198,16 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.redirect(new URL(next, origin))
     response.cookies.delete('passport_oauth_state')
     response.cookies.delete('passport_redirect_to')
+
+    // Pre-populate the proxy middleware's verification cache. Google
+    // OAuth always verifies the email (we marked email_verified=true on
+    // the appUser above), so the cookie cache short-circuits the
+    // ~250 ms DB query on every redirect that follows (/data-room,
+    // /subscribe, /onboarding).
+    setVerificationCookiesInResponse(response, {
+      userId: appUser.id,
+      verified: true,
+    })
 
     return response
   } catch (error) {
