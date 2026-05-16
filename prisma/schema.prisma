@@ -16,6 +16,13 @@ model AppUser {
   status           String         @default("active")
   email_verified   Boolean        @default(false)
   email_verified_at DateTime?     @db.Timestamptz
+  // PR-49 consent gate. NULL until the user explicitly accepts the
+  // Terms of Service in /onboarding; cleared back to NULL when the
+  // CURRENT_TERMS_VERSION constant advances so we can demand fresh
+  // consent. completeOnboarding refuses to create a company while
+  // these are NULL — server-side enforcement, not just a UI check.
+  terms_accepted_at      DateTime? @db.Timestamptz
+  terms_version_accepted String?
   created_at       DateTime       @default(now()) @db.Timestamptz
   updated_at       DateTime       @default(now()) @db.Timestamptz
 

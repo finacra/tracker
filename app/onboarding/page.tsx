@@ -13,7 +13,9 @@ import { parseGSTN, extractPANFromGSTN } from '@/lib/utils/gstn'
 import { useAuth } from '@/hooks/useAuth'
 import { useUserSubscription } from '@/hooks/useCompanyAccess'
 import { completeOnboarding, uploadFileToStorage } from './actions'
+import { getTermsAcceptanceState, recordTermsAcceptance } from './actions-consent'
 import { showToast } from '@/components/ui/Toast'
+import Link from 'next/link'
 import { INDUSTRIES } from '@/lib/compliance/csv-template'
 import { useCountryConfig } from '@/hooks/useCountryConfig'
 import { useCountryAPISupport } from '@/hooks/useCountryValidator'
@@ -68,6 +70,13 @@ export default function OnboardingPage() {
   // (DIN-per-director verify, document upload step, ex-directors,
   // subscription gating) keeps working.
   const [showMagicalIntake, setShowMagicalIntake] = useState<boolean>(true)
+
+  // PR-49 consent gate. `null` = still checking, `true` = current
+  // acceptance on file, `false` = needs to consent before company
+  // creation. The form below is rendered only when this is `true`.
+  const [termsAccepted, setTermsAccepted] = useState<boolean | null>(null)
+  const [consentChecked, setConsentChecked] = useState(false)
+  const [isRecordingConsent, setIsRecordingConsent] = useState(false)
 
   const [countryCode, setCountryCode] = useState<string>('IN')
   const { config: countryConfig } = useCountryConfig(countryCode)
@@ -160,6 +169,45 @@ export default function OnboardingPage() {
     // Removed redirect for users with existing companies - they should be able to create new companies
   }, [user, loading, router])
 
+  // PR-49 consent gate: fetch acceptance state once the user is known.
+  // Skip the round-trip if the auth profile already says terms were
+  // accepted (future: layout could pre-populate). Until this resolves
+  // we keep `termsAccepted` as null so the form below stays hidden.
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    getTermsAcceptanceState()
+      .then((state) => {
+        if (cancelled) return
+        setTermsAccepted(state.isCurrent)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        console.error('[onboarding:consent] getTermsAcceptanceState threw', err)
+        // Fail open OR closed? Default: fail closed (require consent)
+        // so we never let a user past the gate on a fetch error.
+        setTermsAccepted(false)
+      })
+    return () => { cancelled = true }
+  }, [user])
+
+  const handleAcceptTerms = async () => {
+    setIsRecordingConsent(true)
+    try {
+      const result = await recordTermsAcceptance()
+      if (result.success) {
+        setTermsAccepted(true)
+      } else {
+        showToast(result.error || 'Failed to record consent. Please try again.', 'error')
+      }
+    } catch (err) {
+      console.error('[onboarding:consent] recordTermsAcceptance threw', err)
+      showToast('Failed to record consent. Please try again.', 'error')
+    } finally {
+      setIsRecordingConsent(false)
+    }
+  }
+
   // Update yearType when country changes - MUST be before conditional returns
   useEffect(() => {
     setFormData((prev) => ({
@@ -215,6 +263,80 @@ export default function OnboardingPage() {
           >
             Choose a Plan
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  // PR-49 consent gate. While loading state from the server, keep the
+  // page quiet (matches the pattern used by the auth/sub gates above).
+  if (termsAccepted === null) {
+    return (
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-line/30 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  // Block company creation until the user explicitly accepts the
+  // current Terms of Service. The server-side check in
+  // completeOnboarding enforces this independently — this UI is the
+  // user-facing path.
+  if (termsAccepted === false) {
+    return (
+      <div className="min-h-screen bg-bg-base flex items-center justify-center px-4 py-12">
+        <div className="bg-bg-card border border-line/10 rounded-xl p-8 max-w-xl w-full">
+          <div className="w-14 h-14 bg-bg-elevated/50 border border-line/15 rounded-xl flex items-center justify-center mb-6">
+            <svg className="w-7 h-7 text-fg-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 5.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-light text-fg-primary mb-3">Before you continue</h1>
+          <p className="text-fg-muted font-light mb-8 leading-relaxed">
+            Creating a company on Finacra makes you responsible for the data you upload and the compliance decisions you derive from our tools. Please review and accept our Terms of Service and Privacy Policy before continuing.
+          </p>
+
+          <label className="flex items-start gap-3 mb-8 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={consentChecked}
+              onChange={(e) => setConsentChecked(e.target.checked)}
+              className="mt-1 w-4 h-4 rounded border-line/30 bg-bg-elevated text-fg-primary focus:ring-1 focus:ring-line/40"
+            />
+            <span className="text-sm text-fg-secondary font-light leading-relaxed group-hover:text-fg-primary transition-colors">
+              I have read and agree to the{' '}
+              <Link
+                href="/terms-of-service"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-fg-primary underline decoration-line/30 hover:decoration-line/60"
+              >
+                Terms of Service
+              </Link>
+              {' '}and{' '}
+              <Link
+                href="/privacy-policy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-fg-primary underline decoration-line/30 hover:decoration-line/60"
+              >
+                Privacy Policy
+              </Link>
+              . I understand my consent is recorded with a timestamp for audit purposes.
+            </span>
+          </label>
+
+          <button
+            onClick={handleAcceptTerms}
+            disabled={!consentChecked || isRecordingConsent}
+            className="w-full bg-bg-elevated border border-line/15 text-fg-primary px-6 py-3 rounded-lg font-light hover:bg-bg-hover hover:border-line/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {isRecordingConsent ? 'Recording…' : 'Accept and Continue'}
+          </button>
+
+          <p className="text-xs text-fg-muted/70 mt-4 text-center font-light">
+            You will not be able to create a company until you accept.
+          </p>
         </div>
       </div>
     )

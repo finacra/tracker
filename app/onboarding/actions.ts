@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma'
 import { validateGSTN, parseGSTN } from '@/lib/utils/gstn'
 import { recordOnboardingFacts } from '@/lib/compliance/facts'
 import { ensureSystemFolders } from '@/lib/vault/folders'
+import { isAcceptanceCurrent, CURRENT_TERMS_VERSION } from '@/lib/consent/terms-version'
 
 async function requireCurrentUser() {
   const { authService } = createServerContainer()
@@ -98,6 +99,29 @@ export async function completeOnboarding(
     subscriptionRepository
   } = createServerContainer()
   const user = await requireCurrentUser()
+
+  // PR-49 consent gate (server-side enforcement). Reject company
+  // creation when the user hasn't accepted the current Terms of
+  // Service version. The client-side modal in /onboarding blocks
+  // submission too, but a tampered client could still hit this
+  // endpoint directly — this is the authoritative check.
+  const consentRow = await prisma.appUser.findUnique({
+    where: { id: user.id },
+    select: { terms_accepted_at: true, terms_version_accepted: true },
+  })
+  if (!isAcceptanceCurrent(consentRow?.terms_accepted_at ?? null, consentRow?.terms_version_accepted ?? null)) {
+    console.warn('[completeOnboarding] blocked — user has not accepted current terms', {
+      userId: user.id,
+      acceptedVersion: consentRow?.terms_version_accepted ?? null,
+      currentVersion: CURRENT_TERMS_VERSION,
+    })
+    return {
+      success: false as const,
+      error: 'Please accept the Terms of Service and Privacy Policy before creating a company.',
+      requiresConsent: true as const,
+      currentTermsVersion: CURRENT_TERMS_VERSION,
+    }
+  }
 
   // Get region from country code
   const { getCountryConfig } = await import('@/lib/config/countries')
