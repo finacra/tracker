@@ -196,6 +196,22 @@ export default function OnboardingPage() {
     try {
       const result = await recordTermsAcceptance()
       if (result.success) {
+        // After consent: if the user already has companies and an
+        // active subscription/trial, they don't need the onboarding
+        // form — drop them straight into /data-room. /onboarding only
+        // makes sense as a destination for users who genuinely need
+        // to create their FIRST company.
+        //
+        // We read both signals from the existing useUserSubscription
+        // state (already loaded for the page's auth/sub gates above);
+        // no extra round-trip needed. `currentCompanyCount > 0` covers
+        // owners; team-member-only users wouldn't be on this route in
+        // the first place.
+        if (hasActiveAccess && currentCompanyCount > 0) {
+          console.log('[onboarding:consent] user has companies + access — redirecting to /data-room')
+          router.push('/data-room')
+          return
+        }
         setTermsAccepted(true)
       } else {
         showToast(result.error || 'Failed to record consent. Please try again.', 'error')
