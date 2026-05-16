@@ -11,7 +11,7 @@ import {
 import { parseCIN, type ParsedCIN } from '@/utils/cin-parser'
 import { parseGSTN, extractPANFromGSTN } from '@/lib/utils/gstn'
 import { useAuth } from '@/hooks/useAuth'
-import { useUserSubscription } from '@/hooks/useCompanyAccess'
+import { useUserSubscription, useAnyCompanyAccess } from '@/hooks/useCompanyAccess'
 import { completeOnboarding, uploadFileToStorage } from './actions'
 import { getTermsAcceptanceState, recordTermsAcceptance } from './actions-consent'
 import { showToast } from '@/components/ui/Toast'
@@ -45,6 +45,13 @@ export default function OnboardingPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
   const { hasSubscription, isTrial, trialDaysRemaining, companyLimit, currentCompanyCount, canCreateCompany, tier, isLoading: subLoading } = useUserSubscription()
+  // Broader access signal — covers user-level subscription AND
+  // company-level subscription AND being a team member of a funded
+  // company. The handleAcceptTerms redirect below uses this; the
+  // original `hasSubscription || (isTrial && trialDaysRemaining > 0)`
+  // check only catches the user-level case and misses users like
+  // Ibrahim who paid via super99 for a specific company.
+  const { hasAnyAccess } = useAnyCompanyAccess()
   
   // All hooks must be called before any conditional returns
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -196,19 +203,20 @@ export default function OnboardingPage() {
     try {
       const result = await recordTermsAcceptance()
       if (result.success) {
-        // After consent: if the user already has companies and an
-        // active subscription/trial, they don't need the onboarding
-        // form — drop them straight into /data-room. /onboarding only
-        // makes sense as a destination for users who genuinely need
-        // to create their FIRST company.
+        // After consent: if the user already has access to any
+        // company (via personal sub, company sub, OR team-member role
+        // on a funded company), they don't need the onboarding form.
+        // Drop them straight into /data-room. The form only makes
+        // sense for users who genuinely need to create their first
+        // company.
         //
-        // We read both signals from the existing useUserSubscription
-        // state (already loaded for the page's auth/sub gates above);
-        // no extra round-trip needed. `currentCompanyCount > 0` covers
-        // owners; team-member-only users wouldn't be on this route in
-        // the first place.
-        if (hasActiveAccess && currentCompanyCount > 0) {
-          console.log('[onboarding:consent] user has companies + access — redirecting to /data-room')
+        // `hasAnyAccess` is the authoritative signal — it returns
+        // true if `accessibleCompanyIds.length > 0` regardless of
+        // which subscription type funds the access. Catches the
+        // super99 case (Ibrahim has company-level sub but no
+        // user-level sub) that the previous narrower check missed.
+        if (hasAnyAccess) {
+          console.log('[onboarding:consent] user has accessible companies — redirecting to /data-room')
           router.push('/data-room')
           return
         }
