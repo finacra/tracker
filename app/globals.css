@@ -3,75 +3,112 @@
 @tailwind utilities;
 
 /*
- * PR-1 design tokens. Variables are channel-only RGB triples so Tailwind's
+ * Design tokens. Variables are channel-only RGB triples so Tailwind's
  * `<alpha-value>` placeholder can compose `rgb(var(--token) / <alpha>)`.
  *
- * :root is the default (current dark palette — same colors as today, just
- * tokenized). [data-theme="light"] is staged for PR-3's toggle. Until then
- * the light values are unused, so this file ships zero visual change.
+ * :root is dark (the canonical product palette). [data-theme='light']
+ * overrides for the Notion/Stripe-style light theme. Both are tuned for
+ * "soft enterprise" feel: cool slate tones in dark, cool zinc + subtle
+ * borders in light, layered shadows that read as depth not heaviness.
+ *
+ * PR-H aesthetic refinements (data-room polish pass):
+ *   - dark: pure black (#0a0a0a) → slate-tinted (#0e1014). Softens the
+ *     "tech aggression" without losing the dark-first identity.
+ *   - success accent: deep forest (#217346) → emerald-500 (#10b981).
+ *     Reads as 2026-modern instead of 2010-corporate.
+ *   - warn: yellow-500 (#eab308) → amber-500 (#f59e0b). Warmer.
+ *   - new shadow scale (xs/sm/md) layered for Stripe-style elevation
+ *     instead of one-size-fits-all popover/elevated.
+ *   - new radius xl/2xl for primary cards / hero surfaces.
+ *   - new motion: duration-fast (120ms) for hover, duration-slow
+ *     (280ms) for emphasis, ease-emphasized for smoother entry.
+ *   - light theme: cooler zinc grays + much subtler shadows — reads
+ *     "Stripe Dashboard" rather than the earlier flat-white look.
  */
 :root {
-  --bg-base: 10 10 10;          /* #0a0a0a — body */
-  --bg-card: 21 21 21;          /* #151515 — primary-dark-card */
-  --bg-elevated: 26 26 26;      /* #1a1a1a — primary-dark-gray */
-  --bg-muted: 31 31 31;         /* slightly above card for subtle wells */
-  --bg-hover: 38 38 38;         /* hover layer over card */
+  /* ── Surface ────────────────────────────────────────────────────────────
+   * Slate-tinted dark instead of pure black. Each step lifts ~2-3 units in
+   * each channel so layering reads as depth without harsh contrast.
+   */
+  --bg-base: 14 16 20;          /* #0e1014 — body */
+  --bg-card: 24 27 32;          /* #181b20 — primary cards */
+  --bg-elevated: 30 33 39;      /* #1e2127 — modals / above-card */
+  --bg-muted: 35 38 45;         /* #23262d — wells / nested surfaces */
+  --bg-hover: 42 46 54;         /* #2a2e36 — hover layer */
 
-  --fg-primary: 255 255 255;
+  /* ── Foreground ─────────────────────────────────────────────────────── */
+  --fg-primary: 245 246 247;    /* off-white — easier on eyes than pure 255 */
   --fg-secondary: 209 213 219;  /* gray-300 */
   --fg-muted: 156 163 175;      /* gray-400 */
-  --fg-inverse: 10 10 10;
+  --fg-inverse: 14 16 20;
 
-  --border-default: 255 255 255; /* used with /10–/20 alpha */
+  /* ── Borders ────────────────────────────────────────────────────────── */
+  --border-default: 255 255 255; /* used with /10–/15 alpha */
   --border-subtle: 255 255 255;  /* used with /5 alpha */
-  --border-strong: 255 255 255;  /* used with /30 alpha */
+  --border-strong: 255 255 255;  /* used with /25 alpha */
 
-  /* PR-13: brand swapped from #1E3A5F navy to #4F46E5 indigo-600. The
-   * navy read "1995 enterprise"; the indigo reads "2026 SaaS". Cascades
-   * through the entire token system — every accent-brand consumer
-   * (focus rings, primary chip, primary button) flips indigo automatically. */
-  --accent-brand: 79 70 229;    /* indigo-600 */
-  --accent-success: 33 115 70;  /* primary-green */
-  --accent-warn: 234 179 8;     /* amber-500 */
+  /* ── Accents ────────────────────────────────────────────────────────── */
+  --accent-brand: 79 70 229;    /* indigo-600 — primary CTA, focus */
+  --accent-success: 16 185 129; /* emerald-500 — modern, was forest #217346 */
+  --accent-warn: 245 158 11;    /* amber-500 — warmer than yellow-500 */
   --accent-danger: 239 68 68;   /* red-500 */
   --accent-info: 59 130 246;    /* blue-500 */
 
-  --radius-sm: 0.375rem;        /* 6px */
-  --radius-md: 0.5rem;          /* 8px */
-  --radius-lg: 0.75rem;         /* 12px */
+  /* ── Radii ──────────────────────────────────────────────────────────── */
+  --radius-sm: 0.375rem;        /* 6px — chips, inline buttons */
+  --radius-md: 0.5rem;          /* 8px — buttons, inputs */
+  --radius-lg: 0.75rem;         /* 12px — secondary cards */
+  --radius-xl: 1rem;            /* 16px — primary cards (NEW) */
+  --radius-2xl: 1.25rem;        /* 20px — hero panels (NEW) */
 
+  /* ── Shadow scale ───────────────────────────────────────────────────────
+   * Layered (two tiers) so cards read as floating, not painted-on. The
+   * ratio of soft-blur to crisp-offset is what sells "Stripe polish".
+   */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.45), 0 4px 8px rgba(0, 0, 0, 0.3);
   --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.45);
   --shadow-elevated: 0 12px 32px rgba(0, 0, 0, 0.55);
 
-  --ease-token: cubic-bezier(0.2, 0, 0, 1);
-  --duration-token: 180ms;
+  /* ── Motion ─────────────────────────────────────────────────────────── */
+  --ease-token: cubic-bezier(0.2, 0, 0, 1);            /* current snappy curve */
+  --ease-emphasized: cubic-bezier(0.32, 0.72, 0, 1);   /* smoother entry (NEW) */
+  --duration-fast: 120ms;       /* hover / focus pulses (NEW) */
+  --duration-token: 180ms;      /* default transitions */
+  --duration-slow: 280ms;       /* emphasis (modal, drawer) (NEW) */
 
-  /* PR-2: Geist Sans + Mono loaded via next/font/local in layout.tsx
-   * (geist package). The package defines --font-geist-sans /
-   * --font-geist-mono on <html>; we bridge them to our semantic tokens
-   * so `font-sans` and `font-mono` Tailwind utilities render Geist. */
+  /* ── Typography (loaded from next/font/local in layout.tsx) ─────────── */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 [data-theme='light'] {
-  --bg-base: 250 250 249;       /* near-white, off-white */
+  /* Surfaces — cool zinc, Stripe-Dashboard cast (was warmer beige). */
+  --bg-base: 250 250 251;       /* near-white, slight cool */
   --bg-card: 255 255 255;
-  --bg-elevated: 244 244 245;
-  --bg-muted: 250 250 250;
-  --bg-hover: 244 244 245;
+  --bg-elevated: 248 249 250;   /* subtle layer above card */
+  --bg-muted: 244 245 247;
+  --bg-hover: 243 244 246;
 
   --fg-primary: 24 24 27;       /* zinc-900 */
   --fg-secondary: 63 63 70;     /* zinc-700 */
   --fg-muted: 113 113 122;      /* zinc-500 */
   --fg-inverse: 255 255 255;
 
-  --border-default: 24 24 27;   /* used with /10 alpha */
-  --border-subtle: 24 24 27;    /* used with /5 alpha */
-  --border-strong: 24 24 27;    /* used with /20 alpha */
+  --border-default: 24 24 27;
+  --border-subtle: 24 24 27;
+  --border-strong: 24 24 27;
 
-  --shadow-popover: 0 8px 24px rgba(24, 24, 27, 0.12);
-  --shadow-elevated: 0 12px 32px rgba(24, 24, 27, 0.16);
+  /* Light-mode shadows are MUCH subtler — Notion/Stripe lift cards
+   * with whisper-soft blur, not heavy drop-shadows. */
+  --shadow-xs: 0 1px 2px rgba(24, 24, 27, 0.04);
+  --shadow-sm: 0 1px 3px rgba(24, 24, 27, 0.06), 0 1px 2px rgba(24, 24, 27, 0.04);
+  --shadow-md: 0 4px 12px rgba(24, 24, 27, 0.08), 0 2px 4px rgba(24, 24, 27, 0.04);
+  --shadow-lg: 0 10px 24px rgba(24, 24, 27, 0.10), 0 4px 8px rgba(24, 24, 27, 0.06);
+  --shadow-popover: 0 8px 24px rgba(24, 24, 27, 0.10);
+  --shadow-elevated: 0 12px 32px rgba(24, 24, 27, 0.12);
 }
 
 * {
@@ -94,6 +131,10 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  /* Tabular numerics by default — compliance dates / amounts stay
+   * column-aligned without per-component opt-in. Components that need
+   * proportional digits (rare) can override with .font-sans. */
+  font-feature-settings: 'cv11', 'ss01', 'ss03', 'tnum';
 }
 
 body {
@@ -129,4 +170,29 @@ select {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Chrome, Safari and Opera */
+}
+
+/* ── Focus ring ─────────────────────────────────────────────────────────
+ * Stripe-style: brand-tinted ring with offset, not a hard 2px outline.
+ * Components opt in via `focus-visible:ring-2 focus-visible:ring-accent-brand/40`
+ * but interactive elements without explicit styles get this baseline so
+ * keyboard users always have something legible.
+ */
+:where(button, [role='button'], a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid rgb(var(--accent-brand));
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Smooth interactions by default ─────────────────────────────────────
+ * Apply a small color/background transition to common interactive
+ * elements so hovers feel polished without per-component opt-in. Components
+ * that need bespoke timing override locally.
+ */
+:where(button, [role='button'], a) {
+  transition:
+    background-color var(--duration-fast) var(--ease-token),
+    border-color var(--duration-fast) var(--ease-token),
+    color var(--duration-fast) var(--ease-token),
+    box-shadow var(--duration-fast) var(--ease-token);
 }
